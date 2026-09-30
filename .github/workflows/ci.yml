@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     name: Migrate, seed, uji RLS, build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16-alpine
@@ -28,8 +28,8 @@ jobs:
       AUTH_SECRET: ci-only-secret-not-used-in-production
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -44,8 +44,8 @@ jobs:
 
   docker:
     name: Build image Docker
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: docker build --target runner -t hashi-app:ci .
       - run: docker build --target tools -t hashi-tools:ci .
