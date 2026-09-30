@@ -1,4 +1,6 @@
-import { expect, type Page } from "@playwright/test";
+import "dotenv/config";
+import { expect, type Browser, type Page } from "@playwright/test";
+import { Client } from "pg";
 
 export const DEMO_PASSWORD = process.env.SEED_PASSWORD || "hashi-demo-2026";
 
@@ -34,3 +36,48 @@ export async function readTempPassword(page: Page): Promise<string> {
 }
 
 export const unique = () => `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+/**
+ * Buat LPK baru (tanpa kemitraan) beserta admin yang sudah ganti kata sandi, lewat UI super admin.
+ * Dipakai tes yang menambah kandidat, supaya angka data demo (12 / 23 kandidat) tidak berubah
+ * dan tes bisa dijalankan berulang kali.
+ */
+export async function createIsolatedLpk(browser: Browser) {
+  const id = unique();
+  const orgName = `LPK E2E Kandidat ${id}`;
+  const adminEmail = `e2e-kandidat-${id}@hashi.test`;
+  const adminPassword = "Kata-Sandi-Baru-123";
+
+  const page = await (await browser.newContext()).newPage();
+  await login(page, "admin@hashi.test");
+  await page.goto("/admin/organizations/new");
+  await page.locator("#name").fill(orgName);
+  await page.locator("#type").selectOption("LPK");
+  await page.locator("#adminName").fill("Admin E2E");
+  await page.locator("#adminEmail").fill(adminEmail);
+  await page.locator("main form button[type=submit]").click();
+  const tempPassword = await readTempPassword(page);
+  await logout(page);
+
+  await login(page, adminEmail, tempPassword);
+  await page.locator("#currentPassword").fill(tempPassword);
+  await page.locator("#newPassword").fill(adminPassword);
+  await page.locator("#confirmPassword").fill(adminPassword);
+  await page.locator("form button[type=submit]").first().click();
+  await page.waitForURL(/\/$/);
+  await page.context().close();
+  return { orgName, adminEmail, adminPassword };
+}
+
+/** Query langsung ke database sebagai OWNER (melewati RLS) untuk memeriksa hasil, mis. audit log. */
+export async function ownerQuery<T extends Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
+  const url = process.env.MIGRATE_DATABASE_URL;
+  if (!url) throw new Error("MIGRATE_DATABASE_URL belum di-set (dipakai tes e2e untuk memeriksa database)");
+  const client = new Client({ connectionString: url });
+  await client.connect();
+  try {
+    return (await client.query(sql, params)).rows as T[];
+  } finally {
+    await client.end();
+  }
+}

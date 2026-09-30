@@ -1,4 +1,5 @@
 import { asc, count, desc, eq, ne } from "drizzle-orm";
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { withSystem, withTenant } from "@/db";
 import { platformOverview } from "@/db/queries";
@@ -101,7 +102,12 @@ async function TenantDashboard({ orgId, role, isTsk }: { orgId: string; role: Ro
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
-        <h2 className="px-5 pt-5 font-medium">{t("recent")}</h2>
+        <div className="flex items-center justify-between px-5 pt-5">
+          <h2 className="font-medium">{t("recent")}</h2>
+          <Link href="/candidates" className="text-sm font-medium text-brand-700 hover:underline">
+            {t("viewAll")}
+          </Link>
+        </div>
         {recent.length === 0 ? (
           <p className="px-5 pb-5 pt-2 text-sm text-stone-500">{t("empty")}</p>
         ) : (

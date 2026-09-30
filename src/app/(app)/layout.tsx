@@ -14,6 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const t = await getTranslations();
 
   const nav: NavItem[] = [{ href: "/", label: t("nav.dashboard") }];
+  if (user.role !== "SUPER_ADMIN") nav.push({ href: "/candidates", label: t("nav.candidates") });
   if (user.role === "LPK_ADMIN" || user.role === "TSK_ADMIN") {
     nav.push({ href: "/users", label: t("nav.users") });
   }

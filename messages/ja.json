@@ -19,7 +19,8 @@
     "users": "ユーザー",
     "organizations": "組織",
     "partnerships": "提携",
-    "account": "アカウント"
+    "account": "アカウント",
+    "candidates": "候補者"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -58,7 +59,8 @@
     "colOrg": "組織",
     "colType": "種別",
     "colUsers": "ユーザー",
-    "colCandidates": "候補者"
+    "colCandidates": "候補者",
+    "viewAll": "すべて見る"
   },
   "users": {
     "title": "ユーザー管理",
@@ -208,6 +210,49 @@
     "errors": {
       "empty": "メモを入力してください。",
       "tooLong": "メモが長すぎます。"
+    }
+  },
+  "candidates": {
+    "title": "候補者",
+    "introLpk": "{org}の候補者です。",
+    "introTsk": "提携LPKの候補者のうち、データ共有に同意済みの方を全ステータスで表示します。",
+    "add": "候補者を追加",
+    "added": "候補者を追加しました。",
+    "filterSearch": "氏名で検索",
+    "searchPlaceholder": "氏名またはカタカナ",
+    "filterStage": "LPKでの状況",
+    "filterField": "分野",
+    "filterDecision": "支援機関の決定",
+    "all": "すべて",
+    "apply": "絞り込む",
+    "reset": "リセット",
+    "colName": "氏名",
+    "colLpk": "LPK",
+    "colField": "分野",
+    "colStage": "LPKでの状況",
+    "colDecision": "支援機関の決定",
+    "totalSuffix": "名",
+    "empty": "候補者はまだいません。",
+    "noMatch": "条件に一致する候補者がいません。",
+    "pageOf": "{pages}ページ中{page}ページ",
+    "prev": "前へ",
+    "next": "次へ",
+    "newTitle": "候補者を追加",
+    "newIntro": "まず最小限の情報を入力します。個人情報・家族・学歴・書類は詳細ページで追加します。",
+    "fullName": "氏名（パスポート表記）",
+    "gender": "性別",
+    "birthDate": "生年月日",
+    "field": "分野",
+    "fieldHint": "希望する特定技能の分野（例：飲食料品製造業）。",
+    "consentDate": "データ共有への同意日",
+    "consentHint": "提携する登録支援機関へデータを共有することに、本人が同意した日（入学時に取得）。必須です。同意がない間は、登録支援機関には表示されません。",
+    "genders": {
+      "MALE": "男性",
+      "FEMALE": "女性"
+    },
+    "errors": {
+      "birthDateInvalid": "生年月日が正しくありません。",
+      "consentInFuture": "同意日に未来の日付は指定できません。"
     }
   },
   "roles": {

@@ -19,7 +19,8 @@
     "users": "Pengguna",
     "organizations": "Organisasi",
     "partnerships": "Kemitraan",
-    "account": "Akun saya"
+    "account": "Akun saya",
+    "candidates": "Kandidat"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -58,7 +59,8 @@
     "colOrg": "Organisasi",
     "colType": "Jenis",
     "colUsers": "Pengguna",
-    "colCandidates": "Kandidat"
+    "colCandidates": "Kandidat",
+    "viewAll": "Lihat semua"
   },
   "users": {
     "title": "Pengguna",
@@ -208,6 +210,49 @@
     "errors": {
       "empty": "Catatan tidak boleh kosong.",
       "tooLong": "Catatan terlalu panjang."
+    }
+  },
+  "candidates": {
+    "title": "Kandidat",
+    "introLpk": "Kandidat milik {org}.",
+    "introTsk": "Kandidat dari LPK mitra yang sudah memberi persetujuan berbagi data, di semua status.",
+    "add": "Tambah kandidat",
+    "added": "Kandidat berhasil ditambahkan.",
+    "filterSearch": "Cari nama",
+    "searchPlaceholder": "Nama atau katakana",
+    "filterStage": "Status di LPK",
+    "filterField": "Bidang",
+    "filterDecision": "Keputusan TSK",
+    "all": "Semua",
+    "apply": "Terapkan",
+    "reset": "Reset",
+    "colName": "Nama",
+    "colLpk": "LPK",
+    "colField": "Bidang",
+    "colStage": "Status LPK",
+    "colDecision": "Keputusan TSK",
+    "totalSuffix": "kandidat",
+    "empty": "Belum ada kandidat.",
+    "noMatch": "Tidak ada kandidat yang cocok dengan filter.",
+    "pageOf": "Halaman {page} dari {pages}",
+    "prev": "Sebelumnya",
+    "next": "Berikutnya",
+    "newTitle": "Tambah kandidat",
+    "newIntro": "Isi data minimal dulu. Data pribadi, keluarga, pendidikan, dan dokumen dilengkapi di halaman detail.",
+    "fullName": "Nama lengkap (sesuai paspor)",
+    "gender": "Jenis kelamin",
+    "birthDate": "Tanggal lahir",
+    "field": "Bidang",
+    "fieldHint": "Bidang kerja SSW yang dituju, mis. Pengolahan makanan & minuman.",
+    "consentDate": "Tanggal persetujuan berbagi data",
+    "consentHint": "Tanggal siswa menyetujui datanya dibagikan ke TSK mitra (diambil saat mendaftar). Wajib diisi. Tanpa persetujuan, kandidat tidak terlihat oleh TSK.",
+    "genders": {
+      "MALE": "Laki-laki",
+      "FEMALE": "Perempuan"
+    },
+    "errors": {
+      "birthDateInvalid": "Tanggal lahir tidak valid.",
+      "consentInFuture": "Tanggal persetujuan tidak boleh di masa depan."
     }
   },
   "roles": {
