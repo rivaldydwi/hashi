@@ -1,20 +1,8 @@
 import type { Tx } from "@/db";
 import { auditLogs } from "@/db/schema";
 
-export type AuditEntry = {
-  /** Organisasi tempat log disimpan. Untuk perubahan kandidat: LPK pemilik kandidat. */
-  organizationId: string | null;
-  /** Organisasi pelaku (LPK atau TSK). Kosong = sama dengan organizationId. */
-  actorOrgId?: string | null;
-  /** Wajib diisi untuk log yang menyangkut kandidat (dipakai policy RLS agar LPK bisa melihatnya). */
-  candidateId?: string;
-  actorUserId: string;
-  action: string; // mis. "user.create", "organization.update"
-  entity: string;
-  entityId?: string;
-  before?: Record<string, unknown>;
-  after?: Record<string, unknown>;
-};
+import type { AuditEntry } from "@/db/audit-entries";
+export type { AuditEntry };
 
 /**
  * Catat perubahan data. Jalankan di transaksi yang sama dengan perubahannya,

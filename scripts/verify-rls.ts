@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { createDb, withSystem, withTenant, type Tx } from "../src/db";
 import { platformOverview } from "../src/db/queries";
-import { noteAuditEntry } from "../src/features/candidates/audit";
+import { noteAuditEntry } from "../src/db/audit-entries";
 import {
   auditLogs,
   candidateCertificates,

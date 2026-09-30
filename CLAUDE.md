@@ -79,7 +79,7 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   membaca yang SHARED_WITH_LPK dari TSK dengan kemitraan AKTIF; LPK_SENSEI tidak pernah membaca; tidak ada DELETE
   untuk siapa pun; LPK tidak bisa menulis. Mengubah isi/visibility: hanya PENULIS (`author_id = app.user_id`)
   atau TSK_ADMIN di TSK yang sama; `author_id` wajib = user yang login saat membuat catatan.
-  Audit catatan WAJIB lewat `noteAuditEntry()` (`src/features/candidates/audit.ts`): hanya id catatan + visibility
+  Audit catatan WAJIB lewat `noteAuditEntry()` (`src/db/audit-entries.ts`): hanya id catatan + visibility
   dari/ke, TIDAK PERNAH isi catatan (log kandidat disimpan di LPK pemilik, jadi LPK membacanya).
   LPK_ADMIN baca+tulis semua; LPK_SENSEI hanya profil dasar (tanpa `candidate_private`, keluarga, dokumen).
   TSK mitra membaca kandidat di SEMUA status, hanya yang `data_consent_date IS NOT NULL`. TSK mengedit isi data
@@ -106,6 +106,11 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 - Server action: validasi dengan zod, kembalikan `FormState` dengan `key` = kunci pesan lengkap
   (mis. `"users.errors.emailTaken"`), tangani error lewat `ActionError`. Catat perubahan dengan `audit()`
   dalam transaksi yang sama. Jangan pernah mengembalikan/mencatat hash kata sandi.
+- **Script di `scripts/` hanya boleh mengimpor dari `src/db/`** (dan paket npm). Image Docker stage `tools`
+  (dipakai `docker compose run --rm migrate npm run test:rls|db:seed`) hanya menyalin `src/db`, bukan seluruh `src`.
+  Jangan impor dari `src/features`, `src/lib`, atau modul Next.js. Fungsi murni yang dibutuhkan script taruh di
+  `src/db/` (mis. `audit-entries.ts`) dengan `import type` saja ke modul lain. Job `docker` di CI menjalankan
+  `test:rls` dari image tools untuk menangkap pelanggaran ini. (`verify-i18n.ts` hanya jalan lokal/CI, bukan di image.)
 - Struktur fitur: `src/features/<fitur>/{actions,queries,Komponen}.ts(x)`; halaman di `src/app/(app)/…`.
 - **Halaman detail kandidat** dirancang berbasis definisi: `src/features/candidates/sections.ts` mendaftar bagian
   dan kolomnya (`SINGLE_SECTIONS`, `LIST_SECTIONS`); skema zod, form, tampilan, dan `test:i18n` diturunkan darinya.

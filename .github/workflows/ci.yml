@@ -56,9 +56,35 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Build image Docker
+    name: Build image Docker dan jalankan test:rls dari image tools
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hashi_owner
+          POSTGRES_PASSWORD: owner-ci
+          POSTGRES_DB: hashi_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hashi_owner -d hashi_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      MIGRATE_DATABASE_URL: postgresql://hashi_owner:owner-ci@localhost:5432/hashi_test
+      DATABASE_URL: postgresql://hashi_app:app-ci@localhost:5432/hashi_test
     steps:
       - uses: actions/checkout@v5
       - run: docker build --target runner -t hashi-app:ci .
       - run: docker build --target tools -t hashi-tools:ci .
+      # Sama seperti di OptiPlex (`docker compose run --rm migrate ...`): script berjalan DI DALAM image
+      # tools yang hanya berisi src/db. Impor ke modul di luar itu gagal di sini, bukan di produksi.
+      - name: Buat role aplikasi
+        run: docker run --rm --network host postgres:16-alpine psql "$MIGRATE_DATABASE_URL" -c "CREATE ROLE hashi_app LOGIN NOBYPASSRLS PASSWORD 'app-ci'"
+      - name: Migrate (dari image tools)
+        run: docker run --rm --network host -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci
+      - name: Seed (dari image tools)
+        run: docker run --rm --network host -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci npm run db:seed
+      - name: test:rls (dari image tools)
+        run: docker run --rm --network host -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci npm run test:rls

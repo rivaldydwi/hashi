@@ -21,6 +21,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json tsconfig.json drizzle.config.ts ./
 COPY drizzle ./drizzle
 COPY scripts ./scripts
+# HANYA src/db (bukan seluruh src). Script di scripts/ tidak boleh mengimpor dari luar src/db;
+# CI menjalankan test:rls dari image ini untuk memastikannya.
 COPY src/db ./src/db
 USER node
 CMD ["npm", "run", "db:migrate"]

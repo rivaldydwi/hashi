@@ -21,7 +21,7 @@ import { audit } from "@/lib/audit";
 import { ActionError } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
 import { requireUser, tenantQuery, type CurrentUser } from "@/lib/session";
-import { noteAuditEntry } from "./audit";
+import { noteAuditEntry } from "@/db/audit-entries";
 import { auditChange, ok, requireEditable, run, uuid } from "./guards";
 import { EARLIEST_BIRTH_DATE, latestAllowedDate } from "./validation";
 import { getCandidateForAction } from "./detail-queries";
