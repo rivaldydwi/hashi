@@ -427,6 +427,17 @@
           }
         }
       }
+    },
+    "consent": {
+      "none": "Belum ada persetujuan",
+      "dateLabel": "Tanggal persetujuan berbagi data",
+      "save": "Simpan tanggal",
+      "saved": "Tanggal persetujuan disimpan.",
+      "revoke": "Cabut persetujuan",
+      "revoked": "Persetujuan dicabut. Kandidat ini tidak lagi terlihat oleh TSK.",
+      "revokeWarning": "Yang terjadi bila dicabut: tanggal persetujuan dikosongkan dan TSK langsung tidak bisa lagi melihat kandidat ini, termasuk data, dokumen, catatan, dan keputusan TSK atasnya. Data Anda sendiri tidak berubah. Persetujuan bisa diisi lagi kapan saja.",
+      "revokeConfirm": "Ya, cabut persetujuan",
+      "missing": "Kandidat ini belum punya persetujuan berbagi data, jadi tidak terlihat oleh TSK mana pun. Isi tanggal persetujuan di bawah bila siswa sudah menyetujui."
     }
   },
   "roles": {

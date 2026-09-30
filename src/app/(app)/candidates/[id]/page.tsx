@@ -4,7 +4,9 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/PageHeader";
 import { StageBadge } from "@/components/StageBadge";
 import { cardClass } from "@/components/styles";
-import { StageForm } from "@/features/candidates/DetailForms";
+import { ConsentForm, StageForm } from "@/features/candidates/DetailForms";
+import { latestAllowedDate } from "@/features/candidates/validation";
+import { getFormatter } from "next-intl/server";
 import { DecisionPanel, ListSectionCard, NotesPanel, SectionCard } from "@/features/candidates/DetailSections";
 import { loadDetail } from "@/features/candidates/detail-queries";
 import { canSeeLevel, contentAccess, isTskRole } from "@/features/candidates/permissions";
@@ -37,6 +39,11 @@ export default async function CandidateDetailPage({
   const tsk = isTskRole(me.role);
   const access = contentAccess(me.role, candidate.stage, full?.myDecision ?? null);
   const ownerLpk = me.role === "LPK_ADMIN";
+  const format = await getFormatter();
+  // Tanggal ditampilkan dalam format lokal (id / ja); nilai di database tetap YYYY-MM-DD
+  const consentText = candidate.dataConsentDate
+    ? format.dateTime(new Date(`${candidate.dataConsentDate}T00:00:00Z`), { dateStyle: "long", timeZone: "UTC" })
+    : t("consent.none");
 
   return (
     <>
@@ -60,7 +67,7 @@ export default async function CandidateDetailPage({
             <p className="text-xs text-stone-500">{t("lpkLabel")}</p>
             <p className="font-medium">{candidate.lpkName}</p>
             <p className="mt-2 text-xs text-stone-500">{t("consentLabel")}</p>
-            <p data-testid="value-consent">{candidate.dataConsentDate ?? "—"}</p>
+            <p data-testid="value-consent">{consentText}</p>
           </div>
           {ownerLpk ? (
             <StageForm candidateId={candidate.id} stage={candidate.stage} />
@@ -68,6 +75,17 @@ export default async function CandidateDetailPage({
             tsk && <p className="max-w-sm text-xs text-stone-500">{t("stageInfoTsk")}</p>
           )}
         </div>
+
+        {ownerLpk && !candidate.dataConsentDate && (
+          <p role="note" className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-900" data-testid="consent-missing">
+            {t("consent.missing")}
+          </p>
+        )}
+        {ownerLpk && (
+          <div className={`${cardClass} p-5`} data-testid="section-consent">
+            <ConsentForm candidateId={candidate.id} date={candidate.dataConsentDate ?? ""} maxDate={latestAllowedDate()} />
+          </div>
+        )}
 
         {tsk && !access.canEdit && access.readOnlyReason && (
           <p role="note" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900" data-testid="readonly-note">
