@@ -59,9 +59,9 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 
 ## Aturan arsitektur (WAJIB)
 
-- **Akses data tenant selalu lewat `withTenant(orgId, role, tx => …)` / `tenantQuery()`**. `withSystem()` hanya
+- **Akses data tenant selalu lewat `withTenant({ orgId, role, userId }, tx => …)` / `tenantQuery()`**. `withSystem()` hanya
   untuk login, super admin, worker terjadwal, seed. Aplikasi terhubung sebagai `hashi_app` (tanpa BYPASSRLS).
-  `role` mengisi `app.role` untuk policy RLS; `null` = peran tidak dikenal (ditolak untuk data sensitif dan
+  `role` dan `userId` mengisi `app.role` / `app.user_id` untuk policy RLS; `null` = peran tidak dikenal (ditolak untuk data sensitif dan
   semua penulisan kandidat). Pakai `null` hanya untuk tabel yang tidak bergantung peran (mis. baris `users`).
 - **Hak akses kandidat** (RLS + trigger, lihat `drizzle/0005…` dan `drizzle/0007_candidate_selections_rls.sql`):
   status LPK dan keputusan TSK DIPISAH. `candidates.stage` (STUDYING/READY/WITHDRAWN) hanya diisi LPK_ADMIN.
@@ -70,8 +70,10 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   Catatan TSK ada di `candidate_notes` (bukan kolom di candidate_selections): `visibility` TSK_ONLY (default) atau
   SHARED_WITH_LPK. Semua peran TSK satu organisasi membaca/mengubah catatan organisasinya; LPK_ADMIN pemilik hanya
   membaca yang SHARED_WITH_LPK dari TSK dengan kemitraan AKTIF; LPK_SENSEI tidak pernah membaca; tidak ada DELETE
-  untuk siapa pun; LPK tidak bisa menulis. Perubahan visibility WAJIB dicatat aplikasi di `audit_logs`
-  (`note.visibility_change`, before/after, `candidateId`, `organizationId` = LPK pemilik).
+  untuk siapa pun; LPK tidak bisa menulis. Mengubah isi/visibility: hanya PENULIS (`author_id = app.user_id`)
+  atau TSK_ADMIN di TSK yang sama; `author_id` wajib = user yang login saat membuat catatan.
+  Audit catatan WAJIB lewat `noteAuditEntry()` (`src/features/candidates/audit.ts`): hanya id catatan + visibility
+  dari/ke, TIDAK PERNAH isi catatan (log kandidat disimpan di LPK pemilik, jadi LPK membacanya).
   LPK_ADMIN baca+tulis semua; LPK_SENSEI hanya profil dasar (tanpa `candidate_private`, keluarga, dokumen).
   TSK mitra membaca kandidat di SEMUA status, hanya yang `data_consent_date IS NOT NULL`. TSK mengedit isi data
   (`candidates`, `candidate_private`, tabel anak: INSERT/UPDATE, tanpa DELETE) HANYA jika keputusan MILIKNYA IN
@@ -107,6 +109,8 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   error bisa berasal dari trigger, bukan dari policy.
 - Tes RLS yang meng-UPDATE ke nilai yang sama = bukan perubahan, jadi trigger penjaga tidak menolaknya. Pakai
   nilai baru di tiap percobaan (`uniq()` di `verify-rls.ts`).
+- Tes RLS wajib juga menjalankan UPDATE TANPA `WHERE` (lihat bagian H di `verify-rls.ts`): dengan `WHERE id = …`
+  policy SELECT ikut berlaku dan menutupi policy UPDATE yang terlalu longgar.
 - Trigger penjaga TSK bisa diuji tanpa policy: `actAsTriggerOnly()` (bypass RLS + `app.role` TSK).
 - Policy yang saling merujuk tabel (candidates ↔ candidate_selections) memicu "infinite recursion detected in
   policy". Diputus dengan fungsi `SECURITY DEFINER` sempit (`tsk_has_edit_decision`, hanya membaca baris milik

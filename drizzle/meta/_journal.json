@@ -57,6 +57,13 @@
       "when": 1790752330736,
       "tag": "0007_candidate_selections_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790753005996,
+      "tag": "0008_note_author_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,7 @@
 import type { Tx } from "@/db";
 import { auditLogs } from "@/db/schema";
 
-type AuditEntry = {
+export type AuditEntry = {
   /** Organisasi tempat log disimpan. Untuk perubahan kandidat: LPK pemilik kandidat. */
   organizationId: string | null;
   /** Organisasi pelaku (LPK atau TSK). Kosong = sama dengan organizationId. */

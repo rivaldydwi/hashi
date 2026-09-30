@@ -2,7 +2,7 @@
 //
 // ATURAN: data tenant SELALU dibaca/ditulis lewat withTenant() atau withSystem().
 // Keduanya membuka transaksi dan mengisi variabel sesi yang dipakai policy RLS
-// (app.org_id, app.role, app.bypass_rls; lihat drizzle/0001_rls_policies.sql dan
+// (app.org_id, app.role, app.user_id, app.bypass_rls; lihat drizzle/0001_rls_policies.sql dan
 // drizzle/0005_candidate_profile_rls.sql). Query di luar keduanya tidak akan
 // melihat data apa pun, karena RLS menolak secara default.
 
@@ -41,34 +41,36 @@ async function runScoped<T>(
   db: Db,
   orgId: string,
   role: Role | null,
+  userId: string | null,
   bypass: boolean,
   fn: (tx: Tx) => Promise<T>,
 ): Promise<T> {
   return db.transaction(async (tx) => {
     // `true` = berlaku lokal untuk transaksi ini saja, otomatis hilang setelah commit.
     await tx.execute(
-      sql`select set_config('app.org_id', ${orgId}, true), set_config('app.role', ${role ?? ""}, true), set_config('app.bypass_rls', ${bypass ? "on" : "off"}, true)`,
+      sql`select set_config('app.org_id', ${orgId}, true), set_config('app.role', ${role ?? ""}, true), set_config('app.user_id', ${userId ?? ""}, true), set_config('app.bypass_rls', ${bypass ? "on" : "off"}, true)`,
     );
     return fn(tx);
   });
 }
 
-/**
- * Jalankan query sebagai organisasi + peran tertentu. RLS membatasi data yang terlihat.
- *
- * `role` wajib diisi supaya pemanggil tidak lupa. Beberapa tabel (data sensitif kandidat,
- * dokumen) hanya terbuka untuk peran tertentu, dan `null` berarti "peran tidak diketahui"
- * -> ditolak. `null` hanya pantas dipakai untuk tabel yang tidak bergantung pada peran
- * (mis. membaca baris `users` milik sendiri saat login).
- */
-export function withTenant<T>(
-  orgId: string,
-  role: Role | null,
-  fn: (tx: Tx) => Promise<T>,
-  db: Db = appDb(),
-) {
-  if (!orgId) throw new Error("withTenant: orgId kosong");
-  return runScoped(db, orgId, role, false, fn);
+/** Identitas yang dipakai policy RLS: app.org_id, app.role, app.user_id. */
+export type TenantScope = {
+  orgId: string;
+  /**
+   * Wajib diisi (boleh null) supaya pemanggil tidak lupa. Beberapa tabel (data sensitif kandidat,
+   * dokumen) hanya terbuka untuk peran tertentu; `null` = "peran tidak diketahui" -> ditolak.
+   * `null` hanya pantas untuk tabel yang tidak bergantung peran (mis. baris `users` saat login).
+   */
+  role: Role | null;
+  /** User yang login. Dipakai policy yang membedakan penulis (mis. mengubah catatan TSK). Kosong = ditolak. */
+  userId?: string | null;
+};
+
+/** Jalankan query sebagai organisasi + peran + user tertentu. RLS membatasi data yang terlihat. */
+export function withTenant<T>(scope: TenantScope, fn: (tx: Tx) => Promise<T>, db: Db = appDb()) {
+  if (!scope.orgId) throw new Error("withTenant: orgId kosong");
+  return runScoped(db, scope.orgId, scope.role, scope.userId ?? null, false, fn);
 }
 
 /**
@@ -76,7 +78,7 @@ export function withTenant<T>(
  * login, pekerjaan super admin, worker terjadwal, seed.
  */
 export function withSystem<T>(fn: (tx: Tx) => Promise<T>, db: Db = appDb()) {
-  return runScoped(db, "", null, true, fn);
+  return runScoped(db, "", null, null, true, fn);
 }
 
 /** Cek koneksi database (untuk /api/health). */

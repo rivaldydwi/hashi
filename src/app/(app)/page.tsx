@@ -29,7 +29,7 @@ async function TenantDashboard({ orgId, role, isTsk }: { orgId: string; role: Ro
   const tType = await getTranslations("orgTypes");
 
   // Semua query lewat withTenant: RLS yang menentukan data mana yang terlihat.
-  const { byStage, partners, recent } = await withTenant(orgId, role, async (tx) => ({
+  const { byStage, partners, recent } = await withTenant({ orgId, role }, async (tx) => ({
     byStage: await tx
       .select({ stage: candidates.stage, total: count() })
       .from(candidates)

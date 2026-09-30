@@ -198,7 +198,7 @@ async function main() {
       },
     ]);
 
-    console.log("✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (1 tanpa persetujuan data), 8 keputusan TSK, 2 catatan TSK");
+    console.log(`✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (1 tanpa persetujuan data), ${decided.length} keputusan TSK, 2 catatan TSK`);
     console.log(`  Password semua akun demo: ${PASSWORD}`);
   }, db);
 

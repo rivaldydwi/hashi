@@ -12,9 +12,11 @@
 // Pemeriksaan yang menulis data dijalankan di dalam transaksi yang selalu di-rollback.
 
 import "dotenv/config";
+import { randomUUID } from "node:crypto";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { createDb, withSystem, withTenant, type Tx } from "../src/db";
 import { platformOverview } from "../src/db/queries";
+import { noteAuditEntry } from "../src/features/candidates/audit";
 import {
   auditLogs,
   candidateCertificates,
@@ -62,14 +64,14 @@ async function errorMessage(fn: () => Promise<unknown>): Promise<string | null> 
 }
 
 /** Ganti identitas sesi di tengah transaksi (sama seperti yang dilakukan withTenant di awal). */
-async function actAs(tx: Tx, orgId: string, role: string | null) {
+async function actAs(tx: Tx, orgId: string, role: string | null, userId: string | null = null) {
   await tx.execute(
-    sql`select set_config('app.org_id', ${orgId}, true), set_config('app.role', ${role ?? ""}, true), set_config('app.bypass_rls', 'off', true)`,
+    sql`select set_config('app.org_id', ${orgId}, true), set_config('app.role', ${role ?? ""}, true), set_config('app.user_id', ${userId ?? ""}, true), set_config('app.bypass_rls', 'off', true)`,
   );
 }
 async function actAsSystem(tx: Tx) {
   await tx.execute(
-    sql`select set_config('app.org_id', '', true), set_config('app.role', '', true), set_config('app.bypass_rls', 'on', true)`,
+    sql`select set_config('app.org_id', '', true), set_config('app.role', '', true), set_config('app.user_id', '', true), set_config('app.bypass_rls', 'on', true)`,
   );
 }
 
@@ -115,7 +117,7 @@ async function scratch(tx: Tx, fn: (t: Tx) => Promise<void>) {
 /** RLS dilewati (bypass) tetapi app.role diisi: menguji trigger database saja, tanpa policy. */
 async function actAsTriggerOnly(tx: Tx, role: string) {
   await tx.execute(
-    sql`select set_config('app.org_id', '', true), set_config('app.role', ${role}, true), set_config('app.bypass_rls', 'on', true)`,
+    sql`select set_config('app.org_id', '', true), set_config('app.role', ${role}, true), set_config('app.user_id', '', true), set_config('app.bypass_rls', 'on', true)`,
   );
 }
 
@@ -158,7 +160,7 @@ async function main() {
 
   // 2. LPK hanya melihat kandidat sendiri
   for (const lpk of [lpk1, lpk2, lpk3]) {
-    const rows = await withTenant(lpk.id, "LPK_ADMIN", (tx) => tx.select().from(candidates), db);
+    const rows = await withTenant({ orgId: lpk.id, role: "LPK_ADMIN" }, (tx) => tx.select().from(candidates), db);
     const onlyOwn = rows.every((r) => r.organizationId === lpk.id);
     check(
       `${lpk.name}: hanya melihat ${ownCount(lpk.id)} kandidat sendiri`,
@@ -168,7 +170,7 @@ async function main() {
   }
 
   // 3. TSK melihat kandidat LPK mitra di semua tahap (asal ada persetujuan), bukan LPK non-mitra
-  const tskRows = await withTenant(tsk.id, "TSK_ADMIN", (tx) => tx.select().from(candidates), db);
+  const tskRows = await withTenant({ orgId: tsk.id, role: "TSK_ADMIN" }, (tx) => tx.select().from(candidates), db);
   check("TSK: jumlah kandidat mitra sesuai aturan", tskRows.length === tskExpected, `${tskRows.length}/${tskExpected}`);
   const studyingSeen = tskRows.filter((r) => r.stage === "STUDYING").length;
   const studyingExpected = tskVisible.filter((c) => c.stage === "STUDYING").length;
@@ -195,7 +197,7 @@ async function main() {
   // 4. TSK tidak bisa mengubah isi data kandidat yang keputusannya belum PASSED_CLIENT_INTERVIEW dst.
   //    (pemeriksaan lengkap per keputusan ada di bagian "Profil kandidat" di bawah)
   const target = tskRows.find((r) => r.stage === "READY" && !hasSelection(r.id))!;
-  const updated = await withTenant(tsk.id, "TSK_ADMIN",
+  const updated = await withTenant({ orgId: tsk.id, role: "TSK_ADMIN" },
     (tx) => tx.update(candidates).set({ fullName: "DIUBAH TSK" }).where(eq(candidates.id, target.id)).returning(),
     db,
   );
@@ -203,14 +205,14 @@ async function main() {
 
   // 5. LPK tidak bisa membuat kandidat atas nama organisasi lain
   const insertErr = await expectError(() =>
-    withTenant(lpk1.id, "LPK_ADMIN", (tx) => tx.insert(candidates).values({ organizationId: lpk2.id, fullName: "Titipan" }), db),
+    withTenant({ orgId: lpk1.id, role: "LPK_ADMIN" }, (tx) => tx.insert(candidates).values({ organizationId: lpk2.id, fullName: "Titipan" }), db),
   );
   check("LPK: tidak bisa menulis kandidat ke LPK lain", insertErr !== null && /row-level security/i.test(insertErr));
 
   // 6. LPK tidak bisa memindahkan kandidatnya ke LPK lain
   const own = all.find((c) => c.organizationId === lpk1.id)!;
   const moveErr = await expectError(() =>
-    withTenant(lpk1.id, "LPK_ADMIN", (tx) => tx.update(candidates).set({ organizationId: lpk2.id }).where(eq(candidates.id, own.id)), db),
+    withTenant({ orgId: lpk1.id, role: "LPK_ADMIN" }, (tx) => tx.update(candidates).set({ organizationId: lpk2.id }).where(eq(candidates.id, own.id)), db),
   );
   check(
     "LPK: tidak bisa memindahkan kandidat ke LPK lain",
@@ -219,13 +221,13 @@ async function main() {
   );
 
   // 7. Pengguna organisasi lain tidak terlihat
-  const tskUsers = await withTenant(tsk.id, "TSK_ADMIN", (tx) => tx.select().from(users), db);
+  const tskUsers = await withTenant({ orgId: tsk.id, role: "TSK_ADMIN" }, (tx) => tx.select().from(users), db);
   check("TSK: hanya melihat pengguna TSK sendiri", tskUsers.length > 0 && tskUsers.every((u) => u.organizationId === tsk.id));
 
   // 8. Organisasi: sendiri + mitra saja
-  const lpk3Orgs = await withTenant(lpk3.id, "LPK_ADMIN", (tx) => tx.select().from(organizations), db);
+  const lpk3Orgs = await withTenant({ orgId: lpk3.id, role: "LPK_ADMIN" }, (tx) => tx.select().from(organizations), db);
   check("LPK non-mitra: hanya melihat organisasinya sendiri", lpk3Orgs.length === 1 && lpk3Orgs[0].id === lpk3.id);
-  const tskOrgs = await withTenant(tsk.id, "TSK_ADMIN", (tx) => tx.select().from(organizations).where(ne(organizations.id, tsk.id)), db);
+  const tskOrgs = await withTenant({ orgId: tsk.id, role: "TSK_ADMIN" }, (tx) => tx.select().from(organizations).where(ne(organizations.id, tsk.id)), db);
   check(
     "TSK: melihat 2 LPK mitra, bukan LPK non-mitra",
     tskOrgs.length === 2 && tskOrgs.every((o) => o.id !== lpk3.id),
@@ -234,13 +236,13 @@ async function main() {
 
   // 9. Kemitraan hanya bisa diubah oleh sistem
   const partnerErr = await expectError(() =>
-    withTenant(lpk3.id, "LPK_ADMIN", (tx) => tx.insert(partnerships).values({ lpkId: lpk3.id, tskId: tsk.id }), db),
+    withTenant({ orgId: lpk3.id, role: "LPK_ADMIN" }, (tx) => tx.insert(partnerships).values({ lpkId: lpk3.id, tskId: tsk.id }), db),
   );
   check("LPK: tidak bisa membuat kemitraan sendiri", partnerErr !== null);
 
   // 10. Audit log append-only
   const auditDelErr = await expectError(() =>
-    withTenant(lpk1.id, "LPK_ADMIN", (tx) => tx.delete(auditLogs).where(and(eq(auditLogs.organizationId, lpk1.id))), db),
+    withTenant({ orgId: lpk1.id, role: "LPK_ADMIN" }, (tx) => tx.delete(auditLogs).where(and(eq(auditLogs.organizationId, lpk1.id))), db),
   );
   check("Audit log: aplikasi tidak bisa menghapus", auditDelErr !== null && /permission denied/i.test(auditDelErr));
 
@@ -270,7 +272,7 @@ async function main() {
 
   // 12. Admin LPK bisa menambah sensei di organisasinya sendiri
   const addSenseiErr = await inRollback(() =>
-    withTenant(lpk1.id, "LPK_ADMIN", async (tx) => {
+    withTenant({ orgId: lpk1.id, role: "LPK_ADMIN" }, async (tx) => {
       await tx.insert(users).values(tempUser(lpk1.id, "LPK_SENSEI"));
       throw new Rollback();
     }, db),
@@ -279,22 +281,22 @@ async function main() {
 
   // 13-14. Peran harus sesuai jenis organisasi (mencegah eskalasi hak akses)
   const escalateErr = await inRollback(() =>
-    withTenant(lpk1.id, "LPK_ADMIN", (tx) => tx.insert(users).values(tempUser(lpk1.id, "SUPER_ADMIN")), db),
+    withTenant({ orgId: lpk1.id, role: "LPK_ADMIN" }, (tx) => tx.insert(users).values(tempUser(lpk1.id, "SUPER_ADMIN")), db),
   );
   check("LPK: tidak bisa membuat SUPER_ADMIN", escalateErr !== null && /tidak diizinkan/.test(escalateErr));
   const promoteErr = await inRollback(() =>
-    withTenant(lpk1.id, "LPK_ADMIN", (tx) => tx.update(users).set({ role: "TSK_STAFF" }).where(eq(users.organizationId, lpk1.id)), db),
+    withTenant({ orgId: lpk1.id, role: "LPK_ADMIN" }, (tx) => tx.update(users).set({ role: "TSK_STAFF" }).where(eq(users.organizationId, lpk1.id)), db),
   );
   check("LPK: tidak bisa memberi peran TSK ke pengguna LPK", promoteErr !== null && /tidak diizinkan/.test(promoteErr));
 
   // 15. Pengguna tidak bisa dipindah ke organisasi lain
   const moveUserErr = await inRollback(() =>
-    withTenant(lpk1.id, "LPK_ADMIN", (tx) => tx.update(users).set({ organizationId: lpk2.id }).where(eq(users.organizationId, lpk1.id)), db),
+    withTenant({ orgId: lpk1.id, role: "LPK_ADMIN" }, (tx) => tx.update(users).set({ organizationId: lpk2.id }).where(eq(users.organizationId, lpk1.id)), db),
   );
   check("LPK: tidak bisa memindahkan pengguna ke organisasi lain", moveUserErr !== null);
 
   // 16. Organisasi hanya bisa diubah oleh sistem (super admin)
-  const renamed = await withTenant(lpk1.id, "LPK_ADMIN",
+  const renamed = await withTenant({ orgId: lpk1.id, role: "LPK_ADMIN" },
     (tx) => tx.update(organizations).set({ name: "Diubah LPK" }).where(eq(organizations.id, lpk1.id)).returning(),
     db,
   );
@@ -312,7 +314,7 @@ async function main() {
 
   // 18. Email wajib huruf kecil
   const upperErr = await inRollback(() =>
-    withTenant(lpk1.id, "LPK_ADMIN", (tx) => tx.insert(users).values({ ...tempUser(lpk1.id, "LPK_SENSEI"), email: "Besar@Hashi.test" }), db),
+    withTenant({ orgId: lpk1.id, role: "LPK_ADMIN" }, (tx) => tx.insert(users).values({ ...tempUser(lpk1.id, "LPK_SENSEI"), email: "Besar@Hashi.test" }), db),
   );
   check("Email dengan huruf besar ditolak database", upperErr !== null);
 
@@ -718,72 +720,106 @@ async function main() {
     "keputusan atas kandidat LPK Surabaya (mitra yang masih aktif) tetap terlihat",
   );
 
-  // --- E2. Catatan TSK (candidate_notes): TSK_ONLY vs SHARED_WITH_LPK ---
+  // --- E2. Catatan TSK (candidate_notes): visibility, penulis, dan audit tanpa isi catatan ---
   const nt: Record<string, unknown> = {};
+  const SECRET = "RAHASIA-wawancara-kandidat-9137"; // teks yang TIDAK boleh muncul di audit yang terbaca LPK
+  const staffUser = allUsers.find((u) => u.role === "TSK_STAFF")!;
+  const makeUser = async (tx: Tx, orgId: string, role: "TSK_ADMIN" | "TSK_STAFF") =>
+    (await tx.insert(users).values({ organizationId: orgId, email: `uji-${uniq()}@hashi.test`, name: "Uji", role, passwordHash: "x" }).returning())[0].id;
   await sandbox(async (tx) => {
     const tskB = await makeTskB(tx);
-    const mk = async (tskOrgId: string, body: string, visibility?: "TSK_ONLY" | "SHARED_WITH_LPK") =>
-      (await tx.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId, authorId: tskAdminUser.id, body, visibility }).returning())[0];
-    const onlyA = await mk(tsk.id, "rahasia A"); // visibility tidak diisi -> default
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    const staffB = await makeUser(tx, tskB, "TSK_STAFF");
+    const mk = async (candidateId: string, tskOrgId: string, authorId: string, body: string, visibility?: "TSK_ONLY" | "SHARED_WITH_LPK") =>
+      (await tx.insert(candidateNotes).values({ candidateId, tskOrgId, authorId, body, visibility }).returning())[0];
+    const onlyA = await mk(ready1.id, tsk.id, tskAdminUser.id, "rahasia A"); // visibility tidak diisi -> default
     nt.defaultVisibility = onlyA.visibility;
-    const sharedA = await mk(tsk.id, "dibagikan A", "SHARED_WITH_LPK");
-    const sharedB = await mk(tskB, "dibagikan B", "SHARED_WITH_LPK");
-    await mk(tskB, "rahasia B", "TSK_ONLY");
+    const sharedA = await mk(ready1.id, tsk.id, tskAdminUser.id, "dibagikan A", "SHARED_WITH_LPK");
+    const sharedB = await mk(ready1.id, tskB, adminB, "dibagikan B", "SHARED_WITH_LPK");
+    await mk(ready1.id, tskB, adminB, "rahasia B", "TSK_ONLY");
+    const staffNote = await mk(studying1.id, tsk.id, staffUser.id, "catatan staf");
     const bodies = async (label: string, orgId: string, role: string | null) => {
       await actAs(tx, orgId, role);
       nt[label] = (await tx.select().from(candidateNotes)).filter((n) => n.candidateId === ready1.id).map((n) => n.body).sort();
     };
-    const readAll = async () => {
-      await bodies("A-admin", tsk.id, "TSK_ADMIN");
-      await bodies("A-staff", tsk.id, "TSK_STAFF");
-      await bodies("B", tskB, "TSK_ADMIN");
-      await bodies("lpk-admin", lpk1.id, "LPK_ADMIN");
-      await bodies("lpk-sensei", lpk1.id, "LPK_SENSEI");
-      await bodies("lpk-null", lpk1.id, null);
-      await bodies("lpk2", lpk2.id, "LPK_ADMIN");
-      await bodies("lpk3", lpk3.id, "LPK_ADMIN");
-    };
-    await readAll();
+    await bodies("A-admin", tsk.id, "TSK_ADMIN");
+    await bodies("A-staff", tsk.id, "TSK_STAFF");
+    await bodies("B", tskB, "TSK_ADMIN");
+    await bodies("lpk-admin", lpk1.id, "LPK_ADMIN");
+    await bodies("lpk-sensei", lpk1.id, "LPK_SENSEI");
+    await bodies("lpk-null", lpk1.id, null);
+    await bodies("lpk2", lpk2.id, "LPK_ADMIN");
+    await bodies("lpk3", lpk3.id, "LPK_ADMIN");
 
-    // TSK (rekan satu organisasi) mengubah SHARED -> TSK_ONLY: LPK tidak bisa membacanya lagi
-    await actAs(tx, tsk.id, "TSK_STAFF");
+    // TSK_ADMIN mengubah SHARED -> TSK_ONLY: LPK tidak bisa membacanya lagi; dibagikan lagi: terbaca lagi
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
     nt.hide = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ visibility: "TSK_ONLY" }).where(eq(candidateNotes.id, sharedA.id)).returning({ id: candidateNotes.id }))).n;
     nt.hideEdit = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ body: "dibagikan A (revisi)" }).where(eq(candidateNotes.id, sharedA.id)).returning({ id: candidateNotes.id }))).n;
     await bodies("lpk-admin-after-hide", lpk1.id, "LPK_ADMIN");
-    await actAs(tx, tsk.id, "TSK_ADMIN");
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
     nt.share = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ visibility: "SHARED_WITH_LPK" }).where(eq(candidateNotes.id, sharedA.id)).returning({ id: candidateNotes.id }))).n;
     await bodies("lpk-admin-after-share", lpk1.id, "LPK_ADMIN");
 
-    // Perubahan visibility dicatat di audit_logs (dari, ke, siapa) di log LPK pemilik kandidat
-    await actAs(tx, tsk.id, "TSK_ADMIN");
-    nt.auditInsert = await attempt(tx, (t) =>
-      t.insert(auditLogs).values({
-        organizationId: lpk1.id, actorOrgId: tsk.id, candidateId: ready1.id, actorUserId: tskAdminUser.id,
-        action: "note.visibility_change", entity: "candidate_note", entityId: sharedA.id,
-        before: { visibility: "SHARED_WITH_LPK" }, after: { visibility: "TSK_ONLY" },
-      }),
-    );
-    await actAs(tx, lpk1.id, "LPK_ADMIN");
-    const seenAudit = (await tx.select().from(auditLogs).where(eq(auditLogs.entityId, sharedA.id)))[0];
-    nt.auditSeen = seenAudit ? `${JSON.stringify(seenAudit.before)}->${JSON.stringify(seenAudit.after)} oleh ${seenAudit.actorUserId === tskAdminUser.id ? "TSK" : "?"}` : null;
+    // Siapa boleh MENGUBAH (isi & visibility): penulis atau TSK_ADMIN, di organisasi TSK yang sama
+    const tryEdit = async (label: string, orgId: string, role: string, userId: string | null, noteId: string) => {
+      await actAs(tx, orgId, role, userId);
+      const body = await rowsOf(tx, (t) => t.update(candidateNotes).set({ body: uniq() }).where(eq(candidateNotes.id, noteId)).returning({ id: candidateNotes.id }));
+      const vis = await rowsOf(tx, (t) => t.update(candidateNotes).set({ visibility: "SHARED_WITH_LPK" }).where(eq(candidateNotes.id, noteId)).returning({ id: candidateNotes.id }));
+      nt[label] = `${body.n}/${vis.n}`;
+    };
+    await tryEdit("edit-staf-lain", tsk.id, "TSK_STAFF", randomUUID(), staffNote.id);
+    await tryEdit("edit-staf-tanpa-user", tsk.id, "TSK_STAFF", null, staffNote.id);
+    await tryEdit("edit-penulis", tsk.id, "TSK_STAFF", staffUser.id, staffNote.id);
+    await tryEdit("edit-admin", tsk.id, "TSK_ADMIN", tskAdminUser.id, staffNote.id);
+    await tryEdit("edit-admin-tsk-lain", tskB, "TSK_ADMIN", adminB, staffNote.id);
+    await tryEdit("edit-staf-tsk-lain", tskB, "TSK_STAFF", staffB, staffNote.id);
+    await tryEdit("edit-staf-catatan-admin", tsk.id, "TSK_STAFF", staffUser.id, onlyA.id);
+    await tryEdit("edit-staf-catatan-admin-tsk-lain", tskB, "TSK_ADMIN", adminB, onlyA.id);
 
-    // TSK B tidak bisa menyentuh catatan TSK A, tetapi bisa menulis catatannya sendiri
-    await actAs(tx, tskB, "TSK_STAFF");
+    // Membuat catatan: penulis harus user yang login
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    nt.insOwn = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, authorId: staffUser.id, body: "catatan staf baru" }));
+    nt.insSpoof = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "atas nama admin" }));
+    nt.insNoAuthor = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, body: "tanpa penulis" }));
+    await actAs(tx, tsk.id, "TSK_STAFF", null);
+    nt.insNoUser = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, authorId: staffUser.id, body: "tanpa user" }));
+
+    // Audit catatan: hanya id catatan + visibility (dari, ke). Isi catatan TIDAK BOLEH ikut.
+    await actAsSystem(tx);
+    const secret = await mk(ready1.id, tsk.id, tskAdminUser.id, SECRET, "SHARED_WITH_LPK");
+    const entries = [
+      noteAuditEntry({ action: "note.create", note: secret, lpkOrgId: lpk1.id, actorUserId: tskAdminUser.id, to: "SHARED_WITH_LPK" }),
+      noteAuditEntry({ action: "note.visibility_change", note: secret, lpkOrgId: lpk1.id, actorUserId: tskAdminUser.id, from: "SHARED_WITH_LPK", to: "TSK_ONLY" }),
+      noteAuditEntry({ action: "note.update", note: secret, lpkOrgId: lpk1.id, actorUserId: tskAdminUser.id, from: "TSK_ONLY", to: "TSK_ONLY", bodyChanged: true }),
+    ];
+    nt.entries = entries;
+    nt.secretId = secret.id;
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    nt.auditInsert = await attempt(tx, (t) => t.insert(auditLogs).values(entries));
+    await actAs(tx, lpk1.id, "LPK_ADMIN");
+    const seenByLpk = await tx.select().from(auditLogs); // SEMUA baris audit yang bisa dibaca LPK
+    nt.lpkAuditAll = JSON.stringify(seenByLpk);
+    nt.lpkNoteAudit = seenByLpk.filter((r) => r.entity === "candidate_note" && r.entityId === secret.id).map((r) => ({ action: r.action, before: r.before, after: r.after }));
+
+    // TSK B tidak bisa menyentuh catatan TSK A (TSK_ADMIN pun tidak), tetapi bisa menulis catatannya sendiri
+    await actAs(tx, tskB, "TSK_ADMIN", adminB);
     nt.bUpdatesA = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ body: "diubah B" }).where(eq(candidateNotes.id, onlyA.id)).returning({ id: candidateNotes.id }))).n;
-    nt.bAsA = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, body: "titipan" }));
-    nt.bOwn = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tskB, authorId: null, body: "catatan B baru" }));
-    // Kunci catatan tidak bisa diubah; kandidat yang tidak terlihat tidak bisa diberi catatan; tidak ada DELETE
-    await actAs(tx, tsk.id, "TSK_ADMIN");
+    nt.bAsA = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, authorId: adminB, body: "titipan" }));
+    nt.bOwn = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tskB, authorId: adminB, body: "catatan B baru" }));
+    // Kunci catatan tidak bisa diganti; kandidat yang tidak terlihat tidak bisa diberi catatan; tidak ada DELETE
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
     nt.moveCand = await attempt(tx, (t) => t.update(candidateNotes).set({ candidateId: studying1.id }).where(eq(candidateNotes.id, onlyA.id)));
     nt.moveOrg = await attempt(tx, (t) => t.update(candidateNotes).set({ tskOrgId: tskB }).where(eq(candidateNotes.id, onlyA.id)));
-    nt.changeAuthor = await attempt(tx, (t) => t.update(candidateNotes).set({ authorId: null }).where(eq(candidateNotes.id, onlyA.id)));
-    nt.hiddenCand = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: hidden.id, tskOrgId: tsk.id, body: "x" }));
-    nt.outsiderCand = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: outsider.id, tskOrgId: tsk.id, body: "x" }));
+    nt.changeAuthor = await attempt(tx, (t) => t.update(candidateNotes).set({ authorId: staffUser.id }).where(eq(candidateNotes.id, onlyA.id)));
+    nt.hiddenCand = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: hidden.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "x" }));
+    nt.outsiderCand = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: outsider.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "x" }));
     nt.tskDelete = await attempt(tx, (t) => t.delete(candidateNotes).where(eq(candidateNotes.id, onlyA.id)));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    nt.staffDelete = await attempt(tx, (t) => t.delete(candidateNotes).where(eq(candidateNotes.id, staffNote.id)));
 
     // LPK tidak bisa menulis / mengubah / menghapus
     for (const role of ["LPK_ADMIN", "LPK_SENSEI"]) {
-      await actAs(tx, lpk1.id, role);
+      await actAs(tx, lpk1.id, role, randomUUID());
       nt[`${role}-insert`] = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, body: "dari LPK", visibility: "SHARED_WITH_LPK" }));
       nt[`${role}-update`] = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ body: "diubah LPK" }).where(eq(candidateNotes.id, sharedB.id)).returning({ id: candidateNotes.id }))).n;
       nt[`${role}-visibility`] = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ visibility: "TSK_ONLY" }).where(eq(candidateNotes.id, sharedB.id)).returning({ id: candidateNotes.id }))).n;
@@ -795,8 +831,8 @@ async function main() {
     await tx.update(partnerships).set({ active: false }).where(and(eq(partnerships.lpkId, lpk1.id), eq(partnerships.tskId, tsk.id)));
     await bodies("lpk-admin-inactive", lpk1.id, "LPK_ADMIN");
     await bodies("A-inactive", tsk.id, "TSK_ADMIN");
-    await actAs(tx, tsk.id, "TSK_ADMIN");
-    nt.inactiveInsert = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, body: "x" }));
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    nt.inactiveInsert = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "x" }));
     await actAsSystem(tx);
     await tx.update(partnerships).set({ active: true }).where(and(eq(partnerships.lpkId, lpk1.id), eq(partnerships.tskId, tsk.id)));
 
@@ -804,8 +840,8 @@ async function main() {
     await actAs(tx, lpk1.id, "LPK_ADMIN");
     await tx.update(candidates).set({ dataConsentDate: null }).where(eq(candidates.id, ready1.id));
     await bodies("A-revoked", tsk.id, "TSK_ADMIN");
-    await actAs(tx, tsk.id, "TSK_ADMIN");
-    nt.revokedInsert = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, body: "x" }));
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    nt.revokedInsert = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "x" }));
   });
   const both = ["dibagikan A", "rahasia A"];
   check(
@@ -838,9 +874,43 @@ async function main() {
     `setelah disembunyikan: ${nt["lpk-admin-after-hide"]}`,
   );
   check(
-    "Perubahan visibility bisa dicatat TSK di audit_logs LPK pemilik (dari, ke, siapa) dan terbaca LPK",
-    nt.auditInsert === null && nt.auditSeen === '{"visibility":"SHARED_WITH_LPK"}->{"visibility":"TSK_ONLY"} oleh TSK',
-    String(nt.auditSeen),
+    "Mengubah catatan (isi & visibility): staf TSK lain DITOLAK, penulis BISA, TSK_ADMIN BISA, TSK_ADMIN dari TSK lain DITOLAK",
+    nt["edit-staf-lain"] === "0/0" && nt["edit-staf-tanpa-user"] === "0/0" && nt["edit-penulis"] === "1/1" &&
+      nt["edit-admin"] === "1/1" && nt["edit-admin-tsk-lain"] === "0/0" && nt["edit-staf-tsk-lain"] === "0/0",
+    `staf lain ${nt["edit-staf-lain"]}, tanpa user ${nt["edit-staf-tanpa-user"]}, penulis ${nt["edit-penulis"]}, admin ${nt["edit-admin"]}, admin TSK lain ${nt["edit-admin-tsk-lain"]} (isi/visibility)`,
+  );
+  check(
+    "Staf TSK tidak bisa mengubah catatan milik admin TSK (rekannya); admin TSK lain juga tidak",
+    nt["edit-staf-catatan-admin"] === "0/0" && nt["edit-staf-catatan-admin-tsk-lain"] === "0/0",
+  );
+  check(
+    "Membuat catatan: penulis harus user yang login (tidak bisa atas nama rekan, tanpa penulis, atau tanpa user)",
+    nt.insOwn === null &&
+      [nt.insSpoof, nt.insNoAuthor, nt.insNoUser].every((e) => typeof e === "string" && /row-level security/.test(e)),
+    typeof nt.insOwn === "string" ? nt.insOwn : "",
+  );
+  // --- Audit catatan: hanya id + visibility (dari, ke); tidak pernah isi catatan ---
+  const noteEntries = nt.entries as Array<{ action: string; entityId: string; before?: Record<string, unknown>; after?: Record<string, unknown> }>;
+  const vc = noteEntries.find((e) => e.action === "note.visibility_change")!;
+  check(
+    "Baris audit note.visibility_change hanya berisi id catatan + visibility dari/ke (tanpa isi catatan)",
+    JSON.stringify(Object.keys(vc.before ?? {})) === '["visibility"]' && JSON.stringify(Object.keys(vc.after ?? {})) === '["visibility"]' &&
+      vc.entityId === nt.secretId && vc.before?.visibility === "SHARED_WITH_LPK" && vc.after?.visibility === "TSK_ONLY" &&
+      !JSON.stringify(noteEntries).includes(SECRET),
+    JSON.stringify({ before: vc.before, after: vc.after }),
+  );
+  check(
+    "Audit catatan bisa dicatat TSK di log LPK pemilik, dan terbaca LPK (dari, ke, siapa)",
+    nt.auditInsert === null &&
+      (nt.lpkNoteAudit as unknown[]).length === 3 &&
+      JSON.stringify((nt.lpkNoteAudit as Array<{ action: string; before: unknown; after: unknown }>).find((r) => r.action === "note.visibility_change")) ===
+        '{"action":"note.visibility_change","before":{"visibility":"SHARED_WITH_LPK"},"after":{"visibility":"TSK_ONLY"}}',
+    typeof nt.auditInsert === "string" ? nt.auditInsert : "",
+  );
+  check(
+    "Isi audit log yang terbaca LPK tidak memuat teks catatan TSK_ONLY (semua baris diperiksa, termasuk note.create & note.update)",
+    typeof nt.lpkAuditAll === "string" && !nt.lpkAuditAll.includes(SECRET) && !nt.lpkAuditAll.includes("RAHASIA") && !nt.lpkAuditAll.includes("rahasia A") && !nt.lpkAuditAll.includes("rahasia B"),
+    `${(nt.lpkAuditAll as string).length} karakter audit diperiksa`,
   );
   check(
     "LPK (admin & sensei) ditolak INSERT, UPDATE (isi maupun visibility), dan DELETE pada candidate_notes",
@@ -852,13 +922,13 @@ async function main() {
     ),
   );
   check(
-    "TSK B tidak bisa mengubah catatan TSK A atau menulis atas nama TSK A; catatannya sendiri bisa ditulis",
+    "TSK B (juga TSK_ADMIN-nya) tidak bisa mengubah catatan TSK A atau menulis atas nama TSK A; catatannya sendiri bisa ditulis",
     nt.bUpdatesA === 0 && typeof nt.bAsA === "string" && /row-level security/.test(nt.bAsA) && nt.bOwn === null,
   );
   check(
-    "Kandidat/TSK/penulis catatan tidak bisa diganti; tidak ada DELETE untuk TSK; kandidat tak terlihat tidak bisa diberi catatan",
+    "Kandidat/TSK/penulis catatan tidak bisa diganti; tidak ada DELETE (admin maupun staf); kandidat tak terlihat tidak bisa diberi catatan",
     [nt.moveCand, nt.moveOrg, nt.changeAuthor].every((e) => typeof e === "string" && /tidak bisa diubah/.test(e)) &&
-      typeof nt.tskDelete === "string" && /permission denied/.test(nt.tskDelete) &&
+      [nt.tskDelete, nt.staffDelete].every((e) => typeof e === "string" && /permission denied/.test(e)) &&
       [nt.hiddenCand, nt.outsiderCand].every((e) => typeof e === "string" && /row-level security/.test(e)),
   );
   check(
@@ -870,6 +940,91 @@ async function main() {
   check(
     "Persetujuan data dicabut: TSK tidak lagi melihat maupun menulis catatan atas kandidat itu",
     (nt["A-revoked"] as string[]).length === 0 && typeof nt.revokedInsert === "string",
+  );
+
+  // --- H. UPDATE TANPA WHERE: policy UPDATE harus berdiri sendiri ---
+  // Semua tes lain memakai WHERE id = ..., sehingga policy SELECT ikut berlaku dan bisa menutupi
+  // policy UPDATE yang terlalu longgar. Di sini UPDATE dijalankan tanpa WHERE (seperti bug di aplikasi),
+  // lalu baris yang benar-benar berubah dihitung sebagai sistem.
+  const pciLpk1 = seededSelections.find(
+    (s) => s.tskOrgId === tsk.id && EDIT_DECISIONS.includes(s.decision) && all.find((c) => c.id === s.candidateId)?.organizationId === lpk1.id,
+  )!.candidateId;
+  const tskEditable = seededSelections
+    .filter((s) => s.tskOrgId === tsk.id && EDIT_DECISIONS.includes(s.decision))
+    .map((s) => all.find((c) => c.id === s.candidateId)!)
+    .filter((c) => consented(c) && c.stage !== "WITHDRAWN" && isPartner(c))
+    .map((c) => c.id)
+    .sort();
+  const lpk1Ids = all.filter((c) => c.organizationId === lpk1.id).map((c) => c.id).sort();
+  const blk: Record<string, string[]> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    await decide(tx, ready1.id, tskB, "PASSED_CLIENT_INTERVIEW"); // TSK B hanya berhak mengedit ready1
+    await tx.insert(candidatePrivate).values([{ candidateId: ready1.id }, { candidateId: pciLpk1 }]);
+    await tx.insert(candidateDocuments).values([sampleDoc(ready1.id), sampleDoc(pciLpk1)]);
+    await tx.insert(candidateNotes).values([
+      { candidateId: ready1.id, tskOrgId: tskB, authorId: adminB, body: "catatan B" },
+      { candidateId: ready1.id, tskOrgId: tsk.id, authorId: staffUser.id, body: "catatan staf" },
+    ]);
+    const who: Record<string, [string, string | null, string | null]> = {
+      "TSK_ADMIN": [tsk.id, "TSK_ADMIN", tskAdminUser.id],
+      "TSK_STAFF": [tsk.id, "TSK_STAFF", staffUser.id],
+      "TSK_STAFF-tanpa-user": [tsk.id, "TSK_STAFF", null],
+      "TSK_B": [tskB, "TSK_ADMIN", adminB],
+      "LPK_ADMIN": [lpk1.id, "LPK_ADMIN", null],
+      "LPK_SENSEI": [lpk1.id, "LPK_SENSEI", null],
+      "LPK_NULL": [lpk1.id, null, null],
+    };
+    const probe = async (label: string, w: string, run: (t: Tx, m: string) => Promise<unknown>, read: (t: Tx, m: string) => Promise<string[]>) => {
+      const m = `BLK-${++seq}`;
+      await scratch(tx, async (sp) => {
+        await actAs(sp, ...who[w]);
+        await attempt(sp, (t) => run(t, m));
+        await actAsSystem(sp);
+        blk[`${label}/${w}`] = (await read(sp, m)).sort();
+      });
+    };
+    for (const w of Object.keys(who)) {
+      await probe("candidates", w, (t, m) => t.update(candidates).set({ hobby: m }), async (t, m) => (await t.select({ id: candidates.id }).from(candidates).where(eq(candidates.hobby, m))).map((r) => r.id));
+      await probe("private", w, (t, m) => t.update(candidatePrivate).set({ phone: m }), async (t, m) => (await t.select({ id: candidatePrivate.candidateId }).from(candidatePrivate).where(eq(candidatePrivate.phone, m))).map((r) => r.id));
+      await probe("docs", w, (t, m) => t.update(candidateDocuments).set({ originalFilename: m }), async (t, m) => (await t.select({ id: candidateDocuments.candidateId }).from(candidateDocuments).where(eq(candidateDocuments.originalFilename, m))).map((r) => r.id));
+      await probe("selections", w, (t) => t.update(candidateSelections).set({ decision: "REJECTED" }), async (t) => (await t.select({ id: candidateSelections.tskOrgId }).from(candidateSelections).where(eq(candidateSelections.decision, "REJECTED"))).map((r) => r.id));
+      await probe("notes", w, (t, m) => t.update(candidateNotes).set({ body: m }), async (t, m) => (await t.select({ id: candidateNotes.authorId }).from(candidateNotes).where(eq(candidateNotes.body, m))).map((r) => r.id ?? "-"));
+    }
+    blk.tskBId = [tskB];
+    blk.adminBId = [adminB];
+  });
+  const S = (a: string[]) => JSON.stringify([...a].sort());
+  const eq2 = (label: string, w: string, expected: string[]) => S(blk[`${label}/${w}`] ?? ["(tidak diukur)"]) === S(expected);
+  const none = (label: string, ws: string[]) => ws.every((w) => eq2(label, w, []));
+  check(
+    "UPDATE tanpa WHERE pada candidates: TSK hanya mengenai kandidat yang keputusannya membuka hak edit; TSK lain hanya miliknya; sensei/peran null tidak sama sekali",
+    eq2("candidates", "TSK_ADMIN", tskEditable) && eq2("candidates", "TSK_STAFF", tskEditable) &&
+      eq2("candidates", "TSK_B", [ready1.id]) && none("candidates", ["LPK_SENSEI", "LPK_NULL"]) && eq2("candidates", "LPK_ADMIN", lpk1Ids),
+    `TSK menyentuh ${blk["candidates/TSK_ADMIN"]?.length}/${tskEditable.length} kandidat, LPK_ADMIN ${blk["candidates/LPK_ADMIN"]?.length}/${lpk1Ids.length}`,
+  );
+  check(
+    "UPDATE tanpa WHERE pada candidate_private & dokumen: TSK hanya kandidat yang boleh diedit; sensei, peran null tidak sama sekali",
+    ["private", "docs"].every((tb) =>
+      eq2(tb, "TSK_ADMIN", [pciLpk1]) && eq2(tb, "TSK_STAFF", [pciLpk1]) && eq2(tb, "TSK_B", [ready1.id]) &&
+      none(tb, ["LPK_SENSEI", "LPK_NULL"]) && eq2(tb, "LPK_ADMIN", [ready1.id, pciLpk1]),
+    ),
+  );
+  check(
+    "UPDATE tanpa WHERE pada candidate_selections: hanya TSK pemilik yang berubah (LPK tidak bisa; TSK lain hanya barisnya sendiri)",
+    none("selections", ["LPK_ADMIN", "LPK_SENSEI", "LPK_NULL"]) &&
+      (blk["selections/TSK_ADMIN"] ?? []).length > 0 && (blk["selections/TSK_ADMIN"] ?? []).every((id) => id === tsk.id) &&
+      eq2("selections", "TSK_B", blk.tskBId),
+    `TSK A mengubah ${blk["selections/TSK_ADMIN"]?.length} baris, semuanya miliknya`,
+  );
+  check(
+    "UPDATE tanpa WHERE pada candidate_notes: penulis hanya catatannya, TSK_ADMIN hanya catatan organisasinya, staf tanpa user dan LPK tidak sama sekali",
+    (blk["notes/TSK_ADMIN"] ?? []).length > 0 && !(blk["notes/TSK_ADMIN"] ?? []).includes(blk.adminBId[0]) &&
+      (blk["notes/TSK_STAFF"] ?? []).length === 1 && blk["notes/TSK_STAFF"][0] === staffUser.id &&
+      eq2("notes", "TSK_B", blk.adminBId) &&
+      none("notes", ["TSK_STAFF-tanpa-user", "LPK_ADMIN", "LPK_SENSEI", "LPK_NULL"]),
+    `TSK_ADMIN A: ${blk["notes/TSK_ADMIN"]?.length} catatan, staf: ${blk["notes/TSK_STAFF"]?.length}, TSK_ADMIN B: ${blk["notes/TSK_B"]?.length}`,
   );
 
   // --- F. Audit: pelaku tercatat (actor_org_id); LPK melihat aksi TSK atas kandidatnya ---
@@ -926,11 +1081,11 @@ async function main() {
 
   // --- G. Hal lain yang tetap: tambah/hapus kandidat, pindah LPK, pindah dokumen, batas dokumen ---
   const senseiInsertErr = await inRollback(() =>
-    withTenant(lpk1.id, "LPK_SENSEI", (tx) => tx.insert(candidates).values({ organizationId: lpk1.id, fullName: "Dari Sensei" }), db),
+    withTenant({ orgId: lpk1.id, role: "LPK_SENSEI" }, (tx) => tx.insert(candidates).values({ organizationId: lpk1.id, fullName: "Dari Sensei" }), db),
   );
   check("Sensei: tidak bisa menambah kandidat", senseiInsertErr !== null && /row-level security/i.test(senseiInsertErr), senseiInsertErr ?? "");
   const tskInsertErr = await inRollback(() =>
-    withTenant(tsk.id, "TSK_ADMIN", (tx) => tx.insert(candidates).values({ organizationId: lpk1.id, fullName: "Dari TSK" }), db),
+    withTenant({ orgId: tsk.id, role: "TSK_ADMIN" }, (tx) => tx.insert(candidates).values({ organizationId: lpk1.id, fullName: "Dari TSK" }), db),
   );
   check("TSK: tidak bisa menambah kandidat", tskInsertErr !== null && /row-level security/i.test(tskInsertErr), tskInsertErr ?? "");
   const escapes: Record<string, unknown> = {};

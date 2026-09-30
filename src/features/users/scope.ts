@@ -26,7 +26,7 @@ export async function userAdminScope(targetOrgId?: string | null): Promise<UserA
     return {
       me,
       orgId: me.organizationId,
-      run: (fn) => withTenant(me.organizationId, me.role, fn),
+      run: (fn) => withTenant({ orgId: me.organizationId, role: me.role, userId: me.id }, fn),
       basePath: "/users",
     };
   }

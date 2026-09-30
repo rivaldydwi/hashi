@@ -27,7 +27,7 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
   if (next !== confirm) return { status: "error", key: "account.errors.mismatch" };
   if (next === current) return { status: "error", key: "account.errors.sameAsOld" };
 
-  const [row] = await withTenant(me.organizationId, me.role, (tx) =>
+  const [row] = await withTenant({ orgId: me.organizationId, role: me.role, userId: me.id }, (tx) =>
     tx.select({ hash: users.passwordHash }).from(users).where(eq(users.id, me.id)).limit(1),
   );
   if (!row || !(await verifyPassword(current, row.hash))) {
@@ -35,7 +35,7 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
   }
 
   const passwordHash = await hashPassword(next);
-  await withTenant(me.organizationId, me.role, async (tx) => {
+  await withTenant({ orgId: me.organizationId, role: me.role, userId: me.id }, async (tx) => {
     await tx.update(users).set({ passwordHash, mustChangePassword: false }).where(eq(users.id, me.id));
     await audit(tx, {
       organizationId: me.organizationId,

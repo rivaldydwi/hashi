@@ -68,7 +68,7 @@ Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.
 
 | Email | Peran | Yang terlihat |
 | --- | --- | --- |
-| `tsk.admin@hashi.test` | Admin TSK (bahasa Jepang) | 23 kandidat dari 2 LPK mitra, semua status. 1 kandidat LPK Bandung sengaja belum punya persetujuan berbagi data, jadi tidak terlihat. Sudah ada 8 keputusan demo (shortlist s/d lulus interview client) |
+| `tsk.admin@hashi.test` | Admin TSK (bahasa Jepang) | 23 kandidat dari 2 LPK mitra, semua status. 1 kandidat LPK Bandung sengaja belum punya persetujuan berbagi data, jadi tidak terlihat. Sudah ada 10 keputusan demo (shortlist s/d lulus interview client) |
 | `tsk.staff@hashi.test` | Staf TSK | Sama seperti admin TSK |
 | `lpk1.admin@hashi.test` | Admin LPK Bandung | 12 kandidat miliknya (termasuk yang belum ada persetujuan), bisa mengedit semuanya; melihat keputusan TSK tanpa catatannya |
 | `lpk1.sensei@hashi.test` | Sensei LPK Bandung | 12 kandidat miliknya, hanya profil dasar (tanpa data sensitif dan dokumen), hanya baca |
@@ -121,7 +121,7 @@ const rows = await tenantQuery((tx) => tx.select().from(candidates));
 await withSystem((tx) => ...);
 ```
 
-Keduanya membuka transaksi dan mengisi `app.org_id`, `app.role` (peran user, dari `withTenant(orgId, role, …)`),
+Keduanya membuka transaksi dan mengisi `app.org_id`, `app.role`, `app.user_id` (dari `withTenant({ orgId, role, userId }, …)`),
 dan `app.bypass_rls`, lalu policy di `drizzle/0001_rls_policies.sql` dan
 `drizzle/0005_candidate_profile_rls.sql` yang memutuskan baris mana yang terlihat. Query di luar
 keduanya tidak melihat data apa pun (gagal dengan aman). Peran `null` tidak boleh membaca data sensitif
@@ -145,10 +145,12 @@ Kandidat tanpa tanggal persetujuan hanya terlihat oleh LPK pemiliknya. Hak edit 
 bisa membandingkan nilai lama dengan baru.
 
 **Catatan TSK** (`candidate_notes`, misalnya 面談メモ) default-nya *Hanya TSK*. TSK bisa membagikannya ke LPK
-(*SHARED_WITH_LPK*), lalu menariknya kembali kapan saja. Semua peran TSK di organisasi yang sama membaca dan
-mengubah catatan organisasinya. Admin LPK pemilik kandidat hanya membaca catatan yang dibagikan, dan hanya dari TSK
+(*SHARED_WITH_LPK*), lalu menariknya kembali kapan saja. Semua peran TSK di organisasi yang sama membaca
+catatan organisasinya, tetapi mengubah isi/visibility hanya boleh **penulisnya atau TSK_ADMIN** (staf tidak bisa mengubah catatan rekan).
+Penulis diisi dari user yang login (`app.user_id`) dan tidak bisa dipalsukan. Admin LPK pemilik kandidat hanya membaca catatan yang dibagikan, dan hanya dari TSK
 yang kemitraannya masih aktif (kemitraan dinonaktifkan = catatan ikut tidak terlihat). Sensei tidak pernah melihat
-catatan TSK. Tidak ada yang bisa menghapus catatan; LPK tidak bisa menulis atau mengubahnya.
+catatan TSK. Tidak ada yang bisa menghapus catatan; LPK tidak bisa menulis atau mengubahnya. Audit log perubahan catatan hanya memuat id
+catatan dan visibility (dari, ke), **tidak pernah isi catatan**, karena log kandidat disimpan di LPK pemilik.
 
 Audit log mencatat organisasi pelaku (`actor_org_id`). Perubahan atas kandidat disimpan di log **LPK pemilik**
 (dengan `candidate_id`), jadi LPK ikut melihat perubahan yang dilakukan TSK; TSK melihat aksinya sendiri.
