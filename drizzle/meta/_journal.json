@@ -29,6 +29,20 @@
       "when": 1790745750442,
       "tag": "0003_user_role_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790750465590,
+      "tag": "0004_candidate_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790750466107,
+      "tag": "0005_candidate_profile_rls",
+      "breakpoints": true
     }
   ]
 }

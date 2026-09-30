@@ -32,7 +32,7 @@ export const getCurrentUser = cache(async (): Promise<LookupResult> => {
   const s = session?.user;
   if (!s?.id || !s.organizationId) return { state: "anonymous" };
 
-  const row = await withTenant(s.organizationId, async (tx) => {
+  const row = await withTenant(s.organizationId, null, async (tx) => {
     const [found] = await tx
       .select({ user: users, org: organizations })
       .from(users)
@@ -87,5 +87,5 @@ export async function requireRole(...roles: Role[]): Promise<CurrentUser> {
  */
 export async function tenantQuery<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
   const user = await requireUser();
-  return withTenant(user.organizationId, fn);
+  return withTenant(user.organizationId, user.role, fn);
 }

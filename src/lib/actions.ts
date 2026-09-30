@@ -21,7 +21,8 @@ export async function setLocale(locale: string) {
 
   const session = await auth();
   if (session?.user?.organizationId) {
-    await withTenant(session.user.organizationId, (tx) =>
+    // Peran di JWT bisa basi, dan tabel users tidak bergantung pada peran -> null.
+    await withTenant(session.user.organizationId, null, (tx) =>
       tx.update(users).set({ locale }).where(eq(users.id, session.user.id)),
     );
   }

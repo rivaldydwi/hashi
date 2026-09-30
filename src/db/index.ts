@@ -2,13 +2,15 @@
 //
 // ATURAN: data tenant SELALU dibaca/ditulis lewat withTenant() atau withSystem().
 // Keduanya membuka transaksi dan mengisi variabel sesi yang dipakai policy RLS
-// (lihat drizzle/0001_rls_policies.sql). Query di luar keduanya tidak akan
+// (app.org_id, app.role, app.bypass_rls; lihat drizzle/0001_rls_policies.sql dan
+// drizzle/0005_candidate_profile_rls.sql). Query di luar keduanya tidak akan
 // melihat data apa pun, karena RLS menolak secara default.
 
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import { Pool } from "pg";
 import * as schema from "./schema";
+import type { Role } from "./schema";
 
 export type Db = NodePgDatabase<typeof schema>;
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -38,22 +40,35 @@ function appDb(): Db {
 async function runScoped<T>(
   db: Db,
   orgId: string,
+  role: Role | null,
   bypass: boolean,
   fn: (tx: Tx) => Promise<T>,
 ): Promise<T> {
   return db.transaction(async (tx) => {
     // `true` = berlaku lokal untuk transaksi ini saja, otomatis hilang setelah commit.
     await tx.execute(
-      sql`select set_config('app.org_id', ${orgId}, true), set_config('app.bypass_rls', ${bypass ? "on" : "off"}, true)`,
+      sql`select set_config('app.org_id', ${orgId}, true), set_config('app.role', ${role ?? ""}, true), set_config('app.bypass_rls', ${bypass ? "on" : "off"}, true)`,
     );
     return fn(tx);
   });
 }
 
-/** Jalankan query sebagai organisasi tertentu. RLS membatasi data yang terlihat. */
-export function withTenant<T>(orgId: string, fn: (tx: Tx) => Promise<T>, db: Db = appDb()) {
+/**
+ * Jalankan query sebagai organisasi + peran tertentu. RLS membatasi data yang terlihat.
+ *
+ * `role` wajib diisi supaya pemanggil tidak lupa. Beberapa tabel (data sensitif kandidat,
+ * dokumen) hanya terbuka untuk peran tertentu, dan `null` berarti "peran tidak diketahui"
+ * -> ditolak. `null` hanya pantas dipakai untuk tabel yang tidak bergantung pada peran
+ * (mis. membaca baris `users` milik sendiri saat login).
+ */
+export function withTenant<T>(
+  orgId: string,
+  role: Role | null,
+  fn: (tx: Tx) => Promise<T>,
+  db: Db = appDb(),
+) {
   if (!orgId) throw new Error("withTenant: orgId kosong");
-  return runScoped(db, orgId, false, fn);
+  return runScoped(db, orgId, role, false, fn);
 }
 
 /**
@@ -61,7 +76,7 @@ export function withTenant<T>(orgId: string, fn: (tx: Tx) => Promise<T>, db: Db 
  * login, pekerjaan super admin, worker terjadwal, seed.
  */
 export function withSystem<T>(fn: (tx: Tx) => Promise<T>, db: Db = appDb()) {
-  return runScoped(db, "", true, fn);
+  return runScoped(db, "", null, true, fn);
 }
 
 /** Cek koneksi database (untuk /api/health). */

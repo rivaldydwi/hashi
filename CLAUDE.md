@@ -14,8 +14,12 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 4. Penilaian bulanan · 5. Seleksi (job order, shortlist) · 6. Lembar client PDF (bahasa Jepang)
 7. Pengingat dokumen kedaluwarsa · 8. Siap pilot (dummy 200 siswa) · 9. Demo ke TSK
 
-Keputusan terbuka untuk langkah 3: penyimpanan file dokumen (MinIO / alternatif S3-compatible) —
-cek dulu status image Docker MinIO community sebelum memilih.
+Keputusan penyimpanan file dokumen (langkah 3): **Docker named volume di disk**, bukan object storage.
+MinIO dicoret — image community dihentikan (Okt 2025), `minio/minio` & `minio/mc` dihapus dari Docker Hub
+(11 Sep 2026), repo diarsipkan. Cadangan bila suatu saat butuh S3 API: Garage atau SeaweedFS.
+File disimpan dengan nama = `document_id` (bukan nama asli dari user); unduh lewat route handler yang dicek
+RLS + dicatat di `audit_logs` (`document.download`), `Content-Disposition: attachment`. Batas 10 MB,
+hanya PDF/JPG/PNG (dicek dari magic bytes, dan oleh CHECK di tabel `candidate_documents`).
 
 ## Perintah
 
@@ -55,8 +59,20 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 
 ## Aturan arsitektur (WAJIB)
 
-- **Akses data tenant selalu lewat `withTenant(orgId, tx => …)` / `tenantQuery()`**. `withSystem()` hanya
+- **Akses data tenant selalu lewat `withTenant(orgId, role, tx => …)` / `tenantQuery()`**. `withSystem()` hanya
   untuk login, super admin, worker terjadwal, seed. Aplikasi terhubung sebagai `hashi_app` (tanpa BYPASSRLS).
+  `role` mengisi `app.role` untuk policy RLS; `null` = peran tidak dikenal (ditolak untuk data sensitif dan
+  semua penulisan kandidat). Pakai `null` hanya untuk tabel yang tidak bergantung peran (mis. baris `users`).
+- **Hak akses kandidat** (dijaga RLS + trigger, lihat `drizzle/0005_candidate_profile_rls.sql`):
+  LPK_ADMIN baca+tulis semua; LPK_SENSEI hanya profil dasar (tanpa `candidate_private`, keluarga, dokumen).
+  TSK mitra membaca kandidat di SEMUA tahap, tetapi hanya yang `data_consent_date IS NOT NULL` (tanpa itu hanya
+  LPK pemilik yang melihat). TSK boleh mengubah kolom `stage` di tahap apa pun (lewat server action khusus
+  `changeStage` yang hanya menyentuh stage + audit dari/ke/siapa); kolom lain, `candidate_private`, dan dokumen
+  HANYA saat stage IN (`PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, `DEPARTED`) — daftar IN eksplisit, JANGAN
+  `stage >= …` (WITHDRAWN paling akhir di enum). Dijaga trigger BEFORE UPDATE (`candidates`, `candidate_private`)
+  yang menilai stage baris LAMA. Form tambah kandidat mewajibkan tanggal persetujuan (aturan di aplikasi;
+  database tidak lagi menolak READY tanpa persetujuan — kandidat itu hanya tak terlihat TSK).
+  Seed sengaja menyisakan 1 kandidat tanpa persetujuan (`NO_CONSENT` di `scripts/seed.ts`), jadi TSK demo melihat 23 dari 24.
 - **Tabel baru** = migration Drizzle + migration SQL manual (`npx drizzle-kit generate --custom --name …`) berisi
   `GRANT … TO hashi_app`, `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy. Tambah pemeriksaan di
   `scripts/verify-rls.ts`. Tidak ada GRANT otomatis — sengaja, supaya gagal dengan aman.
@@ -75,6 +91,13 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 - Drizzle menulis kolom tabel utama tanpa nama tabel (`"id"`) di dalam `sql\`…\``. Jangan pakai subquery
   berkorelasi di `select({...})`; pakai GROUP BY terpisah (lihat `src/db/queries.ts`).
 - Tes yang hanya menghitung baris tidak cukup — cek angka/isinya juga.
+- Error di tengah transaksi membatalkan seluruh transaksi. Di tes RLS, bungkus perintah yang DIHARAPKAN gagal
+  dengan `attempt()` (savepoint) dan jalankan tes yang menulis di dalam `sandbox()` (selalu di-rollback).
+- Urutan eksekusi Postgres saat UPDATE: trigger BEFORE jalan lebih dulu, baru `WITH CHECK` RLS. Jadi pesan
+  error bisa berasal dari trigger, bukan dari policy.
+- Tes RLS yang meng-UPDATE ke nilai yang sama = bukan perubahan, jadi trigger penjaga tidak menolaknya. Pakai
+  nilai baru di tiap percobaan (`uniq()` di `verify-rls.ts`).
+- Trigger penjaga TSK bisa diuji tanpa policy: `actAsTriggerOnly()` (bypass RLS + `app.role` TSK).
 - `test:e2e` menjalankan build standalone lewat `scripts/serve-standalone.mjs`; `npm run build` dulu.
 
 ## Alur kerja

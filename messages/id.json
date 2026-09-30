@@ -52,7 +52,7 @@
     "colLpk": "LPK",
     "colField": "Bidang",
     "colStage": "Tahapan",
-    "tskNote": "Sebagai TSK, Anda hanya melihat kandidat dari LPK mitra yang sudah siap seleksi.",
+    "tskNote": "Sebagai TSK, Anda melihat kandidat dari LPK mitra di semua tahap, selama kandidat sudah memberi persetujuan berbagi data.",
     "nextModules": "Modul berikutnya: profil kandidat lengkap, penilaian bulanan, dan seleksi.",
     "platformTitle": "Semua organisasi",
     "colOrg": "Organisasi",

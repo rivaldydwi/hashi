@@ -75,7 +75,11 @@ const STAGES: CandidateStage[] = [
   "WITHDRAWN",
 ];
 
-function candidateRows(orgId: string, offset: number) {
+// 1 kandidat demo (LPK Bandung, tahap READY) sengaja TANPA tanggal persetujuan berbagi data,
+// untuk menguji aturan: tanpa persetujuan = tidak terlihat oleh TSK.
+const NO_CONSENT = { orgIndex: 0, stageIndex: 4 };
+
+function candidateRows(orgId: string, offset: number, orgIndex: number) {
   return STAGES.map((stage, i) => {
     const [first, firstKana, gender] = FIRST_NAMES[(i + offset) % FIRST_NAMES.length];
     const [last, lastKana] = LAST_NAMES[(i * 3 + offset) % LAST_NAMES.length];
@@ -89,6 +93,11 @@ function candidateRows(orgId: string, offset: number) {
       birthDate: `${year}-${month}-15`,
       field: FIELDS[(i + offset) % FIELDS.length],
       stage,
+      // Persetujuan berbagi data diambil saat mendaftar. Tanpa tanggal ini kandidat tidak terlihat TSK.
+      dataConsentDate:
+        orgIndex === NO_CONSENT.orgIndex && i === NO_CONSENT.stageIndex
+          ? null
+          : `2026-${String(((i + offset) % 6) + 1).padStart(2, "0")}-10`,
     };
   });
 }
@@ -143,9 +152,9 @@ async function main() {
 
     await tx
       .insert(candidates)
-      .values([...candidateRows(lpk1.id, 0), ...candidateRows(lpk2.id, 5), ...candidateRows(lpk3.id, 11)]);
+      .values([...candidateRows(lpk1.id, 0, 0), ...candidateRows(lpk2.id, 5, 1), ...candidateRows(lpk3.id, 11, 2)]);
 
-    console.log("✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo");
+    console.log("✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (1 tanpa persetujuan data)");
     console.log(`  Password semua akun demo: ${PASSWORD}`);
   }, db);
 

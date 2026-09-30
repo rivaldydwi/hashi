@@ -68,10 +68,10 @@ Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.
 
 | Email | Peran | Yang terlihat |
 | --- | --- | --- |
-| `tsk.admin@hashi.test` | Admin TSK (bahasa Jepang) | 16 kandidat dari 2 LPK mitra, hanya yang sudah siap seleksi |
+| `tsk.admin@hashi.test` | Admin TSK (bahasa Jepang) | 23 kandidat dari 2 LPK mitra, semua tahap. 1 kandidat LPK Bandung sengaja belum punya persetujuan berbagi data, jadi tidak terlihat |
 | `tsk.staff@hashi.test` | Staf TSK | Sama seperti admin TSK |
-| `lpk1.admin@hashi.test` | Admin LPK Bandung | 12 kandidat miliknya |
-| `lpk1.sensei@hashi.test` | Sensei LPK Bandung | 12 kandidat miliknya |
+| `lpk1.admin@hashi.test` | Admin LPK Bandung | 12 kandidat miliknya (termasuk yang belum ada persetujuan), bisa mengedit semuanya |
+| `lpk1.sensei@hashi.test` | Sensei LPK Bandung | 12 kandidat miliknya, hanya profil dasar (tanpa data sensitif dan dokumen) |
 | `lpk2.admin@hashi.test` | Admin LPK Surabaya | 12 kandidat miliknya |
 | `lpk3.admin@hashi.test` | Admin LPK Medan (bukan mitra) | 12 kandidat miliknya, tidak terlihat oleh TSK |
 | `admin@hashi.test` | Super admin | Ringkasan jumlah per organisasi, tanpa data pribadi |
@@ -121,9 +121,24 @@ const rows = await tenantQuery((tx) => tx.select().from(candidates));
 await withSystem((tx) => ...);
 ```
 
-Keduanya membuka transaksi dan mengisi `app.org_id` / `app.bypass_rls`, lalu policy di
-`drizzle/0001_rls_policies.sql` yang memutuskan baris mana yang terlihat. Query di luar
-keduanya tidak melihat data apa pun (gagal dengan aman).
+Keduanya membuka transaksi dan mengisi `app.org_id`, `app.role` (peran user, dari `withTenant(orgId, role, …)`),
+dan `app.bypass_rls`, lalu policy di `drizzle/0001_rls_policies.sql` dan
+`drizzle/0005_candidate_profile_rls.sql` yang memutuskan baris mana yang terlihat. Query di luar
+keduanya tidak melihat data apa pun (gagal dengan aman). Peran `null` tidak boleh membaca data sensitif
+maupun menulis data kandidat.
+
+### Hak akses data kandidat
+
+| Peran | Baca | Tulis |
+| --- | --- | --- |
+| **Admin LPK** | Semua data kandidat LPK-nya, termasuk data sensitif (`candidate_private`), keluarga, dan dokumen | Semua, di semua tahap |
+| **Sensei** | Profil dasar saja (daftar, pendidikan, kerja, sertifikat). Tanpa data sensitif, keluarga, dokumen | Tidak ada |
+| **Admin / staf TSK** (mitra aktif) | Semua kandidat LPK mitra di **semua tahap** (termasuk Belajar dan Mundur), beserta data sensitif dan dokumen, **hanya jika kandidat punya tanggal persetujuan berbagi data** | Mengubah **tahap** (`stage`) di tahap apa pun; mengedit data/dokumen **hanya** saat tahap `PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, atau `DEPARTED` |
+
+Kandidat tanpa tanggal persetujuan hanya terlihat oleh LPK pemiliknya. Batas edit TSK dijaga trigger database
+(`candidates` dan `candidate_private`): di luar tiga tahap itu, hanya kolom `stage` yang boleh berubah,
+dinilai dari tahap baris LAMA. Daftar tahap ditulis eksplisit (`IN (…)`), bukan `stage >= …`, karena
+`WITHDRAWN` ada di urutan paling akhir enum.
 
 Selain RLS, beberapa aturan dijaga langsung oleh trigger database (`drizzle/0003_user_role_guards.sql`),
 jadi bug di aplikasi pun tidak bisa melanggarnya:
@@ -138,7 +153,7 @@ jadi bug di aplikasi pun tidak bisa melanggarnya:
 
 | Perintah | Menguji | Butuh |
 | --- | --- | --- |
-| `npm run test:rls` | 25 aturan database: isolasi data, peran, kemitraan, audit log | database + seed |
+| `npm run test:rls` | 63 pemeriksaan database: isolasi data, peran, hak akses kandidat (baca/edit per tahap), persetujuan data, kemitraan, audit log | database + seed |
 | `npm run test:e2e` | 15 skenario lewat browser: login, hak akses, alur admin lengkap | database + seed + `npm run build` |
 
 Keduanya jalan otomatis di GitHub Actions setiap push. `test:rls` aman dijalankan di OptiPlex (semua
@@ -148,7 +163,9 @@ database development saja, atau reset data demo sesudahnya.
 Aturan yang diuji otomatis oleh `npm run test:rls` antara lain:
 
 - LPK hanya melihat dan mengubah kandidatnya sendiri
-- TSK hanya **membaca** kandidat LPK mitra yang sudah lewat tahap *Belajar*
+- TSK membaca kandidat LPK mitra di semua tahap, tetapi hanya yang sudah punya persetujuan berbagi data
+- TSK bisa mengubah tahap kandidat kapan saja, tetapi mengedit isi data hanya di tiga tahap terakhir yang diizinkan
+- Sensei tidak bisa membaca data sensitif maupun dokumen, dan tidak bisa mengedit kandidat
 - LPK non-mitra tidak terlihat sama sekali oleh TSK
 - Tidak ada yang bisa menulis data ke organisasi lain atau membuat kemitraan sendiri
 - Tidak ada yang bisa membuat peran yang tidak sesuai organisasinya

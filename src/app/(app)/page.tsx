@@ -2,7 +2,7 @@ import { asc, count, desc, eq, ne } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { withSystem, withTenant } from "@/db";
 import { platformOverview } from "@/db/queries";
-import { candidates, candidateStage, organizations } from "@/db/schema";
+import { candidates, candidateStage, organizations, type Role } from "@/db/schema";
 import { StageBadge } from "@/components/StageBadge";
 import { requireUser } from "@/lib/session";
 
@@ -18,18 +18,18 @@ export default async function DashboardPage() {
       {user.role === "SUPER_ADMIN" ? (
         <PlatformOverview />
       ) : (
-        <TenantDashboard orgId={user.organizationId} isTsk={user.organizationType === "TSK"} />
+        <TenantDashboard orgId={user.organizationId} role={user.role} isTsk={user.organizationType === "TSK"} />
       )}
     </div>
   );
 }
 
-async function TenantDashboard({ orgId, isTsk }: { orgId: string; isTsk: boolean }) {
+async function TenantDashboard({ orgId, role, isTsk }: { orgId: string; role: Role; isTsk: boolean }) {
   const t = await getTranslations("dashboard");
   const tType = await getTranslations("orgTypes");
 
   // Semua query lewat withTenant: RLS yang menentukan data mana yang terlihat.
-  const { byStage, partners, recent } = await withTenant(orgId, async (tx) => ({
+  const { byStage, partners, recent } = await withTenant(orgId, role, async (tx) => ({
     byStage: await tx
       .select({ stage: candidates.stage, total: count() })
       .from(candidates)
