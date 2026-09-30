@@ -60,8 +60,8 @@ docker compose up -d --build
 # 3. Isi data demo (sekali saja)
 docker compose run --rm migrate npm run db:seed
 
-# 4. Pastikan isolasi data bekerja (harus "Semua pemeriksaan RLS lulus.")
-docker compose run --rm migrate npm run test:rls
+# 4. Verifikasi produksi: cek kesehatan aplikasi (test:rls TIDAK dijalankan di produksi, lihat bagian Pengujian)
+curl -fsS http://127.0.0.1:3110/api/health
 ```
 
 Buka `http://<IP-OptiPlex-atau-Tailscale>:3100`.
@@ -86,8 +86,12 @@ Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.
 cd ~/hashi
 git pull                      # atau: git am file.patch
 docker compose up -d --build  # migration baru otomatis dijalankan container `migrate`
-docker compose run --rm migrate npm run test:rls
+docker compose ps             # app dan db harus (healthy)
+curl -fsS http://127.0.0.1:3110/api/health
 ```
+
+Verifikasi di produksi cukup lewat **CI hijau** (`gh run list`) dan cek `/api/health`. Jangan menjalankan
+`test:rls` terhadap database produksi (lihat *Pengujian*).
 
 ## Perintah sehari-hari
 
@@ -202,9 +206,27 @@ npm run db:migrate && npm run db:seed
 | `npm run test:rls` | 82 pemeriksaan database: isolasi data, peran, hak akses kandidat, keputusan & catatan TSK (per TSK), persetujuan data, kemitraan, audit log | database + seed |
 | `npm run test:e2e` | 15 skenario lewat browser: login, hak akses, alur admin lengkap | database + seed + `npm run build` |
 
-Keduanya jalan otomatis di GitHub Actions setiap push. `test:rls` aman dijalankan di OptiPlex (semua
-perubahan di-rollback). `test:e2e` **menambah data uji** (organisasi "LPK E2E ..."), jadi jalankan di
-database development saja, atau reset data demo sesudahnya.
+Keduanya jalan otomatis di GitHub Actions setiap push (database `hashi_test`).
+
+**Jalankan hanya terhadap database dev/test, bukan produksi (`hashi`).** Walau `test:rls` me-rollback tulisannya,
+sebagian pemeriksaannya bergantung pada isi seed (mis. 23 dari 24 kandidat terlihat oleh TSK demo, 1 kandidat tanpa
+persetujuan), sehingga di database produksi yang isinya berbeda hasilnya gagal atau menyesatkan. `test:e2e`
+**menambah dan mengubah data uji**; ia dan `db:seed -- --reset` menolak jalan bila nama database tidak berakhiran
+`_dev`/`_test` (`scripts/db-guard.ts`).
+
+Menjalankan `test:rls` dari OptiPlex terhadap `db-dev` lewat image `tools` (image yang sama dengan `migrate`):
+
+```bash
+# Dari OptiPlex, terhadap db-dev, lewat image tools (persis yang dipakai CI):
+docker compose -f compose.yaml -f compose.dev.yaml up -d db-dev     # sekali, bila belum jalan
+docker compose build migrate                                        # bangun image tools dari kode terbaru
+set -a; . ./.env; set +a                                            # .env: DATABASE_URL/MIGRATE_DATABASE_URL -> 127.0.0.1:5433/hashi_dev
+for c in "npm run db:migrate" "npm run db:seed -- --reset" "npm run test:rls"; do
+  docker run --rm --network host -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-migrate $c || break
+done                                                                # harus berakhir "Semua pemeriksaan RLS lulus."
+```
+
+Untuk verifikasi produksi tidak ada tes basis data: cukup **CI hijau** dan `curl http://127.0.0.1:3110/api/health`.
 
 Aturan yang diuji otomatis oleh `npm run test:rls` antara lain:
 

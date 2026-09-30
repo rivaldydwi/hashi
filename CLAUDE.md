@@ -30,7 +30,7 @@ npm run build
 npm run db:generate    # setelah mengubah src/db/schema.ts
 npm run db:migrate     # role OWNER
 npm run db:seed        # data demo; `-- --reset` untuk mengisi ulang
-npm run test:rls       # 90+ aturan database (aman, di-rollback)
+npm run test:rls       # 90+ aturan database; HANYA terhadap db-dev/test (bergantung isi seed), bukan produksi
 npm run test:i18n      # kunci id == ja, dan setiap kolom di sections.ts punya label
 npm run test:e2e       # tes browser; MENAMBAH data uji -> jalankan di database dev saja
 ```
@@ -55,6 +55,23 @@ npx playwright install --with-deps chromium   # sekali, untuk test:e2e
 **Pengaman** (`scripts/db-guard.ts`): `test:e2e` dan `db:seed -- --reset` menolak jalan bila nama database di
 `DATABASE_URL` / `MIGRATE_DATABASE_URL` tidak berakhiran `_dev` / `_test`. Disengaja? `ALLOW_DESTRUCTIVE_DB=1`.
 CI memakai database `hashi_test`. Jangan pernah mengarahkan `.env` ke database `hashi` (produksi).
+
+### Menjalankan test:rls dari OptiPlex (image tools, terhadap db-dev)
+
+`test:rls` mengandalkan isi seed, jadi jangan diarahkan ke database produksi `hashi` (hasilnya gagal/menyesatkan;
+jangan `docker compose run --rm migrate npm run test:rls` polos, karena service `migrate` menunjuk produksi).
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml up -d db-dev
+docker compose build migrate                     # bangun image tools dari kode terbaru (run polos memakai image LAMA)
+set -a; . ./.env; set +a                         # .env berisi URL dev: 127.0.0.1:5433/hashi_dev
+for c in "npm run db:migrate" "npm run db:seed -- --reset" "npm run test:rls"; do
+  docker run --rm --network host -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-migrate $c || break
+done
+```
+
+Verifikasi PRODUKSI: cukup CI hijau (`gh run watch`) dan `curl http://127.0.0.1:3110/api/health`; tidak ada
+tes basis data yang dijalankan di sana.
 
 ## Batasan server
 
@@ -107,7 +124,7 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   (mis. `"users.errors.emailTaken"`), tangani error lewat `ActionError`. Catat perubahan dengan `audit()`
   dalam transaksi yang sama. Jangan pernah mengembalikan/mencatat hash kata sandi.
 - **Script di `scripts/` hanya boleh mengimpor dari `src/db/`** (dan paket npm). Image Docker stage `tools`
-  (dipakai `docker compose run --rm migrate npm run test:rls|db:seed`) hanya menyalin `src/db`, bukan seluruh `src`.
+  (dipakai `docker run … hashi-migrate npm run test:rls|db:seed` terhadap db-dev, lihat di atas) hanya menyalin `src/db`, bukan seluruh `src`.
   Jangan impor dari `src/features`, `src/lib`, atau modul Next.js. Fungsi murni yang dibutuhkan script taruh di
   `src/db/` (mis. `audit-entries.ts`) dengan `import type` saja ke modul lain. Job `docker` di CI menjalankan
   `test:rls` dari image tools untuk menangkap pelanggaran ini. (`verify-i18n.ts` hanya jalan lokal/CI, bukan di image.)
