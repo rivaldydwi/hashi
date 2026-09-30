@@ -45,6 +45,14 @@ npm run db:migrate && npm run db:seed
 npx playwright install --with-deps chromium   # sekali, untuk test:e2e
 ```
 
+## Batasan server
+
+OptiPlex bukan server khusus Hashi — ada layanan lain yang jalan di sana:
+Actual Budget, OpenClaw, monitoring, dan micro-habit.
+
+- Jangan hentikan, ubah, atau hapus container, volume, atau network di luar project compose `hashi`.
+- Jangan jalankan `docker system prune` atau `docker volume rm` tanpa izin Ipal.
+
 ## Aturan arsitektur (WAJIB)
 
 - **Akses data tenant selalu lewat `withTenant(orgId, tx => …)` / `tenantQuery()`**. `withSystem()` hanya
