@@ -41,9 +41,15 @@ test("admin LPK menambah kandidat: muncul di daftar dan tercatat di audit log", 
   await fillCandidate(page, { name: nameA, gender: "FEMALE", birth: "2001-04-12", field: "Perawatan lansia (kaigo)", consent: "2026-08-01" });
   await page.locator("main form button[type=submit]").click();
 
-  await expect(page).toHaveURL(/\/candidates\?added=1/);
+  // Sesudah menambah, langsung dibawa ke halaman detail untuk melengkapi data
+  await expect(page).toHaveURL(/\/candidates\/[0-9a-f-]{36}\?added=1/);
   await expect(page.getByTestId("candidate-added")).toBeVisible();
+  await expect(page.getByRole("heading", { name: nameA })).toBeVisible();
+  await page.goto("/candidates");
   await expect(page.getByTestId("candidate-row")).toHaveCount(1);
+  await page.getByRole("link", { name: nameA }).click(); // nama di daftar menuju halaman detail
+  await expect(page).toHaveURL(/\/candidates\/[0-9a-f-]{36}$/);
+  await page.goBack();
   await expect(page.getByTestId("candidate-table")).toContainText(nameA);
   await expect(page.getByTestId("candidate-table")).toContainText("Belajar"); // status awal selalu STUDYING
 
@@ -89,6 +95,7 @@ test("filter bidang, status, dan pencarian nama bekerja (termasuk karakter khusu
   await fillCandidate(page, { name: nameB, gender: "MALE", birth: "1999-11-30", field: "Konstruksi", consent: "2026-08-02" });
   await page.locator("main form button[type=submit]").click();
   await expect(page).toHaveURL(/added=1/);
+  await page.goto("/candidates");
   await expectTotal(page, 2);
 
   await page.locator("#field").selectOption("Konstruksi");

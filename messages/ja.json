@@ -12,7 +12,9 @@
     "copy": "コピー",
     "copied": "コピーしました",
     "invalidInput": "入力内容を確認してください。",
-    "notFound": "データが見つかりません。"
+    "notFound": "データが見つかりません。",
+    "yes": "はい",
+    "no": "いいえ"
   },
   "nav": {
     "dashboard": "ホーム",
@@ -209,8 +211,11 @@
     "shareWarning": "共有したメモはLPKの管理者が閲覧できます。LPKに知らせるべきでない内容は共有しないでください。",
     "errors": {
       "empty": "メモを入力してください。",
-      "tooLong": "メモが長すぎます。"
-    }
+      "tooLong": "メモが長すぎます。",
+      "notAllowed": "このメモを編集できるのは作成者または登録支援機関の管理者のみです。"
+    },
+    "editBody": "メモを編集",
+    "saved": "メモを保存しました。"
   },
   "candidates": {
     "title": "候補者",
@@ -253,6 +258,175 @@
     "errors": {
       "birthDateInvalid": "生年月日が正しくありません。",
       "consentInFuture": "同意日に未来の日付は指定できません。"
+    }
+  },
+  "detail": {
+    "saved": "保存しました。",
+    "deleted": "削除しました。",
+    "stageSaved": "LPKでの状況を更新しました。",
+    "decisionSaved": "決定を保存しました。",
+    "save": "保存",
+    "edit": "編集",
+    "addRow": "追加",
+    "delete": "削除",
+    "noRows": "データはまだありません。",
+    "backToList": "候補者一覧",
+    "added": "候補者を追加しました。以下で詳細を入力してください。",
+    "lpkLabel": "LPK",
+    "consentLabel": "データ共有への同意日",
+    "stageLabel": "LPKでの状況",
+    "stageInfoTsk": "この状況はLPKが入力する参考情報です。貴機関の決定は「支援機関の決定」に別途記録されます。",
+    "decisionTitle": "登録支援機関の決定",
+    "decisionLabel": "貴機関の決定",
+    "saveDecision": "決定を保存",
+    "decisionIntroTsk": "この決定は貴機関のみのもので、LPKでの状況は変わりません。",
+    "decisionIntroLpk": "提携する登録支援機関によるこの候補者への決定です。",
+    "noDecisions": "登録支援機関の決定はまだありません。",
+    "decidedAt": "決定日時：{date}",
+    "readOnly": {
+      "needsDecision": "この候補者の情報は現在閲覧のみです。貴機関の決定が「企業面接合格」以降になると編集できます。",
+      "withdrawn": "この候補者はLPKで辞退済みのため、閲覧のみです。"
+    },
+    "errors": {
+      "notFound": "データが見つかりません。",
+      "readOnly": "このデータは編集できません。"
+    },
+    "sections": {
+      "basic": {
+        "title": "基本情報",
+        "fields": {
+          "fullName": "氏名（パスポート表記）",
+          "nameKatakana": "フリガナ（カタカナ）",
+          "gender": "性別",
+          "birthDate": "生年月日",
+          "birthPlace": "出生地",
+          "maritalStatus": "婚姻状況",
+          "field": "分野",
+          "heightCm": "身長",
+          "weightKg": "体重",
+          "dominantHand": "利き手"
+        },
+        "options": {
+          "gender": {
+            "MALE": "男性",
+            "FEMALE": "女性"
+          },
+          "maritalStatus": {
+            "SINGLE": "未婚",
+            "MARRIED": "既婚",
+            "DIVORCED": "離婚",
+            "WIDOWED": "死別"
+          },
+          "dominantHand": {
+            "RIGHT": "右",
+            "LEFT": "左",
+            "BOTH": "両方"
+          }
+        }
+      },
+      "about": {
+        "title": "志望動機・自己紹介",
+        "fields": {
+          "motivation": "志望動機",
+          "selfPr": "自己PR",
+          "hobby": "趣味",
+          "specialSkill": "特技"
+        }
+      },
+      "japan": {
+        "title": "日本滞在歴",
+        "fields": {
+          "everInJapan": "日本での在留・実習経験あり",
+          "visaRejectedBefore": "過去にビザ不許可あり",
+          "japanHistoryNote": "日本滞在歴の詳細（期間・出入国歴）"
+        }
+      },
+      "contact": {
+        "title": "連絡先・住所",
+        "fields": {
+          "address": "インドネシアの住所",
+          "phone": "電話番号",
+          "whatsapp": "WhatsApp",
+          "email": "メールアドレス"
+        }
+      },
+      "identity": {
+        "title": "身分証明・パスポート",
+        "fields": {
+          "nationalId": "国民ID番号（NIK）",
+          "familyCardNumber": "家族カード番号",
+          "passportNumber": "パスポート番号",
+          "passportIssuedDate": "パスポート発行日",
+          "passportExpiryDate": "パスポート有効期限"
+        }
+      },
+      "health": {
+        "title": "健康状態",
+        "fields": {
+          "visionNote": "視力",
+          "colorBlind": "色覚異常あり",
+          "medicalNote": "健康診断の結果概要"
+        }
+      },
+      "family": {
+        "title": "家族構成",
+        "fields": {
+          "relation": "続柄",
+          "name": "氏名",
+          "occupation": "職業",
+          "phone": "電話番号",
+          "address": "住所",
+          "livesInJapan": "日本在住",
+          "isEmergencyContact": "緊急連絡先"
+        },
+        "options": {
+          "relation": {
+            "FATHER": "父",
+            "MOTHER": "母",
+            "SPOUSE": "配偶者",
+            "CHILD": "子",
+            "SIBLING": "兄弟姉妹",
+            "GUARDIAN": "保護者",
+            "RELATIVE_IN_JAPAN": "日本在住の親族",
+            "OTHER": "その他"
+          }
+        }
+      },
+      "education": {
+        "title": "学歴",
+        "fields": {
+          "schoolName": "学校名",
+          "major": "専攻",
+          "startYear": "入学年",
+          "endYear": "卒業年"
+        }
+      },
+      "work": {
+        "title": "職歴",
+        "fields": {
+          "companyName": "会社名",
+          "position": "職種",
+          "startDate": "開始日",
+          "endDate": "終了日"
+        }
+      },
+      "certificates": {
+        "title": "資格・試験",
+        "fields": {
+          "type": "種類",
+          "levelOrField": "レベル・分野",
+          "score": "点数",
+          "certificateNumber": "証明書番号",
+          "issuedDate": "取得日"
+        },
+        "options": {
+          "type": {
+            "JFT_BASIC": "JFT-Basic",
+            "JLPT": "JLPT",
+            "SKILL_TEST": "特定技能評価試験"
+          }
+        }
+      }
     }
   },
   "roles": {

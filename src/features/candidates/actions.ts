@@ -22,8 +22,9 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
   }
   if (input.dataConsentDate > latest) return { status: "error", key: "candidates.errors.consentInFuture" };
 
+  let createdId: string;
   try {
-    await tenantQuery(async (tx) => {
+    createdId = await tenantQuery(async (tx) => {
       const [row] = await tx
         .insert(candidates)
         .values({
@@ -52,6 +53,7 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
           stage: row.stage,
         },
       });
+      return row.id;
     });
   } catch (err) {
     if (err instanceof ActionError) return { status: "error", key: err.code };
@@ -59,5 +61,5 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
   }
 
   revalidatePath("/candidates");
-  redirect("/candidates?added=1");
+  redirect(`/candidates/${createdId}?added=1`);
 }

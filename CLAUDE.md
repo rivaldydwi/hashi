@@ -10,7 +10,7 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 
 1. ✅ Fondasi: login, i18n ID/JP, multi-tenant RLS, Docker, CI
 2. ✅ Kelola organisasi, pengguna, kemitraan (v0.2)
-3. ⏭ **Profil kandidat**: form lengkap + unggah dokumen + halaman detail + log perubahan
+3. ⏭ **Profil kandidat**: ✅ daftar, tambah, halaman detail, keputusan & catatan TSK, audit · ⏭ unggah dokumen
 4. Penilaian bulanan · 5. Seleksi (job order, shortlist) · 6. Lembar client PDF (bahasa Jepang)
 7. Pengingat dokumen kedaluwarsa · 8. Siap pilot (dummy 200 siswa) · 9. Demo ke TSK
 
@@ -30,7 +30,8 @@ npm run build
 npm run db:generate    # setelah mengubah src/db/schema.ts
 npm run db:migrate     # role OWNER
 npm run db:seed        # data demo; `-- --reset` untuk mengisi ulang
-npm run test:rls       # 25+ aturan database (aman, di-rollback)
+npm run test:rls       # 90+ aturan database (aman, di-rollback)
+npm run test:i18n      # kunci id == ja, dan setiap kolom di sections.ts punya label
 npm run test:e2e       # tes browser; MENAMBAH data uji -> jalankan di database dev saja
 ```
 
@@ -94,6 +95,11 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   (mis. `"users.errors.emailTaken"`), tangani error lewat `ActionError`. Catat perubahan dengan `audit()`
   dalam transaksi yang sama. Jangan pernah mengembalikan/mencatat hash kata sandi.
 - Struktur fitur: `src/features/<fitur>/{actions,queries,Komponen}.ts(x)`; halaman di `src/app/(app)/…`.
+- **Halaman detail kandidat** dirancang berbasis definisi: `src/features/candidates/sections.ts` mendaftar bagian
+  dan kolomnya (`SINGLE_SECTIONS`, `LIST_SECTIONS`); skema zod, form, tampilan, dan `test:i18n` diturunkan darinya.
+  Menambah/menghapus kolom = 1 migration kecil + 1 baris di `sections.ts` + label di `detail.sections.<bagian>`
+  (id dan ja). Nama kolom = nama properti tabel Drizzle. Sensei hanya mendapat bagian `level: "basic"`; bagian lain
+  TIDAK dibaca dan TIDAK dirender (bukan disembunyikan CSS). Audit perubahan data hanya mencatat NAMA kolom.
 - **i18n**: setiap teks UI ada di `messages/id.json` DAN `messages/ja.json` dengan kunci identik.
   Istilah Jepang: TSK = 登録支援機関, 面談, 入管.
 - Peran per jenis organisasi ada di `src/lib/permissions.ts` (sama dengan trigger DB).
@@ -117,6 +123,13 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   organisasi sesi). Selalu jalankan `test:rls` setelah mengubah policy.
 - drizzle-kit TIDAK bisa mengubah enum yang nilainya dikurangi (akan meng-cast dan gagal/membuang data). Tulis
   migration manual dengan pemetaan data (contoh: `drizzle/0006_candidate_selections.sql`).
+- Setelah deploy produksi di OptiPlex, container `hashi-db-1` dibuat ulang tanpa port dev 5433. Jangan jalankan
+  ulang overlay `compose.dev.yaml` (me-restart DB produksi); sambungkan dev lewat IP container:
+  `docker inspect hashi-db-1` -> `postgresql://…@<IP>:5432/hashi_dev`.
+- Port 3100 dipakai aplikasi lain: jalankan e2e dengan `E2E_PORT=3120 npm run test:e2e`.
+- Audit log append-only: tes e2e yang memeriksa audit harus dibatasi ke baris sejak tes dimulai (`created_at >= …`).
+- Label statis ada di katalog terjemahan yang dikirim ke browser semua peran; yang harus tidak bocor ke sensei
+  adalah DATA dan bagian sensitif (tes: `candidate-detail.spec.ts`).
 - `test:e2e` menjalankan build standalone lewat `scripts/serve-standalone.mjs`; `npm run build` dulu.
 
 ## Alur kerja

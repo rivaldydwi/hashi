@@ -12,7 +12,9 @@
     "copy": "Salin",
     "copied": "Tersalin",
     "invalidInput": "Periksa kembali isian Anda.",
-    "notFound": "Data tidak ditemukan."
+    "notFound": "Data tidak ditemukan.",
+    "yes": "Ya",
+    "no": "Tidak"
   },
   "nav": {
     "dashboard": "Beranda",
@@ -209,8 +211,11 @@
     "shareWarning": "Catatan yang dibagikan bisa dibaca admin LPK. Jangan bagikan hal yang tidak boleh diketahui LPK.",
     "errors": {
       "empty": "Catatan tidak boleh kosong.",
-      "tooLong": "Catatan terlalu panjang."
-    }
+      "tooLong": "Catatan terlalu panjang.",
+      "notAllowed": "Hanya penulis atau admin TSK yang bisa mengubah catatan ini."
+    },
+    "editBody": "Ubah isi catatan",
+    "saved": "Catatan disimpan."
   },
   "candidates": {
     "title": "Kandidat",
@@ -253,6 +258,175 @@
     "errors": {
       "birthDateInvalid": "Tanggal lahir tidak valid.",
       "consentInFuture": "Tanggal persetujuan tidak boleh di masa depan."
+    }
+  },
+  "detail": {
+    "saved": "Perubahan disimpan.",
+    "deleted": "Data dihapus.",
+    "stageSaved": "Status di LPK diperbarui.",
+    "decisionSaved": "Keputusan disimpan.",
+    "save": "Simpan",
+    "edit": "Ubah",
+    "addRow": "Tambah",
+    "delete": "Hapus",
+    "noRows": "Belum ada data.",
+    "backToList": "Kandidat",
+    "added": "Kandidat berhasil ditambahkan. Lengkapi datanya di bawah.",
+    "lpkLabel": "LPK",
+    "consentLabel": "Tanggal persetujuan berbagi data",
+    "stageLabel": "Status di LPK",
+    "stageInfoTsk": "Status ini diisi oleh LPK sebagai informasi. Keputusan Anda dicatat terpisah di bagian Keputusan TSK.",
+    "decisionTitle": "Keputusan TSK",
+    "decisionLabel": "Keputusan Anda",
+    "saveDecision": "Simpan keputusan",
+    "decisionIntroTsk": "Keputusan ini hanya milik organisasi Anda dan tidak mengubah status di LPK.",
+    "decisionIntroLpk": "Keputusan TSK mitra atas kandidat ini.",
+    "noDecisions": "Belum ada keputusan dari TSK.",
+    "decidedAt": "Diputuskan {date}",
+    "readOnly": {
+      "needsDecision": "Data kandidat ini baca-saja untuk Anda. Isi data baru bisa diubah setelah keputusan Anda mencapai \"Lulus interview client\" atau sesudahnya.",
+      "withdrawn": "Kandidat ini sudah mundur dari LPK, jadi datanya baca-saja."
+    },
+    "errors": {
+      "notFound": "Data tidak ditemukan.",
+      "readOnly": "Anda tidak bisa mengubah data ini."
+    },
+    "sections": {
+      "basic": {
+        "title": "Data dasar",
+        "fields": {
+          "fullName": "Nama lengkap (sesuai paspor)",
+          "nameKatakana": "Nama katakana",
+          "gender": "Jenis kelamin",
+          "birthDate": "Tanggal lahir",
+          "birthPlace": "Tempat lahir",
+          "maritalStatus": "Status pernikahan",
+          "field": "Bidang",
+          "heightCm": "Tinggi badan",
+          "weightKg": "Berat badan",
+          "dominantHand": "Tangan dominan"
+        },
+        "options": {
+          "gender": {
+            "MALE": "Laki-laki",
+            "FEMALE": "Perempuan"
+          },
+          "maritalStatus": {
+            "SINGLE": "Belum menikah",
+            "MARRIED": "Menikah",
+            "DIVORCED": "Cerai",
+            "WIDOWED": "Janda/duda"
+          },
+          "dominantHand": {
+            "RIGHT": "Kanan",
+            "LEFT": "Kiri",
+            "BOTH": "Kedua tangan"
+          }
+        }
+      },
+      "about": {
+        "title": "Motivasi dan pribadi",
+        "fields": {
+          "motivation": "Motivasi",
+          "selfPr": "自己PR (promosi diri)",
+          "hobby": "Hobi",
+          "specialSkill": "Keahlian khusus"
+        }
+      },
+      "japan": {
+        "title": "Riwayat Jepang",
+        "fields": {
+          "everInJapan": "Pernah magang/tinggal di Jepang",
+          "visaRejectedBefore": "Pernah ditolak visa",
+          "japanHistoryNote": "Catatan riwayat Jepang (periode, keluar-masuk)"
+        }
+      },
+      "contact": {
+        "title": "Kontak dan alamat",
+        "fields": {
+          "address": "Alamat di Indonesia",
+          "phone": "No. HP",
+          "whatsapp": "WhatsApp",
+          "email": "Email"
+        }
+      },
+      "identity": {
+        "title": "Identitas dan paspor",
+        "fields": {
+          "nationalId": "NIK / KTP",
+          "familyCardNumber": "No. Kartu Keluarga",
+          "passportNumber": "No. paspor",
+          "passportIssuedDate": "Tanggal terbit paspor",
+          "passportExpiryDate": "Tanggal kedaluwarsa paspor"
+        }
+      },
+      "health": {
+        "title": "Kesehatan",
+        "fields": {
+          "visionNote": "Penglihatan",
+          "colorBlind": "Buta warna",
+          "medicalNote": "Ringkasan medical check-up"
+        }
+      },
+      "family": {
+        "title": "Keluarga",
+        "fields": {
+          "relation": "Hubungan",
+          "name": "Nama",
+          "occupation": "Pekerjaan",
+          "phone": "No. telepon",
+          "address": "Alamat",
+          "livesInJapan": "Tinggal di Jepang",
+          "isEmergencyContact": "Kontak darurat"
+        },
+        "options": {
+          "relation": {
+            "FATHER": "Ayah",
+            "MOTHER": "Ibu",
+            "SPOUSE": "Suami/istri",
+            "CHILD": "Anak",
+            "SIBLING": "Saudara kandung",
+            "GUARDIAN": "Wali",
+            "RELATIVE_IN_JAPAN": "Kerabat di Jepang",
+            "OTHER": "Lainnya"
+          }
+        }
+      },
+      "education": {
+        "title": "Pendidikan",
+        "fields": {
+          "schoolName": "Nama sekolah",
+          "major": "Jurusan",
+          "startYear": "Tahun masuk",
+          "endYear": "Tahun lulus"
+        }
+      },
+      "work": {
+        "title": "Riwayat kerja",
+        "fields": {
+          "companyName": "Perusahaan",
+          "position": "Posisi",
+          "startDate": "Mulai",
+          "endDate": "Selesai"
+        }
+      },
+      "certificates": {
+        "title": "Sertifikat dan ujian",
+        "fields": {
+          "type": "Jenis",
+          "levelOrField": "Level / bidang",
+          "score": "Skor",
+          "certificateNumber": "No. sertifikat",
+          "issuedDate": "Tanggal"
+        },
+        "options": {
+          "type": {
+            "JFT_BASIC": "JFT-Basic",
+            "JLPT": "JLPT",
+            "SKILL_TEST": "Ujian skill SSW"
+          }
+        }
+      }
     }
   },
   "roles": {
