@@ -8,3 +8,5 @@ node_modules
 Dockerfile
 compose.yaml
 README.md
+playwright-report
+test-results

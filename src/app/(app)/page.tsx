@@ -64,7 +64,9 @@ async function TenantDashboard({ orgId, isTsk }: { orgId: string; isTsk: boolean
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-stone-200 bg-white p-5">
           <p className="text-sm text-stone-500">{t("visibleCandidates")}</p>
-          <p className="mt-2 text-4xl font-semibold tabular-nums">{total}</p>
+          <p className="mt-2 text-4xl font-semibold tabular-nums" data-testid="visible-count">
+            {total}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-stone-200 bg-white p-5 md:col-span-2">

@@ -3,8 +3,27 @@
 Sistem profil & seleksi kandidat untuk **LPK** (Indonesia) dan **TSK / 登録支援機関** (Jepang).
 Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ulang.
 
-> Status: **Fondasi v0.1** — login, dua bahasa (ID/JP), multi-organisasi dengan isolasi data (RLS), data demo.
-> Modul profil lengkap, penilaian, dan seleksi menyusul.
+> Status: **v0.2** — fondasi (login, dua bahasa, isolasi data RLS) + **kelola organisasi, pengguna, dan kemitraan**.
+> Modul profil kandidat, penilaian, dan seleksi menyusul.
+
+## Fitur saat ini
+
+| Siapa | Bisa apa |
+| --- | --- |
+| **Super admin** | Menambah LPK/TSK beserta admin pertamanya, mengubah data organisasi, mengelola pengguna di organisasi mana pun, membuat dan menonaktifkan kemitraan LPK–TSK |
+| **Admin LPK / TSK** | Menambah staf (sensei / staf TSK), mengubah nama, peran, bahasa, membuat kata sandi sementara baru, menonaktifkan / mengaktifkan kembali |
+| **Semua pengguna** | Login, ganti bahasa, ganti kata sandi di *Akun saya* |
+
+Cara kerja akun baru:
+
+1. Admin menambah pengguna → sistem membuat **kata sandi sementara** (tampil sekali, contoh `k7Qm-3xPa-9Tzw`)
+2. Admin memberikannya ke pengguna lewat jalur aman
+3. Saat login pertama, pengguna **wajib** membuat kata sandi sendiri sebelum bisa memakai aplikasi
+
+Pengaman bawaan: admin tidak bisa menonaktifkan / mengubah peran dirinya sendiri, organisasi selalu punya
+minimal satu admin aktif, reset kata sandi langsung mengeluarkan pengguna dari semua sesi, dan pengguna
+nonaktif langsung tidak bisa masuk (dicek setiap request, tidak menunggu sesi habis). Semua perubahan
+tercatat di audit log.
 
 ## Stack
 
@@ -57,6 +76,15 @@ Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.
 | `lpk3.admin@hashi.test` | Admin LPK Medan (bukan mitra) | 12 kandidat miliknya, tidak terlihat oleh TSK |
 | `admin@hashi.test` | Super admin | Ringkasan jumlah per organisasi, tanpa data pribadi |
 
+## Update ke versi terbaru
+
+```bash
+cd ~/hashi
+git pull                      # atau: git am file.patch
+docker compose up -d --build  # migration baru otomatis dijalankan container `migrate`
+docker compose run --rm migrate npm run test:rls
+```
+
 ## Perintah sehari-hari
 
 ```bash
@@ -97,12 +125,33 @@ Keduanya membuka transaksi dan mengisi `app.org_id` / `app.bypass_rls`, lalu pol
 `drizzle/0001_rls_policies.sql` yang memutuskan baris mana yang terlihat. Query di luar
 keduanya tidak melihat data apa pun (gagal dengan aman).
 
-Aturan yang diuji otomatis oleh `npm run test:rls`:
+Selain RLS, beberapa aturan dijaga langsung oleh trigger database (`drizzle/0003_user_role_guards.sql`),
+jadi bug di aplikasi pun tidak bisa melanggarnya:
+
+- Peran harus sesuai jenis organisasi (LPK: admin/sensei, TSK: admin/staf, Platform: super admin).
+  Mencegah admin LPK "menaikkan" seseorang menjadi super admin.
+- Kemitraan harus antara satu LPK dan satu TSK
+- Jenis organisasi tidak bisa diubah setelah dibuat
+- Email selalu huruf kecil
+
+## Pengujian
+
+| Perintah | Menguji | Butuh |
+| --- | --- | --- |
+| `npm run test:rls` | 25 aturan database: isolasi data, peran, kemitraan, audit log | database + seed |
+| `npm run test:e2e` | 15 skenario lewat browser: login, hak akses, alur admin lengkap | database + seed + `npm run build` |
+
+Keduanya jalan otomatis di GitHub Actions setiap push. `test:rls` aman dijalankan di OptiPlex (semua
+perubahan di-rollback). `test:e2e` **menambah data uji** (organisasi "LPK E2E ..."), jadi jalankan di
+database development saja, atau reset data demo sesudahnya.
+
+Aturan yang diuji otomatis oleh `npm run test:rls` antara lain:
 
 - LPK hanya melihat dan mengubah kandidatnya sendiri
 - TSK hanya **membaca** kandidat LPK mitra yang sudah lewat tahap *Belajar*
 - LPK non-mitra tidak terlihat sama sekali oleh TSK
 - Tidak ada yang bisa menulis data ke organisasi lain atau membuat kemitraan sendiri
+- Tidak ada yang bisa membuat peran yang tidak sesuai organisasinya
 - Audit log tidak bisa dihapus oleh aplikasi
 
 ### Menambah tabel baru
@@ -132,8 +181,11 @@ messages/                teks antarmuka: id.json, ja.json
 scripts/                 migrate, seed, verify-rls
 src/auth.ts              konfigurasi login
 src/db/                  schema + withTenant/withSystem
-src/app/(app)/           halaman setelah login
+src/features/            logika per fitur: users, organizations, account (actions + komponen)
+src/lib/                 sesi, hak akses, kata sandi, audit log
+src/app/(app)/           halaman setelah login (users, admin, account)
 src/app/login/           halaman login
+tests/e2e/               tes browser (Playwright)
 ```
 
 ## Catatan keputusan

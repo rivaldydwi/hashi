@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    name: Migrate, seed, uji RLS, build
+    name: Migrate, seed, uji database, build, uji browser
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -41,6 +41,19 @@ jobs:
       - run: npm run test:rls
       - run: npm run build
       - run: npm run typecheck
+      - name: Pasang browser untuk tes e2e
+        run: npx playwright install --with-deps chromium
+      - name: Tes e2e (browser)
+        run: npm run test:e2e
+      - name: Simpan laporan tes kalau gagal
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
 
   docker:
     name: Build image Docker

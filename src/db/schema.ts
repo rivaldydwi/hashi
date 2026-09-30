@@ -101,6 +101,10 @@ export const users = pgTable(
     role: role("role").notNull(),
     locale: locale("locale").notNull().default("id"),
     active: boolean("active").notNull().default(true),
+    // true setelah dibuat/di-reset admin dengan kata sandi sementara
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
+    // sesi (JWT) yang terbit sebelum waktu ini dianggap tidak berlaku lagi
+    sessionsRevokedAt: timestamp("sessions_revoked_at", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     ...timestamps,
   },
@@ -171,3 +175,4 @@ export type Candidate = typeof candidates.$inferSelect;
 export type CandidateStage = (typeof candidateStage.enumValues)[number];
 export type Role = (typeof role.enumValues)[number];
 export type Locale = (typeof locale.enumValues)[number];
+export type OrgType = (typeof orgType.enumValues)[number];

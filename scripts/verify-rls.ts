@@ -140,6 +140,75 @@ async function main() {
     overview.map((o) => `${o.name}: ${o.users}/${o.candidates}`).join(", "),
   );
 
+  // --- Aturan pengguna & kemitraan (dijalankan lalu di-rollback, tidak meninggalkan data) ---
+  class Rollback extends Error {}
+  async function inRollback(fn: () => Promise<unknown>): Promise<string | null> {
+    try {
+      await fn();
+      return null;
+    } catch (err) {
+      if (err instanceof Rollback) return null;
+      const e = err as { cause?: { message?: string }; message?: string };
+      return e.cause?.message ?? e.message ?? String(err);
+    }
+  }
+  const tempUser = (orgId: string, role: (typeof users.$inferInsert)["role"]) => ({
+    organizationId: orgId,
+    email: `rls-test-${Date.now()}@hashi.test`,
+    name: "Uji",
+    role,
+    passwordHash: "x",
+  });
+
+  // 12. Admin LPK bisa menambah sensei di organisasinya sendiri
+  const addSenseiErr = await inRollback(() =>
+    withTenant(lpk1.id, async (tx) => {
+      await tx.insert(users).values(tempUser(lpk1.id, "LPK_SENSEI"));
+      throw new Rollback();
+    }, db),
+  );
+  check("LPK: bisa menambah sensei di organisasi sendiri", addSenseiErr === null, addSenseiErr ?? "");
+
+  // 13-14. Peran harus sesuai jenis organisasi (mencegah eskalasi hak akses)
+  const escalateErr = await inRollback(() =>
+    withTenant(lpk1.id, (tx) => tx.insert(users).values(tempUser(lpk1.id, "SUPER_ADMIN")), db),
+  );
+  check("LPK: tidak bisa membuat SUPER_ADMIN", escalateErr !== null && /tidak diizinkan/.test(escalateErr));
+  const promoteErr = await inRollback(() =>
+    withTenant(lpk1.id, (tx) => tx.update(users).set({ role: "TSK_STAFF" }).where(eq(users.organizationId, lpk1.id)), db),
+  );
+  check("LPK: tidak bisa memberi peran TSK ke pengguna LPK", promoteErr !== null && /tidak diizinkan/.test(promoteErr));
+
+  // 15. Pengguna tidak bisa dipindah ke organisasi lain
+  const moveUserErr = await inRollback(() =>
+    withTenant(lpk1.id, (tx) => tx.update(users).set({ organizationId: lpk2.id }).where(eq(users.organizationId, lpk1.id)), db),
+  );
+  check("LPK: tidak bisa memindahkan pengguna ke organisasi lain", moveUserErr !== null);
+
+  // 16. Organisasi hanya bisa diubah oleh sistem (super admin)
+  const renamed = await withTenant(
+    lpk1.id,
+    (tx) => tx.update(organizations).set({ name: "Diubah LPK" }).where(eq(organizations.id, lpk1.id)).returning(),
+    db,
+  );
+  check("LPK: tidak bisa mengubah data organisasinya sendiri", renamed.length === 0);
+
+  // 17. Kemitraan harus LPK dengan TSK; jenis organisasi tidak bisa diubah
+  const badPairErr = await inRollback(() =>
+    withSystem((tx) => tx.insert(partnerships).values({ lpkId: lpk1.id, tskId: lpk2.id }), db),
+  );
+  check("Sistem: kemitraan LPK dengan LPK ditolak", badPairErr !== null && /LPK dan TSK/.test(badPairErr));
+  const typeErr = await inRollback(() =>
+    withSystem((tx) => tx.update(organizations).set({ type: "TSK" }).where(eq(organizations.id, lpk1.id)), db),
+  );
+  check("Sistem: jenis organisasi tidak bisa diubah", typeErr !== null && /tidak bisa diubah/.test(typeErr));
+
+  // 18. Email wajib huruf kecil
+  const upperErr = await inRollback(() =>
+    withTenant(lpk1.id, (tx) => tx.insert(users).values({ ...tempUser(lpk1.id, "LPK_SENSEI"), email: "Besar@Hashi.test" }), db),
+  );
+  check("Email dengan huruf besar ditolak database", upperErr !== null);
+
   await pool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);
   process.exit(failures === 0 ? 0 : 1);

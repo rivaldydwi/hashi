@@ -15,6 +15,20 @@
       "when": 1790741279714,
       "tag": "0001_rls_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790745749299,
+      "tag": "0002_user_account_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790745750442,
+      "tag": "0003_user_role_guards",
+      "breakpoints": true
     }
   ]
 }

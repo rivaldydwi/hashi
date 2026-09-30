@@ -15,10 +15,12 @@ declare module "next-auth" {
   interface User extends HashiUserFields {}
 
   interface Session {
-    user: HashiUserFields & { id: string } & DefaultSession["user"];
+    user: HashiUserFields & { id: string; loginAt?: number } & DefaultSession["user"];
   }
 }
 
 declare module "@auth/core/jwt" {
-  interface JWT extends HashiUserFields {}
+  interface JWT extends HashiUserFields {
+    loginAt?: number;
+  }
 }

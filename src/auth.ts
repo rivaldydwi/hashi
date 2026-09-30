@@ -98,6 +98,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.organizationId = user.organizationId;
         token.organizationType = user.organizationType;
         token.organizationName = user.organizationName;
+        // Waktu login (milidetik). Tidak berubah saat token diperpanjang, dipakai untuk mencabut sesi.
+        token.loginAt = Date.now();
       }
       return token;
     },
@@ -108,6 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.organizationId = token.organizationId;
       session.user.organizationType = token.organizationType;
       session.user.organizationName = token.organizationName;
+      session.user.loginAt = token.loginAt ?? 0;
       return session;
     },
   },
