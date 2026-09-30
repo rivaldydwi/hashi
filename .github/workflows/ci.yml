@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Migrate, seed, uji RLS, build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hashi_owner
+          POSTGRES_PASSWORD: owner-ci
+          POSTGRES_DB: hashi
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hashi_owner -d hashi"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      MIGRATE_DATABASE_URL: postgresql://hashi_owner:owner-ci@localhost:5432/hashi
+      DATABASE_URL: postgresql://hashi_app:app-ci@localhost:5432/hashi
+      AUTH_SECRET: ci-only-secret-not-used-in-production
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Buat role aplikasi (sama seperti docker/postgres/init)
+        run: psql "$MIGRATE_DATABASE_URL" -c "CREATE ROLE hashi_app LOGIN NOBYPASSRLS PASSWORD 'app-ci'"
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: npm run test:rls
+      - run: npm run build
+      - run: npm run typecheck
+
+  docker:
+    name: Build image Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target runner -t hashi-app:ci .
+      - run: docker build --target tools -t hashi-tools:ci .

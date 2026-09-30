@@ -1,0 +1,4 @@
+# Paksa LF supaya script shell tetap jalan walau repo pernah dibuka di Windows
+* text=auto eol=lf
+*.png binary
+*.ico binary

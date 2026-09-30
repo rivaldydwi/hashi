@@ -1,0 +1,66 @@
+# Hashi — Docker Compose untuk OptiPlex
+# Pemakaian: lihat README.md
+
+name: hashi
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hashi_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?isi DB_OWNER_PASSWORD di file .env}
+      POSTGRES_DB: hashi
+      # Dipakai docker/postgres/init untuk membuat role aplikasi `hashi_app`
+      APP_DB_PASSWORD: ${DB_APP_PASSWORD:?isi DB_APP_PASSWORD di file .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hashi_owner -d hashi"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 512m
+    networks: [internal]
+
+  # Jalan sekali setiap `up`: menerapkan migration baru, lalu berhenti.
+  migrate:
+    build:
+      context: .
+      target: tools
+    environment:
+      MIGRATE_DATABASE_URL: postgresql://hashi_owner:${DB_OWNER_PASSWORD}@db:5432/hashi
+      DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/hashi
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    mem_limit: 384m
+    networks: [internal]
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/hashi
+      AUTH_SECRET: ${AUTH_SECRET:?isi AUTH_SECRET di file .env}
+      AUTH_TRUST_HOST: "true"
+      SHOW_DEMO_ACCOUNTS: ${SHOW_DEMO_ACCOUNTS:-false}
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-3100}:3100"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    mem_limit: 768m
+    networks: [internal]
+
+volumes:
+  db-data:
+
+networks:
+  internal:

@@ -1,0 +1,72 @@
+// Akses database Hashi.
+//
+// ATURAN: data tenant SELALU dibaca/ditulis lewat withTenant() atau withSystem().
+// Keduanya membuka transaksi dan mengisi variabel sesi yang dipakai policy RLS
+// (lihat drizzle/0001_rls_policies.sql). Query di luar keduanya tidak akan
+// melihat data apa pun, karena RLS menolak secara default.
+
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { sql } from "drizzle-orm";
+import { Pool } from "pg";
+import * as schema from "./schema";
+
+export type Db = NodePgDatabase<typeof schema>;
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+type Handle = { pool: Pool; db: Db };
+
+/** Buat koneksi baru. Dipakai script (migrate, seed, verify) dengan URL tertentu. */
+export function createDb(connectionString: string, max = 10): Handle {
+  const pool = new Pool({ connectionString, max });
+  return { pool, db: drizzle(pool, { schema }) };
+}
+
+// Satu pool per proses. Disimpan di globalThis supaya hot-reload saat dev
+// tidak membuat pool baru terus-menerus. Dibuat saat pertama dipakai
+// (bukan saat import) supaya `next build` tidak butuh DATABASE_URL.
+const globalForDb = globalThis as unknown as { hashiDb?: Handle };
+
+function appDb(): Db {
+  if (!globalForDb.hashiDb) {
+    const url = process.env.DATABASE_URL;
+    if (!url) throw new Error("DATABASE_URL belum di-set");
+    globalForDb.hashiDb = createDb(url);
+  }
+  return globalForDb.hashiDb.db;
+}
+
+async function runScoped<T>(
+  db: Db,
+  orgId: string,
+  bypass: boolean,
+  fn: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return db.transaction(async (tx) => {
+    // `true` = berlaku lokal untuk transaksi ini saja, otomatis hilang setelah commit.
+    await tx.execute(
+      sql`select set_config('app.org_id', ${orgId}, true), set_config('app.bypass_rls', ${bypass ? "on" : "off"}, true)`,
+    );
+    return fn(tx);
+  });
+}
+
+/** Jalankan query sebagai organisasi tertentu. RLS membatasi data yang terlihat. */
+export function withTenant<T>(orgId: string, fn: (tx: Tx) => Promise<T>, db: Db = appDb()) {
+  if (!orgId) throw new Error("withTenant: orgId kosong");
+  return runScoped(db, orgId, false, fn);
+}
+
+/**
+ * Jalankan query tanpa batas organisasi. HANYA untuk operasi sistem:
+ * login, pekerjaan super admin, worker terjadwal, seed.
+ */
+export function withSystem<T>(fn: (tx: Tx) => Promise<T>, db: Db = appDb()) {
+  return runScoped(db, "", true, fn);
+}
+
+/** Cek koneksi database (untuk /api/health). */
+export async function pingDb(): Promise<void> {
+  await appDb().execute(sql`select 1`);
+}
+
+export { schema };

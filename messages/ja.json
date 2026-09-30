@@ -1,0 +1,63 @@
+{
+  "common": {
+    "appName": "Hashi",
+    "tagline": "LPKと登録支援機関をつなぐ候補者データの架け橋",
+    "language": "言語",
+    "logout": "ログアウト",
+    "version": "基盤 v0.1"
+  },
+  "login": {
+    "title": "Hashiにログイン",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "submit": "ログイン",
+    "submitting": "処理中...",
+    "invalid": "メールアドレスまたはパスワードが正しくありません。",
+    "rateLimited": "ログイン試行回数が多すぎます。15分後に再度お試しください。",
+    "demoTitle": "デモアカウント",
+    "demoPassword": "パスワード：{password}"
+  },
+  "dashboard": {
+    "greeting": "{name}さん、こんにちは",
+    "visibleCandidates": "閲覧できる候補者",
+    "byStage": "段階別",
+    "partners": "提携組織",
+    "noPartners": "提携組織はまだありません。",
+    "recent": "最近の候補者",
+    "empty": "表示できる候補者はまだいません。",
+    "colName": "氏名",
+    "colLpk": "LPK",
+    "colField": "分野",
+    "colStage": "段階",
+    "tskNote": "登録支援機関は、提携LPKの選考準備が整った候補者のみ閲覧できます。",
+    "nextModules": "次のモジュール：候補者プロフィール、月次評価、選考。",
+    "platformTitle": "全組織",
+    "colOrg": "組織",
+    "colType": "種別",
+    "colUsers": "ユーザー",
+    "colCandidates": "候補者"
+  },
+  "stages": {
+    "STUDYING": "学習中",
+    "READY": "選考準備完了",
+    "SHORTLISTED": "候補リスト入り",
+    "PASSED_TSK_INTERVIEW": "支援機関面接合格",
+    "SUBMITTED_TO_CLIENT": "企業へ推薦済み",
+    "PASSED_CLIENT_INTERVIEW": "企業面接合格",
+    "DOCUMENT_PROCESS": "書類手続き中",
+    "DEPARTED": "渡航済み",
+    "WITHDRAWN": "辞退"
+  },
+  "roles": {
+    "SUPER_ADMIN": "システム管理者",
+    "TSK_ADMIN": "登録支援機関 管理者",
+    "TSK_STAFF": "登録支援機関 スタッフ",
+    "LPK_ADMIN": "LPK 管理者",
+    "LPK_SENSEI": "LPK 講師"
+  },
+  "orgTypes": {
+    "PLATFORM": "プラットフォーム",
+    "LPK": "LPK",
+    "TSK": "登録支援機関"
+  }
+}

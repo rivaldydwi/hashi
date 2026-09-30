@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  /* Aksen vermilion, terinspirasi jembatan (橋) tradisional Jepang */
+  --color-brand-50: #fff5f0;
+  --color-brand-100: #ffe6da;
+  --color-brand-500: #e0572a;
+  --color-brand-600: #c8461c;
+  --color-brand-700: #a53817;
+
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+}
+
+body {
+  @apply bg-stone-50 text-stone-900 antialiased;
+}

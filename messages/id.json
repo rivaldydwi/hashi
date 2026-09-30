@@ -1,0 +1,63 @@
+{
+  "common": {
+    "appName": "Hashi",
+    "tagline": "Jembatan data kandidat antara LPK dan TSK",
+    "language": "Bahasa",
+    "logout": "Keluar",
+    "version": "Fondasi v0.1"
+  },
+  "login": {
+    "title": "Masuk ke Hashi",
+    "email": "Email",
+    "password": "Kata sandi",
+    "submit": "Masuk",
+    "submitting": "Memproses...",
+    "invalid": "Email atau kata sandi salah.",
+    "rateLimited": "Terlalu banyak percobaan. Coba lagi dalam 15 menit.",
+    "demoTitle": "Akun demo",
+    "demoPassword": "Kata sandi: {password}"
+  },
+  "dashboard": {
+    "greeting": "Halo, {name}",
+    "visibleCandidates": "Kandidat yang bisa Anda lihat",
+    "byStage": "Per tahapan",
+    "partners": "Organisasi mitra",
+    "noPartners": "Belum ada mitra.",
+    "recent": "Kandidat terbaru",
+    "empty": "Belum ada kandidat yang bisa ditampilkan.",
+    "colName": "Nama",
+    "colLpk": "LPK",
+    "colField": "Bidang",
+    "colStage": "Tahapan",
+    "tskNote": "Sebagai TSK, Anda hanya melihat kandidat dari LPK mitra yang sudah siap seleksi.",
+    "nextModules": "Modul berikutnya: profil kandidat lengkap, penilaian bulanan, dan seleksi.",
+    "platformTitle": "Semua organisasi",
+    "colOrg": "Organisasi",
+    "colType": "Jenis",
+    "colUsers": "Pengguna",
+    "colCandidates": "Kandidat"
+  },
+  "stages": {
+    "STUDYING": "Belajar",
+    "READY": "Siap seleksi",
+    "SHORTLISTED": "Masuk shortlist",
+    "PASSED_TSK_INTERVIEW": "Lulus wawancara TSK",
+    "SUBMITTED_TO_CLIENT": "Diajukan ke client",
+    "PASSED_CLIENT_INTERVIEW": "Lulus interview client",
+    "DOCUMENT_PROCESS": "Proses dokumen",
+    "DEPARTED": "Berangkat",
+    "WITHDRAWN": "Mundur"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Super admin",
+    "TSK_ADMIN": "Admin TSK",
+    "TSK_STAFF": "Staf TSK",
+    "LPK_ADMIN": "Admin LPK",
+    "LPK_SENSEI": "Sensei LPK"
+  },
+  "orgTypes": {
+    "PLATFORM": "Platform",
+    "LPK": "LPK",
+    "TSK": "TSK"
+  }
+}

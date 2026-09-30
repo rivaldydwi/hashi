@@ -1,0 +1,42 @@
+{
+  "name": "hashi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hashi — sistem profil & seleksi kandidat untuk LPK dan TSK",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "test:rls": "tsx scripts/verify-rls.ts",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "bcryptjs": "3.0.3",
+    "drizzle-orm": "0.45.3",
+    "next": "16.3.7",
+    "next-auth": "5.0.0-beta.32",
+    "next-intl": "4.14.8",
+    "pg": "8.23.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.20.4",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "dotenv": "18.0.4",
+    "drizzle-kit": "0.31.11",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}
