@@ -52,7 +52,7 @@ npm run db:migrate && npm run db:seed
 npx playwright install --with-deps chromium   # sekali, untuk test:e2e
 ```
 
-**Pengaman** (`scripts/db-guard.ts`): `test:e2e` dan `db:seed -- --reset` menolak jalan bila nama database di
+**Pengaman** (`scripts/db-guard.ts`): `test:e2e`, `test:rls`, dan `db:seed -- --reset` menolak jalan bila nama database di
 `DATABASE_URL` / `MIGRATE_DATABASE_URL` tidak berakhiran `_dev` / `_test`. Disengaja? `ALLOW_DESTRUCTIVE_DB=1`.
 CI memakai database `hashi_test`. Jangan pernah mengarahkan `.env` ke database `hashi` (produksi).
 

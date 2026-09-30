@@ -14,6 +14,7 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { and, eq, ne, sql } from "drizzle-orm";
+import { assertTestDatabase } from "./db-guard";
 import { createDb, withSystem, withTenant, type Tx } from "../src/db";
 import { platformOverview } from "../src/db/queries";
 import { noteAuditEntry } from "../src/db/audit-entries";
@@ -122,6 +123,13 @@ async function actAsTriggerOnly(tx: Tx, role: string) {
 }
 
 async function main() {
+  // Pemeriksaan bergantung pada isi seed (mis. 23 dari 24 kandidat terlihat oleh TSK demo), jadi hanya
+  // untuk database dev/test. Di produksi hasilnya gagal atau menyesatkan.
+  assertTestDatabase(
+    "test:rls",
+    "Alasan: pemeriksaan test:rls bergantung pada isi seed, yang tidak ada di produksi.\n" +
+      "  Jalankan terhadap db-dev lewat image tools: perintah lengkap ada di README.md, bagian \"Pengujian\".",
+  );
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL belum di-set");
   const { db, pool } = createDb(url, 2);

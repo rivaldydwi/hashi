@@ -13,7 +13,7 @@ export function databaseName(url: string): string {
   }
 }
 
-export function assertTestDatabase(what: string, env: NodeJS.ProcessEnv = process.env): void {
+export function assertTestDatabase(what: string, extra = "", env: NodeJS.ProcessEnv = process.env): void {
   if (env.ALLOW_DESTRUCTIVE_DB === "1") {
     console.warn(`⚠ ALLOW_DESTRUCTIVE_DB=1: pengaman database dilewati untuk "${what}".`);
     return;
@@ -32,6 +32,7 @@ export function assertTestDatabase(what: string, env: NodeJS.ProcessEnv = proces
       throw new Error(
         `✗ ${what} DITOLAK: ${key} mengarah ke database "${name}", bukan database dev/test.\n` +
           `  Nama database harus berakhiran "_dev" atau "_test" supaya data uji tidak masuk ke produksi.\n` +
+          (extra ? `  ${extra}\n` : "") +
           `  Perbaiki .env (mis. .../hashi_dev), atau jika benar-benar disengaja: ALLOW_DESTRUCTIVE_DB=1 <perintah>`,
       );
     }

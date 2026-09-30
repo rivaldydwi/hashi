@@ -211,7 +211,7 @@ Keduanya jalan otomatis di GitHub Actions setiap push (database `hashi_test`).
 **Jalankan hanya terhadap database dev/test, bukan produksi (`hashi`).** Walau `test:rls` me-rollback tulisannya,
 sebagian pemeriksaannya bergantung pada isi seed (mis. 23 dari 24 kandidat terlihat oleh TSK demo, 1 kandidat tanpa
 persetujuan), sehingga di database produksi yang isinya berbeda hasilnya gagal atau menyesatkan. `test:e2e`
-**menambah dan mengubah data uji**; ia dan `db:seed -- --reset` menolak jalan bila nama database tidak berakhiran
+**menambah dan mengubah data uji**; ia, `test:rls`, dan `db:seed -- --reset` menolak jalan bila nama database tidak berakhiran
 `_dev`/`_test` (`scripts/db-guard.ts`).
 
 Menjalankan `test:rls` dari OptiPlex terhadap `db-dev` lewat image `tools` (image yang sama dengan `migrate`):
