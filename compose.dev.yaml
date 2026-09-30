@@ -1,7 +1,33 @@
-# Tambahan untuk DEVELOPMENT di OptiPlex (npm run dev / test:e2e dari luar Docker):
-# buka port Postgres HANYA ke localhost. Jangan dipakai di server yang bisa diakses publik.
-#   docker compose -f compose.yaml -f compose.dev.yaml up -d db
+# Tambahan untuk DEVELOPMENT di OptiPlex (npm run dev / test:rls / test:e2e dari luar Docker).
+#
+# Postgres dev TERPISAH dari database produksi: container sendiri (db-dev), volume sendiri
+# (db-dev-data), dan port HANYA ke localhost. Deploy produksi (`docker compose up -d --build`)
+# tidak menyentuhnya dan tidak memutus koneksinya; sebaliknya menjalankan db-dev tidak menyentuh `db`.
+# Jangan dipakai di server yang bisa diakses publik.
+#
+#   docker compose -f compose.yaml -f compose.dev.yaml up -d db-dev
+#
+# Isi database (sekali): npm run db:migrate && npm run db:seed
 services:
-  db:
+  db-dev:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hashi_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?isi DB_OWNER_PASSWORD di file .env}
+      POSTGRES_DB: hashi_dev
+      APP_DB_PASSWORD: ${DB_APP_PASSWORD:?isi DB_APP_PASSWORD di file .env}
+    volumes:
+      - db-dev-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hashi_owner -d hashi_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 512m
+
+volumes:
+  db-dev-data:

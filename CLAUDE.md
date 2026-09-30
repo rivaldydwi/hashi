@@ -40,15 +40,21 @@ Port 3100 dipakai aplikasi lain di OptiPlex → Hashi memakai `APP_PORT=3110`.
 
 ### Database development (jangan mengotori data demo production)
 
+Postgres dev adalah service TERPISAH `db-dev` (container, volume, dan port 127.0.0.1:5433 sendiri), jadi deploy
+produksi (`docker compose up -d --build`) tidak memutus atau menyentuhnya, dan sebaliknya.
+
 ```bash
-docker compose -f compose.yaml -f compose.dev.yaml up -d db     # buka Postgres di 127.0.0.1:5433
-docker compose exec db psql -U hashi_owner -d postgres -c "CREATE DATABASE hashi_dev"
-# .env untuk npm run dev / test:
+docker compose -f compose.yaml -f compose.dev.yaml up -d db-dev     # hanya menjalankan db-dev
+# .env untuk npm run dev / test (database HARUS berakhiran _dev atau _test):
 # DATABASE_URL=postgresql://hashi_app:<DB_APP_PASSWORD>@127.0.0.1:5433/hashi_dev
 # MIGRATE_DATABASE_URL=postgresql://hashi_owner:<DB_OWNER_PASSWORD>@127.0.0.1:5433/hashi_dev
 npm run db:migrate && npm run db:seed
 npx playwright install --with-deps chromium   # sekali, untuk test:e2e
 ```
+
+**Pengaman** (`scripts/db-guard.ts`): `test:e2e` dan `db:seed -- --reset` menolak jalan bila nama database di
+`DATABASE_URL` / `MIGRATE_DATABASE_URL` tidak berakhiran `_dev` / `_test`. Disengaja? `ALLOW_DESTRUCTIVE_DB=1`.
+CI memakai database `hashi_test`. Jangan pernah mengarahkan `.env` ke database `hashi` (produksi).
 
 ## Batasan server
 
@@ -123,9 +129,6 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   organisasi sesi). Selalu jalankan `test:rls` setelah mengubah policy.
 - drizzle-kit TIDAK bisa mengubah enum yang nilainya dikurangi (akan meng-cast dan gagal/membuang data). Tulis
   migration manual dengan pemetaan data (contoh: `drizzle/0006_candidate_selections.sql`).
-- Setelah deploy produksi di OptiPlex, container `hashi-db-1` dibuat ulang tanpa port dev 5433. Jangan jalankan
-  ulang overlay `compose.dev.yaml` (me-restart DB produksi); sambungkan dev lewat IP container:
-  `docker inspect hashi-db-1` -> `postgresql://…@<IP>:5432/hashi_dev`.
 - Port 3100 dipakai aplikasi lain: jalankan e2e dengan `E2E_PORT=3120 npm run test:e2e`.
 - Audit log append-only: tes e2e yang memeriksa audit harus dibatasi ke baris sejak tes dimulai (`created_at >= …`).
 - Label statis ada di katalog terjemahan yang dikirim ke browser semua peran; yang harus tidak bocor ke sensei

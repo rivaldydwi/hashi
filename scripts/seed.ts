@@ -8,6 +8,7 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
 import { createDb, withSystem } from "../src/db";
+import { assertTestDatabase } from "./db-guard";
 import { randomUUID } from "node:crypto";
 import {
   candidates,
@@ -116,6 +117,8 @@ async function main() {
   const url = process.env.MIGRATE_DATABASE_URL;
   if (!url) throw new Error("MIGRATE_DATABASE_URL belum di-set");
   const reset = process.argv.includes("--reset");
+  // --reset menghapus SEMUA data: hanya boleh di database dev/test
+  if (reset) assertTestDatabase("db:seed --reset");
 
   const { db, pool } = createDb(url, 1);
   const passwordHash = await bcrypt.hash(PASSWORD, 12);

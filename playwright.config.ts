@@ -1,4 +1,9 @@
+import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
+import { assertTestDatabase } from "./scripts/db-guard";
+
+// Tes e2e MENAMBAH dan MENGUBAH data: tolak jalan kalau bukan database dev/test.
+assertTestDatabase("test:e2e");
 
 // Tes end-to-end: menjalankan aplikasi hasil build (standalone) lalu mengujinya lewat browser.
 // Butuh database yang sudah di-migrate dan di-seed (npm run db:migrate && npm run db:seed).

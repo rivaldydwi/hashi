@@ -15,16 +15,16 @@ jobs:
         env:
           POSTGRES_USER: hashi_owner
           POSTGRES_PASSWORD: owner-ci
-          POSTGRES_DB: hashi
+          POSTGRES_DB: hashi_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U hashi_owner -d hashi"
+          --health-cmd "pg_isready -U hashi_owner -d hashi_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
     env:
-      MIGRATE_DATABASE_URL: postgresql://hashi_owner:owner-ci@localhost:5432/hashi
-      DATABASE_URL: postgresql://hashi_app:app-ci@localhost:5432/hashi
+      MIGRATE_DATABASE_URL: postgresql://hashi_owner:owner-ci@localhost:5432/hashi_test
+      DATABASE_URL: postgresql://hashi_app:app-ci@localhost:5432/hashi_test
       AUTH_SECRET: ci-only-secret-not-used-in-production
       NEXT_TELEMETRY_DISABLED: "1"
     steps:

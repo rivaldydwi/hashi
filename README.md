@@ -155,6 +155,20 @@ catatan dan visibility (dari, ke), **tidak pernah isi catatan**, karena log kand
 Audit log mencatat organisasi pelaku (`actor_org_id`). Perubahan atas kandidat disimpan di log **LPK pemilik**
 (dengan `candidate_id`), jadi LPK ikut melihat perubahan yang dilakukan TSK; TSK melihat aksinya sendiri.
 
+## Development (database terpisah)
+
+Database dev adalah service `db-dev` sendiri (container + volume + port `127.0.0.1:5433`), terpisah dari database
+produksi, jadi `docker compose up -d --build` di produksi tidak memutusnya.
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml up -d db-dev
+# .env: DATABASE_URL / MIGRATE_DATABASE_URL -> .../hashi_dev di 127.0.0.1:5433
+npm run db:migrate && npm run db:seed
+```
+
+`npm run test:e2e` dan `npm run db:seed -- --reset` **menolak berjalan** kalau nama database tidak berakhiran
+`_dev` atau `_test` (pengaman supaya tidak menulis data uji ke produksi). CI memakai database `hashi_test`.
+
 ## Pengujian
 
 | Perintah | Menguji | Butuh |
