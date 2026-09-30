@@ -1,0 +1,7 @@
+# Tambahan untuk DEVELOPMENT di OptiPlex (npm run dev / test:e2e dari luar Docker):
+# buka port Postgres HANYA ke localhost. Jangan dipakai di server yang bisa diakses publik.
+#   docker compose -f compose.yaml -f compose.dev.yaml up -d db
+services:
+  db:
+    ports:
+      - "127.0.0.1:5433:5432"
