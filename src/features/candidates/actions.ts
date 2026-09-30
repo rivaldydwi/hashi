@@ -7,6 +7,10 @@ import { audit } from "@/lib/audit";
 import { ActionError } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
 import { requireRole, tenantQuery } from "@/lib/session";
+import { randomUUID } from "node:crypto";
+import { candidateDocuments } from "@/db/schema";
+import { documentPath, removeDocument, writeDocument } from "@/features/documents/storage";
+import { readUpload } from "@/features/documents/upload";
 import { addCandidateSchema, EARLIEST_BIRTH_DATE, latestAllowedDate } from "./validation";
 
 /** Tambah kandidat baru. HANYA LPK_ADMIN; organisasinya selalu organisasi user, bukan dari form. */
@@ -23,6 +27,12 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
   if (input.dataConsentDate > latest) return { status: "error", key: "candidates.errors.consentInFuture" };
 
   let createdId: string;
+  // Formulir persetujuan (opsional): diperiksa DULU, supaya file tidak valid tidak meninggalkan kandidat setengah jadi
+  const rawForm = formData.get("consentForm");
+  const consentForm = rawForm instanceof File && rawForm.size > 0 ? await readUpload(rawForm) : null;
+  if (consentForm && "error" in consentForm) return { status: "error", key: consentForm.error };
+
+  let writtenFile: string | null = null;
   try {
     createdId = await tenantQuery(async (tx) => {
       const [row] = await tx
@@ -53,9 +63,34 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
           stage: row.stage,
         },
       });
+      if (consentForm) {
+        const docId = randomUUID();
+        await tx.insert(candidateDocuments).values({
+          id: docId,
+          candidateId: row.id,
+          type: "DATA_CONSENT_FORM",
+          originalFilename: consentForm.originalName,
+          mimeType: consentForm.mime,
+          sizeBytes: consentForm.size,
+          issuedDate: input.dataConsentDate,
+          uploadedBy: me.id,
+        });
+        await audit(tx, {
+          organizationId: me.organizationId,
+          actorUserId: me.id,
+          candidateId: row.id,
+          action: "document.upload",
+          entity: "candidate_document",
+          entityId: docId,
+          after: { section: "documents", fields: ["type"] },
+        });
+        writtenFile = documentPath(me.organizationId, row.id, docId, consentForm.ext);
+        await writeDocument(writtenFile, consentForm.bytes); // terakhir: bila gagal, semuanya dibatalkan
+      }
       return row.id;
     });
   } catch (err) {
+    if (writtenFile) await removeDocument(writtenFile).catch(() => {});
     if (err instanceof ActionError) return { status: "error", key: err.code };
     throw err;
   }

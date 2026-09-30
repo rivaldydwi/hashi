@@ -64,6 +64,13 @@
       "when": 1790753005996,
       "tag": "0008_note_author_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790761596308,
+      "tag": "0009_document_delete_rules",
+      "breakpoints": true
     }
   ]
 }

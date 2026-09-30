@@ -22,13 +22,11 @@ import { ActionError } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
 import { requireUser, tenantQuery, type CurrentUser } from "@/lib/session";
 import { noteAuditEntry } from "./audit";
+import { auditChange, ok, requireEditable, run, uuid } from "./guards";
 import { EARLIEST_BIRTH_DATE, latestAllowedDate } from "./validation";
 import { getCandidateForAction } from "./detail-queries";
 import { contentAccess, isTskRole } from "./permissions";
 import { buildSchema, changedFields, listSection, singleSection, type FieldDef } from "./sections";
-
-const uuid = z.uuid();
-const ok = (key = "detail.saved"): FormState => ({ status: "success", key });
 
 // Tabel dinamis per bagian. Nama kolom di definisi bagian = nama properti tabel Drizzle.
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -38,48 +36,6 @@ const LIST_TABLES: Record<string, any> = {
   candidate_work_histories: candidateWorkHistories,
   candidate_certificates: candidateCertificates,
 };
-
-async function run(fn: (me: CurrentUser) => Promise<FormState>): Promise<FormState> {
-  const me = await requireUser();
-  try {
-    return await fn(me);
-  } catch (err) {
-    if (err instanceof ActionError) return { status: "error", key: err.code };
-    throw err;
-  }
-}
-
-/** Catat perubahan di log LPK PEMILIK kandidat. Hanya NAMA kolom yang berubah, tidak pernah isinya. */
-async function auditChange(
-  tx: Tx,
-  me: CurrentUser,
-  cand: { id: string; organizationId: string },
-  action: string,
-  entity: string,
-  entityId: string,
-  section: string,
-  fields?: string[],
-) {
-  await audit(tx, {
-    organizationId: cand.organizationId,
-    actorOrgId: me.organizationId,
-    candidateId: cand.id,
-    actorUserId: me.id,
-    action,
-    entity,
-    entityId,
-    after: fields ? { section, fields } : { section },
-  });
-}
-
-async function requireEditable(tx: Tx, me: CurrentUser, candidateId: unknown) {
-  if (!uuid.safeParse(candidateId).success) throw new ActionError("common.invalidInput");
-  const cand = await getCandidateForAction(tx, me, candidateId as string);
-  if (!cand) throw new ActionError("detail.errors.notFound");
-  const access = contentAccess(me.role, cand.stage, cand.myDecision);
-  if (!access.canEdit) throw new ActionError("detail.errors.readOnly");
-  return { cand, access };
-}
 
 /** Simpan satu bagian berbaris tunggal (data dasar, kontak, paspor, kesehatan, ...). */
 export async function saveSection(_prev: FormState, formData: FormData): Promise<FormState> {

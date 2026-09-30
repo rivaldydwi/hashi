@@ -10,7 +10,7 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 
 1. ✅ Fondasi: login, i18n ID/JP, multi-tenant RLS, Docker, CI
 2. ✅ Kelola organisasi, pengguna, kemitraan (v0.2)
-3. ⏭ **Profil kandidat**: ✅ daftar, tambah, halaman detail, keputusan & catatan TSK, audit · ⏭ unggah dokumen
+3. ✅ **Profil kandidat**: daftar, tambah, halaman detail, keputusan & catatan TSK, persetujuan data, dokumen, audit
 4. Penilaian bulanan · 5. Seleksi (job order, shortlist) · 6. Lembar client PDF (bahasa Jepang)
 7. Pengingat dokumen kedaluwarsa · 8. Siap pilot (dummy 200 siswa) · 9. Demo ke TSK
 
@@ -83,7 +83,7 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   dari/ke, TIDAK PERNAH isi catatan (log kandidat disimpan di LPK pemilik, jadi LPK membacanya).
   LPK_ADMIN baca+tulis semua; LPK_SENSEI hanya profil dasar (tanpa `candidate_private`, keluarga, dokumen).
   TSK mitra membaca kandidat di SEMUA status, hanya yang `data_consent_date IS NOT NULL`. TSK mengedit isi data
-  (`candidates`, `candidate_private`, tabel anak: INSERT/UPDATE, tanpa DELETE) HANYA jika keputusan MILIKNYA IN
+  (`candidates`, `candidate_private`, tabel anak: INSERT/UPDATE; DELETE hanya `candidate_documents`) HANYA jika keputusan MILIKNYA IN
   (`PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, `DEPARTED`) dan `stage <> 'WITHDRAWN'` — daftar IN eksplisit,
   JANGAN `>=` pada enum. TSK tidak bisa mengubah `stage`/`data_consent_date` (trigger kecil, karena RLS tak bisa
   membandingkan nilai lama vs baru). Form tambah kandidat mewajibkan tanggal persetujuan (aturan aplikasi;
@@ -92,6 +92,12 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 - **Audit log**: `audit(tx, {organizationId, actorOrgId, candidateId, …})`. Perubahan kandidat disimpan di
   `organizationId` = LPK PEMILIK kandidat (supaya LPK ikut melihat aksi TSK), `actorOrgId` = organisasi pelaku,
   `candidateId` wajib diisi (policy insert memeriksanya). Untuk log biasa `actorOrgId` otomatis = `organizationId`.
+- **Dokumen** (`src/features/documents/`): file di volume `docs-data` (`STORAGE_DIR`), `<org>/<kandidat>/<id>.<ext>`;
+  jenis dari magic bytes (`sniffType`), bukan ekstensi/Content-Type; path selalu dibangun dari UUID divalidasi
+  (`documentPath`); unduh lewat route handler `candidates/[id]/documents/[docId]` (login + RLS, `document.download`
+  di audit, `attachment` + `nosniff`). Unggah/hapus: LPK_ADMIN, atau TSK bila syarat edit terpenuhi (RLS
+  `candidate_editable`, migration 0009). Sensei tidak pernah (403 di route; bagian tidak dirender). Backup:
+  database + volume `docs-data` (perintah di README).
 - **Tabel baru** = migration Drizzle + migration SQL manual (`npx drizzle-kit generate --custom --name …`) berisi
   `GRANT … TO hashi_app`, `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy. Tambah pemeriksaan di
   `scripts/verify-rls.ts`. Tidak ada GRANT otomatis — sengaja, supaya gagal dengan aman.
@@ -133,6 +139,11 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 - Audit log append-only: tes e2e yang memeriksa audit harus dibatasi ke baris sejak tes dimulai (`created_at >= …`).
 - Label statis ada di katalog terjemahan yang dikirim ke browser semua peran; yang harus tidak bocor ke sensei
   adalah DATA dan bagian sensitif (tes: `candidate-detail.spec.ts`).
+- File `"use server"` hanya boleh mengekspor fungsi async (konstanta/tipe di modul lain, mis. `documents/fields.ts`);
+  helper bersama action ada di `candidates/guards.ts`, bukan di file `"use server"` (akan jadi endpoint).
+- Akses filesystem dinamis (path dari env) memicu peringatan tracing seluruh project di build standalone:
+  beri `/* turbopackIgnore: true */` (lihat `storageRoot`). Build harus 0 peringatan.
+- e2e menyimpan dokumen di `.e2e-docs/` (gitignored, dihapus di akhir); dev di `docs-data/` (gitignored).
 - `test:e2e` menjalankan build standalone lewat `scripts/serve-standalone.mjs`; `npm run build` dulu.
 
 ## Alur kerja

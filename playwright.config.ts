@@ -28,6 +28,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    env: { PORT: String(PORT) },
+    // Dokumen e2e disimpan di folder sendiri (bisa dihapus, tidak bercampur dengan data dev)
+    env: { PORT: String(PORT), STORAGE_DIR: process.env.E2E_STORAGE_DIR ?? `${process.cwd()}/.e2e-docs` },
   },
 });

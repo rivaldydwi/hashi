@@ -7,11 +7,13 @@ import { FormAlert, SubmitButton } from "@/components/FormBits";
 import { btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
 import { gender } from "@/db/schema";
 import { idle, type FormState } from "@/lib/form-state";
+import { checkFileSize } from "@/features/documents/DocumentForms";
 import { addCandidate } from "./actions";
 
 export function CandidateCreateForm({ fieldSuggestions, maxDate }: { fieldSuggestions: string[]; maxDate: string }) {
   const t = useTranslations("candidates");
   const tc = useTranslations("common");
+  const td = useTranslations("detail.documents");
   const [state, action] = useActionState<FormState, FormData>(addCandidate, idle);
 
   return (
@@ -49,6 +51,18 @@ export function CandidateCreateForm({ fieldSuggestions, maxDate }: { fieldSugges
         <label htmlFor="dataConsentDate" className={labelClass}>{t("consentDate")}</label>
         <input id="dataConsentDate" name="dataConsentDate" type="date" required max={maxDate} className={inputClass} />
         <p className="text-xs text-stone-500">{t("consentHint")}</p>
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="consentForm" className={labelClass}>{t("consentForm")}</label>
+        <input
+          id="consentForm"
+          name="consentForm"
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          onChange={(e) => checkFileSize(e.currentTarget, td("errors.tooBig"))}
+          className={inputClass}
+        />
+        <p className="text-xs text-stone-500">{t("consentFormHint")}</p>
       </div>
       <FormAlert state={state} />
       <div className="flex gap-2">

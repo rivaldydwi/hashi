@@ -51,6 +51,9 @@ services:
       AUTH_TRUST_HOST: "true"
       SHOW_DEMO_ACCOUNTS: ${SHOW_DEMO_ACCOUNTS:-false}
       SEED_PASSWORD: ${SEED_PASSWORD:-}
+      STORAGE_DIR: /app/docs-data
+    volumes:
+      - docs-data:/app/docs-data
     ports:
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-3100}:3100"
     depends_on:
@@ -61,6 +64,7 @@ services:
 
 volumes:
   db-data:
+  docs-data: # file dokumen kandidat (ikut di-backup, lihat README)
 
 networks:
   internal:

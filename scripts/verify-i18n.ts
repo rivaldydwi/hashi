@@ -2,6 +2,7 @@
 // src/features/candidates/sections.ts punya label di kedua bahasa.
 // Pemakaian: npm run test:i18n
 import { readFileSync } from "node:fs";
+import { documentType } from "../src/db/schema";
 import { LIST_SECTIONS, SINGLE_SECTIONS } from "../src/features/candidates/sections";
 
 const load = (l: string) => JSON.parse(readFileSync(`messages/${l}.json`, "utf8")) as Record<string, unknown>;
@@ -29,6 +30,12 @@ for (const s of [...SINGLE_SECTIONS, ...LIST_SECTIONS]) {
   }
   for (const key of need) for (const [lang, dict] of [["id", id], ["ja", ja]] as const) {
     if (!(key in dict)) problems.push(`label hilang (${lang}): ${key}`);
+  }
+}
+
+for (const v of documentType.enumValues) {
+  for (const [lang, dict] of [["id", id], ["ja", ja]] as const) {
+    if (!(`detail.documents.types.${v}` in dict)) problems.push(`label jenis dokumen hilang (${lang}): ${v}`);
   }
 }
 

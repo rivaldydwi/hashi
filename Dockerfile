@@ -32,6 +32,10 @@ ENV NODE_ENV=production \
 COPY --from=builder --chown=node:node /app/public ./public
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+# Folder dokumen (volume docs-data dipasang di sini). Dibuat dan di-chown SEBELUM `USER node`,
+# supaya volume baru yang kosong mewarisi pemilik node dan aplikasi bisa menulis.
+ENV STORAGE_DIR=/app/docs-data
+RUN mkdir -p /app/docs-data && chown node:node /app/docs-data
 USER node
 EXPOSE 3100
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

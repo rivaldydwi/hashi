@@ -527,10 +527,11 @@ async function main() {
     // Aturan: bisa mengedit <=> keputusan IN (...) DAN status LPK bukan WITHDRAWN. Tidak pernah bisa menghapus.
     const bad = wrongKeys(combos.map((c) => c.k), (k) => {
       const [s, d] = k.split("/");
-      return opsOf(EDIT_DECISIONS.includes(d) && s !== "WITHDRAWN");
+      const allowed = EDIT_DECISIONS.includes(d) && s !== "WITHDRAWN";
+      return opsOf(allowed, allowed); // dokumen boleh dihapus TSK hanya bila boleh mengedit
     });
     check(
-      `${role}: hak edit = keputusan IN (${EDIT_DECISIONS.join(", ")}) dan LPK belum WITHDRAWN; tidak pernah bisa menghapus`,
+      `${role}: hak edit + unggah/hapus DOKUMEN = keputusan IN (${EDIT_DECISIONS.join(", ")}) dan LPK belum WITHDRAWN`,
       bad.length === 0,
       bad.length ? `salah di: ${bad.slice(0, 4).join(", ")}` : `${combos.length} kombinasi status x keputusan diperiksa, 6 operasi tiap kombinasi`,
     );
@@ -543,7 +544,7 @@ async function main() {
     check(
       `${role}: bisa mengedit setelah keputusan PASSED_CLIENT_INTERVIEW (juga DOCUMENT_PROCESS, DEPARTED)`,
       ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"].every((d) =>
-        ["STUDYING", "READY"].every((s) => JSON.stringify(ops[`${s}/${d}/${role}`]) === JSON.stringify(opsOf(true))),
+        ["STUDYING", "READY"].every((s) => JSON.stringify(ops[`${s}/${d}/${role}`]) === JSON.stringify(opsOf(true, true))),
       ),
     );
     check(
@@ -963,6 +964,7 @@ async function main() {
     await decide(tx, ready1.id, tskB, "PASSED_CLIENT_INTERVIEW"); // TSK B hanya berhak mengedit ready1
     await tx.insert(candidatePrivate).values([{ candidateId: ready1.id }, { candidateId: pciLpk1 }]);
     await tx.insert(candidateDocuments).values([sampleDoc(ready1.id), sampleDoc(pciLpk1)]);
+    await tx.insert(candidateFamilyMembers).values([{ candidateId: ready1.id, relation: "FATHER", name: "F1" }, { candidateId: pciLpk1, relation: "FATHER", name: "F2" }]);
     await tx.insert(candidateNotes).values([
       { candidateId: ready1.id, tskOrgId: tskB, authorId: adminB, body: "catatan B" },
       { candidateId: ready1.id, tskOrgId: tsk.id, authorId: staffUser.id, body: "catatan staf" },
@@ -989,6 +991,17 @@ async function main() {
       await probe("candidates", w, (t, m) => t.update(candidates).set({ hobby: m }), async (t, m) => (await t.select({ id: candidates.id }).from(candidates).where(eq(candidates.hobby, m))).map((r) => r.id));
       await probe("private", w, (t, m) => t.update(candidatePrivate).set({ phone: m }), async (t, m) => (await t.select({ id: candidatePrivate.candidateId }).from(candidatePrivate).where(eq(candidatePrivate.phone, m))).map((r) => r.id));
       await probe("docs", w, (t, m) => t.update(candidateDocuments).set({ originalFilename: m }), async (t, m) => (await t.select({ id: candidateDocuments.candidateId }).from(candidateDocuments).where(eq(candidateDocuments.originalFilename, m))).map((r) => r.id));
+      // DELETE tanpa WHERE: kandidat yang baris dokumen/keluarganya HILANG
+      const goneDocs = async (t: Tx) => {
+        const left = new Set((await t.select({ id: candidateDocuments.candidateId }).from(candidateDocuments)).map((r) => r.id));
+        return [ready1.id, pciLpk1].filter((id) => !left.has(id));
+      };
+      const goneFamily = async (t: Tx) => {
+        const left = new Set((await t.select({ id: candidateFamilyMembers.candidateId }).from(candidateFamilyMembers)).map((r) => r.id));
+        return [ready1.id, pciLpk1].filter((id) => !left.has(id));
+      };
+      await probe("docsDel", w, (t) => t.delete(candidateDocuments), goneDocs);
+      await probe("familyDel", w, (t) => t.delete(candidateFamilyMembers), goneFamily);
       await probe("selections", w, (t) => t.update(candidateSelections).set({ decision: "REJECTED" }), async (t) => (await t.select({ id: candidateSelections.tskOrgId }).from(candidateSelections).where(eq(candidateSelections.decision, "REJECTED"))).map((r) => r.id));
       await probe("notes", w, (t, m) => t.update(candidateNotes).set({ body: m }), async (t, m) => (await t.select({ id: candidateNotes.authorId }).from(candidateNotes).where(eq(candidateNotes.body, m))).map((r) => r.id ?? "-"));
     }
@@ -1010,6 +1023,16 @@ async function main() {
       eq2(tb, "TSK_ADMIN", [pciLpk1]) && eq2(tb, "TSK_STAFF", [pciLpk1]) && eq2(tb, "TSK_B", [ready1.id]) &&
       none(tb, ["LPK_SENSEI", "LPK_NULL"]) && eq2(tb, "LPK_ADMIN", [ready1.id, pciLpk1]),
     ),
+  );
+  check(
+    "DELETE tanpa WHERE pada dokumen: TSK hanya menghapus dokumen kandidat yang boleh diedit (keputusan membuka hak edit); TSK lain hanya miliknya; sensei/peran null tidak sama sekali",
+    eq2("docsDel", "TSK_ADMIN", [pciLpk1]) && eq2("docsDel", "TSK_STAFF", [pciLpk1]) && eq2("docsDel", "TSK_STAFF-tanpa-user", [pciLpk1]) &&
+      eq2("docsDel", "TSK_B", [ready1.id]) && none("docsDel", ["LPK_SENSEI", "LPK_NULL"]) && eq2("docsDel", "LPK_ADMIN", [ready1.id, pciLpk1]),
+    `TSK menghapus dokumen ${blk["docsDel/TSK_ADMIN"]?.length}/1 kandidat`,
+  );
+  check(
+    "DELETE tanpa WHERE pada data keluarga (tabel anak lain): TSK tidak pernah bisa menghapus, Admin LPK bisa",
+    none("familyDel", ["TSK_ADMIN", "TSK_STAFF", "TSK_B", "LPK_SENSEI", "LPK_NULL"]) && eq2("familyDel", "LPK_ADMIN", [ready1.id, pciLpk1]),
   );
   check(
     "UPDATE tanpa WHERE pada candidate_selections: hanya TSK pemilik yang berubah (LPK tidak bisa; TSK lain hanya barisnya sendiri)",

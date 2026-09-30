@@ -10,6 +10,7 @@ import { getFormatter } from "next-intl/server";
 import { DecisionPanel, ListSectionCard, NotesPanel, SectionCard } from "@/features/candidates/DetailSections";
 import { loadDetail } from "@/features/candidates/detail-queries";
 import { canSeeLevel, contentAccess, isTskRole } from "@/features/candidates/permissions";
+import { DocumentsSection } from "@/features/documents/DocumentsSection";
 import { LIST_SECTIONS, SINGLE_SECTIONS } from "@/features/candidates/sections";
 import { requireUser, tenantQuery } from "@/lib/session";
 import { redirect } from "next/navigation";
@@ -109,6 +110,8 @@ export default async function CandidateDetailPage({
           LIST_SECTIONS.map((s) => (
             <ListSectionCard key={s.key} candidateId={candidate.id} section={s} rows={full.lists[s.key as keyof typeof full.lists] as Record<string, unknown>[]} access={access} />
           ))}
+
+        {full && <DocumentsSection candidateId={candidate.id} docs={full.documents} canEdit={access.canEdit} />}
 
         {ownerLpk && full && <DecisionPanel me={me} detail={{ ...full, candidateId: candidate.id }} />}
         {full && <NotesPanel me={me} candidateId={candidate.id} notes={full.notes} />}

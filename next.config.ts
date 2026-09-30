@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   // Build mandiri (standalone) supaya image Docker kecil.
   output: "standalone",
   poweredByHeader: false,
+  experimental: {
+    // Unggah dokumen lewat server action: batas 10 MB (dicek lagi di aksi) + sedikit ruang untuk field form.
+    serverActions: { bodySizeLimit: "11mb" },
+  },
   async headers() {
     return [
       {

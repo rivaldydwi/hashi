@@ -258,7 +258,9 @@
     "errors": {
       "birthDateInvalid": "Tanggal lahir tidak valid.",
       "consentInFuture": "Tanggal persetujuan tidak boleh di masa depan."
-    }
+    },
+    "consentForm": "Formulir persetujuan (opsional)",
+    "consentFormHint": "Unggah formulir persetujuan yang sudah ditandatangani (PDF, JPG, atau PNG, maks. 10 MB). Bisa juga diunggah nanti di halaman detail."
   },
   "detail": {
     "saved": "Perubahan disimpan.",
@@ -438,6 +440,48 @@
       "revokeWarning": "Yang terjadi bila dicabut: tanggal persetujuan dikosongkan dan TSK langsung tidak bisa lagi melihat kandidat ini, termasuk data, dokumen, catatan, dan keputusan TSK atasnya. Data Anda sendiri tidak berubah. Persetujuan bisa diisi lagi kapan saja.",
       "revokeConfirm": "Ya, cabut persetujuan",
       "missing": "Kandidat ini belum punya persetujuan berbagi data, jadi tidak terlihat oleh TSK mana pun. Isi tanggal persetujuan di bawah bila siswa sudah menyetujui."
+    },
+    "documents": {
+      "title": "Dokumen",
+      "empty": "Belum ada dokumen.",
+      "upload": "Unggah dokumen",
+      "type": "Jenis dokumen",
+      "file": "File",
+      "fileHint": "PDF, JPG, atau PNG. Maksimal 10 MB.",
+      "issuedDate": "Tanggal terbit",
+      "expiryDate": "Berlaku sampai",
+      "expired": "Kedaluwarsa",
+      "download": "Unduh",
+      "delete": "Hapus",
+      "uploaded": "Dokumen diunggah.",
+      "deleted": "Dokumen dihapus.",
+      "types": {
+        "PHOTO": "Pas foto (ukuran visa)",
+        "KTP": "KTP",
+        "FAMILY_CARD": "Kartu Keluarga (KK)",
+        "BIRTH_CERTIFICATE": "Akta kelahiran",
+        "DIPLOMA": "Ijazah",
+        "GUARDIAN_CONSENT": "Surat izin orang tua / suami / istri / wali",
+        "PASSPORT_RECOMMENDATION": "Surat rekomendasi paspor (Disnaker)",
+        "PASSPORT": "Paspor",
+        "SKCK": "SKCK",
+        "MEDICAL_CHECKUP": "Medical check-up",
+        "TRAINING_CERTIFICATE": "Sertifikat pelatihan LPK",
+        "IPKOL_REGISTRATION": "Pendaftaran IPKOL",
+        "SISKOP2MI_REGISTRATION": "Pendaftaran SISKOP2MI",
+        "EMPLOYMENT_CONTRACT": "Perjanjian kerja",
+        "BPJS": "BPJS Ketenagakerjaan",
+        "OPP_CERTIFICATE": "Sertifikat OPP",
+        "MIGRANT_WORKER_CARD": "Kartu pekerja migran (E-PMI / KTKLN)",
+        "VISA": "Visa",
+        "DATA_CONSENT_FORM": "Formulir persetujuan data",
+        "OTHER": "Lainnya"
+      },
+      "errors": {
+        "noFile": "Pilih file terlebih dahulu.",
+        "tooBig": "Ukuran file melebihi 10 MB.",
+        "invalidType": "File bukan PDF, JPG, atau PNG yang valid."
+      }
     }
   },
   "roles": {

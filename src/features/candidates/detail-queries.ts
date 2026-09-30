@@ -2,6 +2,7 @@ import { and, asc, desc, eq, getTableColumns } from "drizzle-orm";
 import type { Tx } from "@/db";
 import {
   candidateCertificates,
+  candidateDocuments,
   candidateEducations,
   candidateFamilyMembers,
   candidateNotes,
@@ -69,8 +70,24 @@ export async function loadDetail(tx: Tx, me: CurrentUser, id: string) {
     .where(eq(candidateNotes.candidateId, id))
     .orderBy(desc(candidateNotes.createdAt));
 
+  // Dokumen: hanya untuk LPK_ADMIN dan TSK (sensei tidak sampai sini). RLS juga menolak sensei.
+  const documents = await tx
+    .select({
+      id: candidateDocuments.id,
+      type: candidateDocuments.type,
+      originalFilename: candidateDocuments.originalFilename,
+      mimeType: candidateDocuments.mimeType,
+      sizeBytes: candidateDocuments.sizeBytes,
+      issuedDate: candidateDocuments.issuedDate,
+      expiryDate: candidateDocuments.expiryDate,
+      createdAt: candidateDocuments.createdAt,
+    })
+    .from(candidateDocuments)
+    .where(eq(candidateDocuments.candidateId, id))
+    .orderBy(desc(candidateDocuments.createdAt));
+
   const mine = me.organizationType === "TSK" ? (selections.find((s) => s.tskOrgId === me.organizationId) ?? null) : null;
-  return { candidate, full: { priv: priv ?? null, lists, selections, notes, myDecision: mine?.decision ?? null } };
+  return { candidate, full: { priv: priv ?? null, lists, documents, selections, notes, myDecision: mine?.decision ?? null } };
 }
 
 export type Detail = NonNullable<Awaited<ReturnType<typeof loadDetail>>>;

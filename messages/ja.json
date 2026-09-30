@@ -258,7 +258,9 @@
     "errors": {
       "birthDateInvalid": "生年月日が正しくありません。",
       "consentInFuture": "同意日に未来の日付は指定できません。"
-    }
+    },
+    "consentForm": "同意書（任意）",
+    "consentFormHint": "署名済みの同意書をアップロードできます（PDF・JPG・PNG、最大10MB）。後から詳細ページでも追加できます。"
   },
   "detail": {
     "saved": "保存しました。",
@@ -438,6 +440,48 @@
       "revokeWarning": "取り消すと同意日が空になり、登録支援機関はこの候補者の情報（基本情報・書類・メモ・支援機関の決定を含む）を直ちに閲覧できなくなります。LPK側のデータは変わりません。同意日はいつでも再入力できます。",
       "revokeConfirm": "はい、同意を取り消す",
       "missing": "この候補者はデータ共有への同意がないため、どの登録支援機関からも見えません。本人が同意した場合は、下で同意日を入力してください。"
+    },
+    "documents": {
+      "title": "書類",
+      "empty": "書類はまだありません。",
+      "upload": "書類をアップロード",
+      "type": "書類の種類",
+      "file": "ファイル",
+      "fileHint": "PDF・JPG・PNG、最大10MB。",
+      "issuedDate": "発行日",
+      "expiryDate": "有効期限",
+      "expired": "期限切れ",
+      "download": "ダウンロード",
+      "delete": "削除",
+      "uploaded": "書類をアップロードしました。",
+      "deleted": "書類を削除しました。",
+      "types": {
+        "PHOTO": "証明写真（ビザサイズ）",
+        "KTP": "国民IDカード（KTP）",
+        "FAMILY_CARD": "家族カード（KK）",
+        "BIRTH_CERTIFICATE": "出生証明書",
+        "DIPLOMA": "卒業証書",
+        "GUARDIAN_CONSENT": "保護者・配偶者の同意書",
+        "PASSPORT_RECOMMENDATION": "パスポート申請の推薦状（労働局）",
+        "PASSPORT": "パスポート",
+        "SKCK": "無犯罪証明書（SKCK）",
+        "MEDICAL_CHECKUP": "健康診断書",
+        "TRAINING_CERTIFICATE": "LPK研修修了証",
+        "IPKOL_REGISTRATION": "IPKOL登録",
+        "SISKOP2MI_REGISTRATION": "SISKOP2MI登録",
+        "EMPLOYMENT_CONTRACT": "雇用契約書",
+        "BPJS": "BPJS（労働保険）",
+        "OPP_CERTIFICATE": "出国前オリエンテーション修了証（OPP）",
+        "MIGRANT_WORKER_CARD": "移住労働者カード（E-PMI/KTKLN）",
+        "VISA": "ビザ",
+        "DATA_CONSENT_FORM": "データ共有同意書",
+        "OTHER": "その他"
+      },
+      "errors": {
+        "noFile": "ファイルを選択してください。",
+        "tooBig": "ファイルサイズが10MBを超えています。",
+        "invalidType": "有効なPDF・JPG・PNGファイルではありません。"
+      }
     }
   },
   "roles": {

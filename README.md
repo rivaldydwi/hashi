@@ -3,8 +3,9 @@
 Sistem profil & seleksi kandidat untuk **LPK** (Indonesia) dan **TSK / 登録支援機関** (Jepang).
 Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ulang.
 
-> Status: **v0.2** — fondasi (login, dua bahasa, isolasi data RLS) + **kelola organisasi, pengguna, dan kemitraan**.
-> Modul profil kandidat, penilaian, dan seleksi menyusul.
+> Status: **v0.3** — fondasi (login, dua bahasa, isolasi data RLS), kelola organisasi/pengguna/kemitraan, dan
+> **profil kandidat lengkap** (daftar, tambah, halaman detail, dokumen, persetujuan data, keputusan & catatan TSK).
+> Penilaian bulanan dan seleksi (job order, shortlist) menyusul.
 
 ## Fitur saat ini
 
@@ -12,6 +13,9 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 | --- | --- |
 | **Super admin** | Menambah LPK/TSK beserta admin pertamanya, mengubah data organisasi, mengelola pengguna di organisasi mana pun, membuat dan menonaktifkan kemitraan LPK–TSK |
 | **Admin LPK / TSK** | Menambah staf (sensei / staf TSK), mengubah nama, peran, bahasa, membuat kata sandi sementara baru, menonaktifkan / mengaktifkan kembali |
+| **Admin LPK** (kandidat) | Menambah kandidat (data minimal + tanggal persetujuan berbagi data, formulir persetujuan opsional), melengkapi data per bagian di halaman detail, mengunggah/menghapus dokumen, mengubah status di LPK, mengubah atau **mencabut persetujuan** (TSK langsung tidak bisa melihat kandidatnya lagi) |
+| **Sensei** | Melihat daftar dan data dasar kandidat saja (tanpa data sensitif dan dokumen) |
+| **Admin / staf TSK** | Melihat kandidat LPK mitra yang sudah memberi persetujuan, mengunduh dokumen, mengambil keputusan dan menulis catatan; mengedit data hanya setelah keputusan *Lulus interview client* atau sesudahnya |
 | **Semua pengguna** | Login, ganti bahasa, ganti kata sandi di *Akun saya* |
 
 Cara kerja akun baru:
@@ -103,6 +107,28 @@ docker compose exec -T db pg_dump -U hashi_owner -d hashi | gzip > hashi-$(date 
 
 Batas RAM: app 768 MB, database 512 MB (container `migrate` hanya hidup beberapa detik).
 
+## Dokumen kandidat dan backup
+
+File dokumen (PDF/JPG/PNG, maks. 10 MB) disimpan di **Docker named volume `docs-data`**, dipasang di
+`/app/docs-data` pada container `app`. Tata letak: `<org_id>/<candidate_id>/<document_id>.<pdf|jpg|png>`.
+Nama file di disk selalu id dokumen (bukan nama dari user), jenis file dicek dari isinya, dan unduhan hanya lewat
+aplikasi (dicek login + RLS, tercatat di audit log). Metadata dokumen ada di database, jadi **backup harus mencakup
+database DAN volume `docs-data`** (salah satunya saja tidak cukup untuk memulihkan).
+
+```bash
+# Backup volume dokumen ke file .tgz di folder sekarang (nama volume = <nama-project>_docs-data)
+docker run --rm -v hashi_docs-data:/data:ro -v "$PWD":/backup node:22-alpine \
+  tar czf /backup/hashi-docs-$(date +%F).tgz -C /data .
+
+# Restore ke volume (kosong atau yang akan ditimpa). Sesuaikan nama arsip.
+docker run --rm -v hashi_docs-data:/data -v "$PWD":/backup:ro node:22-alpine \
+  sh -c 'cd /data && tar xzf /backup/hashi-docs-YYYY-MM-DD.tgz && chown -R 1000:1000 /data'
+```
+
+Arsip dibuat oleh root di dalam container. Perintah ini sudah dicoba pada folder uji (arsip berisi struktur
+`org/kandidat/file`; hasil restore identik dengan sumbernya, pemilik file 1000 = user `node` di image aplikasi).
+Backup database ada di bagian *Perintah sehari-hari*.
+
 ## Keamanan data: cara kerja RLS
 
 Aplikasi terhubung ke database sebagai role **`hashi_app`** yang tidak bisa melewati RLS.
@@ -137,7 +163,7 @@ Keputusan TSK tidak mengubah status LPK, dan tiap TSK hanya melihat keputusannya
 | --- | --- | --- |
 | **Admin LPK** | Semua data kandidat LPK-nya, termasuk data sensitif (`candidate_private`), keluarga, dokumen, **keputusan semua TSK mitra**, dan catatan TSK yang **dibagikan** | Semua data, di semua status. Satu-satunya yang mengubah status LPK dan tanggal persetujuan |
 | **Sensei** | Profil dasar saja (daftar, pendidikan, kerja, sertifikat) + keputusan TSK. Tanpa data sensitif, keluarga, dokumen | Tidak ada |
-| **Admin / staf TSK** (mitra aktif) | Semua kandidat LPK mitra di **semua status** (termasuk Belajar dan Mundur) beserta data sensitif dan dokumen, **hanya jika kandidat punya tanggal persetujuan berbagi data** | (1) Keputusan + catatan (`Hanya TSK` atau `Bagikan ke LPK`) **milik organisasinya sendiri**, tanpa mengubah status LPK. (2) Edit isi data (kandidat, data sensitif, dokumen/keluarga/pendidikan/kerja/sertifikat: tambah & ubah) **hanya jika keputusannya** `PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, atau `DEPARTED` **dan** LPK belum menandai kandidat *Mundur*. Tidak pernah bisa menghapus data |
+| **Admin / staf TSK** (mitra aktif) | Semua kandidat LPK mitra di **semua status** (termasuk Belajar dan Mundur) beserta data sensitif dan dokumen, **hanya jika kandidat punya tanggal persetujuan berbagi data** | (1) Keputusan + catatan (`Hanya TSK` atau `Bagikan ke LPK`) **milik organisasinya sendiri**, tanpa mengubah status LPK. (2) Edit isi data (kandidat, data sensitif, dokumen/keluarga/pendidikan/kerja/sertifikat: tambah & ubah) **hanya jika keputusannya** `PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, atau `DEPARTED` **dan** LPK belum menandai kandidat *Mundur*. Menghapus: hanya **dokumen**, dan hanya bila boleh mengedit (baris data lain tidak pernah) |
 
 Kandidat tanpa tanggal persetujuan hanya terlihat oleh LPK pemiliknya. Hak edit TSK dijaga policy RLS
 (`EXISTS` ke keputusan milik TSK itu sendiri) dengan daftar keputusan yang ditulis eksplisit (`IN (…)`), bukan
@@ -188,6 +214,7 @@ Aturan yang diuji otomatis oleh `npm run test:rls` antara lain:
 - TSK mengedit isi data hanya jika keputusannya PASSED_CLIENT_INTERVIEW / DOCUMENT_PROCESS / DEPARTED dan kandidat belum Mundur
 - LPK membaca keputusan TSK, dan hanya catatan TSK yang dibagikan (Admin LPK saja); tidak bisa menulis keputusan maupun catatan
 - Sensei tidak bisa membaca data sensitif maupun dokumen, dan tidak bisa mengedit kandidat
+- Dokumen: TSK mengunggah/menghapus hanya bila boleh mengedit; `DELETE` tanpa `WHERE` diuji juga
 - LPK non-mitra tidak terlihat sama sekali oleh TSK
 - Tidak ada yang bisa menulis data ke organisasi lain atau membuat kemitraan sendiri
 - Tidak ada yang bisa membuat peran yang tidak sesuai organisasinya
