@@ -39,18 +39,26 @@ export const locale = pgEnum("locale", ["id", "ja"]);
 
 export const gender = pgEnum("gender", ["MALE", "FEMALE"]);
 
-// Urutan tahapan mengikuti spesifikasi MVP.
-// "Tidak lulus" bukan tahapan: kandidat kembali ke READY.
+// Status kandidat DI LPK. Hanya diisi oleh LPK_ADMIN.
+// Keputusan TSK (shortlist, wawancara, dst.) ada di candidate_selections.decision.
 export const candidateStage = pgEnum("candidate_stage", [
   "STUDYING", // Belajar
   "READY", // Siap seleksi
+  "WITHDRAWN", // Mundur
+]);
+
+// Keputusan satu TSK atas satu kandidat (langkah 5 memperluasnya jadi job order & shortlist).
+// Urutan mengikuti pipeline di spesifikasi MVP. JANGAN dipakai untuk perbandingan `>=`:
+// hak edit TSK ditentukan daftar IN eksplisit (lihat tsk_editable_decision di migration).
+export const selectionDecision = pgEnum("selection_decision", [
+  "NONE", // belum diputuskan
   "SHORTLISTED", // Masuk shortlist
   "PASSED_TSK_INTERVIEW", // Lulus wawancara TSK
   "SUBMITTED_TO_CLIENT", // Diajukan ke client
   "PASSED_CLIENT_INTERVIEW", // Lulus interview client
   "DOCUMENT_PROCESS", // Proses dokumen
   "DEPARTED", // Berangkat
-  "WITHDRAWN", // Mundur
+  "REJECTED", // Ditolak
 ]);
 
 export const maritalStatus = pgEnum("marital_status", ["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]);
@@ -93,6 +101,10 @@ export const documentType = pgEnum("document_type", [
   "DATA_CONSENT_FORM", // formulir persetujuan berbagi data
   "OTHER",
 ]);
+
+// Siapa yang boleh membaca catatan TSK. TSK_ONLY = hanya TSK pembuat; SHARED_WITH_LPK = LPK_ADMIN
+// pemilik kandidat (dari TSK yang masih bermitra aktif) ikut boleh membaca.
+export const noteVisibility = pgEnum("note_visibility", ["TSK_ONLY", "SHARED_WITH_LPK"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -314,13 +326,60 @@ export const candidateDocuments = pgTable(
   ],
 );
 
+// Keputusan TSK atas kandidat (1 baris per pasangan kandidat x TSK). Ditulis HANYA oleh TSK
+// pemilik baris; LPK boleh membaca (tanpa catatan). Status LPK (candidates.stage) tidak ikut berubah.
+export const candidateSelections = pgTable(
+  "candidate_selections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    tskOrgId: uuid("tsk_org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    decision: selectionDecision("decision").notNull().default("NONE"),
+    decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("candidate_selections_candidate_tsk_key").on(t.candidateId, t.tskOrgId),
+    index("candidate_selections_tsk_idx").on(t.tskOrgId),
+  ],
+);
+
+// Catatan TSK atas kandidat (mis. 面談メモ). Default hanya terbaca TSK; TSK boleh membagikannya ke LPK.
+// Terpisah dari candidate_selections supaya keputusan bisa dibaca LPK tanpa membuka catatan.
+export const candidateNotes = pgTable(
+  "candidate_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    tskOrgId: uuid("tsk_org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    visibility: noteVisibility("visibility").notNull().default("TSK_ONLY"),
+    ...timestamps,
+  },
+  (t) => [index("candidate_notes_candidate_tsk_idx").on(t.candidateId, t.tskOrgId)],
+);
+
 // Log perubahan data: siapa, kapan, apa (sebelum/sesudah).
 export const auditLogs = pgTable(
   "audit_logs",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
+    // Organisasi tempat log ini "disimpan". Untuk perubahan kandidat = LPK pemilik kandidat,
+    // sehingga LPK ikut melihat perubahan yang dilakukan TSK mitranya.
     organizationId: uuid("organization_id"),
     actorUserId: uuid("actor_user_id"),
+    // Organisasi si pelaku (LPK atau TSK). Null hanya untuk log lama sebelum kolom ini ada.
+    actorOrgId: uuid("actor_org_id"),
+    candidateId: uuid("candidate_id"), // diisi untuk log yang menyangkut kandidat
     action: text("action").notNull(), // mis. "auth.login", "candidate.update"
     entity: text("entity").notNull(),
     entityId: text("entity_id"),
@@ -328,7 +387,11 @@ export const auditLogs = pgTable(
     after: jsonb("after"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("audit_logs_org_created_idx").on(t.organizationId, t.createdAt)],
+  (t) => [
+    index("audit_logs_org_created_idx").on(t.organizationId, t.createdAt),
+    index("audit_logs_actor_org_created_idx").on(t.actorOrgId, t.createdAt),
+    index("audit_logs_candidate_created_idx").on(t.candidateId, t.createdAt),
+  ],
 );
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
@@ -357,6 +420,8 @@ export const candidatesRelations = relations(candidates, ({ one, many }) => ({
   familyMembers: many(candidateFamilyMembers),
   certificates: many(candidateCertificates),
   documents: many(candidateDocuments),
+  selections: many(candidateSelections),
+  notes: many(candidateNotes),
 }));
 
 export type Organization = typeof organizations.$inferSelect;
@@ -368,6 +433,10 @@ export type CandidateWorkHistory = typeof candidateWorkHistories.$inferSelect;
 export type CandidateFamilyMember = typeof candidateFamilyMembers.$inferSelect;
 export type CandidateCertificate = typeof candidateCertificates.$inferSelect;
 export type CandidateDocument = typeof candidateDocuments.$inferSelect;
+export type CandidateSelection = typeof candidateSelections.$inferSelect;
+export type CandidateNote = typeof candidateNotes.$inferSelect;
+export type NoteVisibility = (typeof noteVisibility.enumValues)[number];
+export type SelectionDecision = (typeof selectionDecision.enumValues)[number];
 export type DocumentType = (typeof documentType.enumValues)[number];
 export type CandidateStage = (typeof candidateStage.enumValues)[number];
 export type Role = (typeof role.enumValues)[number];

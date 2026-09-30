@@ -70,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await tx.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, row.user.id));
           await tx.insert(auditLogs).values({
             organizationId: row.org.id,
+            actorOrgId: row.org.id,
             actorUserId: row.user.id,
             action: "auth.login",
             entity: "user",

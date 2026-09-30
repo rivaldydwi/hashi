@@ -4,9 +4,10 @@
 // Setiap pemeriksaan memastikan satu aturan dari spesifikasi:
 // LPK hanya melihat kandidatnya; TSK melihat kandidat LPK mitra di semua tahap TAPI hanya
 // yang sudah punya persetujuan berbagi data; tidak ada yang bisa menulis ke data organisasi
-// lain; sensei tidak bisa membaca data sensitif/dokumen; TSK boleh mengubah tahap (stage)
-// di tahap apa pun, tetapi mengedit isi data hanya pada PASSED_CLIENT_INTERVIEW,
-// DOCUMENT_PROCESS, DEPARTED.
+// lain; sensei tidak bisa membaca data sensitif/dokumen; status LPK (candidates.stage) hanya
+// diubah LPK_ADMIN; keputusan TSK ada di candidate_selections (tiap TSK hanya melihat/menulis
+// miliknya); TSK mengedit isi data hanya jika keputusannya PASSED_CLIENT_INTERVIEW,
+// DOCUMENT_PROCESS, atau DEPARTED dan kandidat belum WITHDRAWN.
 //
 // Pemeriksaan yang menulis data dijalankan di dalam transaksi yang selalu di-rollback.
 
@@ -22,9 +23,12 @@ import {
   candidateFamilyMembers,
   candidatePrivate,
   candidates,
+  candidateNotes,
+  candidateSelections,
   candidateStage,
   organizations,
   partnerships,
+  selectionDecision,
   users,
 } from "../src/db/schema";
 
@@ -142,6 +146,8 @@ async function main() {
   const tskVisible = all.filter((c) => isPartner(c) && c.dataConsentDate !== null);
   const tskExpected = tskVisible.length;
   const noConsent = all.filter((c) => c.dataConsentDate === null);
+  const seededSelections = await withSystem((tx) => tx.select().from(candidateSelections), db);
+  const hasSelection = (id: string) => seededSelections.some((s) => s.candidateId === id);
 
   // 1. Tanpa konteks: tidak melihat apa pun
   const noCtx = await db.transaction(async (tx) => ({
@@ -186,13 +192,14 @@ async function main() {
   );
   check("TSK: tidak ada kandidat LPK non-mitra", tskRows.every((r) => r.organizationId !== lpk3.id));
 
-  // 4. TSK tidak bisa mengubah isi data kandidat yang belum sampai PASSED_CLIENT_INTERVIEW
-  //    (pemeriksaan lengkap per tahap ada di bagian "Profil kandidat" di bawah)
-  const target = tskRows.find((r) => r.stage === "READY")!;
-  const nameErr = await errorMessage(() =>
-    withTenant(tsk.id, "TSK_ADMIN", (tx) => tx.update(candidates).set({ fullName: "DIUBAH TSK" }).where(eq(candidates.id, target.id)), db),
+  // 4. TSK tidak bisa mengubah isi data kandidat yang keputusannya belum PASSED_CLIENT_INTERVIEW dst.
+  //    (pemeriksaan lengkap per keputusan ada di bagian "Profil kandidat" di bawah)
+  const target = tskRows.find((r) => r.stage === "READY" && !hasSelection(r.id))!;
+  const updated = await withTenant(tsk.id, "TSK_ADMIN",
+    (tx) => tx.update(candidates).set({ fullName: "DIUBAH TSK" }).where(eq(candidates.id, target.id)).returning(),
+    db,
   );
-  check("TSK: tidak bisa mengubah nama kandidat READY milik mitra", nameErr !== null && /hanya boleh mengubah tahap/.test(nameErr), nameErr ?? "");
+  check("TSK: tidak bisa mengubah nama kandidat yang belum diputuskan", updated.length === 0);
 
   // 5. LPK tidak bisa membuat kandidat atas nama organisasi lain
   const insertErr = await expectError(() =>
@@ -310,13 +317,16 @@ async function main() {
   check("Email dengan huruf besar ditolak database", upperErr !== null);
 
   // ==========================================================================
-  // Profil kandidat: data sensitif, dokumen, persetujuan data, dan hak edit per peran
+  // Profil kandidat: status LPK (stage) vs keputusan TSK (candidate_selections)
   // ==========================================================================
-  const TSK_EDITABLE = ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"]; // sengaja ditulis eksplisit
+  const EDIT_DECISIONS = ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"]; // sengaja ditulis eksplisit
   const consented = (c: (typeof all)[number]) => c.dataConsentDate !== null;
-  const ready1 = all.find((c) => c.organizationId === lpk1.id && c.stage === "READY" && consented(c))!;
-  const studying1 = all.find((c) => c.organizationId === lpk1.id && c.stage === "STUDYING" && consented(c))!;
-  const outsider = all.find((c) => c.organizationId === lpk3.id && c.stage === "READY" && consented(c))!;
+  const pick = (org: string, stage: string) =>
+    all.find((c) => c.organizationId === org && c.stage === stage && consented(c) && !hasSelection(c.id))!;
+  const ready1 = pick(lpk1.id, "READY");
+  const studying1 = pick(lpk1.id, "STUDYING");
+  const withdrawn1 = pick(lpk1.id, "WITHDRAWN");
+  const outsider = pick(lpk3.id, "READY");
   const hidden = noConsent[0]; // LPK Bandung, READY, tanpa persetujuan
   const tskAdminUser = allUsers.find((u) => u.role === "TSK_ADMIN")!;
 
@@ -329,6 +339,8 @@ async function main() {
     mimeType: "application/pdf",
     sizeBytes: 1000,
   });
+  let seq = 0;
+  const uniq = () => `uji-${++seq}`; // update ke nilai yang sama bukan perubahan, jadi selalu pakai nilai baru
 
   async function sandbox(fn: (tx: Tx) => Promise<void>) {
     await errorMessage(() =>
@@ -338,8 +350,20 @@ async function main() {
       }, db),
     );
   }
+  /** TSK kedua (mitra LPK Bandung) untuk menguji isolasi antar-TSK. Dipanggil dalam mode sistem. */
+  async function makeTskB(tx: Tx) {
+    const [org] = await tx.insert(organizations).values({ name: "TSK Uji B", type: "TSK", country: "JP", defaultLocale: "ja" }).returning();
+    await tx.insert(partnerships).values({ lpkId: lpk1.id, tskId: org.id });
+    return org.id;
+  }
+  const decide = (tx: Tx, candidateId: string, tskOrgId: string, decision: (typeof selectionDecision.enumValues)[number]) =>
+    tx
+      .insert(candidateSelections)
+      .values({ candidateId, tskOrgId, decision })
+      .onConflictDoUpdate({ target: [candidateSelections.candidateId, candidateSelections.tskOrgId], set: { decision } })
+      .returning();
 
-  // --- A. Siapa boleh MEMBACA apa ---
+  // --- A. Siapa boleh MEMBACA apa (data sensitif & dokumen) ---
   type Seen = { priv: string[]; docs: number; family: number; edu: number; cert: number; cands: number };
   const seen: Record<string, Seen> = {};
   await sandbox(async (tx) => {
@@ -373,7 +397,7 @@ async function main() {
 
   check(
     "Admin LPK: membaca data sensitif + dokumen + keluarga kandidatnya (juga yang belum ada persetujuan)",
-    sorted(seen["lpk1-admin"].priv) === sorted([ready1, studying1, hidden].map(nikOf)) && // bukan milik lpk3
+    sorted(seen["lpk1-admin"].priv) === sorted([ready1, studying1, hidden].map(nikOf)) &&
       seen["lpk1-admin"].docs === 2 &&
       seen["lpk1-admin"].family === 1,
     `NIK: ${seen["lpk1-admin"].priv.length} baris, dokumen ${seen["lpk1-admin"].docs}`,
@@ -386,7 +410,7 @@ async function main() {
   check(
     "Sensei: tetap melihat daftar kandidat, pendidikan, dan sertifikat",
     seen["lpk1-sensei"].cands === ownCount(lpk1.id) && seen["lpk1-sensei"].edu === 1 && seen["lpk1-sensei"].cert === 1,
-    `kandidat ${seen["lpk1-sensei"].cands}/${ownCount(lpk1.id)}, pendidikan ${seen["lpk1-sensei"].edu}, sertifikat ${seen["lpk1-sensei"].cert}`,
+    `kandidat ${seen["lpk1-sensei"].cands}/${ownCount(lpk1.id)}`,
   );
   check(
     "Peran tidak dikenal (null): ditolak membaca data sensitif dan dokumen",
@@ -408,210 +432,499 @@ async function main() {
     !seen["tsk-admin"].priv.includes(nikOf(hidden)) && !seen["tsk-admin"].priv.includes(nikOf(outsider)) && seen["tsk-admin"].docs === 1,
   );
 
-  // --- B. Siapa boleh MENULIS apa, di setiap tahap ---
-  type Wrote = { cand: boolean; priv: boolean; docIns: boolean; docDel: boolean };
-  type Staged = { stageOnly: boolean; stageAndData: boolean };
-  const wrote: Record<string, Wrote> = {};
-  const staged: Record<string, Staged> = {};
+  // --- B. TSK membuat keputusan; status LPK tidak ikut berubah ---
+  const dec: Record<string, unknown> = {};
   await sandbox(async (tx) => {
-    await tx.insert(candidatePrivate).values({ candidateId: ready1.id, nationalId: NIK, phone: "0812" });
-    const roles: Array<[string, string]> = [
-      ["TSK_ADMIN", tsk.id],
-      ["TSK_STAFF", tsk.id],
-      ["LPK_ADMIN", lpk1.id],
-      ["LPK_SENSEI", lpk1.id],
-    ];
+    await actAs(tx, tsk.id, "TSK_STAFF");
+    const made = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: studying1.id, tskOrgId: tsk.id, decision: "SHORTLISTED", decidedBy: tskAdminUser.id }));
+    dec.made = made;
+    dec.readBack = (await tx.select().from(candidateSelections).where(eq(candidateSelections.candidateId, studying1.id))).map((s) => s.decision);
+    dec.changed = await attempt(tx, (t) => t.update(candidateSelections).set({ decision: "PASSED_TSK_INTERVIEW" }).where(eq(candidateSelections.candidateId, studying1.id)));
+    dec.readBack2 = (await tx.select().from(candidateSelections).where(eq(candidateSelections.candidateId, studying1.id))).map((s) => s.decision);
+    await actAsSystem(tx);
+    dec.lpkStage = (await tx.select().from(candidates).where(eq(candidates.id, studying1.id)))[0].stage;
+    // kandidat yang tidak terlihat TSK: tanpa persetujuan, atau LPK non-mitra
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    dec.hidden = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: hidden.id, tskOrgId: tsk.id, decision: "SHORTLISTED" }));
+    dec.outsider = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: outsider.id, tskOrgId: tsk.id, decision: "SHORTLISTED" }));
+    // atas nama TSK lain
+    dec.forged = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: ready1.id, tskOrgId: lpk1.id, decision: "SHORTLISTED" }));
+    dec.keyMove = await attempt(tx, (t) => t.update(candidateSelections).set({ candidateId: ready1.id }).where(eq(candidateSelections.candidateId, studying1.id)));
+    dec.del = await attempt(tx, (t) => t.delete(candidateSelections).where(eq(candidateSelections.candidateId, studying1.id)));
+  });
+  check(
+    "TSK bisa membuat keputusan SHORTLISTED untuk kandidat STUDYING, dan status LPK-nya tetap STUDYING",
+    dec.made === null && JSON.stringify(dec.readBack) === '["SHORTLISTED"]' && dec.changed === null &&
+      JSON.stringify(dec.readBack2) === '["PASSED_TSK_INTERVIEW"]' && dec.lpkStage === "STUDYING",
+    `keputusan: ${JSON.stringify(dec.readBack)} -> ${JSON.stringify(dec.readBack2)}, status LPK: ${dec.lpkStage}`,
+  );
+  check(
+    "TSK tidak bisa memutuskan kandidat tanpa persetujuan data atau dari LPK non-mitra",
+    typeof dec.hidden === "string" && /row-level security/.test(dec.hidden) &&
+      typeof dec.outsider === "string" && /row-level security/.test(dec.outsider),
+  );
+  check(
+    "TSK tidak bisa menulis keputusan atas nama organisasi lain, memindahkan, atau menghapusnya",
+    typeof dec.forged === "string" && /row-level security/.test(dec.forged) &&
+      typeof dec.keyMove === "string" && typeof dec.del === "string" && /permission denied/.test(dec.del as string),
+    `${(dec.keyMove as string | null)?.slice(0, 60)} | ${(dec.del as string | null)?.slice(0, 40)}`,
+  );
+
+  // --- C. Siapa boleh MENGEDIT isi data: matriks status LPK x keputusan TSK ---
+  type Ops = { cand: boolean; priv: boolean; docIns: boolean; docUpd: boolean; docDel: boolean; famIns: boolean };
+  const ops: Record<string, Ops> = {};
+  async function measure(sp: Tx, candId: string, docId: string): Promise<Ops> {
+    const c = await rowsOf(sp, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, candId)).returning({ id: candidates.id }));
+    const p = await rowsOf(sp, (t) => t.update(candidatePrivate).set({ phone: uniq() }).where(eq(candidatePrivate.candidateId, candId)).returning({ id: candidatePrivate.candidateId }));
+    const di = await rowsOf(sp, (t) => t.insert(candidateDocuments).values(sampleDoc(candId)).returning({ id: candidateDocuments.id }));
+    const du = await rowsOf(sp, (t) => t.update(candidateDocuments).set({ expiryDate: "2030-01-01" }).where(eq(candidateDocuments.id, docId)).returning({ id: candidateDocuments.id }));
+    const dd = await rowsOf(sp, (t) => t.delete(candidateDocuments).where(eq(candidateDocuments.id, docId)).returning({ id: candidateDocuments.id }));
+    const fi = await rowsOf(sp, (t) => t.insert(candidateFamilyMembers).values({ candidateId: candId, relation: "FATHER", name: uniq() }).returning({ id: candidateFamilyMembers.id }));
+    return { cand: c.n > 0, priv: p.n > 0, docIns: di.n > 0, docUpd: du.n > 0, docDel: dd.n > 0, famIns: fi.n > 0 };
+  }
+  await sandbox(async (tx) => {
+    await tx.insert(candidatePrivate).values([{ candidateId: ready1.id, nationalId: NIK, phone: "0812" }, { candidateId: studying1.id, nationalId: NIK, phone: "0812" }]);
     for (const stage of candidateStage.enumValues) {
+      for (const decision of selectionDecision.enumValues) {
+        await actAsSystem(tx);
+        await tx.update(candidates).set({ stage }).where(eq(candidates.id, ready1.id));
+        await decide(tx, ready1.id, tsk.id, decision);
+        const [doc] = await tx.insert(candidateDocuments).values(sampleDoc(ready1.id)).returning();
+        for (const role of ["TSK_ADMIN", "TSK_STAFF"]) {
+          await scratch(tx, async (sp) => {
+            await actAs(sp, tsk.id, role);
+            ops[`${stage}/${decision}/${role}`] = await measure(sp, ready1.id, doc.id);
+          });
+        }
+      }
+      // LPK: tidak bergantung pada keputusan TSK
       await actAsSystem(tx);
       await tx.update(candidates).set({ stage }).where(eq(candidates.id, ready1.id));
-      const [baseDoc] = await tx.insert(candidateDocuments).values(sampleDoc(ready1.id)).returning();
-      const nextStage = stage === "READY" ? "SHORTLISTED" : "READY";
-      for (const [role, orgId] of roles) {
-        // Tiap peran diuji di savepoint sendiri yang di-rollback, supaya hasil peran lain tidak terpengaruh.
+      const [doc] = await tx.insert(candidateDocuments).values(sampleDoc(ready1.id)).returning();
+      for (const role of ["LPK_ADMIN", "LPK_SENSEI"]) {
         await scratch(tx, async (sp) => {
-          await actAs(sp, orgId, role);
-          const c = await rowsOf(sp, (t) => t.update(candidates).set({ hobby: `diubah ${role}` }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }));
-          const p = await rowsOf(sp, (t) => t.update(candidatePrivate).set({ phone: `0899-${role}` }).where(eq(candidatePrivate.candidateId, ready1.id)).returning({ id: candidatePrivate.candidateId }));
-          const di = await rowsOf(sp, (t) => t.insert(candidateDocuments).values(sampleDoc(ready1.id)).returning({ id: candidateDocuments.id }));
-          const dd = await rowsOf(sp, (t) => t.delete(candidateDocuments).where(eq(candidateDocuments.id, baseDoc.id)).returning({ id: candidateDocuments.id }));
-          wrote[`${stage}/${role}`] = { cand: c.n > 0, priv: p.n > 0, docIns: di.n > 0, docDel: dd.n > 0 };
-        });
-        await scratch(tx, async (sp) => {
-          await actAs(sp, orgId, role);
-          const so = await rowsOf(sp, (t) => t.update(candidates).set({ stage: nextStage }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }));
-          staged[`${stage}/${role}/only`] = { stageOnly: so.n > 0, stageAndData: false };
-        });
-        await scratch(tx, async (sp) => {
-          await actAs(sp, orgId, role);
-          const sd = await rowsOf(sp, (t) => t.update(candidates).set({ stage: nextStage, hobby: `campur ${role}` }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }));
-          staged[`${stage}/${role}/mixed`] = { stageOnly: false, stageAndData: sd.n > 0 };
+          await actAs(sp, lpk1.id, role);
+          ops[`${stage}/-/${role}`] = await measure(sp, ready1.id, doc.id);
         });
       }
     }
+    // TSK yang BELUM punya baris keputusan sama sekali
+    await actAsSystem(tx);
+    const [doc] = await tx.insert(candidateDocuments).values(sampleDoc(studying1.id)).returning();
+    await scratch(tx, async (sp) => {
+      await actAs(sp, tsk.id, "TSK_ADMIN");
+      ops["tanpa-baris-keputusan"] = await measure(sp, studying1.id, doc.id);
+    });
   });
-  const NONE: Wrote = { cand: false, priv: false, docIns: false, docDel: false };
-  const FULL: Wrote = { cand: true, priv: true, docIns: true, docDel: true };
-  const wrongStages = (pred: (stage: string) => boolean, who: string, expect: Wrote) =>
-    candidateStage.enumValues.filter((s) => pred(s) && JSON.stringify(wrote[`${s}/${who}`]) !== JSON.stringify(expect));
-  const stagesOf = (pred: (s: string) => boolean) => candidateStage.enumValues.filter(pred);
+  const opsOf = (allowed: boolean, canDelete = false): Ops => ({ cand: allowed, priv: allowed, docIns: allowed, docUpd: allowed, docDel: canDelete, famIns: allowed });
+  const wrongKeys = (keys: string[], expected: (k: string) => Ops) =>
+    keys.filter((k) => JSON.stringify(ops[k]) !== JSON.stringify(expected(k)));
 
-  for (const who of ["TSK_ADMIN", "TSK_STAFF"]) {
-    // Ubah tahap: boleh di tahap apa pun
-    const badStage = stagesOf(() => true).filter((s) => !staged[`${s}/${who}/only`].stageOnly);
+  for (const role of ["TSK_ADMIN", "TSK_STAFF"]) {
+    const combos = candidateStage.enumValues.flatMap((s) => selectionDecision.enumValues.map((d) => ({ s, d, k: `${s}/${d}/${role}` })));
+    // Aturan: bisa mengedit <=> keputusan IN (...) DAN status LPK bukan WITHDRAWN. Tidak pernah bisa menghapus.
+    const bad = wrongKeys(combos.map((c) => c.k), (k) => {
+      const [s, d] = k.split("/");
+      return opsOf(EDIT_DECISIONS.includes(d) && s !== "WITHDRAWN");
+    });
     check(
-      `${who}: BISA mengubah stage kandidat di tahap apa pun (STUDYING -> READY dst.)`,
-      badStage.length === 0,
-      badStage.length ? `ditolak di: ${badStage.join(", ")}` : `${candidateStage.enumValues.length} tahap diperiksa`,
+      `${role}: hak edit = keputusan IN (${EDIT_DECISIONS.join(", ")}) dan LPK belum WITHDRAWN; tidak pernah bisa menghapus`,
+      bad.length === 0,
+      bad.length ? `salah di: ${bad.slice(0, 4).join(", ")}` : `${combos.length} kombinasi status x keputusan diperiksa, 6 operasi tiap kombinasi`,
     );
-    // Edit isi data: hanya di tahap yang diizinkan
-    const bad1 = wrongStages((s) => !TSK_EDITABLE.includes(s), who, NONE);
+    const noDecision = candidateStage.enumValues.filter((s) => ["NONE", "SHORTLISTED", "PASSED_TSK_INTERVIEW", "SUBMITTED_TO_CLIENT", "REJECTED"].some((d) => JSON.stringify(ops[`${s}/${d}/${role}`]) !== JSON.stringify(opsOf(false))));
     check(
-      `${who}: TIDAK bisa mengedit nama/data sensitif/dokumen di tahap selain ${TSK_EDITABLE.join(" / ")}`,
-      bad1.length === 0,
-      bad1.length ? `salah di: ${bad1.join(", ")}` : `${candidateStage.enumValues.length - TSK_EDITABLE.length} tahap ditolak (termasuk STUDYING & WITHDRAWN)`,
-    );
-    const bad2 = wrongStages((s) => TSK_EDITABLE.includes(s), who, FULL);
-    check(
-      `${who}: BISA mengedit data + data sensitif + dokumen (tambah & hapus) pada ${TSK_EDITABLE.join(" / ")}`,
-      bad2.length === 0,
-      bad2.length ? `salah di: ${bad2.join(", ")}` : "kandidat, candidate_private, dokumen",
-    );
-    // Stage + kolom lain sekaligus: dinilai dari stage baris LAMA
-    const badMixed = stagesOf(() => true).filter(
-      (s) => staged[`${s}/${who}/mixed`].stageAndData !== TSK_EDITABLE.includes(s),
+      `${role}: ditolak mengedit nama, candidate_private, dan dokumen sebelum keputusan PASSED_CLIENT_INTERVIEW`,
+      noDecision.length === 0,
+      "NONE, SHORTLISTED, PASSED_TSK_INTERVIEW, SUBMITTED_TO_CLIENT, REJECTED di semua status LPK",
     );
     check(
-      `${who}: mengubah stage BERSAMA kolom lain hanya lolos bila stage lama termasuk tahap yang boleh diedit`,
-      badMixed.length === 0,
-      badMixed.length ? `salah di: ${badMixed.join(", ")}` : "",
+      `${role}: bisa mengedit setelah keputusan PASSED_CLIENT_INTERVIEW (juga DOCUMENT_PROCESS, DEPARTED)`,
+      ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"].every((d) =>
+        ["STUDYING", "READY"].every((s) => JSON.stringify(ops[`${s}/${d}/${role}`]) === JSON.stringify(opsOf(true))),
+      ),
+    );
+    check(
+      `${role}: ditolak mengedit kandidat WITHDRAWN walau keputusannya PASSED_CLIENT_INTERVIEW`,
+      ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"].every((d) => JSON.stringify(ops[`WITHDRAWN/${d}/${role}`]) === JSON.stringify(opsOf(false))),
     );
   }
-  const only = (stage: string, role: string) => JSON.stringify(wrote[`${stage}/${role}`]);
   check(
-    "TSK bisa mengedit data di PASSED_CLIENT_INTERVIEW",
-    only("PASSED_CLIENT_INTERVIEW", "TSK_ADMIN") === JSON.stringify(FULL) && only("PASSED_CLIENT_INTERVIEW", "TSK_STAFF") === JSON.stringify(FULL),
+    "TSK tanpa baris keputusan: tidak bisa mengedit apa pun",
+    JSON.stringify(ops["tanpa-baris-keputusan"]) === JSON.stringify(opsOf(false)),
   );
-  check(
-    "TSK ditolak mengedit nama/data sensitif kandidat STUDYING",
-    only("STUDYING", "TSK_ADMIN") === JSON.stringify(NONE) && only("STUDYING", "TSK_STAFF") === JSON.stringify(NONE),
-  );
-  check(
-    "TSK ditolak mengedit di WITHDRAWN (walau urutan enum-nya paling akhir)",
-    only("WITHDRAWN", "TSK_ADMIN") === JSON.stringify(NONE) && only("WITHDRAWN", "TSK_STAFF") === JSON.stringify(NONE),
-  );
-  const badAdmin = wrongStages(() => true, "LPK_ADMIN", FULL);
-  check("Admin LPK: bisa mengedit data + dokumen di semua tahap", badAdmin.length === 0, badAdmin.join(", "));
-  const badSensei = wrongStages(() => true, "LPK_SENSEI", NONE);
-  const senseiStage = stagesOf(() => true).filter((s) => staged[`${s}/LPK_SENSEI/only`].stageOnly);
-  check(
-    "Sensei: tidak bisa mengedit data/dokumen maupun mengubah stage di tahap apa pun",
-    badSensei.length === 0 && senseiStage.length === 0,
-    [...badSensei, ...senseiStage].join(", "),
-  );
-  check(
-    "Admin LPK: bisa mengubah stage di semua tahap",
-    stagesOf(() => true).every((s) => staged[`${s}/LPK_ADMIN/only`].stageOnly && staged[`${s}/LPK_ADMIN/mixed`].stageAndData),
-  );
+  const badAdmin = wrongKeys(candidateStage.enumValues.map((s) => `${s}/-/LPK_ADMIN`), () => opsOf(true, true));
+  check("Admin LPK: bisa mengedit dan menghapus di semua status (WITHDRAWN pun)", badAdmin.length === 0, badAdmin.join(", "));
+  const badSensei = wrongKeys(candidateStage.enumValues.map((s) => `${s}/-/LPK_SENSEI`), () => opsOf(false));
+  check("Sensei: tidak bisa mengedit data maupun dokumen di status apa pun", badSensei.length === 0, badSensei.join(", "));
 
-  // --- C. Trigger database saja (RLS dilewati, app.role diisi) ---
-  const trig: Record<string, string | null> = {};
-  let seq = 0;
-  const uniq = () => `uji-${++seq}`; // update ke nilai yang sama bukan perubahan, jadi selalu pakai nilai baru
+  // --- D. Status LPK & persetujuan hanya milik LPK ---
+  const stg: Record<string, unknown> = {};
   await sandbox(async (tx) => {
-    await tx.insert(candidatePrivate).values({ candidateId: ready1.id, nationalId: NIK, phone: "0812" });
-    const at = async (stage: string) => {
-      await actAsSystem(tx);
-      await tx.update(candidates).set({ stage: stage as (typeof candidateStage.enumValues)[number] }).where(eq(candidates.id, ready1.id));
-      await actAsTriggerOnly(tx, "TSK_STAFF");
-    };
-    await at("READY");
-    trig.nameReady = await attempt(tx, (t) => t.update(candidates).set({ fullName: uniq() }).where(eq(candidates.id, ready1.id)));
-    trig.stageOnlyReady = await attempt(tx, (t) => t.update(candidates).set({ stage: "SHORTLISTED" }).where(eq(candidates.id, ready1.id)));
-    await at("READY");
-    trig.mixedReady = await attempt(tx, (t) => t.update(candidates).set({ stage: "SHORTLISTED", fullName: uniq() }).where(eq(candidates.id, ready1.id)));
-    trig.privReady = await attempt(tx, (t) => t.update(candidatePrivate).set({ phone: uniq() }).where(eq(candidatePrivate.candidateId, ready1.id)));
-    await at("PASSED_CLIENT_INTERVIEW");
-    trig.namePassed = await attempt(tx, (t) => t.update(candidates).set({ fullName: uniq() }).where(eq(candidates.id, ready1.id)));
-    trig.privPassed = await attempt(tx, (t) => t.update(candidatePrivate).set({ phone: uniq() }).where(eq(candidatePrivate.candidateId, ready1.id)));
-    await at("WITHDRAWN");
-    trig.nameWithdrawn = await attempt(tx, (t) => t.update(candidates).set({ fullName: uniq() }).where(eq(candidates.id, ready1.id)));
-    trig.privWithdrawn = await attempt(tx, (t) => t.update(candidatePrivate).set({ phone: uniq() }).where(eq(candidatePrivate.candidateId, ready1.id)));
-    await at("STUDYING");
+    // TSK dengan hak edit (keputusan PASSED_CLIENT_INTERVIEW) tetap tidak boleh menyentuh stage / persetujuan
+    await decide(tx, ready1.id, tsk.id, "PASSED_CLIENT_INTERVIEW");
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    stg.stageTsk = await attempt(tx, (t) => t.update(candidates).set({ stage: "WITHDRAWN" }).where(eq(candidates.id, ready1.id)));
+    stg.consentTsk = await attempt(tx, (t) => t.update(candidates).set({ dataConsentDate: null }).where(eq(candidates.id, ready1.id)));
+    stg.consentTsk2 = await attempt(tx, (t) => t.update(candidates).set({ dataConsentDate: "2020-01-01" }).where(eq(candidates.id, ready1.id)));
+    stg.hobbyTsk = await attempt(tx, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, ready1.id)));
+    // TSK tanpa hak edit: UPDATE stage tidak menyentuh baris sama sekali
+    stg.noRightsRows = (await rowsOf(tx, (t) => t.update(candidates).set({ stage: "READY" }).where(eq(candidates.id, studying1.id)).returning({ id: candidates.id }))).n;
+    // Trigger saja (RLS dilewati, app.role TSK)
+    await actAsTriggerOnly(tx, "TSK_STAFF");
+    stg.trigStage = await attempt(tx, (t) => t.update(candidates).set({ stage: "WITHDRAWN" }).where(eq(candidates.id, studying1.id)));
+    stg.trigHobby = await attempt(tx, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, studying1.id)));
     await actAsTriggerOnly(tx, "LPK_ADMIN");
-    trig.adminStudying = await attempt(tx, (t) => t.update(candidatePrivate).set({ phone: uniq() }).where(eq(candidatePrivate.candidateId, ready1.id)));
-  });
-  check(
-    "Trigger candidates: TSK di tahap READY hanya boleh mengubah stage (nama & stage+nama ditolak)",
-    trig.nameReady !== null && /hanya boleh mengubah tahap/.test(trig.nameReady) && trig.stageOnlyReady === null && trig.mixedReady !== null,
-    trig.nameReady ?? "",
-  );
-  check(
-    "Trigger candidate_private: TSK ditolak di READY & WITHDRAWN, diterima di PASSED_CLIENT_INTERVIEW (candidates: sama)",
-    trig.privReady !== null && /data sensitif/.test(trig.privReady) && trig.privWithdrawn !== null &&
-      trig.privPassed === null && trig.namePassed === null && trig.nameWithdrawn !== null,
-    trig.privReady ?? "",
-  );
-  check("Trigger: LPK_ADMIN tidak dibatasi (edit data sensitif di STUDYING)", trig.adminStudying === null, trig.adminStudying ?? "");
-
-  // --- D. Persetujuan berbagi data menentukan keterlihatan bagi TSK ---
-  const vis: Record<string, { cand: number; priv: number; docs: number }> = {};
-  const consentRules: Record<string, string | null> = {};
-  await sandbox(async (tx) => {
-    await tx.insert(candidatePrivate).values({ candidateId: ready1.id, nationalId: NIK });
-    await tx.insert(candidateDocuments).values(sampleDoc(ready1.id));
-    const tskSees = async (label: string) => {
-      await actAs(tx, tsk.id, "TSK_ADMIN");
-      vis[label] = {
-        cand: (await tx.select().from(candidates).where(eq(candidates.id, ready1.id))).length,
-        priv: (await tx.select().from(candidatePrivate).where(eq(candidatePrivate.candidateId, ready1.id))).length,
-        docs: (await tx.select().from(candidateDocuments).where(eq(candidateDocuments.candidateId, ready1.id))).length,
-      };
-    };
-    await tskSees("dengan persetujuan");
+    stg.trigAdmin = await attempt(tx, (t) => t.update(candidates).set({ stage: "READY" }).where(eq(candidates.id, studying1.id)));
+    // LPK_ADMIN mengubah ke semua status; sensei tidak bisa
+    for (const stage of candidateStage.enumValues) {
+      await actAs(tx, lpk1.id, "LPK_ADMIN");
+      stg[`admin-${stage}`] = (await rowsOf(tx, (t) => t.update(candidates).set({ stage }).where(eq(candidates.id, studying1.id)).returning({ id: candidates.id }))).n;
+      await actAs(tx, lpk1.id, "LPK_SENSEI");
+      stg[`sensei-${stage}`] = (await rowsOf(tx, (t) => t.update(candidates).set({ stage: stage === "READY" ? "STUDYING" : "READY" }).where(eq(candidates.id, studying1.id)).returning({ id: candidates.id }))).n;
+    }
+    // LPK boleh menyimpan READY tanpa persetujuan (database tidak menolaknya), tetapi TSK tidak melihatnya
+    await actAs(tx, lpk1.id, "LPK_ADMIN");
+    stg.readyNoConsent = await attempt(tx, (t) => t.insert(candidates).values({ organizationId: lpk1.id, fullName: "Ready Tanpa Persetujuan", stage: "READY" }));
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    stg.readyNoConsentSeen = (await tx.select().from(candidates).where(eq(candidates.fullName, "Ready Tanpa Persetujuan"))).length;
+    // LPK mencabut persetujuan: kandidat, keputusan, dan hak edit TSK langsung hilang
     await actAs(tx, lpk1.id, "LPK_ADMIN");
     await tx.update(candidates).set({ dataConsentDate: null }).where(eq(candidates.id, ready1.id));
-    await tskSees("persetujuan dicabut");
-    await actAs(tx, lpk1.id, "LPK_ADMIN");
-    const own = await tx.select().from(candidates).where(eq(candidates.id, ready1.id));
-    vis["pemilik"] = { cand: own.length, priv: (await tx.select().from(candidatePrivate).where(eq(candidatePrivate.candidateId, ready1.id))).length, docs: 0 };
-    await tx.update(candidates).set({ dataConsentDate: "2026-09-01" }).where(eq(candidates.id, ready1.id));
-    await tskSees("persetujuan diberikan lagi");
-
-    // LPK boleh menyimpan READY tanpa persetujuan (aturan lama dihapus), tetapi TSK tidak melihatnya
-    await actAs(tx, lpk1.id, "LPK_ADMIN");
-    consentRules.insertReady = await attempt(tx, (t) => t.insert(candidates).values({ organizationId: lpk1.id, fullName: "Ready Tanpa Persetujuan", stage: "READY" }));
     await actAs(tx, tsk.id, "TSK_ADMIN");
-    vis["ready tanpa persetujuan"] = {
-      cand: (await tx.select().from(candidates).where(eq(candidates.fullName, "Ready Tanpa Persetujuan"))).length,
-      priv: 0,
-      docs: 0,
-    };
-    // TSK tidak bisa menghapus tanggal persetujuan (akan menyembunyikan kandidat dari dirinya sendiri)
-    await actAsSystem(tx);
-    await tx.update(candidates).set({ stage: "PASSED_CLIENT_INTERVIEW" }).where(eq(candidates.id, ready1.id));
-    await actAs(tx, tsk.id, "TSK_ADMIN");
-    consentRules.tskClears = await attempt(tx, (t) => t.update(candidates).set({ dataConsentDate: null }).where(eq(candidates.id, ready1.id)));
+    stg.revokedCand = (await tx.select().from(candidates).where(eq(candidates.id, ready1.id))).length;
+    stg.revokedSel = (await tx.select().from(candidateSelections).where(eq(candidateSelections.candidateId, ready1.id))).length;
+    stg.revokedEdit = (await rowsOf(tx, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }))).n;
   });
   check(
-    "Persetujuan dicabut -> kandidat, data sensitif, dan dokumen langsung hilang dari TSK; kembali saat diberikan lagi",
-    JSON.stringify(vis["dengan persetujuan"]) === JSON.stringify({ cand: 1, priv: 1, docs: 1 }) &&
-      JSON.stringify(vis["persetujuan dicabut"]) === JSON.stringify({ cand: 0, priv: 0, docs: 0 }) &&
-      JSON.stringify(vis["persetujuan diberikan lagi"]) === JSON.stringify({ cand: 1, priv: 1, docs: 1 }),
-    Object.entries(vis).map(([k, v]) => `${k}: ${v.cand}/${v.priv}/${v.docs}`).join(" | "),
+    "TSK tidak bisa mengubah candidates.stage (walau punya hak edit), tanggal persetujuan, tetapi kolom data lain bisa",
+    [stg.stageTsk, stg.consentTsk, stg.consentTsk2].every((e) => typeof e === "string" && /hanya bisa diubah oleh LPK/.test(e)) && stg.hobbyTsk === null,
+    typeof stg.stageTsk === "string" ? stg.stageTsk : "",
   );
-  check("Pemilik (LPK) tetap melihat kandidat & data sensitifnya walau tanpa persetujuan", vis["pemilik"].cand === 1 && vis["pemilik"].priv === 1);
+  check("TSK tanpa hak edit: UPDATE stage tidak mengenai baris (0 baris)", stg.noRightsRows === 0);
   check(
-    "READY tanpa persetujuan: database menerima (aturan lama dihapus), tetapi TSK tidak melihatnya",
-    consentRules.insertReady === null && vis["ready tanpa persetujuan"].cand === 0,
-    consentRules.insertReady ?? "",
+    "Trigger (RLS dilewati): TSK ditolak mengubah stage, LPK_ADMIN tidak dibatasi",
+    typeof stg.trigStage === "string" && /hanya bisa diubah oleh LPK/.test(stg.trigStage) && stg.trigHobby === null && stg.trigAdmin === null,
   );
   check(
-    "TSK tidak bisa menghapus tanggal persetujuan kandidat",
-    consentRules.tskClears !== null && /row-level security/i.test(consentRules.tskClears),
-    consentRules.tskClears ?? "",
+    "Admin LPK bisa mengubah stage ke STUDYING / READY / WITHDRAWN; sensei tidak bisa",
+    candidateStage.enumValues.every((s) => stg[`admin-${s}`] === 1 && stg[`sensei-${s}`] === 0),
+  );
+  check(
+    "READY tanpa persetujuan: database menerima, tetapi TSK tidak melihatnya",
+    stg.readyNoConsent === null && stg.readyNoConsentSeen === 0,
+    typeof stg.readyNoConsent === "string" ? stg.readyNoConsent : "",
+  );
+  check(
+    "Persetujuan dicabut LPK: kandidat, keputusan TSK, dan hak edit langsung hilang dari TSK",
+    stg.revokedCand === 0 && stg.revokedSel === 0 && stg.revokedEdit === 0,
+    `kandidat ${stg.revokedCand}, keputusan ${stg.revokedSel}, edit ${stg.revokedEdit}`,
   );
 
-  // --- E. Hal yang tetap tidak boleh: tambah kandidat, pindah LPK, pindah dokumen ---
+  // --- E. Dua TSK: keputusan terpisah per TSK; LPK membaca keputusan semua TSK mitranya ---
+  const iso: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const [selA] = await decide(tx, ready1.id, tsk.id, "SHORTLISTED");
+    const [selB] = await decide(tx, ready1.id, tskB, "PASSED_CLIENT_INTERVIEW");
+    await tx.insert(candidatePrivate).values({ candidateId: ready1.id, nationalId: NIK, phone: "0812" });
+
+    const sees = async (label: string, orgId: string, role: string | null) => {
+      await actAs(tx, orgId, role);
+      iso[label] = {
+        sel: (await tx.select().from(candidateSelections)).filter((s) => s.candidateId === ready1.id).map((s) => `${s.tskOrgId === tsk.id ? "A" : s.tskOrgId === tskB ? "B" : "?"}:${s.decision}`).sort(),
+      };
+    };
+    await sees("A", tsk.id, "TSK_ADMIN");
+    await sees("B", tskB, "TSK_STAFF");
+    await sees("lpk-admin", lpk1.id, "LPK_ADMIN");
+    await sees("lpk-sensei", lpk1.id, "LPK_SENSEI");
+    await sees("lpk2", lpk2.id, "LPK_ADMIN");
+    await sees("lpk-null", lpk1.id, null);
+
+    // TSK A tidak bisa mengubah / memalsukan keputusan & catatan TSK B
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    iso.aUpdatesB = (await rowsOf(tx, (t) => t.update(candidateSelections).set({ decision: "REJECTED" }).where(eq(candidateSelections.id, selB.id)).returning({ id: candidateSelections.id }))).n;
+    iso.aInsertsAsB = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: studying1.id, tskOrgId: tskB, decision: "SHORTLISTED" }));
+    // Hak edit mengikuti keputusan TSK SENDIRI: TSK B punya PASSED_CLIENT_INTERVIEW, TSK A belum
+    iso.aEdit = (await rowsOf(tx, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }))).n;
+    iso.aEditPriv = (await rowsOf(tx, (t) => t.update(candidatePrivate).set({ phone: uniq() }).where(eq(candidatePrivate.candidateId, ready1.id)).returning({ id: candidatePrivate.candidateId }))).n;
+    await actAs(tx, tskB, "TSK_STAFF");
+    iso.bEdit = (await rowsOf(tx, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }))).n;
+    iso.bEditPriv = (await rowsOf(tx, (t) => t.update(candidatePrivate).set({ phone: uniq() }).where(eq(candidatePrivate.candidateId, ready1.id)).returning({ id: candidatePrivate.candidateId }))).n;
+    iso.bReadsA = (await tx.select().from(candidateSelections).where(eq(candidateSelections.id, selA.id))).length;
+
+    // LPK tidak bisa menulis keputusan maupun catatan
+    for (const role of ["LPK_ADMIN", "LPK_SENSEI"]) {
+      await actAs(tx, lpk1.id, role);
+      iso[`${role}-insert`] = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: studying1.id, tskOrgId: tsk.id, decision: "SHORTLISTED" }));
+      iso[`${role}-update`] = (await rowsOf(tx, (t) => t.update(candidateSelections).set({ decision: "REJECTED" }).where(eq(candidateSelections.id, selA.id)).returning({ id: candidateSelections.id }))).n;
+      iso[`${role}-delete`] = await attempt(tx, (t) => t.delete(candidateSelections).where(eq(candidateSelections.id, selA.id)));
+    }
+
+    // Kemitraan TSK A dihentikan: keputusan hilang dari pandangannya, tidak bisa menulis/mengedit
+    await actAsSystem(tx);
+    await tx.update(partnerships).set({ active: false }).where(and(eq(partnerships.lpkId, lpk1.id), eq(partnerships.tskId, tsk.id)));
+    await decide(tx, ready1.id, tsk.id, "PASSED_CLIENT_INTERVIEW");
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    // (TSK A masih bermitra dengan LPK Surabaya, jadi hanya hitung keputusan atas kandidat LPK Bandung)
+    const lpk1Ids = all.filter((c) => c.organizationId === lpk1.id).map((c) => c.id);
+    iso.inactiveSees = (await tx.select().from(candidateSelections)).filter((s) => lpk1Ids.includes(s.candidateId)).length;
+    iso.stillSeesLpk2 = (await tx.select().from(candidateSelections)).some((s) => !lpk1Ids.includes(s.candidateId));
+    iso.inactiveInsert = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: studying1.id, tskOrgId: tsk.id, decision: "SHORTLISTED" }));
+    iso.inactiveEdit = (await rowsOf(tx, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }))).n;
+  });
+  const A = iso.A as { sel: string[] };
+  const B = iso.B as { sel: string[] };
+  const LA = iso["lpk-admin"] as { sel: string[] };
+  const LS = iso["lpk-sensei"] as { sel: string[] };
+  check(
+    "TSK A hanya melihat keputusan miliknya; TSK B hanya miliknya",
+    JSON.stringify(A) === JSON.stringify({ sel: ["A:SHORTLISTED"] }) &&
+      JSON.stringify(B) === JSON.stringify({ sel: ["B:PASSED_CLIENT_INTERVIEW"] }) && iso.bReadsA === 0,
+    `A: ${A.sel} | B: ${B.sel}`,
+  );
+  check(
+    "TSK A tidak bisa mengubah keputusan TSK B atau menulis keputusan atas nama TSK B",
+    iso.aUpdatesB === 0 && typeof iso.aInsertsAsB === "string" && /row-level security/.test(iso.aInsertsAsB),
+  );
+  check(
+    "Hak edit mengikuti keputusan TSK SENDIRI: TSK B (PASSED_CLIENT_INTERVIEW) bisa mengedit, TSK A (SHORTLISTED) tidak",
+    iso.aEdit === 0 && iso.aEditPriv === 0 && iso.bEdit === 1 && iso.bEditPriv === 1,
+    `A: ${iso.aEdit}/${iso.aEditPriv}, B: ${iso.bEdit}/${iso.bEditPriv}`,
+  );
+  check(
+    "LPK (admin & sensei) membaca keputusan SEMUA TSK mitranya",
+    JSON.stringify(LA) === JSON.stringify({ sel: ["A:SHORTLISTED", "B:PASSED_CLIENT_INTERVIEW"] }) &&
+      JSON.stringify(LS) === JSON.stringify({ sel: ["A:SHORTLISTED", "B:PASSED_CLIENT_INTERVIEW"] }),
+    `admin: ${LA.sel}`,
+  );
+  check(
+    "LPK lain dan peran null tidak melihat keputusan",
+    JSON.stringify(iso.lpk2) === JSON.stringify({ sel: [] }) && JSON.stringify(iso["lpk-null"]) === JSON.stringify({ sel: [] }),
+  );
+  check(
+    "LPK tidak bisa menulis candidate_selections (insert ditolak, update 0 baris, delete ditolak)",
+    ["LPK_ADMIN", "LPK_SENSEI"].every(
+      (r) =>
+        typeof iso[`${r}-insert`] === "string" && /row-level security/.test(iso[`${r}-insert`] as string) &&
+        iso[`${r}-update`] === 0 &&
+        typeof iso[`${r}-delete`] === "string" && /permission denied/.test(iso[`${r}-delete`] as string),
+    ),
+  );
+  check(
+    "Kemitraan TSK dihentikan: keputusan tidak terlihat, tidak bisa menulis keputusan atau mengedit walau keputusannya PASSED_CLIENT_INTERVIEW",
+    iso.inactiveSees === 0 && typeof iso.inactiveInsert === "string" && iso.inactiveEdit === 0 && iso.stillSeesLpk2 === true,
+    "keputusan atas kandidat LPK Surabaya (mitra yang masih aktif) tetap terlihat",
+  );
+
+  // --- E2. Catatan TSK (candidate_notes): TSK_ONLY vs SHARED_WITH_LPK ---
+  const nt: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const mk = async (tskOrgId: string, body: string, visibility?: "TSK_ONLY" | "SHARED_WITH_LPK") =>
+      (await tx.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId, authorId: tskAdminUser.id, body, visibility }).returning())[0];
+    const onlyA = await mk(tsk.id, "rahasia A"); // visibility tidak diisi -> default
+    nt.defaultVisibility = onlyA.visibility;
+    const sharedA = await mk(tsk.id, "dibagikan A", "SHARED_WITH_LPK");
+    const sharedB = await mk(tskB, "dibagikan B", "SHARED_WITH_LPK");
+    await mk(tskB, "rahasia B", "TSK_ONLY");
+    const bodies = async (label: string, orgId: string, role: string | null) => {
+      await actAs(tx, orgId, role);
+      nt[label] = (await tx.select().from(candidateNotes)).filter((n) => n.candidateId === ready1.id).map((n) => n.body).sort();
+    };
+    const readAll = async () => {
+      await bodies("A-admin", tsk.id, "TSK_ADMIN");
+      await bodies("A-staff", tsk.id, "TSK_STAFF");
+      await bodies("B", tskB, "TSK_ADMIN");
+      await bodies("lpk-admin", lpk1.id, "LPK_ADMIN");
+      await bodies("lpk-sensei", lpk1.id, "LPK_SENSEI");
+      await bodies("lpk-null", lpk1.id, null);
+      await bodies("lpk2", lpk2.id, "LPK_ADMIN");
+      await bodies("lpk3", lpk3.id, "LPK_ADMIN");
+    };
+    await readAll();
+
+    // TSK (rekan satu organisasi) mengubah SHARED -> TSK_ONLY: LPK tidak bisa membacanya lagi
+    await actAs(tx, tsk.id, "TSK_STAFF");
+    nt.hide = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ visibility: "TSK_ONLY" }).where(eq(candidateNotes.id, sharedA.id)).returning({ id: candidateNotes.id }))).n;
+    nt.hideEdit = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ body: "dibagikan A (revisi)" }).where(eq(candidateNotes.id, sharedA.id)).returning({ id: candidateNotes.id }))).n;
+    await bodies("lpk-admin-after-hide", lpk1.id, "LPK_ADMIN");
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    nt.share = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ visibility: "SHARED_WITH_LPK" }).where(eq(candidateNotes.id, sharedA.id)).returning({ id: candidateNotes.id }))).n;
+    await bodies("lpk-admin-after-share", lpk1.id, "LPK_ADMIN");
+
+    // Perubahan visibility dicatat di audit_logs (dari, ke, siapa) di log LPK pemilik kandidat
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    nt.auditInsert = await attempt(tx, (t) =>
+      t.insert(auditLogs).values({
+        organizationId: lpk1.id, actorOrgId: tsk.id, candidateId: ready1.id, actorUserId: tskAdminUser.id,
+        action: "note.visibility_change", entity: "candidate_note", entityId: sharedA.id,
+        before: { visibility: "SHARED_WITH_LPK" }, after: { visibility: "TSK_ONLY" },
+      }),
+    );
+    await actAs(tx, lpk1.id, "LPK_ADMIN");
+    const seenAudit = (await tx.select().from(auditLogs).where(eq(auditLogs.entityId, sharedA.id)))[0];
+    nt.auditSeen = seenAudit ? `${JSON.stringify(seenAudit.before)}->${JSON.stringify(seenAudit.after)} oleh ${seenAudit.actorUserId === tskAdminUser.id ? "TSK" : "?"}` : null;
+
+    // TSK B tidak bisa menyentuh catatan TSK A, tetapi bisa menulis catatannya sendiri
+    await actAs(tx, tskB, "TSK_STAFF");
+    nt.bUpdatesA = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ body: "diubah B" }).where(eq(candidateNotes.id, onlyA.id)).returning({ id: candidateNotes.id }))).n;
+    nt.bAsA = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, body: "titipan" }));
+    nt.bOwn = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tskB, authorId: null, body: "catatan B baru" }));
+    // Kunci catatan tidak bisa diubah; kandidat yang tidak terlihat tidak bisa diberi catatan; tidak ada DELETE
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    nt.moveCand = await attempt(tx, (t) => t.update(candidateNotes).set({ candidateId: studying1.id }).where(eq(candidateNotes.id, onlyA.id)));
+    nt.moveOrg = await attempt(tx, (t) => t.update(candidateNotes).set({ tskOrgId: tskB }).where(eq(candidateNotes.id, onlyA.id)));
+    nt.changeAuthor = await attempt(tx, (t) => t.update(candidateNotes).set({ authorId: null }).where(eq(candidateNotes.id, onlyA.id)));
+    nt.hiddenCand = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: hidden.id, tskOrgId: tsk.id, body: "x" }));
+    nt.outsiderCand = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: outsider.id, tskOrgId: tsk.id, body: "x" }));
+    nt.tskDelete = await attempt(tx, (t) => t.delete(candidateNotes).where(eq(candidateNotes.id, onlyA.id)));
+
+    // LPK tidak bisa menulis / mengubah / menghapus
+    for (const role of ["LPK_ADMIN", "LPK_SENSEI"]) {
+      await actAs(tx, lpk1.id, role);
+      nt[`${role}-insert`] = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, body: "dari LPK", visibility: "SHARED_WITH_LPK" }));
+      nt[`${role}-update`] = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ body: "diubah LPK" }).where(eq(candidateNotes.id, sharedB.id)).returning({ id: candidateNotes.id }))).n;
+      nt[`${role}-visibility`] = (await rowsOf(tx, (t) => t.update(candidateNotes).set({ visibility: "TSK_ONLY" }).where(eq(candidateNotes.id, sharedB.id)).returning({ id: candidateNotes.id }))).n;
+      nt[`${role}-delete`] = await attempt(tx, (t) => t.delete(candidateNotes).where(eq(candidateNotes.id, sharedB.id)));
+    }
+
+    // Kemitraan TSK A dihentikan: catatan A ikut hilang dari LPK (catatan TSK B yang masih bermitra tetap terlihat)
+    await actAsSystem(tx);
+    await tx.update(partnerships).set({ active: false }).where(and(eq(partnerships.lpkId, lpk1.id), eq(partnerships.tskId, tsk.id)));
+    await bodies("lpk-admin-inactive", lpk1.id, "LPK_ADMIN");
+    await bodies("A-inactive", tsk.id, "TSK_ADMIN");
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    nt.inactiveInsert = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, body: "x" }));
+    await actAsSystem(tx);
+    await tx.update(partnerships).set({ active: true }).where(and(eq(partnerships.lpkId, lpk1.id), eq(partnerships.tskId, tsk.id)));
+
+    // LPK mencabut persetujuan data: TSK tidak lagi melihat/menulis catatan atas kandidat itu
+    await actAs(tx, lpk1.id, "LPK_ADMIN");
+    await tx.update(candidates).set({ dataConsentDate: null }).where(eq(candidates.id, ready1.id));
+    await bodies("A-revoked", tsk.id, "TSK_ADMIN");
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    nt.revokedInsert = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, body: "x" }));
+  });
+  const both = ["dibagikan A", "rahasia A"];
+  check(
+    "Catatan baru tanpa visibility eksplisit = TSK_ONLY (default)",
+    nt.defaultVisibility === "TSK_ONLY",
+  );
+  check(
+    "TSK membaca semua catatan organisasinya (juga milik rekan, admin & staf); TSK lain hanya catatannya sendiri",
+    JSON.stringify(nt["A-admin"]) === JSON.stringify(both) && JSON.stringify(nt["A-staff"]) === JSON.stringify(both) &&
+      JSON.stringify(nt.B) === JSON.stringify(["dibagikan B", "rahasia B"]),
+    `A: ${nt["A-admin"]} | B: ${nt.B}`,
+  );
+  check(
+    "Catatan TSK_ONLY tidak terbaca LPK_ADMIN maupun LPK_SENSEI (hanya SHARED yang terbaca LPK_ADMIN)",
+    !(nt["lpk-admin"] as string[]).some((b) => b.startsWith("rahasia")) &&
+      JSON.stringify(nt["lpk-admin"]) === JSON.stringify(["dibagikan A", "dibagikan B"]) &&
+      JSON.stringify(nt["lpk-sensei"]) === JSON.stringify([]) && JSON.stringify(nt["lpk-null"]) === JSON.stringify([]),
+    `LPK_ADMIN: ${nt["lpk-admin"]} | sensei: ${(nt["lpk-sensei"] as string[]).length} catatan`,
+  );
+  check(
+    "Catatan SHARED_WITH_LPK tidak terbaca LPK lain yang bukan pemilik kandidat, maupun TSK lain",
+    JSON.stringify(nt.lpk2) === JSON.stringify([]) && JSON.stringify(nt.lpk3) === JSON.stringify([]) &&
+      !(nt.B as string[]).includes("dibagikan A") && !(nt["A-admin"] as string[]).includes("dibagikan B"),
+  );
+  check(
+    "TSK mengubah SHARED_WITH_LPK -> TSK_ONLY: LPK tidak bisa membacanya lagi; dibagikan lagi: terbaca lagi",
+    nt.hide === 1 && nt.hideEdit === 1 && nt.share === 1 &&
+      JSON.stringify(nt["lpk-admin-after-hide"]) === JSON.stringify(["dibagikan B"]) &&
+      JSON.stringify(nt["lpk-admin-after-share"]) === JSON.stringify(["dibagikan A (revisi)", "dibagikan B"]),
+    `setelah disembunyikan: ${nt["lpk-admin-after-hide"]}`,
+  );
+  check(
+    "Perubahan visibility bisa dicatat TSK di audit_logs LPK pemilik (dari, ke, siapa) dan terbaca LPK",
+    nt.auditInsert === null && nt.auditSeen === '{"visibility":"SHARED_WITH_LPK"}->{"visibility":"TSK_ONLY"} oleh TSK',
+    String(nt.auditSeen),
+  );
+  check(
+    "LPK (admin & sensei) ditolak INSERT, UPDATE (isi maupun visibility), dan DELETE pada candidate_notes",
+    ["LPK_ADMIN", "LPK_SENSEI"].every(
+      (r) =>
+        typeof nt[`${r}-insert`] === "string" && /row-level security/.test(nt[`${r}-insert`] as string) &&
+        nt[`${r}-update`] === 0 && nt[`${r}-visibility`] === 0 &&
+        typeof nt[`${r}-delete`] === "string" && /permission denied/.test(nt[`${r}-delete`] as string),
+    ),
+  );
+  check(
+    "TSK B tidak bisa mengubah catatan TSK A atau menulis atas nama TSK A; catatannya sendiri bisa ditulis",
+    nt.bUpdatesA === 0 && typeof nt.bAsA === "string" && /row-level security/.test(nt.bAsA) && nt.bOwn === null,
+  );
+  check(
+    "Kandidat/TSK/penulis catatan tidak bisa diganti; tidak ada DELETE untuk TSK; kandidat tak terlihat tidak bisa diberi catatan",
+    [nt.moveCand, nt.moveOrg, nt.changeAuthor].every((e) => typeof e === "string" && /tidak bisa diubah/.test(e)) &&
+      typeof nt.tskDelete === "string" && /permission denied/.test(nt.tskDelete) &&
+      [nt.hiddenCand, nt.outsiderCand].every((e) => typeof e === "string" && /row-level security/.test(e)),
+  );
+  check(
+    "Kemitraan dinonaktifkan: catatan TSK itu hilang dari LPK (catatan TSK mitra aktif tetap), dan TSK-nya tidak bisa membaca/menulis",
+    JSON.stringify(nt["lpk-admin-inactive"]) === JSON.stringify(["dibagikan B"]) &&
+      (nt["A-inactive"] as string[]).length === 0 && typeof nt.inactiveInsert === "string",
+    `LPK melihat: ${nt["lpk-admin-inactive"]}`,
+  );
+  check(
+    "Persetujuan data dicabut: TSK tidak lagi melihat maupun menulis catatan atas kandidat itu",
+    (nt["A-revoked"] as string[]).length === 0 && typeof nt.revokedInsert === "string",
+  );
+
+  // --- F. Audit: pelaku tercatat (actor_org_id); LPK melihat aksi TSK atas kandidatnya ---
+  const aud: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const row = (over: Partial<typeof auditLogs.$inferInsert>) => ({
+      organizationId: lpk1.id,
+      actorOrgId: tsk.id,
+      candidateId: ready1.id,
+      actorUserId: tskAdminUser.id,
+      action: "candidate.update",
+      entity: "candidate",
+      entityId: ready1.id,
+      before: { hobby: "a" },
+      after: { hobby: "b" },
+      ...over,
+    });
+    await actAs(tx, tsk.id, "TSK_ADMIN");
+    aud.ok = await attempt(tx, (t) => t.insert(auditLogs).values(row({ action: "document.download" })));
+    aud.own = await attempt(tx, (t) => t.insert(auditLogs).values(row({ organizationId: tsk.id, actorOrgId: tsk.id, candidateId: undefined, action: "auth.login", entity: "user", entityId: tskAdminUser.id })));
+    aud.spoofActor = await attempt(tx, (t) => t.insert(auditLogs).values(row({ actorOrgId: lpk1.id })));
+    aud.noActor = await attempt(tx, (t) => t.insert(auditLogs).values(row({ actorOrgId: null })));
+    aud.noCandidate = await attempt(tx, (t) => t.insert(auditLogs).values(row({ candidateId: undefined })));
+    aud.wrongOrg = await attempt(tx, (t) => t.insert(auditLogs).values(row({ organizationId: lpk2.id })));
+    aud.hiddenCand = await attempt(tx, (t) => t.insert(auditLogs).values(row({ candidateId: hidden.id })));
+    aud.outsiderCand = await attempt(tx, (t) => t.insert(auditLogs).values(row({ organizationId: lpk3.id, candidateId: outsider.id })));
+    const readCount = async (orgId: string, role: string) => {
+      await actAs(tx, orgId, role);
+      return (await tx.select().from(auditLogs).where(eq(auditLogs.entityId, ready1.id))).filter((r) => r.actorOrgId === tsk.id).length;
+    };
+    aud.lpkSees = await readCount(lpk1.id, "LPK_ADMIN");
+    aud.tskSees = await readCount(tsk.id, "TSK_ADMIN");
+    aud.tskBSees = await readCount(tskB, "TSK_ADMIN");
+    aud.lpk2Sees = await readCount(lpk2.id, "LPK_ADMIN");
+  });
+  check(
+    "Audit: TSK mencatat aksinya atas kandidat mitra di log LPK pemilik, dengan actor_org_id = TSK-nya",
+    aud.ok === null && aud.own === null,
+    typeof aud.ok === "string" ? aud.ok : "",
+  );
+  check(
+    "Audit: tidak bisa memalsukan pelaku, mengosongkan actor_org_id, atau menulis ke log organisasi/kandidat yang tidak terlihat",
+    [aud.spoofActor, aud.noActor, aud.noCandidate, aud.wrongOrg, aud.hiddenCand, aud.outsiderCand].every(
+      (e) => typeof e === "string" && /row-level security/.test(e),
+    ),
+    Object.entries(aud).filter(([, v]) => v === null).map(([k]) => k).join(","),
+  );
+  check(
+    "Audit: LPK pemilik dan TSK pelaku melihat aksi itu; TSK lain dan LPK lain tidak",
+    aud.lpkSees === 1 && aud.tskSees === 1 && aud.tskBSees === 0 && aud.lpk2Sees === 0,
+    `LPK ${aud.lpkSees}, TSK ${aud.tskSees}, TSK lain ${aud.tskBSees}, LPK lain ${aud.lpk2Sees}`,
+  );
+
+  // --- G. Hal lain yang tetap: tambah/hapus kandidat, pindah LPK, pindah dokumen, batas dokumen ---
   const senseiInsertErr = await inRollback(() =>
     withTenant(lpk1.id, "LPK_SENSEI", (tx) => tx.insert(candidates).values({ organizationId: lpk1.id, fullName: "Dari Sensei" }), db),
   );
@@ -620,23 +933,21 @@ async function main() {
     withTenant(tsk.id, "TSK_ADMIN", (tx) => tx.insert(candidates).values({ organizationId: lpk1.id, fullName: "Dari TSK" }), db),
   );
   check("TSK: tidak bisa menambah kandidat", tskInsertErr !== null && /row-level security/i.test(tskInsertErr), tskInsertErr ?? "");
-  const tskDeleteErr = await withTenant(tsk.id, "TSK_ADMIN", (tx) => tx.delete(candidates).where(eq(candidates.id, ready1.id)).returning(), db);
-  check("TSK: tidak bisa menghapus kandidat", tskDeleteErr.length === 0);
-
-  const escapes: Record<string, string | null> = {};
+  const escapes: Record<string, unknown> = {};
   await sandbox(async (tx) => {
-    await tx.update(candidates).set({ stage: "PASSED_CLIENT_INTERVIEW" }).where(eq(candidates.id, ready1.id));
+    await decide(tx, ready1.id, tsk.id, "DEPARTED"); // TSK punya hak edit penuh
     await tx.insert(candidateDocuments).values(sampleDoc(ready1.id));
     const otherLpk1 = all.find((c) => c.organizationId === lpk1.id && c.id !== ready1.id)!;
     await actAs(tx, tsk.id, "TSK_ADMIN");
+    escapes.tskDeleteCand = (await rowsOf(tx, (t) => t.delete(candidates).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }))).n;
     escapes.toLpk2 = await attempt(tx, (t) => t.update(candidates).set({ organizationId: lpk2.id }).where(eq(candidates.id, ready1.id)));
     await actAs(tx, lpk1.id, "LPK_ADMIN");
     escapes.docMove = await attempt(tx, (t) => t.update(candidateDocuments).set({ candidateId: otherLpk1.id }).where(eq(candidateDocuments.candidateId, ready1.id)));
   });
-  check("TSK: tidak bisa memindahkan kandidat ke LPK mitra lain", escapes.toLpk2 !== null && /dipindahkan|row-level security/.test(escapes.toLpk2), escapes.toLpk2 ?? "");
-  check("Dokumen tidak bisa dipindahkan ke kandidat lain", escapes.docMove !== null && /dipindahkan/.test(escapes.docMove), escapes.docMove ?? "");
+  check("TSK (walau punya hak edit): tidak bisa menghapus kandidat", escapes.tskDeleteCand === 0);
+  check("TSK: tidak bisa memindahkan kandidat ke LPK mitra lain", typeof escapes.toLpk2 === "string" && /dipindahkan|row-level security/.test(escapes.toLpk2), String(escapes.toLpk2 ?? ""));
+  check("Dokumen tidak bisa dipindahkan ke kandidat lain", typeof escapes.docMove === "string" && /dipindahkan/.test(escapes.docMove), String(escapes.docMove ?? ""));
 
-  // --- F. Batas dokumen dijaga database ---
   const docRules: Record<string, string | null> = {};
   await sandbox(async (tx) => {
     await actAs(tx, lpk1.id, "LPK_ADMIN");
@@ -650,28 +961,6 @@ async function main() {
     "Dokumen: PDF/JPG/PNG sampai 10 MB diterima; tipe lain, >10 MB, dan 0 byte ditolak",
     docRules.valid === null && [docRules.html, docRules.tooBig, docRules.empty].every((e) => e !== null && /check/i.test(e)),
     docRules.valid ?? "",
-  );
-
-  // --- G. Audit: aksi TSK tercatat atas nama organisasinya sendiri ---
-  const auditRes: Record<string, string | null> = {};
-  await sandbox(async (tx) => {
-    await actAs(tx, tsk.id, "TSK_ADMIN");
-    const row = (organizationId: string, action: string) => ({
-      organizationId,
-      actorUserId: tskAdminUser.id,
-      action,
-      entity: "candidate",
-      entityId: ready1.id,
-      before: { stage: "STUDYING" },
-      after: { stage: "READY" },
-    });
-    auditRes.own = await attempt(tx, (t) => t.insert(auditLogs).values([row(tsk.id, "candidate.change_stage"), row(tsk.id, "document.download")]));
-    auditRes.forged = await attempt(tx, (t) => t.insert(auditLogs).values(row(lpk1.id, "candidate.change_stage")));
-  });
-  check(
-    "Audit log: TSK bisa mencatat ubah tahap & unduh dokumen untuk organisasinya, tidak untuk organisasi lain",
-    auditRes.own === null && auditRes.forged !== null && /row-level security/i.test(auditRes.forged),
-    auditRes.own ?? "",
   );
 
   await pool.end();

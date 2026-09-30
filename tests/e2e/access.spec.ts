@@ -12,7 +12,7 @@ test("LPK hanya melihat 12 kandidatnya sendiri", async ({ page }) => {
   await expect(page.getByTestId("visible-count")).toHaveText("12");
 });
 
-// TSK melihat semua tahap dari LPK mitra (12 + 12 = 24), kecuali 1 kandidat demo yang sengaja
+// TSK melihat semua status LPK dari LPK mitra (12 + 12 = 24), kecuali 1 kandidat demo yang sengaja
 // belum punya tanggal persetujuan berbagi data (lihat NO_CONSENT di scripts/seed.ts) -> 23.
 test("TSK melihat 23 kandidat dari 2 LPK mitra (1 tanpa persetujuan data tidak terlihat)", async ({ page }) => {
   await login(page, "tsk.admin@hashi.test");

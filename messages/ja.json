@@ -177,13 +177,38 @@
   "stages": {
     "STUDYING": "学習中",
     "READY": "選考準備完了",
+    "WITHDRAWN": "辞退"
+  },
+  "decisions": {
+    "NONE": "未判断",
     "SHORTLISTED": "候補リスト入り",
     "PASSED_TSK_INTERVIEW": "支援機関面接合格",
     "SUBMITTED_TO_CLIENT": "企業へ推薦済み",
     "PASSED_CLIENT_INTERVIEW": "企業面接合格",
     "DOCUMENT_PROCESS": "書類手続き中",
     "DEPARTED": "渡航済み",
-    "WITHDRAWN": "辞退"
+    "REJECTED": "見送り"
+  },
+  "notes": {
+    "title": "面談メモ",
+    "lpkTitle": "登録支援機関からの面談メモ",
+    "empty": "メモはまだありません。",
+    "add": "メモを追加",
+    "body": "メモ内容",
+    "save": "メモを保存",
+    "visibility": "閲覧範囲",
+    "tskOnly": "登録支援機関のみ",
+    "shared": "LPKに共有",
+    "labelTskOnly": "貴機関内のみ閲覧可能",
+    "labelShared": "候補者の所属LPKにも共有中",
+    "makeShared": "LPKに共有する",
+    "makeTskOnly": "貴機関内のみに戻す",
+    "author": "作成者：{name}",
+    "shareWarning": "共有したメモはLPKの管理者が閲覧できます。LPKに知らせるべきでない内容は共有しないでください。",
+    "errors": {
+      "empty": "メモを入力してください。",
+      "tooLong": "メモが長すぎます。"
+    }
   },
   "roles": {
     "SUPER_ADMIN": "システム管理者",

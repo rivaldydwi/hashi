@@ -43,6 +43,20 @@
       "when": 1790750466107,
       "tag": "0005_candidate_profile_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790752330200,
+      "tag": "0006_candidate_selections",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790752330736,
+      "tag": "0007_candidate_selections_rls",
+      "breakpoints": true
     }
   ]
 }

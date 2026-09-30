@@ -63,16 +63,26 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   untuk login, super admin, worker terjadwal, seed. Aplikasi terhubung sebagai `hashi_app` (tanpa BYPASSRLS).
   `role` mengisi `app.role` untuk policy RLS; `null` = peran tidak dikenal (ditolak untuk data sensitif dan
   semua penulisan kandidat). Pakai `null` hanya untuk tabel yang tidak bergantung peran (mis. baris `users`).
-- **Hak akses kandidat** (dijaga RLS + trigger, lihat `drizzle/0005_candidate_profile_rls.sql`):
+- **Hak akses kandidat** (RLS + trigger, lihat `drizzle/0005…` dan `drizzle/0007_candidate_selections_rls.sql`):
+  status LPK dan keputusan TSK DIPISAH. `candidates.stage` (STUDYING/READY/WITHDRAWN) hanya diisi LPK_ADMIN.
+  Keputusan TSK ada di `candidate_selections` (unik per kandidat × TSK; NONE, SHORTLISTED, …, DEPARTED, REJECTED),
+  Tiap TSK hanya melihat/menulis baris `tsk_org_id`-nya sendiri; LPK boleh membaca keputusan dan tidak boleh menulis.
+  Catatan TSK ada di `candidate_notes` (bukan kolom di candidate_selections): `visibility` TSK_ONLY (default) atau
+  SHARED_WITH_LPK. Semua peran TSK satu organisasi membaca/mengubah catatan organisasinya; LPK_ADMIN pemilik hanya
+  membaca yang SHARED_WITH_LPK dari TSK dengan kemitraan AKTIF; LPK_SENSEI tidak pernah membaca; tidak ada DELETE
+  untuk siapa pun; LPK tidak bisa menulis. Perubahan visibility WAJIB dicatat aplikasi di `audit_logs`
+  (`note.visibility_change`, before/after, `candidateId`, `organizationId` = LPK pemilik).
   LPK_ADMIN baca+tulis semua; LPK_SENSEI hanya profil dasar (tanpa `candidate_private`, keluarga, dokumen).
-  TSK mitra membaca kandidat di SEMUA tahap, tetapi hanya yang `data_consent_date IS NOT NULL` (tanpa itu hanya
-  LPK pemilik yang melihat). TSK boleh mengubah kolom `stage` di tahap apa pun (lewat server action khusus
-  `changeStage` yang hanya menyentuh stage + audit dari/ke/siapa); kolom lain, `candidate_private`, dan dokumen
-  HANYA saat stage IN (`PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, `DEPARTED`) — daftar IN eksplisit, JANGAN
-  `stage >= …` (WITHDRAWN paling akhir di enum). Dijaga trigger BEFORE UPDATE (`candidates`, `candidate_private`)
-  yang menilai stage baris LAMA. Form tambah kandidat mewajibkan tanggal persetujuan (aturan di aplikasi;
-  database tidak lagi menolak READY tanpa persetujuan — kandidat itu hanya tak terlihat TSK).
-  Seed sengaja menyisakan 1 kandidat tanpa persetujuan (`NO_CONSENT` di `scripts/seed.ts`), jadi TSK demo melihat 23 dari 24.
+  TSK mitra membaca kandidat di SEMUA status, hanya yang `data_consent_date IS NOT NULL`. TSK mengedit isi data
+  (`candidates`, `candidate_private`, tabel anak: INSERT/UPDATE, tanpa DELETE) HANYA jika keputusan MILIKNYA IN
+  (`PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, `DEPARTED`) dan `stage <> 'WITHDRAWN'` — daftar IN eksplisit,
+  JANGAN `>=` pada enum. TSK tidak bisa mengubah `stage`/`data_consent_date` (trigger kecil, karena RLS tak bisa
+  membandingkan nilai lama vs baru). Form tambah kandidat mewajibkan tanggal persetujuan (aturan aplikasi;
+  database menerima READY tanpa persetujuan — kandidat itu hanya tak terlihat TSK). Seed menyisakan 1 kandidat
+  tanpa persetujuan (`NO_CONSENT` di `scripts/seed.ts`), jadi TSK demo melihat 23 dari 24.
+- **Audit log**: `audit(tx, {organizationId, actorOrgId, candidateId, …})`. Perubahan kandidat disimpan di
+  `organizationId` = LPK PEMILIK kandidat (supaya LPK ikut melihat aksi TSK), `actorOrgId` = organisasi pelaku,
+  `candidateId` wajib diisi (policy insert memeriksanya). Untuk log biasa `actorOrgId` otomatis = `organizationId`.
 - **Tabel baru** = migration Drizzle + migration SQL manual (`npx drizzle-kit generate --custom --name …`) berisi
   `GRANT … TO hashi_app`, `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy. Tambah pemeriksaan di
   `scripts/verify-rls.ts`. Tidak ada GRANT otomatis — sengaja, supaya gagal dengan aman.
@@ -98,6 +108,11 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 - Tes RLS yang meng-UPDATE ke nilai yang sama = bukan perubahan, jadi trigger penjaga tidak menolaknya. Pakai
   nilai baru di tiap percobaan (`uniq()` di `verify-rls.ts`).
 - Trigger penjaga TSK bisa diuji tanpa policy: `actAsTriggerOnly()` (bypass RLS + `app.role` TSK).
+- Policy yang saling merujuk tabel (candidates ↔ candidate_selections) memicu "infinite recursion detected in
+  policy". Diputus dengan fungsi `SECURITY DEFINER` sempit (`tsk_has_edit_decision`, hanya membaca baris milik
+  organisasi sesi). Selalu jalankan `test:rls` setelah mengubah policy.
+- drizzle-kit TIDAK bisa mengubah enum yang nilainya dikurangi (akan meng-cast dan gagal/membuang data). Tulis
+  migration manual dengan pemetaan data (contoh: `drizzle/0006_candidate_selections.sql`).
 - `test:e2e` menjalankan build standalone lewat `scripts/serve-standalone.mjs`; `npm run build` dulu.
 
 ## Alur kerja

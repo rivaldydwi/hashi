@@ -6,14 +6,18 @@
 
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { createDb, withSystem } from "../src/db";
+import { randomUUID } from "node:crypto";
 import {
   candidates,
+  candidateNotes,
+  candidateSelections,
   organizations,
   partnerships,
   users,
   type CandidateStage,
+  type SelectionDecision,
 } from "../src/db/schema";
 
 const PASSWORD = process.env.SEED_PASSWORD || "hashi-demo-2026";
@@ -59,45 +63,51 @@ const FIELDS = [
   "Pertanian",
 ];
 
-// Sebaran tahapan per LPK (12 kandidat): kebanyakan masih belajar/siap seleksi.
-const STAGES: CandidateStage[] = [
-  "STUDYING",
-  "STUDYING",
-  "STUDYING",
-  "STUDYING",
-  "READY",
-  "READY",
-  "READY",
-  "SHORTLISTED",
-  "PASSED_TSK_INTERVIEW",
-  "SUBMITTED_TO_CLIENT",
-  "PASSED_CLIENT_INTERVIEW",
-  "WITHDRAWN",
+// Sebaran per LPK (12 kandidat): status di LPK + keputusan TSK mitra (kalau ada).
+// Status LPK hanya STUDYING / READY / WITHDRAWN; keputusan TSK terpisah (candidate_selections),
+// jadi kandidat yang masih STUDYING pun bisa sudah di-shortlist TSK.
+const PIPELINE: Array<{ stage: CandidateStage; decision?: SelectionDecision }> = [
+  { stage: "STUDYING" },
+  { stage: "STUDYING" },
+  { stage: "STUDYING" },
+  { stage: "STUDYING", decision: "SHORTLISTED" },
+  { stage: "READY" }, // untuk LPK Bandung: tanpa persetujuan data (lihat NO_CONSENT)
+  { stage: "READY" },
+  { stage: "READY" },
+  { stage: "READY", decision: "SHORTLISTED" },
+  { stage: "READY", decision: "PASSED_TSK_INTERVIEW" },
+  { stage: "READY", decision: "SUBMITTED_TO_CLIENT" },
+  { stage: "READY", decision: "PASSED_CLIENT_INTERVIEW" },
+  { stage: "WITHDRAWN" },
 ];
 
-// 1 kandidat demo (LPK Bandung, tahap READY) sengaja TANPA tanggal persetujuan berbagi data,
+// 1 kandidat demo (LPK Bandung, status READY) sengaja TANPA tanggal persetujuan berbagi data,
 // untuk menguji aturan: tanpa persetujuan = tidak terlihat oleh TSK.
 const NO_CONSENT = { orgIndex: 0, stageIndex: 4 };
 
 function candidateRows(orgId: string, offset: number, orgIndex: number) {
-  return STAGES.map((stage, i) => {
+  return PIPELINE.map(({ stage, decision }, i) => {
     const [first, firstKana, gender] = FIRST_NAMES[(i + offset) % FIRST_NAMES.length];
     const [last, lastKana] = LAST_NAMES[(i * 3 + offset) % LAST_NAMES.length];
     const year = 1998 + ((i + offset) % 8);
     const month = String(((i * 5 + offset) % 12) + 1).padStart(2, "0");
     return {
-      organizationId: orgId,
-      fullName: `${first} ${last}`,
-      nameKatakana: `${firstKana}・${lastKana}`,
-      gender,
-      birthDate: `${year}-${month}-15`,
-      field: FIELDS[(i + offset) % FIELDS.length],
-      stage,
-      // Persetujuan berbagi data diambil saat mendaftar. Tanpa tanggal ini kandidat tidak terlihat TSK.
-      dataConsentDate:
-        orgIndex === NO_CONSENT.orgIndex && i === NO_CONSENT.stageIndex
-          ? null
-          : `2026-${String(((i + offset) % 6) + 1).padStart(2, "0")}-10`,
+      decision,
+      row: {
+        id: randomUUID(),
+        organizationId: orgId,
+        fullName: `${first} ${last}`,
+        nameKatakana: `${firstKana}・${lastKana}`,
+        gender,
+        birthDate: `${year}-${month}-15`,
+        field: FIELDS[(i + offset) % FIELDS.length],
+        stage,
+        // Persetujuan berbagi data diambil saat mendaftar. Tanpa tanggal ini kandidat tidak terlihat TSK.
+        dataConsentDate:
+          orgIndex === NO_CONSENT.orgIndex && i === NO_CONSENT.stageIndex
+            ? null
+            : `2026-${String(((i + offset) % 6) + 1).padStart(2, "0")}-10`,
+      },
     };
   });
 }
@@ -150,11 +160,45 @@ async function main() {
       { organizationId: lpk3.id, email: "lpk3.admin@hashi.test", name: "Admin LPK Medan", role: "LPK_ADMIN", locale: "id", passwordHash },
     ]);
 
-    await tx
-      .insert(candidates)
-      .values([...candidateRows(lpk1.id, 0, 0), ...candidateRows(lpk2.id, 5, 1), ...candidateRows(lpk3.id, 11, 2)]);
+    const seeded = [
+      ...candidateRows(lpk1.id, 0, 0),
+      ...candidateRows(lpk2.id, 5, 1),
+      ...candidateRows(lpk3.id, 11, 2),
+    ];
+    await tx.insert(candidates).values(seeded.map((c) => c.row));
 
-    console.log("✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (1 tanpa persetujuan data)");
+    // Keputusan TSK demo hanya untuk LPK mitra (Bandung, Surabaya); LPK Medan tidak bermitra.
+    const [tskAdmin] = await tx.select({ id: users.id }).from(users).where(eq(users.email, "tsk.admin@hashi.test"));
+    const partnerIds = new Set([lpk1.id, lpk2.id]);
+    const decided = seeded.filter((c) => c.decision && partnerIds.has(c.row.organizationId));
+    await tx.insert(candidateSelections).values(
+      decided.map((c) => ({
+        candidateId: c.row.id,
+        tskOrgId: tsk.id,
+        decision: c.decision!,
+        decidedBy: tskAdmin.id,
+      })),
+    );
+
+    // Catatan TSK demo (面談メモ): satu hanya untuk TSK, satu dibagikan ke LPK.
+    await tx.insert(candidateNotes).values([
+      {
+        candidateId: decided[1].row.id,
+        tskOrgId: tsk.id,
+        authorId: tskAdmin.id,
+        body: "面談メモ：日本語の聞き取りは良好。介護分野の経験について追加で確認したい。",
+        visibility: "TSK_ONLY",
+      },
+      {
+        candidateId: decided[1].row.id,
+        tskOrgId: tsk.id,
+        authorId: tskAdmin.id,
+        body: "面談メモ：健康診断書の再提出をお願いします。",
+        visibility: "SHARED_WITH_LPK",
+      },
+    ]);
+
+    console.log("✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (1 tanpa persetujuan data), 8 keputusan TSK, 2 catatan TSK");
     console.log(`  Password semua akun demo: ${PASSWORD}`);
   }, db);
 

@@ -177,13 +177,38 @@
   "stages": {
     "STUDYING": "Belajar",
     "READY": "Siap seleksi",
+    "WITHDRAWN": "Mundur"
+  },
+  "decisions": {
+    "NONE": "Belum diputuskan",
     "SHORTLISTED": "Masuk shortlist",
     "PASSED_TSK_INTERVIEW": "Lulus wawancara TSK",
     "SUBMITTED_TO_CLIENT": "Diajukan ke client",
     "PASSED_CLIENT_INTERVIEW": "Lulus interview client",
     "DOCUMENT_PROCESS": "Proses dokumen",
     "DEPARTED": "Berangkat",
-    "WITHDRAWN": "Mundur"
+    "REJECTED": "Ditolak"
+  },
+  "notes": {
+    "title": "Catatan TSK",
+    "lpkTitle": "Catatan dari TSK",
+    "empty": "Belum ada catatan.",
+    "add": "Tambah catatan",
+    "body": "Isi catatan",
+    "save": "Simpan catatan",
+    "visibility": "Siapa yang bisa membaca",
+    "tskOnly": "Hanya TSK",
+    "shared": "Bagikan ke LPK",
+    "labelTskOnly": "Hanya terbaca oleh TSK Anda",
+    "labelShared": "Dibagikan ke LPK pemilik kandidat",
+    "makeShared": "Bagikan ke LPK",
+    "makeTskOnly": "Jadikan hanya TSK",
+    "author": "Ditulis oleh {name}",
+    "shareWarning": "Catatan yang dibagikan bisa dibaca admin LPK. Jangan bagikan hal yang tidak boleh diketahui LPK.",
+    "errors": {
+      "empty": "Catatan tidak boleh kosong.",
+      "tooLong": "Catatan terlalu panjang."
+    }
   },
   "roles": {
     "SUPER_ADMIN": "Super admin",
