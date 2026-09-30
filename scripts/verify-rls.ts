@@ -8,6 +8,7 @@
 import "dotenv/config";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { createDb, withSystem, withTenant } from "../src/db";
+import { platformOverview } from "../src/db/queries";
 import { auditLogs, candidates, organizations, partnerships, users } from "../src/db/schema";
 
 let failures = 0;
@@ -124,6 +125,20 @@ async function main() {
     withTenant(lpk1.id, (tx) => tx.delete(auditLogs).where(and(eq(auditLogs.organizationId, lpk1.id))), db),
   );
   check("Audit log: aplikasi tidak bisa menghapus", auditDelErr !== null && /permission denied/i.test(auditDelErr));
+
+  // 11. Ringkasan super admin: angka per organisasi harus cocok dengan data sebenarnya
+  const allUsers = await withSystem((tx) => tx.select().from(users), db);
+  const overview = await withSystem((tx) => platformOverview(tx), db);
+  const mismatches = overview.filter(
+    (o) =>
+      o.users !== allUsers.filter((u) => u.organizationId === o.id).length ||
+      o.candidates !== ownCount(o.id),
+  );
+  check(
+    "Super admin: jumlah pengguna & kandidat per organisasi benar",
+    overview.length === orgs.length && mismatches.length === 0 && overview.some((o) => o.candidates > 0),
+    overview.map((o) => `${o.name}: ${o.users}/${o.candidates}`).join(", "),
+  );
 
   await pool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);

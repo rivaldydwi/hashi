@@ -1,6 +1,7 @@
-import { asc, count, desc, eq, ne, sql } from "drizzle-orm";
+import { asc, count, desc, eq, ne } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { withSystem, withTenant } from "@/db";
+import { platformOverview } from "@/db/queries";
 import { candidates, candidateStage, organizations } from "@/db/schema";
 import { StageBadge } from "@/components/StageBadge";
 import { requireUser } from "@/lib/session";
@@ -142,18 +143,7 @@ async function PlatformOverview() {
   const t = await getTranslations("dashboard");
   const tType = await getTranslations("orgTypes");
 
-  const rows = await withSystem((tx) =>
-    tx
-      .select({
-        id: organizations.id,
-        name: organizations.name,
-        type: organizations.type,
-        users: sql<number>`(select count(*) from users u where u.organization_id = ${organizations.id})`.mapWith(Number),
-        candidates: sql<number>`(select count(*) from candidates c where c.organization_id = ${organizations.id})`.mapWith(Number),
-      })
-      .from(organizations)
-      .orderBy(asc(organizations.type), asc(organizations.name)),
-  );
+  const rows = await withSystem((tx) => platformOverview(tx));
 
   return (
     <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
