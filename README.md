@@ -83,6 +83,27 @@ atau menghasilkan semua kandidat, atau berkas yatim di storage. Filter memakai f
 (`src/db/candidate-list.ts`). CI menjalankannya setelah seed. Catatan: filter "JLPT N5" berarti "N5 atau lebih tinggi", jadi
 memang mengembalikan semua kandidat (cukup tidak kosong).
 
+### Reseed per lingkungan
+
+Reseed menghapus SEMUA data (dan berkas dokumen lama), jadi hanya untuk data dummy. Cek dulu (baca-saja) bahwa organisasi dan pengguna
+di database itu hanya yang ada di seed; bila ada pengguna/organisasi lain, jangan reset.
+
+```bash
+# db-dev (dari host, memakai .env ke db-dev; berkas ditulis ke ./docs-data)
+npm run db:migrate && npm run db:seed -- --reset && npm run verify:seed
+
+# Instance demo (hashi-demo): migration otomatis lewat `up`, lalu reseed
+scripts/demo-up.sh            # atau: docker compose -p hashi-demo --env-file .env.demo up -d --build && scripts/demo-reset.sh
+
+# Produksi demo `hashi` (nama database bukan _dev/_test/_demo, jadi pengaman perlu ALLOW_DESTRUCTIVE_DB=1)
+docker compose up -d --build                                                    # bangun image migrate terbaru + migration
+docker compose run --rm -e ALLOW_DESTRUCTIVE_DB=1 migrate npm run db:seed -- --reset
+docker compose run --rm migrate npm run verify:seed
+```
+
+Berkas dokumen seed ditulis ke volume `docs-data` (service `migrate` memasangnya). Menjalankan seed dari image tools untuk db-dev
+(`docker run ... hashi-migrate`) menulis berkas ke dalam container: pasang `-v "$PWD/docs-data":/app/docs-data` bila ingin berkasnya tersimpan.
+
 ### Akun demo
 
 Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.env` sebelum seed).

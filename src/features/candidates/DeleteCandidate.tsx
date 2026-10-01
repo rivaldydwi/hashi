@@ -44,7 +44,7 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
         {t("open")}
       </button>
 
-      <dialog ref={dialog} data-testid="delete-dialog" aria-labelledby="delete-title" className="w-full max-w-lg rounded-2xl p-0 shadow-xl backdrop:bg-stone-900/50">
+      <dialog ref={dialog} data-testid="delete-dialog" aria-labelledby="delete-title" className="m-auto w-full max-w-lg rounded-2xl p-0 shadow-xl backdrop:bg-stone-900/50">
         <form action={action} className="space-y-4 p-6">
           <input type="hidden" name="candidateId" value={candidateId} />
           <h3 id="delete-title" className="text-lg font-semibold text-rose-800">{t("title")}</h3>
