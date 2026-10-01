@@ -1,7 +1,7 @@
 // Modul ini dipakai script di scripts/ (verify-rls) yang berjalan di image Docker stage `tools`, yang hanya
 // berisi src/db. Karena itu: JANGAN mengimpor dari src/lib, src/features, atau apa pun di luar src/db,
 // dan hanya `import type` (dihapus saat dijalankan) ke modul lain.
-import type { CandidateNote, NoteVisibility } from "./schema";
+import type { CandidateAssessment, CandidateNote, NoteVisibility } from "./schema";
 
 export type AuditEntry = {
   /** Organisasi tempat log disimpan. Untuk perubahan kandidat: LPK pemilik kandidat. */
@@ -48,5 +48,39 @@ export function noteAuditEntry(p: {
     entityId: p.note.id,
     before: p.from ? { visibility: p.from } : undefined,
     after: p.bodyChanged ? { visibility: p.to, bodyChanged: true } : { visibility: p.to },
+  };
+}
+
+/**
+ * Baris audit untuk penilaian (assessment.create / assessment.update). Disimpan di log LPK PEMILIK kandidat,
+ * jadi isi `note` dan `follow_up` TIDAK BOLEH ikut: penilaian TSK berstatus TSK_ONLY tidak boleh sampai ke LPK.
+ * Yang dicatat: jenis, periode, NAMA kolom yang berubah, dan perubahan visibility (dari, ke). Tidak pernah isi/nilai.
+ */
+export function assessmentAuditEntry(p: {
+  action: "assessment.create" | "assessment.update";
+  assessment: Pick<CandidateAssessment, "id" | "candidateId" | "kind" | "period">;
+  lpkOrgId: string;
+  /** Organisasi pelaku (LPK penilai, atau TSK penilai). */
+  actorOrgId: string;
+  actorUserId: string;
+  /** Nama kolom yang diisi (create) atau berubah (update). */
+  changed: string[];
+  visibility?: { from?: NoteVisibility; to: NoteVisibility };
+}): AuditEntry {
+  return {
+    organizationId: p.lpkOrgId,
+    actorOrgId: p.actorOrgId,
+    candidateId: p.assessment.candidateId,
+    actorUserId: p.actorUserId,
+    action: p.action,
+    entity: "candidate_assessment",
+    entityId: p.assessment.id,
+    before: p.visibility?.from ? { visibility: p.visibility.from } : undefined,
+    after: {
+      kind: p.assessment.kind,
+      period: p.assessment.period,
+      fields: [...p.changed].sort(),
+      ...(p.visibility ? { visibility: p.visibility.to } : {}),
+    },
   };
 }

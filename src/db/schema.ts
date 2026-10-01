@@ -106,6 +106,9 @@ export const documentType = pgEnum("document_type", [
 // pemilik kandidat (dari TSK yang masih bermitra aktif) ikut boleh membaca.
 export const noteVisibility = pgEnum("note_visibility", ["TSK_ONLY", "SHARED_WITH_LPK"]);
 
+// Jenis penilaian: bulanan oleh LPK (面談 ±30 menit), atau oleh TSK setelah interview / saat berkunjung ke LPK.
+export const assessmentKind = pgEnum("assessment_kind", ["LPK_MONTHLY", "TSK_INTERVIEW", "TSK_VISIT"]);
+
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -372,6 +375,49 @@ export const candidateNotes = pgTable(
   (t) => [index("candidate_notes_candidate_tsk_idx").on(t.candidateId, t.tskOrgId)],
 );
 
+// Penilaian kandidat (評価). LPK_MONTHLY = riwayat penilaian bulanan LPK (satu per kandidat per bulan);
+// TSK_INTERVIEW / TSK_VISIT = penilaian TSK. Aturan baca/tulis ada di drizzle/0011_assessments.sql (RLS + trigger).
+// period, assessor_id, dan updated_at diisi TRIGGER database (assessor dari app.user_id, tidak bisa dipalsukan);
+// candidate_id, org_id, kind, dan assessor_id tidak bisa diganti. Tidak ada DELETE untuk siapa pun.
+export const candidateAssessments = pgTable(
+  "candidate_assessments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id") // organisasi penilai
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    kind: assessmentKind("kind").notNull(),
+    assessedOn: date("assessed_on").notNull(), // tidak boleh di masa depan (trigger)
+    period: date("period").notNull().default(sql`CURRENT_DATE`), // awal bulan dari assessed_on; DIISI TRIGGER
+    assessorId: uuid("assessor_id").references(() => users.id, { onDelete: "set null" }), // DIISI TRIGGER dari app.user_id
+    durationMinutes: smallint("duration_minutes").notNull().default(30),
+    scoreJapanese: smallint("score_japanese"), // 1..5
+    scoreAttitude: smallint("score_attitude"),
+    scoreFitness: smallint("score_fitness"), // kebugaran (bukan data medis)
+    scoreMotivation: smallint("score_motivation"),
+    attendancePct: smallint("attendance_pct"), // 0..100
+    testName: text("test_name"), // mis. tryout JLPT / JFT
+    testScore: integer("test_score"),
+    note: text("note"),
+    followUp: text("follow_up"),
+    // Hanya bermakna untuk penilaian milik TSK (LPK_MONTHLY selalu TSK_ONLY)
+    visibility: noteVisibility("visibility").notNull().default("TSK_ONLY"),
+    ...timestamps,
+  },
+  (t) => [
+    index("candidate_assessments_candidate_idx").on(t.candidateId, t.period),
+    uniqueIndex("candidate_assessments_lpk_month_key").on(t.candidateId, t.period).where(sql`${t.kind} = 'LPK_MONTHLY'`),
+    check("candidate_assessments_scores_check", sql`(${t.scoreJapanese} is null or ${t.scoreJapanese} between 1 and 5) and (${t.scoreAttitude} is null or ${t.scoreAttitude} between 1 and 5) and (${t.scoreFitness} is null or ${t.scoreFitness} between 1 and 5) and (${t.scoreMotivation} is null or ${t.scoreMotivation} between 1 and 5)`),
+    check("candidate_assessments_attendance_check", sql`${t.attendancePct} is null or ${t.attendancePct} between 0 and 100`),
+    check("candidate_assessments_duration_check", sql`${t.durationMinutes} between 1 and 480`),
+    check("candidate_assessments_test_score_check", sql`${t.testScore} is null or ${t.testScore} >= 0`),
+    check("candidate_assessments_visibility_check", sql`${t.kind} <> 'LPK_MONTHLY' or ${t.visibility} = 'TSK_ONLY'`),
+  ],
+);
+
 // Log perubahan data: siapa, kapan, apa (sebelum/sesudah).
 export const auditLogs = pgTable(
   "audit_logs",
@@ -426,6 +472,7 @@ export const candidatesRelations = relations(candidates, ({ one, many }) => ({
   documents: many(candidateDocuments),
   selections: many(candidateSelections),
   notes: many(candidateNotes),
+  assessments: many(candidateAssessments),
 }));
 
 export type Organization = typeof organizations.$inferSelect;
@@ -438,6 +485,8 @@ export type CandidateFamilyMember = typeof candidateFamilyMembers.$inferSelect;
 export type CandidateCertificate = typeof candidateCertificates.$inferSelect;
 export type CandidateDocument = typeof candidateDocuments.$inferSelect;
 export type CandidateSelection = typeof candidateSelections.$inferSelect;
+export type CandidateAssessment = typeof candidateAssessments.$inferSelect;
+export type AssessmentKind = (typeof assessmentKind.enumValues)[number];
 export type CandidateNote = typeof candidateNotes.$inferSelect;
 export type NoteVisibility = (typeof noteVisibility.enumValues)[number];
 export type SelectionDecision = (typeof selectionDecision.enumValues)[number];

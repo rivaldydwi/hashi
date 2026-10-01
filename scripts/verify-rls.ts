@@ -13,13 +13,14 @@
 
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { assertTestDatabase } from "./db-guard";
 import { createDb, withSystem, withTenant, type Tx } from "../src/db";
 import { platformOverview } from "../src/db/queries";
-import { noteAuditEntry } from "../src/db/audit-entries";
+import { assessmentAuditEntry, noteAuditEntry } from "../src/db/audit-entries";
 import {
   auditLogs,
+  candidateAssessments,
   candidateCertificates,
   candidateDocuments,
   candidateEducations,
@@ -979,6 +980,19 @@ async function main() {
     await tx.insert(candidatePrivate).values([{ candidateId: ready1.id }, { candidateId: pciLpk1 }]);
     await tx.insert(candidateDocuments).values([sampleDoc(ready1.id), sampleDoc(pciLpk1)]);
     await tx.insert(candidateFamilyMembers).values([{ candidateId: ready1.id, relation: "FATHER", name: "F1" }, { candidateId: pciLpk1, relation: "FATHER", name: "F2" }]);
+    // Penilaian uji untuk probe: dikenali lewat penilainya (semua berbeda), baris bertahun 2020
+    const hSensei = allUsers.find((u) => u.email === "lpk1.sensei@hashi.test")!;
+    const hAdmin = allUsers.find((u) => u.role === "LPK_ADMIN" && u.organizationId === lpk1.id)!;
+    await tx.insert(candidateAssessments).values([
+      { candidateId: ready1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessorId: hSensei.id, assessedOn: "2020-01-05" },
+      { candidateId: pciLpk1, orgId: lpk1.id, kind: "LPK_MONTHLY", assessorId: hAdmin.id, assessedOn: "2020-01-06" },
+      { candidateId: ready1.id, orgId: tsk.id, kind: "TSK_VISIT", assessorId: staffUser.id, assessedOn: "2020-01-07" },
+      { candidateId: pciLpk1, orgId: tsk.id, kind: "TSK_VISIT", assessorId: tskAdminUser.id, assessedOn: "2020-01-08" },
+      { candidateId: ready1.id, orgId: tskB, kind: "TSK_VISIT", assessorId: adminB, assessedOn: "2020-01-09" },
+    ]);
+    const probeAssessors = [hSensei.id, hAdmin.id, staffUser.id, tskAdminUser.id, adminB];
+    blk.hSensei = [hSensei.id];
+    blk.hAdmin = [hAdmin.id];
     await tx.insert(candidateNotes).values([
       { candidateId: ready1.id, tskOrgId: tskB, authorId: adminB, body: "catatan B" },
       { candidateId: ready1.id, tskOrgId: tsk.id, authorId: staffUser.id, body: "catatan staf" },
@@ -1021,6 +1035,13 @@ async function main() {
         const now = new Set((await t.select({ id: candidates.id }).from(candidates).where(eq(candidates.sharedWithTsk, true))).map((r) => r.id));
         return [ready1.id, pciLpk1].filter((id) => !now.has(id));
       });
+      // Penilaian: UPDATE/DELETE tanpa WHERE, dikenali lewat penilai baris uji (bertahun 2020)
+      await probe("assessUpd", w, (t, m) => t.update(candidateAssessments).set({ note: m }), async (t, m) =>
+        (await t.select({ id: candidateAssessments.assessorId }).from(candidateAssessments).where(and(eq(candidateAssessments.note, m), lt(candidateAssessments.period, "2021-01-01")))).map((r) => r.id ?? "-"));
+      await probe("assessDel", w, (t) => t.delete(candidateAssessments), async (t) => {
+        const left = new Set((await t.select({ id: candidateAssessments.assessorId }).from(candidateAssessments).where(lt(candidateAssessments.period, "2021-01-01"))).map((r) => r.id));
+        return probeAssessors.filter((id) => !left.has(id));
+      });
       await probe("selections", w, (t) => t.update(candidateSelections).set({ decision: "REJECTED" }), async (t) => (await t.select({ id: candidateSelections.tskOrgId }).from(candidateSelections).where(eq(candidateSelections.decision, "REJECTED"))).map((r) => r.id));
       await probe("notes", w, (t, m) => t.update(candidateNotes).set({ body: m }), async (t, m) => (await t.select({ id: candidateNotes.authorId }).from(candidateNotes).where(eq(candidateNotes.body, m))).map((r) => r.id ?? "-"));
     }
@@ -1047,6 +1068,17 @@ async function main() {
     "UPDATE tanpa WHERE yang mematikan shared_with_tsk: hanya LPK_ADMIN pemilik yang berhasil; TSK (walau berhak edit), sensei, dan peran null tidak sama sekali",
     eq2("unshare", "LPK_ADMIN", [ready1.id, pciLpk1]) && none("unshare", ["TSK_ADMIN", "TSK_STAFF", "TSK_STAFF-tanpa-user", "TSK_B", "LPK_SENSEI", "LPK_NULL"]),
     `LPK_ADMIN mengubah ${blk["unshare/LPK_ADMIN"]?.length}/2 kandidat`,
+  );
+  check(
+    "UPDATE tanpa WHERE pada penilaian: TSK_ADMIN hanya milik TSK-nya, staf hanya yang dinilainya, TSK lain hanya miliknya; LPK_ADMIN hanya LPK_MONTHLY; sensei tanpa user dan peran null tidak sama sekali",
+    eq2("assessUpd", "TSK_ADMIN", [staffUser.id, tskAdminUser.id]) && eq2("assessUpd", "TSK_STAFF", [staffUser.id]) &&
+      eq2("assessUpd", "TSK_STAFF-tanpa-user", []) && eq2("assessUpd", "TSK_B", blk.adminBId) &&
+      eq2("assessUpd", "LPK_ADMIN", [blk.hSensei[0], blk.hAdmin[0]]) && none("assessUpd", ["LPK_SENSEI", "LPK_NULL"]),
+    `TSK_ADMIN: ${blk["assessUpd/TSK_ADMIN"]?.length} baris, LPK_ADMIN: ${blk["assessUpd/LPK_ADMIN"]?.length}`,
+  );
+  check(
+    "DELETE tanpa WHERE pada penilaian: ditolak untuk semua peran (tidak ada yang terhapus)",
+    ["TSK_ADMIN", "TSK_STAFF", "TSK_B", "LPK_ADMIN", "LPK_SENSEI", "LPK_NULL"].every((w) => eq2("assessDel", w, [])),
   );
   check(
     "DELETE tanpa WHERE pada dokumen: TSK hanya menghapus dokumen kandidat yang boleh diedit (keputusan membuka hak edit); TSK lain hanya miliknya; sensei/peran null tidak sama sekali",
@@ -1077,7 +1109,7 @@ async function main() {
   // --- I. Berbagi ke TSK (shared_with_tsk): gerbang tunggal visibilitas TSK, di SEMUA tabel turunan ---
   const sh: Record<string, unknown> = {};
   const lpkAdminUser = allUsers.find((u) => u.role === "LPK_ADMIN" && u.organizationId === lpk1.id)!;
-  type Counts = { cand: number; priv: number; fam: number; edu: number; work: number; cert: number; docs: number; sel: number; notes: number };
+  type Counts = { cand: number; priv: number; fam: number; edu: number; work: number; cert: number; docs: number; sel: number; notes: number; assess: number };
   await sandbox(async (tx) => {
     // Data lengkap di setiap tabel turunan untuk ready1, plus keputusan TSK yang membuka hak edit
     await tx.insert(candidatePrivate).values({ candidateId: ready1.id, nationalId: NIK });
@@ -1087,6 +1119,12 @@ async function main() {
     await tx.insert(candidateCertificates).values({ candidateId: ready1.id, type: "JLPT", levelOrField: "N4" });
     await tx.insert(candidateDocuments).values(sampleDoc(ready1.id));
     await decide(tx, ready1.id, tsk.id, "PASSED_CLIENT_INTERVIEW");
+    // Penilaian (baris uji bertahun 2020; baris seed bulan-bulan terakhir tidak dihitung): 1 LPK_MONTHLY + 2 TSK_VISIT (satu dibagikan)
+    await tx.insert(candidateAssessments).values([
+      { candidateId: ready1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessorId: lpkAdminUser.id, assessedOn: "2020-06-10" },
+      { candidateId: ready1.id, orgId: tsk.id, kind: "TSK_VISIT", assessorId: staffUser.id, assessedOn: "2020-06-11" },
+      { candidateId: ready1.id, orgId: tsk.id, kind: "TSK_VISIT", assessorId: tskAdminUser.id, assessedOn: "2020-06-12", visibility: "SHARED_WITH_LPK" },
+    ]);
     await tx.insert(candidateNotes).values([
       { candidateId: ready1.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "catatan hanya TSK" },
       { candidateId: ready1.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "catatan dibagikan ke LPK", visibility: "SHARED_WITH_LPK" },
@@ -1104,6 +1142,7 @@ async function main() {
         docs: await n(tx.select().from(candidateDocuments).where(eq(candidateDocuments.candidateId, ready1.id))),
         sel: await n(tx.select().from(candidateSelections).where(eq(candidateSelections.candidateId, ready1.id))),
         notes: await n(tx.select().from(candidateNotes).where(eq(candidateNotes.candidateId, ready1.id))),
+        assess: await n(tx.select().from(candidateAssessments).where(and(eq(candidateAssessments.candidateId, ready1.id), lt(candidateAssessments.period, "2021-01-01")))),
       };
       sh[label] = c;
     };
@@ -1165,8 +1204,8 @@ async function main() {
     sh.leftoverFns = fns.rows.map((r) => String(r.proname));
     sh.candidateTables = tabs.rows.map((r) => String(r.table_name));
   });
-  const FULL_ON: Counts = { cand: 1, priv: 1, fam: 1, edu: 1, work: 1, cert: 1, docs: 1, sel: 1, notes: 2 };
-  const ZERO: Counts = { cand: 0, priv: 0, fam: 0, edu: 0, work: 0, cert: 0, docs: 0, sel: 0, notes: 0 };
+  const FULL_ON: Counts = { cand: 1, priv: 1, fam: 1, edu: 1, work: 1, cert: 1, docs: 1, sel: 1, notes: 2, assess: 3 };
+  const ZERO: Counts = { cand: 0, priv: 0, fam: 0, edu: 0, work: 0, cert: 0, docs: 0, sel: 0, notes: 0, assess: 0 };
   const J = JSON.stringify;
   check(
     "Dibagikan: TSK melihat kandidat dan SEMUA tabel turunannya (data sensitif, keluarga, pendidikan, kerja, sertifikat, dokumen, keputusan, catatan)",
@@ -1176,7 +1215,7 @@ async function main() {
   check(
     "Dimatikan: TSK (admin dan staf) tidak melihat apa pun di SEMUA tabel itu; LPK tetap melihat datanya sendiri",
     J(sh["off/tsk"]) === J(ZERO) && J(sh["off/tsk-staff"]) === J(ZERO) &&
-      J({ ...(sh["off/lpk"] as Counts), notes: 0 }) === J({ ...FULL_ON, notes: 0 }),
+      J(sh["off/lpk"]) === J({ ...FULL_ON, notes: 0, assess: 1 }),
     `TSK: ${J(sh["off/tsk"])} | LPK: ${J(sh["off/lpk"])}`,
   );
   check(
@@ -1214,11 +1253,246 @@ async function main() {
     J(sh.leftoverPolicies) === "[]" && J(sh.leftoverFns) === J(["enforce_tsk_cannot_change_lpk_fields"]),
     `${J(sh.leftoverPolicies)} ${J(sh.leftoverFns)}`,
   );
-  const covered = ["audit_logs", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories"];
+  const covered = ["audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories"];
   check(
     "Tuntas: setiap tabel ber-candidate_id sudah tercakup tes berbagi (tabel baru ber-candidate_id harus ditambahkan ke bagian I)",
     J(sh.candidateTables) === J(covered),
     J(sh.candidateTables),
+  );
+
+  // --- J. Penilaian (candidate_assessments) ---
+  const senseiUser = allUsers.find((u) => u.email === "lpk1.sensei@hashi.test")!;
+  const OLD = "2021-01-01"; // baris uji memakai 2020; baris seed memakai bulan-bulan terakhir
+  const INTERVIEW_OK = ["PASSED_TSK_INTERVIEW", "SUBMITTED_TO_CLIENT", "PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"]; // sengaja eksplisit
+  const as_: Record<string, unknown> = {};
+  const secretAssessment = "RAHASIA-penilaian-TSK-5521";
+  await sandbox(async (tx) => {
+    const sensei2 = (await tx.insert(users).values({ organizationId: lpk1.id, email: `sensei2-${uniq()}@hashi.test`, name: "Sensei Dua", role: "LPK_SENSEI", passwordHash: "x" }).returning())[0].id;
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    const base = (kind: "LPK_MONTHLY" | "TSK_INTERVIEW" | "TSK_VISIT", orgId: string, assessorId: string, assessedOn: string, extra: Partial<typeof candidateAssessments.$inferInsert> = {}) =>
+      ({ candidateId: ready1.id, orgId, kind, assessorId, assessedOn, ...extra });
+    const ins = async (v: ReturnType<typeof base>) => (await tx.insert(candidateAssessments).values(v).returning())[0];
+    const mA = await ins(base("LPK_MONTHLY", lpk1.id, senseiUser.id, "2020-01-17", { note: "bulan A" }));
+    const mB = await ins(base("LPK_MONTHLY", lpk1.id, lpkAdminUser.id, "2020-02-17"));
+    const tOnly = await ins(base("TSK_VISIT", tsk.id, staffUser.id, "2020-03-05", { note: secretAssessment }));
+    const tShared = await ins(base("TSK_INTERVIEW", tsk.id, tskAdminUser.id, "2020-03-06", { visibility: "SHARED_WITH_LPK" }));
+    const bOnly = await ins(base("TSK_VISIT", tskB, adminB, "2020-03-07"));
+    const bShared = await ins(base("TSK_VISIT", tskB, adminB, "2020-03-08", { visibility: "SHARED_WITH_LPK" }));
+    // kandidat yang TIDAK dibagikan
+    const hMonthly = (await tx.insert(candidateAssessments).values({ candidateId: hidden.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessorId: senseiUser.id, assessedOn: "2020-01-10" }).returning())[0];
+    const mine = [mA.id, mB.id, tOnly.id, tShared.id, bOnly.id, bShared.id];
+    const name = new Map<string, string>([[mA.id, "mA"], [mB.id, "mB"], [tOnly.id, "tOnly"], [tShared.id, "tShared"], [bOnly.id, "bOnly"], [bShared.id, "bShared"]]);
+    const see = async (label: string, orgId: string, role: string | null, userId: string | null = null) => {
+      await actAs(tx, orgId, role, userId);
+      const rows = await tx.select({ id: candidateAssessments.id }).from(candidateAssessments).where(inArray(candidateAssessments.id, mine));
+      as_[`see/${label}`] = rows.map((r) => name.get(r.id)).sort();
+    };
+    await see("sensei", lpk1.id, "LPK_SENSEI", senseiUser.id);
+    await see("lpk-admin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    await see("lpk2", lpk2.id, "LPK_ADMIN");
+    await see("lpk-null", lpk1.id, null);
+    await see("tsk-admin", tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await see("tsk-staff", tsk.id, "TSK_STAFF", staffUser.id);
+    await see("tsk-b", tskB, "TSK_ADMIN", adminB);
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    as_.hiddenSeenByTsk = (await tx.select().from(candidateAssessments).where(eq(candidateAssessments.candidateId, hidden.id))).length;
+    as_.hiddenVisit = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: hidden.id, orgId: tsk.id, kind: "TSK_VISIT", assessedOn: "2020-05-01" }));
+
+    // --- tulis: sensei ---
+    await actAs(tx, lpk1.id, "LPK_SENSEI", senseiUser.id);
+    const forged = await tx.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-04-10", assessorId: lpkAdminUser.id, scoreJapanese: 3 }).returning();
+    as_.senseiInsert = [forged[0].assessorId === senseiUser.id, forged[0].period]; // penilai = yang login, bukan yang dikirim
+    as_.senseiDup = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-01-25" }));
+    as_.senseiOtherCand = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: studying1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-01-25" }));
+    as_.senseiVisit = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: lpk1.id, kind: "TSK_VISIT", assessedOn: "2020-06-01" }));
+    as_.senseiVisitAsTsk = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: tsk.id, kind: "TSK_VISIT", assessedOn: "2020-06-01" }));
+    as_.senseiFuture = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2999-01-01" }));
+    as_.senseiShared = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: studying1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-02-02", visibility: "SHARED_WITH_LPK" }));
+    as_.score6 = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: studying1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-02-03", scoreJapanese: 6 }));
+    as_.attend101 = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: studying1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-02-03", attendancePct: 101 }));
+    as_.senseiOwn = (await rowsOf(tx, (t) => t.update(candidateAssessments).set({ followUp: uniq() }).where(eq(candidateAssessments.id, mA.id)).returning({ id: candidateAssessments.id }))).n;
+    as_.senseiAdminsRow = (await rowsOf(tx, (t) => t.update(candidateAssessments).set({ followUp: uniq() }).where(eq(candidateAssessments.id, mB.id)).returning({ id: candidateAssessments.id }))).n;
+    const moved = await tx.update(candidateAssessments).set({ assessedOn: "2020-05-11" }).where(eq(candidateAssessments.id, forged[0].id)).returning();
+    as_.periodRecalc = moved[0].period;
+    as_.senseiKind = await attempt(tx, (t) => t.update(candidateAssessments).set({ kind: "TSK_VISIT" }).where(eq(candidateAssessments.id, mA.id)));
+    as_.senseiAssessor = await attempt(tx, (t) => t.update(candidateAssessments).set({ assessorId: lpkAdminUser.id }).where(eq(candidateAssessments.id, mA.id)));
+    as_.senseiOrg = await attempt(tx, (t) => t.update(candidateAssessments).set({ orgId: lpk2.id }).where(eq(candidateAssessments.id, mA.id)));
+    as_.senseiCandidate = await attempt(tx, (t) => t.update(candidateAssessments).set({ candidateId: studying1.id }).where(eq(candidateAssessments.id, mA.id)));
+    as_.senseiDelete = await attempt(tx, (t) => t.delete(candidateAssessments).where(eq(candidateAssessments.id, mA.id)));
+    await actAs(tx, lpk1.id, "LPK_SENSEI", null);
+    as_.senseiNoUser = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-07-01" }));
+    await actAs(tx, lpk1.id, "LPK_SENSEI", sensei2);
+    as_.otherSensei = (await rowsOf(tx, (t) => t.update(candidateAssessments).set({ followUp: uniq() }).where(eq(candidateAssessments.id, mA.id)).returning({ id: candidateAssessments.id }))).n;
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    as_.adminBoth = [
+      (await rowsOf(tx, (t) => t.update(candidateAssessments).set({ followUp: uniq() }).where(eq(candidateAssessments.id, mA.id)).returning({ id: candidateAssessments.id }))).n,
+      (await rowsOf(tx, (t) => t.update(candidateAssessments).set({ followUp: uniq() }).where(eq(candidateAssessments.id, mB.id)).returning({ id: candidateAssessments.id }))).n,
+    ];
+    as_.adminTskKind = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: lpk1.id, kind: "TSK_INTERVIEW", assessedOn: "2020-06-02" }));
+    as_.adminUpdatesTsk = (await rowsOf(tx, (t) => t.update(candidateAssessments).set({ followUp: uniq() }).where(eq(candidateAssessments.id, tOnly.id)).returning({ id: candidateAssessments.id }))).n;
+
+    // --- tulis: TSK ---
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    as_.tskMonthly = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: tsk.id, kind: "LPK_MONTHLY", assessedOn: "2020-08-01" }));
+    as_.tskMonthlyAsLpk = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-08-02" }));
+    as_.visitTwice = [
+      await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: tsk.id, kind: "TSK_VISIT", assessedOn: "2020-03-20" })),
+      await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: tsk.id, kind: "TSK_VISIT", assessedOn: "2020-03-21" })),
+    ]; // TSK boleh lebih dari satu per bulan (batas satu-per-bulan hanya untuk LPK_MONTHLY)
+    as_.noDecisionInterview = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: tsk.id, kind: "TSK_INTERVIEW", assessedOn: "2020-09-01" }));
+    as_.noDecisionVisit = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: tsk.id, kind: "TSK_VISIT", assessedOn: "2020-09-01" }));
+    for (const d of selectionDecision.enumValues) {
+      await actAsSystem(tx);
+      await decide(tx, ready1.id, tsk.id, d);
+      await scratch(tx, async (sp) => {
+        await actAs(sp, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+        const iv = await attempt(sp, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: tsk.id, kind: "TSK_INTERVIEW", assessedOn: "2020-10-01" }));
+        const vs = await attempt(sp, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: tsk.id, kind: "TSK_VISIT", assessedOn: "2020-10-01" }));
+        as_[`iv/${d}`] = [iv === null, vs === null];
+      });
+    }
+    // keputusan TSK A membuka interview; TSK B (keputusannya milik A, bukan B) tetap ditolak
+    await actAsSystem(tx);
+    await decide(tx, ready1.id, tsk.id, "PASSED_CLIENT_INTERVIEW");
+    await actAs(tx, tskB, "TSK_ADMIN", adminB);
+    as_.bInterview = await attempt(tx, (t) => t.insert(candidateAssessments).values({ candidateId: ready1.id, orgId: tskB, kind: "TSK_INTERVIEW", assessedOn: "2020-10-02" }));
+    // LPK_MONTHLY TIDAK PERNAH bisa diubah TSK, walau keputusannya PASSED_CLIENT_INTERVIEW (hak edit data terbuka)
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    as_.tskEditMonthly = (await rowsOf(tx, (t) => t.update(candidateAssessments).set({ note: "diubah TSK" }).where(eq(candidateAssessments.id, mA.id)).returning({ id: candidateAssessments.id }))).n;
+    as_.tskDelete = await attempt(tx, (t) => t.delete(candidateAssessments).where(eq(candidateAssessments.id, tOnly.id)));
+    // mengubah penilaian TSK: penilainya atau TSK_ADMIN di organisasi yang sama
+    const tskUpd = async (label: string, orgId: string, role: string, userId: string | null) => {
+      await actAs(tx, orgId, role, userId);
+      as_[`tskUpd/${label}`] = (await rowsOf(tx, (t) => t.update(candidateAssessments).set({ followUp: uniq() }).where(eq(candidateAssessments.id, tOnly.id)).returning({ id: candidateAssessments.id }))).n;
+    };
+    await tskUpd("penulis-staf", tsk.id, "TSK_STAFF", staffUser.id);
+    await tskUpd("staf-lain", tsk.id, "TSK_STAFF", randomUUID());
+    await tskUpd("staf-tanpa-user", tsk.id, "TSK_STAFF", null);
+    await tskUpd("admin", tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await tskUpd("admin-tsk-lain", tskB, "TSK_ADMIN", adminB);
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    as_.tskKindChange = await attempt(tx, (t) => t.update(candidateAssessments).set({ kind: "TSK_INTERVIEW" }).where(eq(candidateAssessments.id, tOnly.id)));
+    as_.tskMakeShared = (await rowsOf(tx, (t) => t.update(candidateAssessments).set({ visibility: "SHARED_WITH_LPK" }).where(eq(candidateAssessments.id, tOnly.id)).returning({ id: candidateAssessments.id }))).n;
+    await see("lpk-admin-after-share", lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    await see("lpk-sensei-after-share", lpk1.id, "LPK_SENSEI", senseiUser.id);
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await tx.update(candidateAssessments).set({ visibility: "TSK_ONLY" }).where(eq(candidateAssessments.id, tOnly.id));
+    await see("lpk-admin-after-unshare", lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+
+    // kemitraan TSK A dihentikan: penilaian TSK-nya yang dibagikan hilang dari LPK (pola kemitraan nonaktif)
+    await actAsSystem(tx);
+    await tx.update(partnerships).set({ active: false }).where(and(eq(partnerships.lpkId, lpk1.id), eq(partnerships.tskId, tsk.id)));
+    await see("lpk-admin-partnership-off", lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    await see("tsk-admin-partnership-off", tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await actAsSystem(tx); // `see` berpindah identitas; pemulihan kemitraan harus oleh sistem
+    await tx.update(partnerships).set({ active: true }).where(and(eq(partnerships.lpkId, lpk1.id), eq(partnerships.tskId, tsk.id)));
+    // kandidat dimatikan berbagi-nya: TSK tidak melihat apa pun, penilaian TSK yang dibagikan hilang dari LPK
+    await tx.update(candidates).set({ sharedWithTsk: false }).where(eq(candidates.id, ready1.id));
+    await see("tsk-admin-unshared", tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await see("lpk-admin-unshared", lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    await see("sensei-unshared", lpk1.id, "LPK_SENSEI", senseiUser.id);
+    as_.hMonthly = hMonthly.id;
+
+    // --- audit penilaian: tanpa isi note/follow_up ---
+    await actAsSystem(tx);
+    await tx.update(candidates).set({ sharedWithTsk: true }).where(eq(candidates.id, ready1.id));
+    const entries = [
+      assessmentAuditEntry({ action: "assessment.create", assessment: tOnly, lpkOrgId: lpk1.id, actorOrgId: tsk.id, actorUserId: tskAdminUser.id, changed: ["note", "scoreJapanese", "assessedOn"] }),
+      assessmentAuditEntry({ action: "assessment.update", assessment: tOnly, lpkOrgId: lpk1.id, actorOrgId: tsk.id, actorUserId: tskAdminUser.id, changed: ["followUp"], visibility: { from: "SHARED_WITH_LPK", to: "TSK_ONLY" } }),
+    ];
+    as_.auditEntries = entries;
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    as_.auditInsert = await attempt(tx, (t) => t.insert(auditLogs).values(entries));
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    as_.auditAllLpk = JSON.stringify(await tx.select().from(auditLogs));
+  });
+  const S2 = (k: string) => JSON.stringify(as_[k]);
+  check(
+    "Sensei membaca LPK_MONTHLY (dari LPK-nya) tetapi TIDAK membaca satu pun penilaian TSK, termasuk yang dibagikan",
+    S2("see/sensei") === '["mA","mB"]' && S2("see/lpk-sensei-after-share") === '["mA","mB"]',
+    S2("see/sensei"),
+  );
+  check(
+    "LPK_ADMIN membaca LPK_MONTHLY + penilaian TSK yang SHARED_WITH_LPK (dari semua TSK mitra), bukan yang TSK_ONLY",
+    S2("see/lpk-admin") === '["bShared","mA","mB","tShared"]',
+    S2("see/lpk-admin"),
+  );
+  check("LPK lain dan peran null tidak membaca penilaian apa pun", S2("see/lpk2") === "[]" && S2("see/lpk-null") === "[]");
+  check(
+    "TSK membaca semua LPK_MONTHLY kandidat yang dibagikan + penilaian TSK milik organisasinya saja; TSK lain tidak membaca penilaian TSK itu",
+    S2("see/tsk-admin") === '["mA","mB","tOnly","tShared"]' && S2("see/tsk-staff") === '["mA","mB","tOnly","tShared"]' && S2("see/tsk-b") === '["bOnly","bShared","mA","mB"]',
+    `A: ${S2("see/tsk-admin")} | B: ${S2("see/tsk-b")}`,
+  );
+  check(
+    "TSK mengubah penilaian ke SHARED_WITH_LPK -> terbaca LPK_ADMIN (bukan sensei); dikembalikan TSK_ONLY -> hilang lagi dari LPK",
+    as_.tskMakeShared === 1 && S2("see/lpk-admin-after-share") === '["bShared","mA","mB","tOnly","tShared"]' &&
+      S2("see/lpk-sensei-after-share") === '["mA","mB"]' && S2("see/lpk-admin-after-unshare") === '["bShared","mA","mB","tShared"]',
+  );
+  check(
+    "Kemitraan TSK dihentikan: penilaian TSK itu yang dibagikan hilang dari LPK; TSK-nya tidak membaca apa pun",
+    S2("see/lpk-admin-partnership-off") === '["bShared","mA","mB"]' && S2("see/tsk-admin-partnership-off") === "[]",
+    S2("see/lpk-admin-partnership-off"),
+  );
+  check(
+    "Kandidat tidak dibagikan: TSK tidak melihat penilaian apa pun (LPK_MONTHLY pun), tidak bisa membuat TSK_VISIT; LPK tidak melihat penilaian TSK yang dibagikan",
+    S2("see/tsk-admin-unshared") === "[]" && as_.hiddenSeenByTsk === 0 && typeof as_.hiddenVisit === "string" && /row-level security/.test(as_.hiddenVisit as string) &&
+      S2("see/lpk-admin-unshared") === '["mA","mB"]' && S2("see/sensei-unshared") === '["mA","mB"]',
+    S2("see/lpk-admin-unshared"),
+  );
+  check(
+    "Sensei membuat LPK_MONTHLY; penilai SELALU user yang login (assessor_id yang dikirim diabaikan), period = awal bulan; tanpa user ditolak",
+    J(as_.senseiInsert) === J([true, "2020-04-01"]) && typeof as_.senseiNoUser === "string" && /penilai tidak dikenal/.test(as_.senseiNoUser),
+    J(as_.senseiInsert),
+  );
+  check(
+    "Penilaian bulan yang sama dua kali ditolak dengan pesan jelas (indeks candidate_assessments_lpk_month_key); kandidat lain / TSK_VISIT di bulan yang sama boleh",
+    typeof as_.senseiDup === "string" && /candidate_assessments_lpk_month_key|duplicate key/.test(as_.senseiDup) &&
+      as_.senseiOtherCand === null && J(as_.visitTwice) === "[null,null]",
+    String(as_.senseiDup).slice(0, 90),
+  );
+  check(
+    "Sensei mengubah penilaiannya sendiri, bukan milik Admin LPK dan bukan milik sensei lain; LPK_ADMIN mengubah keduanya; mengubah tanggal menghitung ulang period",
+    as_.senseiOwn === 1 && as_.senseiAdminsRow === 0 && as_.otherSensei === 0 && J(as_.adminBoth) === "[1,1]" && as_.periodRecalc === "2020-05-01",
+  );
+  check(
+    "LPK tidak bisa menulis penilaian TSK (jenis TSK_*, atas nama TSK, atau mengubah milik TSK) dan sensei tidak bisa membuat visibility SHARED di LPK_MONTHLY",
+    [as_.senseiVisit, as_.senseiVisitAsTsk, as_.adminTskKind].every((e) => typeof e === "string" && /row-level security/.test(e)) &&
+      as_.adminUpdatesTsk === 0 && typeof as_.senseiShared === "string" && /visibility_check/.test(as_.senseiShared),
+  );
+  check(
+    "TSK TIDAK PERNAH bisa membuat atau mengubah LPK_MONTHLY (walau keputusannya PASSED_CLIENT_INTERVIEW); tidak ada DELETE untuk siapa pun",
+    [as_.tskMonthly, as_.tskMonthlyAsLpk].every((e) => typeof e === "string" && /row-level security/.test(e)) && as_.tskEditMonthly === 0 &&
+      [as_.tskDelete, as_.senseiDelete].every((e) => typeof e === "string" && /permission denied/.test(e)),
+  );
+  const ivBad = selectionDecision.enumValues.filter((d) => J(as_[`iv/${d}`]) !== J([INTERVIEW_OK.includes(d), true]));
+  check(
+    `TSK_INTERVIEW hanya bila keputusan IN (${INTERVIEW_OK.join(", ")}); TSK_VISIT diterima di semua keputusan`,
+    ivBad.length === 0 && typeof as_.noDecisionInterview === "string" && as_.noDecisionVisit === null,
+    ivBad.length ? `salah di: ${ivBad.join(", ")}` : `${selectionDecision.enumValues.length} keputusan diperiksa; tanpa baris keputusan: interview ditolak, visit diterima`,
+  );
+  check(
+    "TSK_INTERVIEW mengikuti keputusan milik TSK ITU SENDIRI: TSK B ditolak walau TSK A punya keputusan yang sesuai",
+    typeof as_.bInterview === "string" && /row-level security/.test(as_.bInterview),
+  );
+  check(
+    "Mengubah penilaian TSK: penilainya dan TSK_ADMIN bisa; staf lain, staf tanpa user, TSK_ADMIN TSK lain ditolak; jenis tidak bisa diganti",
+    as_["tskUpd/penulis-staf"] === 1 && as_["tskUpd/admin"] === 1 && as_["tskUpd/staf-lain"] === 0 && as_["tskUpd/staf-tanpa-user"] === 0 &&
+      as_["tskUpd/admin-tsk-lain"] === 0 && typeof as_.tskKindChange === "string" && /tidak bisa diganti/.test(as_.tskKindChange),
+  );
+  check(
+    "Kandidat, organisasi, jenis, dan penilai tidak bisa diganti; tanggal di masa depan, skor di luar 1-5, dan kehadiran di atas 100 ditolak",
+    [as_.senseiKind, as_.senseiAssessor, as_.senseiOrg, as_.senseiCandidate].every((e) => typeof e === "string" && /tidak bisa diganti/.test(e)) &&
+      typeof as_.senseiFuture === "string" && /masa depan/.test(as_.senseiFuture) &&
+      typeof as_.score6 === "string" && /scores_check/.test(as_.score6) && typeof as_.attend101 === "string" && /attendance_check/.test(as_.attend101),
+  );
+  const ae = as_.auditEntries as Array<{ action: string; entityId: string; before?: Record<string, unknown>; after: Record<string, unknown> }>;
+  check(
+    "Audit penilaian hanya memuat jenis, periode, NAMA kolom, dan visibility dari/ke; isi note/follow_up tidak pernah ikut, dan tidak bocor ke audit yang terbaca LPK",
+    as_.auditInsert === null && ae[1].before?.visibility === "SHARED_WITH_LPK" && ae[1].after.visibility === "TSK_ONLY" &&
+      J(ae[0].after.fields) === J(["assessedOn", "note", "scoreJapanese"]) && ae[0].after.kind === "TSK_VISIT" &&
+      !JSON.stringify(ae).includes(secretAssessment) && !(as_.auditAllLpk as string).includes(secretAssessment),
+    J(ae[0].after),
   );
 
   // --- F. Audit: pelaku tercatat (actor_org_id); LPK melihat aksi TSK atas kandidatnya ---

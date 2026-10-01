@@ -169,8 +169,14 @@ Keputusan TSK tidak mengubah status LPK, dan tiap TSK hanya melihat keputusannya
 | **Sensei** | Profil dasar saja (daftar, pendidikan, kerja, sertifikat) + keputusan TSK. Tanpa data sensitif, keluarga, dokumen | Tidak ada |
 | **Admin / staf TSK** (mitra aktif) | Semua kandidat LPK mitra di **semua status** (termasuk Belajar dan Mundur) beserta data sensitif dan dokumen, **hanya jika kandidat dibagikan ke TSK** (`shared_with_tsk`) | (1) Keputusan + catatan (`Hanya TSK` atau `Bagikan ke LPK`) **milik organisasinya sendiri**, tanpa mengubah status LPK. (2) Edit isi data (kandidat, data sensitif, dokumen/keluarga/pendidikan/kerja/sertifikat: tambah & ubah) **hanya jika keputusannya** `PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, atau `DEPARTED` **dan** LPK belum menandai kandidat *Mundur*. Menghapus: hanya **dokumen**, dan hanya bila boleh mengedit (baris data lain tidak pernah) |
 
+**Penilaian kandidat** (面談 bulanan oleh LPK, plus penilaian TSK): LPK_ADMIN dan sensei menulis dan membaca penilaian
+bulanan LPK (satu per kandidat per bulan; penilai selalu user yang login, tanggal tidak boleh di masa depan). TSK membaca
+penilaian LPK kandidat yang dibagikan kepadanya tetapi **tidak pernah bisa mengubahnya** (riwayat). TSK membuat *kunjungan*
+kapan saja dan *interview* hanya setelah keputusan *Lulus wawancara TSK* atau sesudahnya; penilaian TSK default-nya *Hanya
+TSK* dan bisa dibagikan ke LPK (hanya Admin LPK yang melihatnya, sensei tidak). Tidak ada yang bisa menghapus penilaian.
+
 Kandidat yang belum dibagikan hanya terlihat oleh LPK pemiliknya, di semua tabel (data sensitif, keluarga, pendidikan,
-kerja, sertifikat, dokumen, keputusan, catatan, audit). Opsi berbagi ada di bagian *Status* halaman detail (dan di form
+kerja, sertifikat, dokumen, keputusan, catatan, penilaian, audit). Opsi berbagi ada di bagian *Status* halaman detail (dan di form
 tambah kandidat); mematikannya **tidak menghapus** keputusan atau catatan TSK, hanya menyembunyikannya sampai
 diaktifkan lagi, dan catatan TSK yang dibagikan ke LPK ikut tidak terlihat oleh LPK. Tanggal tanda tangan formulir
 persetujuan hanya catatan opsional dan bukan gerbang. Hak edit TSK dijaga policy RLS

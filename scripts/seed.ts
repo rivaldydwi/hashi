@@ -9,9 +9,11 @@ import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
 import { createDb, withSystem } from "../src/db";
 import { assertTestDatabase } from "./db-guard";
+import { periodMonthsAgo, todayInAppTz } from "../src/db/time";
 import { randomUUID } from "node:crypto";
 import {
   candidates,
+  candidateAssessments,
   candidateNotes,
   candidateSelections,
   organizations,
@@ -205,7 +207,62 @@ async function main() {
       },
     ]);
 
-    console.log(`✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, 2 catatan TSK`);
+    // ---- Penilaian (langkah 4): riwayat bulanan LPK 3-6 bulan untuk sebagian kandidat, + sedikit penilaian TSK ----
+    const userId = async (email: string) => (await tx.select({ id: users.id }).from(users).where(eq(users.email, email)))[0].id;
+    const assessors: Record<number, string[]> = {
+      0: [await userId("lpk1.admin@hashi.test"), await userId("lpk1.sensei@hashi.test")],
+      1: [await userId("lpk2.admin@hashi.test")],
+      2: [await userId("lpk3.admin@hashi.test")],
+    };
+    const today = todayInAppTz();
+    const dayInPeriod = (period: string) => {
+      const d = `${period.slice(0, 7)}-12`;
+      return d > today ? today : d; // bulan berjalan: jangan di masa depan
+    };
+    const orgOrder = [lpk1.id, lpk2.id, lpk3.id];
+    const lpkRows: Array<typeof candidateAssessments.$inferInsert> = [];
+    seeded.forEach((c, n) => {
+      const orgIndex = orgOrder.indexOf(c.row.organizationId);
+      const i = n % PIPELINE.length;
+      if (c.row.stage === "WITHDRAWN" || i === 0) return; // idx 0 tiap LPK sengaja belum pernah dinilai
+      const history = 3 + (i % 4); // 3..6 bulan
+      const skipThisMonth = i % 3 === 0; // sebagian belum dinilai bulan ini
+      for (let j = 0; j < history; j++) {
+        const monthsAgo = history - 1 - j + (skipThisMonth ? 1 : 0); // j = 0 paling lama
+        const period = periodMonthsAgo(monthsAgo);
+        const staff = assessors[orgIndex];
+        lpkRows.push({
+          candidateId: c.row.id,
+          orgId: c.row.organizationId,
+          kind: "LPK_MONTHLY",
+          assessedOn: dayInPeriod(period),
+          assessorId: staff[(i + j) % staff.length],
+          durationMinutes: 30,
+          scoreJapanese: Math.min(5, 2 + Math.floor(j / 2) + (i % 2)),
+          scoreAttitude: Math.min(5, 3 + (j % 2)),
+          scoreFitness: 3 + (i % 3 === 0 ? 1 : 0),
+          scoreMotivation: Math.min(5, 3 + Math.floor(j / 3)),
+          attendancePct: 80 + ((i * 7 + j * 3) % 21),
+          testName: j % 3 === 2 ? "Tryout JLPT N4" : null,
+          testScore: j % 3 === 2 ? 90 + j * 8 : null,
+          note: `面談 bulan ke-${j + 1}: perkembangan baik.`,
+          followUp: j === history - 1 ? "Perbanyak latihan kanji dan percakapan." : null,
+        });
+      }
+    });
+    await tx.insert(candidateAssessments).values(lpkRows);
+
+    // Penilaian TSK (hanya untuk kandidat LPK Bandung yang dibagikan dan keputusannya sesuai)
+    const bandung = seeded.slice(0, PIPELINE.length);
+    const tskAdminId = await userId("tsk.admin@hashi.test");
+    const tskStaffId = await userId("tsk.staff@hashi.test");
+    await tx.insert(candidateAssessments).values([
+      { candidateId: bandung[5].row.id, orgId: tsk.id, kind: "TSK_VISIT", assessedOn: today, assessorId: tskStaffId, scoreJapanese: 4, scoreAttitude: 4, note: "Bertemu langsung di LPK: komunikasi baik.", visibility: "TSK_ONLY" },
+      { candidateId: bandung[8].row.id, orgId: tsk.id, kind: "TSK_INTERVIEW", assessedOn: today, assessorId: tskAdminId, scoreJapanese: 4, scoreMotivation: 5, note: "面談 TSK: motivasi tinggi.", visibility: "TSK_ONLY" },
+      { candidateId: bandung[9].row.id, orgId: tsk.id, kind: "TSK_INTERVIEW", assessedOn: today, assessorId: tskAdminId, scoreJapanese: 5, scoreAttitude: 4, note: "面談 TSK: layak diajukan ke client.", visibility: "SHARED_WITH_LPK" },
+    ]);
+
+    console.log(`✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, 2 catatan TSK, ${lpkRows.length} penilaian bulanan LPK + 3 penilaian TSK`);
     console.log(`  Password semua akun demo: ${PASSWORD}`);
   }, db);
 

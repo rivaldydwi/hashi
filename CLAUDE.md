@@ -11,7 +11,8 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 1. ✅ Fondasi: login, i18n ID/JP, multi-tenant RLS, Docker, CI
 2. ✅ Kelola organisasi, pengguna, kemitraan (v0.2)
 3. ✅ **Profil kandidat**: daftar, tambah, halaman detail, keputusan & catatan TSK, persetujuan data, dokumen, audit
-4. Penilaian bulanan · 5. Seleksi (job order, shortlist) · 6. Lembar client PDF (bahasa Jepang)
+4. ⏭ **Penilaian kandidat**: ✅ skema + RLS + tes (bagian A) · ⏭ UI LPK (B) dan TSK (C)
+   5. Seleksi (job order, shortlist) · 6. Lembar client PDF (bahasa Jepang)
 7. Pengingat dokumen kedaluwarsa · 8. Siap pilot (dummy 200 siswa) · 9. Demo ke TSK
 
 Keputusan penyimpanan file dokumen (langkah 3): **Docker named volume di disk**, bukan object storage.
@@ -109,6 +110,17 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   RLS tak bisa membandingkan nilai lama vs baru). Mengaktifkan berbagi WAJIB dengan konfirmasi "siswa sudah setuju"
   (aplikasi); bawaan kandidat baru: tidak dibagikan. Seed (`NOT_SHARED` di `scripts/seed.ts`) menahan 3 kandidat LPK mitra,
   jadi TSK demo melihat 21 dari 24. Tabel baru ber-`candidate_id` WAJIB ditambahkan ke bagian I `verify-rls.ts` (dites otomatis).
+- **Penilaian** (`candidate_assessments`, migration 0011): `kind` LPK_MONTHLY (面談 bulanan, satu per kandidat per bulan:
+  indeks unik parsial `candidate_assessments_lpk_month_key`), TSK_INTERVIEW, TSK_VISIT. BACA: LPK_ADMIN + sensei membaca
+  LPK_MONTHLY kandidat LPK-nya; HANYA LPK_ADMIN yang juga membaca penilaian TSK yang `SHARED_WITH_LPK` (TSK dengan kemitraan
+  aktif dan kandidat `shared_with_tsk`); sensei tidak pernah membaca penilaian TSK; TSK membaca semua LPK_MONTHLY kandidat
+  yang dibagikan + penilaian TSK milik organisasinya saja. TULIS: LPK_MONTHLY oleh LPK_ADMIN/sensei (diubah penilainya atau
+  LPK_ADMIN); TSK TIDAK PERNAH menulis/mengubah LPK_MONTHLY (riwayat); TSK_VISIT kapan saja; TSK_INTERVIEW hanya bila keputusan
+  TSK itu IN (PASSED_TSK_INTERVIEW, SUBMITTED_TO_CLIENT, PASSED_CLIENT_INTERVIEW, DOCUMENT_PROCESS, DEPARTED) (`tsk_interview_decision`,
+  JANGAN `>=`); penilaian TSK diubah penilainya atau TSK_ADMIN. Tidak ada DELETE. Trigger mengisi `period`, `assessor_id`
+  (dari `app.user_id`, tidak bisa dipalsukan), menolak tanggal di masa depan (batas = tanggal Tokyo), dan mengunci
+  candidate_id/org_id/kind/assessor_id. Audit WAJIB lewat `assessmentAuditEntry()` (`src/db/audit-entries.ts`): jenis, periode, NAMA
+  kolom, visibility dari/ke; tanpa isi `note`/`follow_up`. "Bulan berjalan" memakai `APP_TIMEZONE` di `src/db/time.ts`.
 - **Audit log**: `audit(tx, {organizationId, actorOrgId, candidateId, …})`. Perubahan kandidat disimpan di
   `organizationId` = LPK PEMILIK kandidat (supaya LPK ikut melihat aksi TSK), `actorOrgId` = organisasi pelaku,
   `candidateId` wajib diisi (policy insert memeriksanya). Untuk log biasa `actorOrgId` otomatis = `organizationId`.
