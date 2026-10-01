@@ -80,6 +80,42 @@ Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.
 | `lpk3.admin@hashi.test` | Admin LPK Medan (bukan mitra) | 12 kandidat miliknya, tidak terlihat oleh TSK |
 | `admin@hashi.test` | Super admin | Ringkasan jumlah per organisasi, tanpa data pribadi |
 
+## Demo untuk pihak luar
+
+Untuk staf TSK yang mau mencoba Hashi lewat alamat publik, jalankan **instance demo terpisah**. Produksi (`hashi`) tidak disentuh:
+
+| | Produksi | Demo |
+| --- | --- | --- |
+| Project Compose | `hashi` | `hashi-demo` (`-p hashi-demo`) |
+| File env | `.env` | `.env.demo` (dibuat otomatis, **tidak masuk git**) |
+| Database / dokumen | volume `hashi_db-data`, `hashi_docs-data` | volume `hashi-demo_db-data`, `hashi-demo_docs-data` (database `hashi_demo`) |
+| Port aplikasi | 3110 | **3111** (hanya `127.0.0.1`; akses publik lewat proxy HTTPS / tunnel) |
+| Batas memori | app 768 MB, db 512 MB | sama (memakai `compose.yaml` yang sama) |
+| Kata sandi akun | sesuai `.env` | **acak** (`SEED_PASSWORD` di `.env.demo`), bukan `hashi-demo-2026`; `SHOW_DEMO_ACCOUNTS=false` (daftar akun tidak tampil di halaman login) |
+
+```bash
+scripts/demo-up.sh       # hidupkan: buat .env.demo (secret acak) bila belum ada, build + jalankan, seed --reset,
+                         # lalu cetak email akun demo + kata sandinya (bagikan hanya tsk.admin / tsk.staff)
+scripts/demo-reset.sh    # isi ulang data demo saja (database hashi_demo + berkas dokumen demo), kata sandi tetap
+scripts/demo-down.sh     # matikan (data demo tetap ada); `--purge` menghapus volume demo sekalian
+```
+
+Skrip selalu memakai `-p hashi-demo --env-file .env.demo` dan menolak jalan bila `.env.demo` tidak aman (nama database
+bukan `*_demo`, port 3100/3110, `SHOW_DEMO_ACCOUNTS` bukan `false`, atau kata sandi bawaan). Jangan menjalankan `docker compose`
+polos untuk demo: tanpa `-p hashi-demo` yang tersentuh adalah produksi. Cek keduanya: `docker compose ls`, lalu
+`docker compose ps` (produksi) dan `docker compose -p hashi-demo --env-file .env.demo ps` (demo).
+
+**HTTPS**: arahkan proxy/tunnel (mis. Cloudflare Tunnel) ke `http://127.0.0.1:3111`. Aplikasi memakai `AUTH_TRUST_HOST=true`, sehingga
+Auth.js membaca `X-Forwarded-Proto` / `X-Forwarded-Host` dari proxy dan memasang cookie sesi `__Secure-authjs.session-token`
+(`Secure`, `HttpOnly`, `SameSite=Lax`). Pastikan proxy meneruskan header itu (Cloudflare Tunnel dan nginx dengan
+`proxy_set_header X-Forwarded-Proto $scheme; proxy_set_header Host $host;` sudah cukup). Bila proxy tidak
+meneruskannya, isi `AUTH_URL=https://alamat-demo` di `.env.demo` lalu `scripts/demo-up.sh` lagi.
+
+> ⚠️ **Instance demo hanya boleh berisi data dummy.** Jangan pernah memasukkan data siswa asli, dan jangan memakai `.env.demo`
+> untuk database produksi. **Produksi (`hashi`, port 3110) tidak boleh pernah dibuka ke internet**: hanya demo yang boleh
+> diberi alamat publik. Akun `admin@hashi.test` (super admin) jangan dibagikan ke pihak luar. Setelah sesi demo selesai,
+> matikan dengan `scripts/demo-down.sh` atau reset dengan `scripts/demo-reset.sh`.
+
 ## Update ke versi terbaru
 
 ```bash

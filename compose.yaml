@@ -10,14 +10,14 @@ services:
     environment:
       POSTGRES_USER: hashi_owner
       POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?isi DB_OWNER_PASSWORD di file .env}
-      POSTGRES_DB: hashi
+      POSTGRES_DB: ${DB_NAME:-hashi} # instance demo (-p hashi-demo) memakai hashi_demo, lihat scripts/demo-up.sh
       # Dipakai docker/postgres/init untuk membuat role aplikasi `hashi_app`
       APP_DB_PASSWORD: ${DB_APP_PASSWORD:?isi DB_APP_PASSWORD di file .env}
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hashi_owner -d hashi"]
+      test: ["CMD-SHELL", "pg_isready -U hashi_owner -d ${DB_NAME:-hashi}"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -30,8 +30,8 @@ services:
       context: .
       target: tools
     environment:
-      MIGRATE_DATABASE_URL: postgresql://hashi_owner:${DB_OWNER_PASSWORD}@db:5432/hashi
-      DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/hashi
+      MIGRATE_DATABASE_URL: postgresql://hashi_owner:${DB_OWNER_PASSWORD}@db:5432/${DB_NAME:-hashi}
+      DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/${DB_NAME:-hashi}
       SEED_PASSWORD: ${SEED_PASSWORD:-}
     depends_on:
       db:
@@ -46,7 +46,7 @@ services:
       target: runner
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/hashi
+      DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/${DB_NAME:-hashi}
       AUTH_SECRET: ${AUTH_SECRET:?isi AUTH_SECRET di file .env}
       AUTH_TRUST_HOST: "true"
       SHOW_DEMO_ACCOUNTS: ${SHOW_DEMO_ACCOUNTS:-false}

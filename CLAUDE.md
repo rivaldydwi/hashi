@@ -74,6 +74,13 @@ done
 Verifikasi PRODUKSI: cukup CI hijau (`gh run watch`) dan `curl http://127.0.0.1:3110/api/health`; tidak ada
 tes basis data yang dijalankan di sana.
 
+### Instance demo (pihak luar)
+
+`scripts/demo-up.sh | demo-reset.sh | demo-down.sh`: project Compose `hashi-demo` + `.env.demo` (gitignored), database `hashi_demo`,
+port 3111, volume sendiri; detail di README ("Demo untuk pihak luar"). Perintah compose untuk demo SELALU lewat `dc()` di
+`scripts/demo-lib.sh` (`-p hashi-demo --env-file .env.demo`). `db-guard` menerima `_demo` selain `_dev`/`_test`. Compose memakai
+`${DB_NAME:-hashi}`, jadi produksi tidak berubah (config identik). Produksi tidak boleh dibuka ke internet; demo hanya data dummy.
+
 ## Batasan server
 
 OptiPlex bukan server khusus Hashi — ada layanan lain yang jalan di sana:
