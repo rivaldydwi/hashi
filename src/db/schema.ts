@@ -187,9 +187,13 @@ export const candidates = pgTable(
     maritalStatus: maritalStatus("marital_status"),
     field: text("field"), // bidang SSW, mis. "Pengolahan makanan"
     stage: candidateStage("stage").notNull().default("STUDYING"),
-    // Persetujuan berbagi data ke TSK (diambil saat siswa mendaftar).
-    // Trigger database: tanpa tanggal ini, kandidat tidak bisa keluar dari STUDYING.
+    // Tanggal tanda tangan formulir persetujuan siswa. OPSIONAL, hanya catatan; BUKAN gerbang visibilitas.
     dataConsentDate: date("data_consent_date"),
+    // Berbagi ke TSK mitra: satu-satunya gerbang visibilitas bagi TSK. Hanya LPK_ADMIN yang mengubahnya.
+    // Kolom *_at / *_by diisi trigger database (candidates_share_stamp), tidak dari aplikasi.
+    sharedWithTsk: boolean("shared_with_tsk").notNull().default(false),
+    sharedWithTskAt: timestamp("shared_with_tsk_at", { withTimezone: true }),
+    sharedWithTskBy: uuid("shared_with_tsk_by").references(() => users.id, { onDelete: "set null" }),
     // Fisik (bukan data kesehatan; penglihatan & buta warna ada di candidate_private)
     heightCm: smallint("height_cm"),
     weightKg: smallint("weight_kg"),

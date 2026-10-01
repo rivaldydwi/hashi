@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/PageHeader";
 import { StageBadge } from "@/components/StageBadge";
 import { cardClass } from "@/components/styles";
-import { ConsentForm, StageForm } from "@/features/candidates/DetailForms";
+import { ConsentDateForm, SharingForm, StageForm } from "@/features/candidates/DetailForms";
 import { latestAllowedDate } from "@/features/candidates/validation";
 import { getFormatter } from "next-intl/server";
 import { DecisionPanel, ListSectionCard, NotesPanel, SectionCard } from "@/features/candidates/DetailSections";
@@ -44,7 +44,7 @@ export default async function CandidateDetailPage({
   // Tanggal ditampilkan dalam format lokal (id / ja); nilai di database tetap YYYY-MM-DD
   const consentText = candidate.dataConsentDate
     ? format.dateTime(new Date(`${candidate.dataConsentDate}T00:00:00Z`), { dateStyle: "long", timeZone: "UTC" })
-    : t("consent.none");
+    : "—";
 
   return (
     <>
@@ -77,14 +77,22 @@ export default async function CandidateDetailPage({
           )}
         </div>
 
-        {ownerLpk && !candidate.dataConsentDate && (
-          <p role="note" className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-900" data-testid="consent-missing">
-            {t("consent.missing")}
-          </p>
-        )}
         {ownerLpk && (
-          <div className={`${cardClass} p-5`} data-testid="section-consent">
-            <ConsentForm candidateId={candidate.id} date={candidate.dataConsentDate ?? ""} maxDate={latestAllowedDate()} />
+          <div className={`${cardClass} space-y-4 p-5`} data-testid="section-sharing">
+            <div>
+              <h2 className="font-medium">{t("sharing.title")}</h2>
+              <p
+                className={`mt-1 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${candidate.sharedWithTsk ? "bg-sky-50 text-sky-800" : "bg-stone-100 text-stone-700"}`}
+                data-testid="sharing-state"
+              >
+                {candidate.sharedWithTsk ? t("sharing.stateOn") : t("sharing.stateOff")}
+              </p>
+              <p className="mt-2 text-sm text-stone-600">{candidate.sharedWithTsk ? t("sharing.introOn") : t("sharing.introOff")}</p>
+            </div>
+            <SharingForm candidateId={candidate.id} shared={candidate.sharedWithTsk} />
+            <div className="border-t border-stone-100 pt-4">
+              <ConsentDateForm candidateId={candidate.id} date={candidate.dataConsentDate ?? ""} maxDate={latestAllowedDate()} />
+            </div>
           </div>
         )}
 

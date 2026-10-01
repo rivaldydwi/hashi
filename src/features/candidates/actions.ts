@@ -24,7 +24,8 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
   if (input.birthDate < EARLIEST_BIRTH_DATE || input.birthDate > latest) {
     return { status: "error", key: "candidates.errors.birthDateInvalid" };
   }
-  if (input.dataConsentDate > latest) return { status: "error", key: "candidates.errors.consentInFuture" };
+  if (input.shareWithTsk && !input.shareConfirm) return { status: "error", key: "detail.sharing.errors.confirmRequired" };
+  if (input.dataConsentDate && input.dataConsentDate > latest) return { status: "error", key: "candidates.errors.consentInFuture" };
 
   let createdId: string;
   // Formulir persetujuan (opsional): diperiksa DULU, supaya file tidak valid tidak meninggalkan kandidat setengah jadi
@@ -43,7 +44,8 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
           gender: input.gender,
           birthDate: input.birthDate,
           field: input.field,
-          dataConsentDate: input.dataConsentDate,
+          dataConsentDate: input.dataConsentDate ?? null,
+          sharedWithTsk: input.shareWithTsk,
         })
         .returning({ id: candidates.id, stage: candidates.stage });
 
@@ -59,7 +61,8 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
           gender: input.gender,
           birthDate: input.birthDate,
           field: input.field,
-          dataConsentDate: input.dataConsentDate,
+          dataConsentDate: input.dataConsentDate ?? null,
+          sharedWithTsk: input.shareWithTsk,
           stage: row.stage,
         },
       });
@@ -72,7 +75,7 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
           originalFilename: consentForm.originalName,
           mimeType: consentForm.mime,
           sizeBytes: consentForm.size,
-          issuedDate: input.dataConsentDate,
+          issuedDate: input.dataConsentDate ?? null,
           uploadedBy: me.id,
         });
         await audit(tx, {

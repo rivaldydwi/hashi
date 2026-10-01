@@ -71,6 +71,13 @@
       "when": 1790761596308,
       "tag": "0009_document_delete_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790819727966,
+      "tag": "0010_share_with_tsk",
+      "breakpoints": true
     }
   ]
 }

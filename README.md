@@ -13,9 +13,9 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 | --- | --- |
 | **Super admin** | Menambah LPK/TSK beserta admin pertamanya, mengubah data organisasi, mengelola pengguna di organisasi mana pun, membuat dan menonaktifkan kemitraan LPK–TSK |
 | **Admin LPK / TSK** | Menambah staf (sensei / staf TSK), mengubah nama, peran, bahasa, membuat kata sandi sementara baru, menonaktifkan / mengaktifkan kembali |
-| **Admin LPK** (kandidat) | Menambah kandidat (data minimal + tanggal persetujuan berbagi data, formulir persetujuan opsional), melengkapi data per bagian di halaman detail, mengunggah/menghapus dokumen, mengubah status di LPK, mengubah atau **mencabut persetujuan** (TSK langsung tidak bisa melihat kandidatnya lagi) |
+| **Admin LPK** (kandidat) | Menambah kandidat, melengkapi data per bagian di halaman detail, mengunggah/menghapus dokumen, mengubah status di LPK, dan **mengatur berbagi ke TSK mitra** (bawaan: tidak dibagikan; mengaktifkan butuh konfirmasi "siswa sudah setuju"; mematikannya membuat TSK langsung tidak bisa melihat kandidatnya lagi) |
 | **Sensei** | Melihat daftar dan data dasar kandidat saja (tanpa data sensitif dan dokumen) |
-| **Admin / staf TSK** | Melihat kandidat LPK mitra yang sudah memberi persetujuan, mengunduh dokumen, mengambil keputusan dan menulis catatan; mengedit data hanya setelah keputusan *Lulus interview client* atau sesudahnya |
+| **Admin / staf TSK** | Melihat kandidat LPK mitra yang **dibagikan** ke TSK, mengunduh dokumen, mengambil keputusan dan menulis catatan; mengedit data hanya setelah keputusan *Lulus interview client* atau sesudahnya |
 | **Semua pengguna** | Login, ganti bahasa, ganti kata sandi di *Akun saya* |
 
 Cara kerja akun baru:
@@ -72,9 +72,9 @@ Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.
 
 | Email | Peran | Yang terlihat |
 | --- | --- | --- |
-| `tsk.admin@hashi.test` | Admin TSK (bahasa Jepang) | 23 kandidat dari 2 LPK mitra, semua status. 1 kandidat LPK Bandung sengaja belum punya persetujuan berbagi data, jadi tidak terlihat. Sudah ada 10 keputusan demo (shortlist s/d lulus interview client) |
+| `tsk.admin@hashi.test` | Admin TSK (bahasa Jepang) | 21 dari 24 kandidat 2 LPK mitra, semua status (3 sengaja belum dibagikan: 2 di Bandung, 1 di Surabaya). Sudah ada 10 keputusan demo (shortlist s/d lulus interview client) |
 | `tsk.staff@hashi.test` | Staf TSK | Sama seperti admin TSK |
-| `lpk1.admin@hashi.test` | Admin LPK Bandung | 12 kandidat miliknya (termasuk yang belum ada persetujuan), bisa mengedit semuanya; melihat keputusan TSK tanpa catatannya |
+| `lpk1.admin@hashi.test` | Admin LPK Bandung | 12 kandidat miliknya (2 belum dibagikan ke TSK), bisa mengedit semuanya dan mengatur berbagi; melihat keputusan TSK tanpa catatannya |
 | `lpk1.sensei@hashi.test` | Sensei LPK Bandung | 12 kandidat miliknya, hanya profil dasar (tanpa data sensitif dan dokumen), hanya baca |
 | `lpk2.admin@hashi.test` | Admin LPK Surabaya | 12 kandidat miliknya |
 | `lpk3.admin@hashi.test` | Admin LPK Medan (bukan mitra) | 12 kandidat miliknya, tidak terlihat oleh TSK |
@@ -165,13 +165,17 @@ Keputusan TSK tidak mengubah status LPK, dan tiap TSK hanya melihat keputusannya
 
 | Peran | Baca | Tulis |
 | --- | --- | --- |
-| **Admin LPK** | Semua data kandidat LPK-nya, termasuk data sensitif (`candidate_private`), keluarga, dokumen, **keputusan semua TSK mitra**, dan catatan TSK yang **dibagikan** | Semua data, di semua status. Satu-satunya yang mengubah status LPK dan tanggal persetujuan |
+| **Admin LPK** | Semua data kandidat LPK-nya, termasuk data sensitif (`candidate_private`), keluarga, dokumen, **keputusan semua TSK mitra**, dan catatan TSK yang **dibagikan** | Semua data, di semua status. Satu-satunya yang mengubah status LPK, opsi berbagi ke TSK, dan tanggal formulir |
 | **Sensei** | Profil dasar saja (daftar, pendidikan, kerja, sertifikat) + keputusan TSK. Tanpa data sensitif, keluarga, dokumen | Tidak ada |
-| **Admin / staf TSK** (mitra aktif) | Semua kandidat LPK mitra di **semua status** (termasuk Belajar dan Mundur) beserta data sensitif dan dokumen, **hanya jika kandidat punya tanggal persetujuan berbagi data** | (1) Keputusan + catatan (`Hanya TSK` atau `Bagikan ke LPK`) **milik organisasinya sendiri**, tanpa mengubah status LPK. (2) Edit isi data (kandidat, data sensitif, dokumen/keluarga/pendidikan/kerja/sertifikat: tambah & ubah) **hanya jika keputusannya** `PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, atau `DEPARTED` **dan** LPK belum menandai kandidat *Mundur*. Menghapus: hanya **dokumen**, dan hanya bila boleh mengedit (baris data lain tidak pernah) |
+| **Admin / staf TSK** (mitra aktif) | Semua kandidat LPK mitra di **semua status** (termasuk Belajar dan Mundur) beserta data sensitif dan dokumen, **hanya jika kandidat dibagikan ke TSK** (`shared_with_tsk`) | (1) Keputusan + catatan (`Hanya TSK` atau `Bagikan ke LPK`) **milik organisasinya sendiri**, tanpa mengubah status LPK. (2) Edit isi data (kandidat, data sensitif, dokumen/keluarga/pendidikan/kerja/sertifikat: tambah & ubah) **hanya jika keputusannya** `PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, atau `DEPARTED` **dan** LPK belum menandai kandidat *Mundur*. Menghapus: hanya **dokumen**, dan hanya bila boleh mengedit (baris data lain tidak pernah) |
 
-Kandidat tanpa tanggal persetujuan hanya terlihat oleh LPK pemiliknya. Hak edit TSK dijaga policy RLS
+Kandidat yang belum dibagikan hanya terlihat oleh LPK pemiliknya, di semua tabel (data sensitif, keluarga, pendidikan,
+kerja, sertifikat, dokumen, keputusan, catatan, audit). Opsi berbagi ada di bagian *Status* halaman detail (dan di form
+tambah kandidat); mematikannya **tidak menghapus** keputusan atau catatan TSK, hanya menyembunyikannya sampai
+diaktifkan lagi, dan catatan TSK yang dibagikan ke LPK ikut tidak terlihat oleh LPK. Tanggal tanda tangan formulir
+persetujuan hanya catatan opsional dan bukan gerbang. Hak edit TSK dijaga policy RLS
 (`EXISTS` ke keputusan milik TSK itu sendiri) dengan daftar keputusan yang ditulis eksplisit (`IN (…)`), bukan
-`>=` pada urutan enum. Satu trigger kecil melarang TSK mengubah `stage` dan tanggal persetujuan, karena RLS tidak
+`>=` pada urutan enum. Satu trigger kecil melarang TSK mengubah `stage`, tanggal formulir, dan opsi berbagi, karena RLS tidak
 bisa membandingkan nilai lama dengan baru.
 
 **Catatan TSK** (`candidate_notes`, misalnya 面談メモ) default-nya *Hanya TSK*. TSK bisa membagikannya ke LPK
@@ -209,8 +213,8 @@ npm run db:migrate && npm run db:seed
 Keduanya jalan otomatis di GitHub Actions setiap push (database `hashi_test`).
 
 **Jalankan hanya terhadap database dev/test, bukan produksi (`hashi`).** Walau `test:rls` me-rollback tulisannya,
-sebagian pemeriksaannya bergantung pada isi seed (mis. 23 dari 24 kandidat terlihat oleh TSK demo, 1 kandidat tanpa
-persetujuan), sehingga di database produksi yang isinya berbeda hasilnya gagal atau menyesatkan. `test:e2e`
+sebagian pemeriksaannya bergantung pada isi seed (mis. 21 dari 24 kandidat terlihat oleh TSK demo, 3 belum
+dibagikan), sehingga di database produksi yang isinya berbeda hasilnya gagal atau menyesatkan. `test:e2e`
 **menambah dan mengubah data uji**; ia, `test:rls`, dan `db:seed -- --reset` menolak jalan bila nama database tidak berakhiran
 `_dev`/`_test` (`scripts/db-guard.ts`).
 
@@ -231,7 +235,7 @@ Untuk verifikasi produksi tidak ada tes basis data: cukup **CI hijau** dan `curl
 Aturan yang diuji otomatis oleh `npm run test:rls` antara lain:
 
 - LPK hanya melihat dan mengubah kandidatnya sendiri
-- TSK membaca kandidat LPK mitra di semua status, tetapi hanya yang sudah punya persetujuan berbagi data
+- TSK membaca kandidat LPK mitra di semua status, tetapi hanya yang dibagikan ke TSK oleh LPK
 - Status LPK hanya diubah Admin LPK; TSK menulis keputusannya sendiri dan tidak bisa membaca/mengubah keputusan TSK lain
 - TSK mengedit isi data hanya jika keputusannya PASSED_CLIENT_INTERVIEW / DOCUMENT_PROCESS / DEPARTED dan kandidat belum Mundur
 - LPK membaca keputusan TSK, dan hanya catatan TSK yang dibagikan (Admin LPK saja); tidak bisa menulis keputusan maupun catatan

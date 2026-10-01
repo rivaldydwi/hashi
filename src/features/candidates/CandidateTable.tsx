@@ -18,6 +18,7 @@ export async function CandidateTable({ rows, isTsk }: { rows: CandidateListRow[]
               {isTsk && <th className="px-5 py-2 font-medium">{t("colLpk")}</th>}
               <th className="px-5 py-2 font-medium">{t("colField")}</th>
               <th className="px-5 py-2 font-medium">{t("colStage")}</th>
+              {!isTsk && <th className="px-5 py-2 font-medium">{t("colShared")}</th>}
               {isTsk && <th className="px-5 py-2 font-medium">{t("colDecision")}</th>}
             </tr>
           </thead>
@@ -33,6 +34,13 @@ export async function CandidateTable({ rows, isTsk }: { rows: CandidateListRow[]
                 {isTsk && <td className="px-5 py-3 text-stone-700">{c.lpkName}</td>}
                 <td className="px-5 py-3 text-stone-700">{c.field ?? "—"}</td>
                 <td className="px-5 py-3"><StageBadge stage={c.stage} /></td>
+                {!isTsk && (
+                  <td className="px-5 py-3 text-xs" data-testid="shared-cell">
+                    <span className={`rounded-full px-2.5 py-0.5 font-medium ${c.sharedWithTsk ? "bg-sky-50 text-sky-800" : "bg-stone-100 text-stone-600"}`}>
+                      {c.sharedWithTsk ? t("shared") : t("notShared")}
+                    </span>
+                  </td>
+                )}
                 {isTsk && <td className="px-5 py-3"><DecisionBadge decision={c.decision} /></td>}
               </tr>
             ))}

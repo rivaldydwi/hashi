@@ -13,8 +13,11 @@ export const addCandidateSchema = z.object({
   gender: z.enum(gender.enumValues),
   birthDate: isoDate,
   field: z.string().trim().min(1).max(120),
-  // Persetujuan berbagi data ke TSK mitra, diambil saat siswa mendaftar. Wajib.
-  dataConsentDate: isoDate,
+  // Tanggal tanda tangan formulir persetujuan: OPSIONAL (catatan saja, bukan gerbang visibilitas).
+  dataConsentDate: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), isoDate.optional()),
+  // Berbagi ke TSK mitra (bawaan: tidak). Mengaktifkan wajib dengan konfirmasi.
+  shareWithTsk: z.preprocess((v) => v === "on", z.boolean()),
+  shareConfirm: z.preprocess((v) => v === "on", z.boolean()),
 });
 
 /** Batas atas tanggal: hari ini + 1 hari (toleransi zona waktu, server jalan di UTC sedangkan LPK di WIB). */

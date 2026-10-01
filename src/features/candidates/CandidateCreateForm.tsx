@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { FormAlert, SubmitButton } from "@/components/FormBits";
 import { btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
@@ -14,6 +14,8 @@ export function CandidateCreateForm({ fieldSuggestions, maxDate }: { fieldSugges
   const t = useTranslations("candidates");
   const tc = useTranslations("common");
   const td = useTranslations("detail.documents");
+  const ts = useTranslations("detail.sharing");
+  const [share, setShare] = useState(false);
   const [state, action] = useActionState<FormState, FormData>(addCandidate, idle);
 
   return (
@@ -49,9 +51,23 @@ export function CandidateCreateForm({ fieldSuggestions, maxDate }: { fieldSugges
       </div>
       <div className="space-y-1.5">
         <label htmlFor="dataConsentDate" className={labelClass}>{t("consentDate")}</label>
-        <input id="dataConsentDate" name="dataConsentDate" type="date" required max={maxDate} className={inputClass} />
+        <input id="dataConsentDate" name="dataConsentDate" type="date" max={maxDate} className={inputClass} />
         <p className="text-xs text-stone-500">{t("consentHint")}</p>
       </div>
+      <fieldset className="space-y-2 rounded-lg border border-stone-200 p-3" data-testid="share-fieldset">
+        <legend className="px-1 text-sm font-medium text-stone-700">{t("shareTitle")}</legend>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="shareWithTsk" checked={share} onChange={(e) => setShare(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-stone-300" data-testid="share-checkbox" />
+          <span>{t("shareLabel")}</span>
+        </label>
+        <p className="text-xs text-stone-500">{t("shareHint")}</p>
+        {share && (
+          <label className="flex items-start gap-2 text-sm text-stone-800">
+            <input type="checkbox" name="shareConfirm" required className="mt-0.5 h-4 w-4 rounded border-stone-300" data-testid="share-confirm" />
+            <span>{ts("confirmLabel")}</span>
+          </label>
+        )}
+      </fieldset>
       <div className="space-y-1.5">
         <label htmlFor="consentForm" className={labelClass}>{t("consentForm")}</label>
         <input

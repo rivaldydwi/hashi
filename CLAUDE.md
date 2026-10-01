@@ -99,13 +99,16 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   Audit catatan WAJIB lewat `noteAuditEntry()` (`src/db/audit-entries.ts`): hanya id catatan + visibility
   dari/ke, TIDAK PERNAH isi catatan (log kandidat disimpan di LPK pemilik, jadi LPK membacanya).
   LPK_ADMIN baca+tulis semua; LPK_SENSEI hanya profil dasar (tanpa `candidate_private`, keluarga, dokumen).
-  TSK mitra membaca kandidat di SEMUA status, hanya yang `data_consent_date IS NOT NULL`. TSK mengedit isi data
+  TSK mitra membaca kandidat di SEMUA status, hanya yang `shared_with_tsk = true` (gerbang tunggal, dipegang LPK_ADMIN;
+  lihat `drizzle/0010_share_with_tsk.sql`). `data_consent_date` hanya catatan tanggal formulir (opsional), BUKAN gerbang.
+  Keputusan/catatan TSK tidak dihapus saat berbagi dimatikan, hanya tidak terlihat; catatan TSK yang dibagikan ke LPK
+  ikut tidak terlihat oleh LPK (pola kemitraan nonaktif). `shared_with_tsk_at/_by` diisi trigger. TSK mengedit isi data
   (`candidates`, `candidate_private`, tabel anak: INSERT/UPDATE; DELETE hanya `candidate_documents`) HANYA jika keputusan MILIKNYA IN
   (`PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, `DEPARTED`) dan `stage <> 'WITHDRAWN'` — daftar IN eksplisit,
-  JANGAN `>=` pada enum. TSK tidak bisa mengubah `stage`/`data_consent_date` (trigger kecil, karena RLS tak bisa
-  membandingkan nilai lama vs baru). Form tambah kandidat mewajibkan tanggal persetujuan (aturan aplikasi;
-  database menerima READY tanpa persetujuan — kandidat itu hanya tak terlihat TSK). Seed menyisakan 1 kandidat
-  tanpa persetujuan (`NO_CONSENT` di `scripts/seed.ts`), jadi TSK demo melihat 23 dari 24.
+  JANGAN `>=` pada enum. TSK tidak bisa mengubah `stage`, `data_consent_date`, maupun `shared_with_tsk*` (trigger kecil, karena
+  RLS tak bisa membandingkan nilai lama vs baru). Mengaktifkan berbagi WAJIB dengan konfirmasi "siswa sudah setuju"
+  (aplikasi); bawaan kandidat baru: tidak dibagikan. Seed (`NOT_SHARED` di `scripts/seed.ts`) menahan 3 kandidat LPK mitra,
+  jadi TSK demo melihat 21 dari 24. Tabel baru ber-`candidate_id` WAJIB ditambahkan ke bagian I `verify-rls.ts` (dites otomatis).
 - **Audit log**: `audit(tx, {organizationId, actorOrgId, candidateId, …})`. Perubahan kandidat disimpan di
   `organizationId` = LPK PEMILIK kandidat (supaya LPK ikut melihat aksi TSK), `actorOrgId` = organisasi pelaku,
   `candidateId` wajib diisi (policy insert memeriksanya). Untuk log biasa `actorOrgId` otomatis = `organizationId`.

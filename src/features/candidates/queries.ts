@@ -86,6 +86,7 @@ export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId
       stage: candidates.stage,
       lpkName: organizations.name,
       decision: candidateSelections.decision,
+      sharedWithTsk: candidates.sharedWithTsk,
     })
     .from(candidates)
     .innerJoin(organizations, eq(organizations.id, candidates.organizationId))

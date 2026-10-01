@@ -6,7 +6,7 @@ import { FormAlert, SubmitButton } from "@/components/FormBits";
 import { btnDanger, btnSecondary, inputClass, labelClass } from "@/components/styles";
 import { candidateStage, selectionDecision, type CandidateStage, type SelectionDecision } from "@/db/schema";
 import { idle, type FormState } from "@/lib/form-state";
-import { addNote, changeStage, deleteRow, saveRow, saveSection, setConsent, setDecision, updateNote } from "./detail-actions";
+import { addNote, changeStage, deleteRow, saveRow, saveSection, setConsentDate, setDecision, setSharing, updateNote } from "./detail-actions";
 import type { FieldDef } from "./sections";
 
 type Values = Record<string, string | boolean>;
@@ -115,36 +115,55 @@ export function RowForm({
   );
 }
 
-/** Ubah tanggal persetujuan berbagi data, atau cabut dengan peringatan (dua langkah). Hanya Admin LPK. */
-export function ConsentForm({ candidateId, date, maxDate }: { candidateId: string; date: string; maxDate: string }) {
-  const [state, action] = useActionState<FormState, FormData>(setConsent, idle);
-  const [revState, revAction] = useActionState<FormState, FormData>(setConsent, idle);
-  const t = useTranslations("detail.consent");
+/**
+ * Berbagi ke TSK (hanya Admin LPK). Mengaktifkan: checkbox konfirmasi WAJIB. Mematikan: peringatan akibat
+ * lalu konfirmasi (dua langkah).
+ */
+export function SharingForm({ candidateId, shared }: { candidateId: string; shared: boolean }) {
+  const [state, action] = useActionState<FormState, FormData>(setSharing, idle);
+  const t = useTranslations("detail.sharing");
   return (
-    <div className="space-y-3" data-testid="consent-form">
-      <form action={action} key={date} className="flex flex-wrap items-end gap-2">
-        <input type="hidden" name="candidateId" value={candidateId} />
-        <input type="hidden" name="mode" value="set" />
-        <div className="space-y-1.5">
-          <label htmlFor="consent-date" className={labelClass}>{t("dateLabel")}</label>
-          <input id="consent-date" name="dataConsentDate" type="date" required min="1930-01-01" max={maxDate} defaultValue={date} className={inputClass} />
-        </div>
-        <SubmitButton className={btnSecondary}>{t("save")}</SubmitButton>
-        <FormAlert state={state} />
-      </form>
-      {date && (
+    <div className="space-y-3" data-testid="sharing-form">
+      {!shared ? (
+        <form action={action} className="space-y-2" data-testid="sharing-enable-form">
+          <input type="hidden" name="candidateId" value={candidateId} />
+          <input type="hidden" name="share" value="on" />
+          <label className="flex items-start gap-2 text-sm text-stone-800">
+            <input type="checkbox" name="confirm" required className="mt-0.5 h-4 w-4 rounded border-stone-300" data-testid="sharing-confirm" />
+            <span>{t("confirmLabel")}</span>
+          </label>
+          <FormAlert state={state} />
+          <SubmitButton>{t("enable")}</SubmitButton>
+        </form>
+      ) : (
         <details className="rounded-lg border border-rose-200 bg-rose-50/40 p-3">
-          <summary className="cursor-pointer text-sm font-medium text-rose-700">{t("revoke")}</summary>
-          <form action={revAction} className="space-y-2 pt-2" data-testid="consent-revoke-form">
+          <summary className="cursor-pointer text-sm font-medium text-rose-700">{t("disable")}</summary>
+          <form action={action} className="space-y-2 pt-2" data-testid="sharing-disable-form">
             <input type="hidden" name="candidateId" value={candidateId} />
-            <input type="hidden" name="mode" value="revoke" />
-            <p className="text-sm text-rose-900" role="alert">{t("revokeWarning")}</p>
-            <FormAlert state={revState} />
-            <SubmitButton className={btnDanger}>{t("revokeConfirm")}</SubmitButton>
+            <p className="text-sm text-rose-900" role="alert">{t("disableWarning")}</p>
+            <FormAlert state={state} />
+            <SubmitButton className={btnDanger}>{t("disableConfirm")}</SubmitButton>
           </form>
         </details>
       )}
     </div>
+  );
+}
+
+/** Tanggal tanda tangan formulir persetujuan: opsional, hanya catatan. */
+export function ConsentDateForm({ candidateId, date, maxDate }: { candidateId: string; date: string; maxDate: string }) {
+  const [state, action] = useActionState<FormState, FormData>(setConsentDate, idle);
+  const t = useTranslations("detail.consent");
+  return (
+    <form action={action} key={date} className="flex flex-wrap items-end gap-2" data-testid="consent-form">
+      <input type="hidden" name="candidateId" value={candidateId} />
+      <div className="space-y-1.5">
+        <label htmlFor="consent-date" className={labelClass}>{t("dateLabel")}</label>
+        <input id="consent-date" name="dataConsentDate" type="date" min="1930-01-01" max={maxDate} defaultValue={date} className={inputClass} />
+      </div>
+      <SubmitButton className={btnSecondary}>{t("save")}</SubmitButton>
+      <FormAlert state={state} />
+    </form>
   );
 }
 

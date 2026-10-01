@@ -13,7 +13,7 @@
 
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { assertTestDatabase } from "./db-guard";
 import { createDb, withSystem, withTenant, type Tx } from "../src/db";
 import { platformOverview } from "../src/db/queries";
@@ -29,6 +29,7 @@ import {
   candidateNotes,
   candidateSelections,
   candidateStage,
+  candidateWorkHistories,
   organizations,
   partnerships,
   selectionDecision,
@@ -151,11 +152,11 @@ async function main() {
 
   const all = await withSystem((tx) => tx.select().from(candidates), db);
   const ownCount = (orgId: string) => all.filter((c) => c.organizationId === orgId).length;
-  // TSK melihat SEMUA tahap dari LPK mitra, tetapi hanya yang punya tanggal persetujuan berbagi data.
+  // TSK melihat SEMUA status dari LPK mitra, tetapi hanya yang DIBAGIKAN (shared_with_tsk). Tanggal formulir bukan gerbang.
   const isPartner = (c: { organizationId: string }) => c.organizationId === lpk1.id || c.organizationId === lpk2.id;
-  const tskVisible = all.filter((c) => isPartner(c) && c.dataConsentDate !== null);
+  const tskVisible = all.filter((c) => isPartner(c) && c.sharedWithTsk);
   const tskExpected = tskVisible.length;
-  const noConsent = all.filter((c) => c.dataConsentDate === null);
+  const unshared = all.filter((c) => isPartner(c) && !c.sharedWithTsk); // dari LPK mitra, belum dibagikan ke TSK
   const seededSelections = await withSystem((tx) => tx.select().from(candidateSelections), db);
   const hasSelection = (id: string) => seededSelections.some((s) => s.candidateId === id);
 
@@ -183,22 +184,25 @@ async function main() {
   const studyingSeen = tskRows.filter((r) => r.stage === "STUDYING").length;
   const studyingExpected = tskVisible.filter((c) => c.stage === "STUDYING").length;
   check(
-    "TSK: melihat kandidat STUDYING yang punya tanggal persetujuan",
+    "TSK: melihat kandidat STUDYING yang dibagikan",
     studyingSeen > 0 && studyingSeen === studyingExpected,
     `${studyingSeen}/${studyingExpected}`,
   );
   check(
-    "TSK: melihat kandidat WITHDRAWN yang punya tanggal persetujuan",
+    "TSK: melihat kandidat WITHDRAWN yang dibagikan",
     tskRows.filter((r) => r.stage === "WITHDRAWN").length === tskVisible.filter((c) => c.stage === "WITHDRAWN").length &&
       tskRows.some((r) => r.stage === "WITHDRAWN"),
   );
   check(
-    "TSK: tidak melihat kandidat tanpa tanggal persetujuan",
-    noConsent.length === 1 &&
-      isPartner(noConsent[0]) &&
-      !tskRows.some((r) => r.id === noConsent[0].id) &&
-      tskRows.every((r) => r.dataConsentDate !== null),
-    `kandidat tanpa persetujuan: ${noConsent.map((c) => c.fullName).join(", ")} (${noConsent[0]?.stage})`,
+    "TSK: tidak melihat kandidat yang belum dibagikan (minimal 1 per LPK mitra); tanggal formulir bukan gerbang",
+    unshared.length >= 3 &&
+      [lpk1.id, lpk2.id].every((o) => unshared.some((c) => c.organizationId === o)) &&
+      unshared.every((c) => !tskRows.some((r) => r.id === c.id)) &&
+      tskRows.every((r) => r.sharedWithTsk) &&
+      // dibagikan TANPA tanggal formulir -> tetap terlihat; belum dibagikan DENGAN tanggal formulir -> tidak terlihat
+      all.some((c) => isPartner(c) && c.sharedWithTsk && c.dataConsentDate === null && tskRows.some((r) => r.id === c.id)) &&
+      unshared.some((c) => c.dataConsentDate !== null),
+    `belum dibagikan: ${unshared.map((c) => c.fullName).join(", ")}`,
   );
   check("TSK: tidak ada kandidat LPK non-mitra", tskRows.every((r) => r.organizationId !== lpk3.id));
 
@@ -330,14 +334,14 @@ async function main() {
   // Profil kandidat: status LPK (stage) vs keputusan TSK (candidate_selections)
   // ==========================================================================
   const EDIT_DECISIONS = ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"]; // sengaja ditulis eksplisit
-  const consented = (c: (typeof all)[number]) => c.dataConsentDate !== null;
+  const consented = (c: (typeof all)[number]) => c.sharedWithTsk; // 'terlihat oleh TSK'
   const pick = (org: string, stage: string) =>
     all.find((c) => c.organizationId === org && c.stage === stage && consented(c) && !hasSelection(c.id))!;
   const ready1 = pick(lpk1.id, "READY");
   const studying1 = pick(lpk1.id, "STUDYING");
   const withdrawn1 = pick(lpk1.id, "WITHDRAWN");
   const outsider = pick(lpk3.id, "READY");
-  const hidden = noConsent[0]; // LPK Bandung, READY, tanpa persetujuan
+  const hidden = unshared.find((c) => c.organizationId === lpk1.id && c.stage === "READY")!; // LPK Bandung, READY, belum dibagikan
   const tskAdminUser = allUsers.find((u) => u.role === "TSK_ADMIN")!;
 
   const NIK = "3273010101990001";
@@ -578,6 +582,8 @@ async function main() {
     stg.stageTsk = await attempt(tx, (t) => t.update(candidates).set({ stage: "WITHDRAWN" }).where(eq(candidates.id, ready1.id)));
     stg.consentTsk = await attempt(tx, (t) => t.update(candidates).set({ dataConsentDate: null }).where(eq(candidates.id, ready1.id)));
     stg.consentTsk2 = await attempt(tx, (t) => t.update(candidates).set({ dataConsentDate: "2020-01-01" }).where(eq(candidates.id, ready1.id)));
+    stg.shareTsk = await attempt(tx, (t) => t.update(candidates).set({ sharedWithTsk: false }).where(eq(candidates.id, ready1.id)));
+    stg.shareAtTsk = await attempt(tx, (t) => t.update(candidates).set({ sharedWithTskAt: new Date(0) }).where(eq(candidates.id, ready1.id)));
     stg.hobbyTsk = await attempt(tx, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, ready1.id)));
     // TSK tanpa hak edit: UPDATE stage tidak menyentuh baris sama sekali
     stg.noRightsRows = (await rowsOf(tx, (t) => t.update(candidates).set({ stage: "READY" }).where(eq(candidates.id, studying1.id)).returning({ id: candidates.id }))).n;
@@ -601,15 +607,15 @@ async function main() {
     stg.readyNoConsentSeen = (await tx.select().from(candidates).where(eq(candidates.fullName, "Ready Tanpa Persetujuan"))).length;
     // LPK mencabut persetujuan: kandidat, keputusan, dan hak edit TSK langsung hilang
     await actAs(tx, lpk1.id, "LPK_ADMIN");
-    await tx.update(candidates).set({ dataConsentDate: null }).where(eq(candidates.id, ready1.id));
+    await tx.update(candidates).set({ sharedWithTsk: false }).where(eq(candidates.id, ready1.id));
     await actAs(tx, tsk.id, "TSK_ADMIN");
     stg.revokedCand = (await tx.select().from(candidates).where(eq(candidates.id, ready1.id))).length;
     stg.revokedSel = (await tx.select().from(candidateSelections).where(eq(candidateSelections.candidateId, ready1.id))).length;
     stg.revokedEdit = (await rowsOf(tx, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }))).n;
   });
   check(
-    "TSK tidak bisa mengubah candidates.stage (walau punya hak edit), tanggal persetujuan, tetapi kolom data lain bisa",
-    [stg.stageTsk, stg.consentTsk, stg.consentTsk2].every((e) => typeof e === "string" && /hanya bisa diubah oleh LPK/.test(e)) && stg.hobbyTsk === null,
+    "TSK tidak bisa mengubah candidates.stage, tanggal formulir, maupun shared_with_tsk* (walau punya hak edit), tetapi kolom data lain bisa",
+    [stg.stageTsk, stg.consentTsk, stg.consentTsk2, stg.shareTsk, stg.shareAtTsk].every((e) => typeof e === "string" && /hanya bisa diubah oleh LPK/.test(e)) && stg.hobbyTsk === null,
     typeof stg.stageTsk === "string" ? stg.stageTsk : "",
   );
   check("TSK tanpa hak edit: UPDATE stage tidak mengenai baris (0 baris)", stg.noRightsRows === 0);
@@ -847,7 +853,7 @@ async function main() {
 
     // LPK mencabut persetujuan data: TSK tidak lagi melihat/menulis catatan atas kandidat itu
     await actAs(tx, lpk1.id, "LPK_ADMIN");
-    await tx.update(candidates).set({ dataConsentDate: null }).where(eq(candidates.id, ready1.id));
+    await tx.update(candidates).set({ sharedWithTsk: false }).where(eq(candidates.id, ready1.id));
     await bodies("A-revoked", tsk.id, "TSK_ADMIN");
     await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
     nt.revokedInsert = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "x" }));
@@ -1010,6 +1016,11 @@ async function main() {
       };
       await probe("docsDel", w, (t) => t.delete(candidateDocuments), goneDocs);
       await probe("familyDel", w, (t) => t.delete(candidateFamilyMembers), goneFamily);
+      // UPDATE tanpa WHERE yang mematikan berbagi: kandidat yang JADI tidak dibagikan
+      await probe("unshare", w, (t) => t.update(candidates).set({ sharedWithTsk: false }), async (t) => {
+        const now = new Set((await t.select({ id: candidates.id }).from(candidates).where(eq(candidates.sharedWithTsk, true))).map((r) => r.id));
+        return [ready1.id, pciLpk1].filter((id) => !now.has(id));
+      });
       await probe("selections", w, (t) => t.update(candidateSelections).set({ decision: "REJECTED" }), async (t) => (await t.select({ id: candidateSelections.tskOrgId }).from(candidateSelections).where(eq(candidateSelections.decision, "REJECTED"))).map((r) => r.id));
       await probe("notes", w, (t, m) => t.update(candidateNotes).set({ body: m }), async (t, m) => (await t.select({ id: candidateNotes.authorId }).from(candidateNotes).where(eq(candidateNotes.body, m))).map((r) => r.id ?? "-"));
     }
@@ -1031,6 +1042,11 @@ async function main() {
       eq2(tb, "TSK_ADMIN", [pciLpk1]) && eq2(tb, "TSK_STAFF", [pciLpk1]) && eq2(tb, "TSK_B", [ready1.id]) &&
       none(tb, ["LPK_SENSEI", "LPK_NULL"]) && eq2(tb, "LPK_ADMIN", [ready1.id, pciLpk1]),
     ),
+  );
+  check(
+    "UPDATE tanpa WHERE yang mematikan shared_with_tsk: hanya LPK_ADMIN pemilik yang berhasil; TSK (walau berhak edit), sensei, dan peran null tidak sama sekali",
+    eq2("unshare", "LPK_ADMIN", [ready1.id, pciLpk1]) && none("unshare", ["TSK_ADMIN", "TSK_STAFF", "TSK_STAFF-tanpa-user", "TSK_B", "LPK_SENSEI", "LPK_NULL"]),
+    `LPK_ADMIN mengubah ${blk["unshare/LPK_ADMIN"]?.length}/2 kandidat`,
   );
   check(
     "DELETE tanpa WHERE pada dokumen: TSK hanya menghapus dokumen kandidat yang boleh diedit (keputusan membuka hak edit); TSK lain hanya miliknya; sensei/peran null tidak sama sekali",
@@ -1056,6 +1072,153 @@ async function main() {
       eq2("notes", "TSK_B", blk.adminBId) &&
       none("notes", ["TSK_STAFF-tanpa-user", "LPK_ADMIN", "LPK_SENSEI", "LPK_NULL"]),
     `TSK_ADMIN A: ${blk["notes/TSK_ADMIN"]?.length} catatan, staf: ${blk["notes/TSK_STAFF"]?.length}, TSK_ADMIN B: ${blk["notes/TSK_B"]?.length}`,
+  );
+
+  // --- I. Berbagi ke TSK (shared_with_tsk): gerbang tunggal visibilitas TSK, di SEMUA tabel turunan ---
+  const sh: Record<string, unknown> = {};
+  const lpkAdminUser = allUsers.find((u) => u.role === "LPK_ADMIN" && u.organizationId === lpk1.id)!;
+  type Counts = { cand: number; priv: number; fam: number; edu: number; work: number; cert: number; docs: number; sel: number; notes: number };
+  await sandbox(async (tx) => {
+    // Data lengkap di setiap tabel turunan untuk ready1, plus keputusan TSK yang membuka hak edit
+    await tx.insert(candidatePrivate).values({ candidateId: ready1.id, nationalId: NIK });
+    await tx.insert(candidateFamilyMembers).values({ candidateId: ready1.id, relation: "FATHER", name: "Ayah Uji" });
+    await tx.insert(candidateEducations).values({ candidateId: ready1.id, schoolName: "SMK Uji" });
+    await tx.insert(candidateWorkHistories).values({ candidateId: ready1.id, companyName: "PT Uji" });
+    await tx.insert(candidateCertificates).values({ candidateId: ready1.id, type: "JLPT", levelOrField: "N4" });
+    await tx.insert(candidateDocuments).values(sampleDoc(ready1.id));
+    await decide(tx, ready1.id, tsk.id, "PASSED_CLIENT_INTERVIEW");
+    await tx.insert(candidateNotes).values([
+      { candidateId: ready1.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "catatan hanya TSK" },
+      { candidateId: ready1.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "catatan dibagikan ke LPK", visibility: "SHARED_WITH_LPK" },
+    ]);
+    const count = async (label: string, orgId: string, role: string, userId: string | null = null) => {
+      await actAs(tx, orgId, role, userId);
+      const n = async (q: Promise<unknown[]>) => (await q).length;
+      const c: Counts = {
+        cand: await n(tx.select().from(candidates).where(eq(candidates.id, ready1.id))),
+        priv: await n(tx.select().from(candidatePrivate).where(eq(candidatePrivate.candidateId, ready1.id))),
+        fam: await n(tx.select().from(candidateFamilyMembers).where(eq(candidateFamilyMembers.candidateId, ready1.id))),
+        edu: await n(tx.select().from(candidateEducations).where(eq(candidateEducations.candidateId, ready1.id))),
+        work: await n(tx.select().from(candidateWorkHistories).where(eq(candidateWorkHistories.candidateId, ready1.id))),
+        cert: await n(tx.select().from(candidateCertificates).where(eq(candidateCertificates.candidateId, ready1.id))),
+        docs: await n(tx.select().from(candidateDocuments).where(eq(candidateDocuments.candidateId, ready1.id))),
+        sel: await n(tx.select().from(candidateSelections).where(eq(candidateSelections.candidateId, ready1.id))),
+        notes: await n(tx.select().from(candidateNotes).where(eq(candidateNotes.candidateId, ready1.id))),
+      };
+      sh[label] = c;
+    };
+    const setShare = async (value: boolean, userId: string | null) => {
+      await actAs(tx, lpk1.id, "LPK_ADMIN", userId);
+      return (await tx.update(candidates).set({ sharedWithTsk: value }).where(eq(candidates.id, ready1.id)).returning())[0];
+    };
+
+    await count("on1/tsk", tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await count("on1/lpk", lpk1.id, "LPK_ADMIN");
+    sh.stampOn0 = (await tx.select().from(candidates).where(eq(candidates.id, ready1.id)))[0].sharedWithTskAt; // tidak berubah sejak seed
+
+    // Dimatikan oleh LPK_ADMIN
+    const off = await setShare(false, lpkAdminUser.id);
+    sh.stampOff = [off.sharedWithTskAt, off.sharedWithTskBy];
+    await count("off/tsk", tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await count("off/tsk-staff", tsk.id, "TSK_STAFF", staffUser.id);
+    await count("off/lpk", lpk1.id, "LPK_ADMIN");
+    // TSK (dengan keputusan yang membuka hak edit) tidak bisa menulis apa pun saat tidak dibagikan
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    sh.offEditCand = (await rowsOf(tx, (t) => t.update(candidates).set({ hobby: uniq() }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }))).n;
+    sh.offEditPriv = (await rowsOf(tx, (t) => t.update(candidatePrivate).set({ phone: uniq() }).where(eq(candidatePrivate.candidateId, ready1.id)).returning({ id: candidatePrivate.candidateId }))).n;
+    sh.offDoc = await attempt(tx, (t) => t.insert(candidateDocuments).values(sampleDoc(ready1.id)));
+    sh.offNote = await attempt(tx, (t) => t.insert(candidateNotes).values({ candidateId: ready1.id, tskOrgId: tsk.id, authorId: tskAdminUser.id, body: "x" }));
+    sh.offDecision = (await rowsOf(tx, (t) => t.update(candidateSelections).set({ decision: "DEPARTED" }).where(eq(candidateSelections.candidateId, ready1.id)).returning({ id: candidateSelections.id }))).n;
+    sh.offAudit = await attempt(tx, (t) =>
+      t.insert(auditLogs).values({ organizationId: lpk1.id, actorOrgId: tsk.id, candidateId: ready1.id, actorUserId: tskAdminUser.id, action: "x", entity: "candidate", entityId: ready1.id }),
+    );
+
+    // Diaktifkan lagi: semua data yang tadinya ada muncul lagi (tidak ada yang dihapus)
+    const on = await setShare(true, lpkAdminUser.id);
+    sh.stampOn = [on.sharedWithTskAt !== null, on.sharedWithTskBy];
+    await count("on2/tsk", tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await count("on2/lpk", lpk1.id, "LPK_ADMIN");
+
+    // Siapa boleh mengubah kolom berbagi: hanya LPK_ADMIN
+    await actAs(tx, lpk1.id, "LPK_SENSEI", randomUUID());
+    sh.senseiRows = (await rowsOf(tx, (t) => t.update(candidates).set({ sharedWithTsk: false }).where(eq(candidates.id, ready1.id)).returning({ id: candidates.id }))).n;
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    sh.tskOff = await attempt(tx, (t) => t.update(candidates).set({ sharedWithTsk: false }).where(eq(candidates.id, ready1.id)));
+    sh.tskStamp = await attempt(tx, (t) => t.update(candidates).set({ sharedWithTskBy: tskAdminUser.id }).where(eq(candidates.id, ready1.id)));
+    await actAsSystem(tx);
+    sh.stillOn = (await tx.select().from(candidates).where(eq(candidates.id, ready1.id)))[0].sharedWithTsk;
+
+    // Kandidat baru: bawaan TIDAK dibagikan; LPK_ADMIN boleh membuat langsung dibagikan (pelaku tercatat oleh trigger)
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    const [def] = await tx.insert(candidates).values({ organizationId: lpk1.id, fullName: "Baru Default" }).returning();
+    const [direct] = await tx.insert(candidates).values({ organizationId: lpk1.id, fullName: "Baru Dibagikan", sharedWithTsk: true }).returning();
+    sh.newDefault = def.sharedWithTsk;
+    sh.newShared = [direct.sharedWithTsk, direct.sharedWithTskBy];
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    sh.newSeen = (await tx.select().from(candidates).where(inArray(candidates.id, [def.id, direct.id]))).map((c) => c.fullName);
+
+    // Tidak ada yang tertinggal: policy/fungsi lama yang menyebut data_consent_date, dan tabel baru ber-candidate_id
+    const pol = await tx.execute(sql`select tablename, policyname from pg_policies where schemaname = 'public' and (coalesce(qual, '') like '%data_consent_date%' or coalesce(with_check, '') like '%data_consent_date%')`);
+    const fns = await tx.execute(sql`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosrc like '%data_consent_date%' order by 1`);
+    const tabs = await tx.execute(sql`select distinct table_name from information_schema.columns where table_schema = 'public' and column_name = 'candidate_id' order by 1`);
+    sh.leftoverPolicies = pol.rows.map((r) => `${r.tablename}.${r.policyname}`);
+    sh.leftoverFns = fns.rows.map((r) => String(r.proname));
+    sh.candidateTables = tabs.rows.map((r) => String(r.table_name));
+  });
+  const FULL_ON: Counts = { cand: 1, priv: 1, fam: 1, edu: 1, work: 1, cert: 1, docs: 1, sel: 1, notes: 2 };
+  const ZERO: Counts = { cand: 0, priv: 0, fam: 0, edu: 0, work: 0, cert: 0, docs: 0, sel: 0, notes: 0 };
+  const J = JSON.stringify;
+  check(
+    "Dibagikan: TSK melihat kandidat dan SEMUA tabel turunannya (data sensitif, keluarga, pendidikan, kerja, sertifikat, dokumen, keputusan, catatan)",
+    J(sh["on1/tsk"]) === J(FULL_ON),
+    J(sh["on1/tsk"]),
+  );
+  check(
+    "Dimatikan: TSK (admin dan staf) tidak melihat apa pun di SEMUA tabel itu; LPK tetap melihat datanya sendiri",
+    J(sh["off/tsk"]) === J(ZERO) && J(sh["off/tsk-staff"]) === J(ZERO) &&
+      J({ ...(sh["off/lpk"] as Counts), notes: 0 }) === J({ ...FULL_ON, notes: 0 }),
+    `TSK: ${J(sh["off/tsk"])} | LPK: ${J(sh["off/lpk"])}`,
+  );
+  check(
+    "Dimatikan: catatan TSK yang dibagikan ke LPK ikut tidak terlihat oleh LPK (pola kemitraan nonaktif); keputusan TSK tetap terbaca LPK",
+    (sh["off/lpk"] as Counts).notes === 0 && (sh["on1/lpk"] as Counts).notes === 1 && (sh["off/lpk"] as Counts).sel === 1,
+    `LPK catatan: ${(sh["on1/lpk"] as Counts).notes} -> ${(sh["off/lpk"] as Counts).notes}`,
+  );
+  check(
+    "Dimatikan: TSK tidak bisa menulis walau keputusannya membuka hak edit (ubah data, data sensitif, unggah dokumen, tulis catatan, ubah keputusan, tulis audit)",
+    sh.offEditCand === 0 && sh.offEditPriv === 0 && typeof sh.offDoc === "string" && typeof sh.offNote === "string" &&
+      sh.offDecision === 0 && typeof sh.offAudit === "string",
+  );
+  check(
+    "Diaktifkan lagi: semua data TSK muncul lagi persis seperti semula (tidak ada yang dihapus saat dimatikan)",
+    J(sh["on2/tsk"]) === J(FULL_ON) && J(sh["on2/lpk"]) === J(sh["on1/lpk"]),
+    J(sh["on2/tsk"]),
+  );
+  check(
+    "Cap waktu dan pelaku diisi trigger: aktif -> pelaku = user LPK yang login; dimatikan -> dikosongkan",
+    J(sh.stampOff) === J([null, null]) && J(sh.stampOn) === J([true, lpkAdminUser.id]),
+    `${J(sh.stampOff)} / ${J(sh.stampOn)}`,
+  );
+  check(
+    "Hanya LPK_ADMIN yang bisa mengubah shared_with_tsk*: sensei 0 baris, TSK (walau punya hak edit) ditolak trigger; nilai tidak berubah",
+    sh.senseiRows === 0 && typeof sh.tskOff === "string" && /hanya bisa diubah oleh LPK/.test(sh.tskOff) &&
+      typeof sh.tskStamp === "string" && sh.stillOn === true,
+  );
+  check(
+    "Kandidat baru: bawaan TIDAK dibagikan (TSK tidak melihatnya); LPK_ADMIN boleh membuat langsung dibagikan",
+    sh.newDefault === false && J(sh.newShared) === J([true, lpkAdminUser.id]) && J(sh.newSeen) === J(["Baru Dibagikan"]),
+    J(sh.newSeen),
+  );
+  check(
+    "Tuntas: tidak ada policy yang masih menyebut data_consent_date, dan hanya trigger penjaga TSK yang menyebutnya di fungsi",
+    J(sh.leftoverPolicies) === "[]" && J(sh.leftoverFns) === J(["enforce_tsk_cannot_change_lpk_fields"]),
+    `${J(sh.leftoverPolicies)} ${J(sh.leftoverFns)}`,
+  );
+  const covered = ["audit_logs", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories"];
+  check(
+    "Tuntas: setiap tabel ber-candidate_id sudah tercakup tes berbagi (tabel baru ber-candidate_id harus ditambahkan ke bagian I)",
+    J(sh.candidateTables) === J(covered),
+    J(sh.candidateTables),
   );
 
   // --- F. Audit: pelaku tercatat (actor_org_id); LPK melihat aksi TSK atas kandidatnya ---

@@ -72,7 +72,7 @@ const PIPELINE: Array<{ stage: CandidateStage; decision?: SelectionDecision }> =
   { stage: "STUDYING" },
   { stage: "STUDYING" },
   { stage: "STUDYING", decision: "SHORTLISTED" },
-  { stage: "READY" }, // untuk LPK Bandung: tanpa persetujuan data (lihat NO_CONSENT)
+  { stage: "READY" }, // LPK Bandung: indeks 4 dan 6 tidak dibagikan ke TSK (lihat NOT_SHARED)
   { stage: "READY" },
   { stage: "READY" },
   { stage: "READY", decision: "SHORTLISTED" },
@@ -82,9 +82,14 @@ const PIPELINE: Array<{ stage: CandidateStage; decision?: SelectionDecision }> =
   { stage: "WITHDRAWN" },
 ];
 
-// 1 kandidat demo (LPK Bandung, status READY) sengaja TANPA tanggal persetujuan berbagi data,
-// untuk menguji aturan: tanpa persetujuan = tidak terlihat oleh TSK.
-const NO_CONSENT = { orgIndex: 0, stageIndex: 4 };
+// Berbagi ke TSK (candidates.shared_with_tsk) per LPK, berdasarkan indeks kandidat di PIPELINE.
+// TSK demo hanya melihat yang dibagikan: LPK Bandung menahan 2 kandidat READY, LPK Surabaya 1 READY,
+// sehingga TSK melihat 21 dari 24. LPK Medan (bukan mitra) membagikan semuanya, supaya tes "LPK non-mitra
+// tidak terlihat" benar-benar menguji kemitraan, bukan opsi berbagi.
+const NOT_SHARED: Record<number, number[]> = { 0: [4, 6], 1: [5], 2: [] };
+// Tanggal formulir persetujuan hanya catatan dan TIDAK menentukan visibilitas: sengaja dikosongkan
+// untuk 1 kandidat yang DIBAGIKAN (LPK Bandung, indeks 8) dan dibiarkan terisi untuk 1 yang tidak dibagikan.
+const NO_CONSENT_DATE: Record<number, number[]> = { 0: [8], 1: [], 2: [] };
 
 function candidateRows(orgId: string, offset: number, orgIndex: number) {
   return PIPELINE.map(({ stage, decision }, i) => {
@@ -103,11 +108,10 @@ function candidateRows(orgId: string, offset: number, orgIndex: number) {
         birthDate: `${year}-${month}-15`,
         field: FIELDS[(i + offset) % FIELDS.length],
         stage,
-        // Persetujuan berbagi data diambil saat mendaftar. Tanpa tanggal ini kandidat tidak terlihat TSK.
-        dataConsentDate:
-          orgIndex === NO_CONSENT.orgIndex && i === NO_CONSENT.stageIndex
-            ? null
-            : `2026-${String(((i + offset) % 6) + 1).padStart(2, "0")}-10`,
+        dataConsentDate: NO_CONSENT_DATE[orgIndex].includes(i)
+          ? null
+          : `2026-${String(((i + offset) % 6) + 1).padStart(2, "0")}-10`,
+        sharedWithTsk: !NOT_SHARED[orgIndex].includes(i),
       },
     };
   });
@@ -201,7 +205,7 @@ async function main() {
       },
     ]);
 
-    console.log(`✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (1 tanpa persetujuan data), ${decided.length} keputusan TSK, 2 catatan TSK`);
+    console.log(`✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, 2 catatan TSK`);
     console.log(`  Password semua akun demo: ${PASSWORD}`);
   }, db);
 

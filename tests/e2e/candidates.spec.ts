@@ -3,9 +3,9 @@ import { createIsolatedLpk, login, ownerQuery, unique } from "./helpers";
 
 // Daftar & tambah kandidat (langkah 3, bagian 1).
 // Penambahan data memakai LPK baru per run (createIsolatedLpk) supaya angka data demo tidak bergeser.
-// Angka data demo (dari scripts/seed.ts) untuk TSK Demo Tokyo: 23 kandidat terlihat =
-//   8 Belajar + 13 Siap seleksi + 2 Mundur;  keputusan: 4 shortlist, 2 lulus wawancara TSK,
-//   2 diajukan ke client, 2 lulus interview client, 13 belum diputuskan.
+// Angka data demo (dari scripts/seed.ts) untuk TSK Demo Tokyo: 21 kandidat terlihat =
+//   8 Belajar + 11 Siap seleksi + 2 Mundur (3 kandidat LPK mitra belum dibagikan ke TSK);
+//   keputusan: 4 shortlist, 2 lulus wawancara TSK, 2 diajukan ke client, 2 lulus interview client, 11 belum diputuskan.
 
 test.describe.configure({ mode: "serial" });
 
@@ -84,7 +84,7 @@ test("tanggal persetujuan di masa depan ditolak server, dan tidak ada kandidat y
     (el as HTMLInputElement).value = v;
   }, future);
   await page.locator("main form button[type=submit]").click();
-  await expect(page.locator("p[role=alert]")).toHaveText("Tanggal persetujuan tidak boleh di masa depan.");
+  await expect(page.locator("p[role=alert]")).toHaveText("Tanggal tidak boleh di masa depan.");
   const rows = await ownerQuery("select 1 from candidates where full_name = $1", [`Ditolak ${run}`]);
   expect(rows).toHaveLength(0);
 });
@@ -125,6 +125,45 @@ test("filter bidang, status, dan pencarian nama bekerja (termasuk karakter khusu
   await expect(page.locator("#decision")).toHaveCount(0); // filter keputusan hanya untuk TSK
 });
 
+test("form tambah: tanggal formulir opsional; berbagi ke TSK bawaan mati, dan mengaktifkannya butuh konfirmasi", async ({ page }) => {
+  await login(page, lpk.adminEmail, lpk.adminPassword);
+  const nameC = `Kandidat Uji C${run}`;
+  const nameD = `Kandidat Uji D${run}`;
+  const fillMin = async (name: string) => {
+    await page.goto("/candidates/new");
+    await page.locator("#fullName").fill(name);
+    await page.locator("#gender").selectOption("MALE");
+    await page.locator("#birthDate").fill("2000-06-06");
+    await page.locator("#field").fill("Pertanian");
+  };
+  const stateOf = async (name: string) =>
+    (await ownerQuery<{ shared: boolean; d: string | null; by: string | null }>(
+      "select shared_with_tsk as shared, data_consent_date as d, shared_with_tsk_by as by from candidates where full_name = $1", [name]))[0];
+
+  // Tanpa tanggal formulir dan tanpa mencentang berbagi: tersimpan, TIDAK dibagikan
+  await fillMin(nameC);
+  await expect(page.getByTestId("share-checkbox")).not.toBeChecked();
+  await expect(page.getByTestId("share-confirm")).toHaveCount(0);
+  await page.locator("main form button[type=submit]").click();
+  await expect(page).toHaveURL(/\/candidates\/[0-9a-f-]{36}\?added=1/);
+  await expect(page.getByTestId("sharing-state")).toHaveText("Belum dibagikan");
+  expect(await stateOf(nameC)).toEqual({ shared: false, d: null, by: null });
+
+  // Mencentang berbagi memunculkan checkbox konfirmasi yang wajib
+  await fillMin(nameD);
+  await page.getByTestId("share-checkbox").check();
+  await expect(page.getByTestId("share-confirm")).toBeVisible();
+  await page.locator("main form button[type=submit]").click(); // ditolak browser: konfirmasi kosong
+  await expect(page).toHaveURL(/\/candidates\/new$/);
+  await page.getByTestId("share-confirm").check();
+  await page.locator("main form button[type=submit]").click();
+  await expect(page).toHaveURL(/\/candidates\/[0-9a-f-]{36}\?added=1/);
+  await expect(page.getByTestId("sharing-state")).toHaveText("Dibagikan ke TSK mitra");
+  const d = await stateOf(nameD);
+  expect(d.shared).toBe(true);
+  expect(d.by).not.toBeNull();
+});
+
 test("sensei melihat daftar kandidat tetapi tidak bisa menambah", async ({ page }) => {
   await login(page, "lpk1.sensei@hashi.test");
   await page.goto("/candidates");
@@ -135,11 +174,11 @@ test("sensei melihat daftar kandidat tetapi tidak bisa menambah", async ({ page 
   await expect(page).toHaveURL(/\/$/); // diarahkan ke beranda
 });
 
-test("TSK melihat 23 kandidat di semua status; filter status & keputusan; tidak bisa menambah", async ({ page }) => {
+test("TSK melihat 21 kandidat di semua status; filter status & keputusan; tidak bisa menambah", async ({ page }) => {
   await login(page, "tsk.admin@hashi.test");
   await page.getByRole("link", { name: "候補者", exact: true }).click(); // TSK demo berbahasa Jepang
   await expect(page).toHaveURL(/\/candidates$/);
-  await expectTotal(page, 23); // kandidat LPK baru (tanpa kemitraan) tidak ikut terlihat
+  await expectTotal(page, 21); // yang belum dibagikan dan kandidat LPK baru (tanpa kemitraan) tidak ikut terlihat
   await expect(page.getByRole("link", { name: "+ 候補者を追加" })).toHaveCount(0);
 
   const filter = async (params: string, n: number) => {
@@ -147,15 +186,15 @@ test("TSK melihat 23 kandidat di semua status; filter status & keputusan; tidak 
     await expectTotal(page, n);
   };
   await filter("stage=STUDYING", 8); // TSK melihat kandidat yang masih belajar
-  await filter("stage=READY", 13);
+  await filter("stage=READY", 11);
   await filter("stage=WITHDRAWN", 2);
   await filter("decision=SHORTLISTED", 4);
   await filter("decision=PASSED_TSK_INTERVIEW", 2);
   await filter("decision=SUBMITTED_TO_CLIENT", 2);
   await filter("decision=PASSED_CLIENT_INTERVIEW", 2);
-  await filter("decision=NONE", 13); // belum ada baris keputusan
+  await filter("decision=NONE", 11); // belum ada baris keputusan
   await filter("stage=STUDYING&decision=SHORTLISTED", 2); // shortlist walau LPK-nya masih Belajar
-  await filter("decision=BUKAN_NILAI_VALID&stage=NGAWUR", 23); // nilai tak dikenal diabaikan
+  await filter("decision=BUKAN_NILAI_VALID&stage=NGAWUR", 21); // nilai tak dikenal diabaikan
 
   await page.goto("/candidates/new");
   await expect(page).toHaveURL(/\/$/);

@@ -55,7 +55,7 @@
     "colLpk": "LPK",
     "colField": "Bidang",
     "colStage": "Tahapan",
-    "tskNote": "Sebagai TSK, Anda melihat kandidat dari LPK mitra di semua tahap, selama kandidat sudah memberi persetujuan berbagi data.",
+    "tskNote": "Sebagai TSK, Anda melihat kandidat dari LPK mitra yang dibagikan ke Anda, di semua tahap.",
     "nextModules": "Modul berikutnya: profil kandidat lengkap, penilaian bulanan, dan seleksi.",
     "platformTitle": "Semua organisasi",
     "colOrg": "Organisasi",
@@ -220,7 +220,7 @@
   "candidates": {
     "title": "Kandidat",
     "introLpk": "Kandidat milik {org}.",
-    "introTsk": "Kandidat dari LPK mitra yang sudah memberi persetujuan berbagi data, di semua status.",
+    "introTsk": "Kandidat dari LPK mitra yang dibagikan ke Anda, di semua status.",
     "add": "Tambah kandidat",
     "added": "Kandidat berhasil ditambahkan.",
     "filterSearch": "Cari nama",
@@ -249,18 +249,24 @@
     "birthDate": "Tanggal lahir",
     "field": "Bidang",
     "fieldHint": "Bidang kerja SSW yang dituju, mis. Pengolahan makanan & minuman.",
-    "consentDate": "Tanggal persetujuan berbagi data",
-    "consentHint": "Tanggal siswa menyetujui datanya dibagikan ke TSK mitra (diambil saat mendaftar). Wajib diisi. Tanpa persetujuan, kandidat tidak terlihat oleh TSK.",
+    "consentDate": "Tanggal tanda tangan formulir persetujuan (opsional)",
+    "consentHint": "Hanya catatan; tidak menentukan siapa yang bisa melihat kandidat.",
     "genders": {
       "MALE": "Laki-laki",
       "FEMALE": "Perempuan"
     },
     "errors": {
       "birthDateInvalid": "Tanggal lahir tidak valid.",
-      "consentInFuture": "Tanggal persetujuan tidak boleh di masa depan."
+      "consentInFuture": "Tanggal tidak boleh di masa depan."
     },
     "consentForm": "Formulir persetujuan (opsional)",
-    "consentFormHint": "Unggah formulir persetujuan yang sudah ditandatangani (PDF, JPG, atau PNG, maks. 10 MB). Bisa juga diunggah nanti di halaman detail."
+    "consentFormHint": "Unggah formulir persetujuan yang sudah ditandatangani (PDF, JPG, atau PNG, maks. 10 MB). Bisa juga diunggah nanti di halaman detail.",
+    "shareTitle": "Berbagi ke TSK mitra",
+    "shareLabel": "Bagikan kandidat ini ke TSK mitra",
+    "shareHint": "Bawaan: tidak dibagikan, sehingga hanya LPK Anda yang melihatnya. Bisa diubah kapan saja di halaman detail.",
+    "colShared": "TSK",
+    "shared": "Dibagikan",
+    "notShared": "Belum dibagikan"
   },
   "detail": {
     "saved": "Perubahan disimpan.",
@@ -275,7 +281,7 @@
     "backToList": "Kandidat",
     "added": "Kandidat berhasil ditambahkan. Lengkapi datanya di bawah.",
     "lpkLabel": "LPK",
-    "consentLabel": "Tanggal persetujuan berbagi data",
+    "consentLabel": "Tanggal tanda tangan formulir persetujuan (opsional)",
     "stageLabel": "Status di LPK",
     "stageInfoTsk": "Status ini diisi oleh LPK sebagai informasi. Keputusan Anda dicatat terpisah di bagian Keputusan TSK.",
     "decisionTitle": "Keputusan TSK",
@@ -430,17 +436,6 @@
         }
       }
     },
-    "consent": {
-      "none": "Belum ada persetujuan",
-      "dateLabel": "Tanggal persetujuan berbagi data",
-      "save": "Simpan tanggal",
-      "saved": "Tanggal persetujuan disimpan.",
-      "revoke": "Cabut persetujuan",
-      "revoked": "Persetujuan dicabut. Kandidat ini tidak lagi terlihat oleh TSK.",
-      "revokeWarning": "Yang terjadi bila dicabut: tanggal persetujuan dikosongkan dan TSK langsung tidak bisa lagi melihat kandidat ini, termasuk data, dokumen, catatan, dan keputusan TSK atasnya. Data Anda sendiri tidak berubah. Persetujuan bisa diisi lagi kapan saja.",
-      "revokeConfirm": "Ya, cabut persetujuan",
-      "missing": "Kandidat ini belum punya persetujuan berbagi data, jadi tidak terlihat oleh TSK mana pun. Isi tanggal persetujuan di bawah bila siswa sudah menyetujui."
-    },
     "documents": {
       "title": "Dokumen",
       "empty": "Belum ada dokumen.",
@@ -482,6 +477,28 @@
         "tooBig": "Ukuran file melebihi 10 MB.",
         "invalidType": "File bukan PDF, JPG, atau PNG yang valid."
       }
+    },
+    "sharing": {
+      "title": "Berbagi ke TSK mitra",
+      "stateOn": "Dibagikan ke TSK mitra",
+      "stateOff": "Belum dibagikan",
+      "introOn": "TSK mitra bisa melihat kandidat ini (data, dokumen, keputusan, dan catatan mereka).",
+      "introOff": "Kandidat ini hanya terlihat oleh LPK Anda. TSK mitra belum bisa melihatnya.",
+      "confirmLabel": "Siswa sudah setuju datanya dibagikan ke TSK mitra",
+      "enable": "Bagikan ke TSK mitra",
+      "disable": "Hentikan berbagi ke TSK",
+      "disableConfirm": "Ya, hentikan berbagi",
+      "disableWarning": "Yang terjadi bila dihentikan: TSK langsung tidak bisa lagi melihat kandidat ini, termasuk data, dokumen, catatan, dan keputusan TSK atasnya. Semua itu tidak dihapus dan muncul lagi bila Anda membagikannya kembali.",
+      "enabled": "Kandidat dibagikan ke TSK mitra.",
+      "disabled": "Berbagi dihentikan. TSK tidak lagi melihat kandidat ini.",
+      "errors": {
+        "confirmRequired": "Centang konfirmasi bahwa siswa sudah setuju."
+      }
+    },
+    "consent": {
+      "dateLabel": "Tanggal tanda tangan formulir persetujuan (opsional)",
+      "save": "Simpan tanggal",
+      "saved": "Tanggal disimpan."
     }
   },
   "roles": {

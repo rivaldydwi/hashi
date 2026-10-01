@@ -151,24 +151,60 @@ export async function changeStage(_prev: FormState, formData: FormData): Promise
 }
 
 /**
- * Ubah atau CABUT tanggal persetujuan berbagi data. Hanya LPK_ADMIN pemilik kandidat.
- * Mencabut (mode=revoke) mengosongkan tanggal: kandidat, keputusan, catatan, dan dokumennya
- * langsung tidak terlihat oleh TSK (RLS). Tercatat di audit (dari, ke, siapa).
+ * Berbagi ke TSK mitra: satu-satunya gerbang visibilitas bagi TSK. Hanya LPK_ADMIN pemilik kandidat.
+ * Mengaktifkan WAJIB dengan konfirmasi ("siswa sudah setuju"). Mematikan membuat TSK langsung tidak bisa
+ * melihat kandidat, data, dokumen, catatan, dan keputusannya (RLS); semuanya TIDAK dihapus, dan muncul lagi
+ * bila diaktifkan kembali. Audit: dari, ke, siapa (tanpa isi data). Cap waktu/pelaku diisi trigger database.
  */
-export async function setConsent(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function setSharing(_prev: FormState, formData: FormData): Promise<FormState> {
   return run(async (me) => {
-    const mode = formData.get("mode") === "revoke" ? "revoke" : "set";
     if (me.role !== "LPK_ADMIN" || !uuid.safeParse(formData.get("candidateId")).success) {
       return { status: "error", key: "detail.errors.readOnly" };
     }
+    const share = formData.get("share") === "on";
+    if (share && formData.get("confirm") !== "on") return { status: "error", key: "detail.sharing.errors.confirmRequired" };
+
+    await tenantQuery(async (tx) => {
+      const [cand] = await tx
+        .select({ id: candidates.id, organizationId: candidates.organizationId, before: candidates.sharedWithTsk })
+        .from(candidates)
+        .where(eq(candidates.id, formData.get("candidateId") as string));
+      if (!cand) throw new ActionError("detail.errors.notFound");
+      if (cand.before === share) return;
+      const done = await tx.update(candidates).set({ sharedWithTsk: share }).where(eq(candidates.id, cand.id)).returning({ id: candidates.id });
+      if (done.length !== 1) throw new ActionError("detail.errors.readOnly");
+      await audit(tx, {
+        organizationId: cand.organizationId,
+        actorOrgId: me.organizationId,
+        candidateId: cand.id,
+        actorUserId: me.id,
+        action: share ? "candidate.share_enable" : "candidate.share_disable",
+        entity: "candidate",
+        entityId: cand.id,
+        before: { sharedWithTsk: cand.before },
+        after: { sharedWithTsk: share },
+      });
+    });
+    revalidatePath(`/candidates/${formData.get("candidateId")}`);
+    revalidatePath("/candidates");
+    return ok(share ? "detail.sharing.enabled" : "detail.sharing.disabled");
+  });
+}
+
+/** Tanggal tanda tangan formulir persetujuan: OPSIONAL, hanya catatan (tidak memengaruhi visibilitas). Kosong = dihapus. */
+export async function setConsentDate(_prev: FormState, formData: FormData): Promise<FormState> {
+  return run(async (me) => {
+    if (me.role !== "LPK_ADMIN" || !uuid.safeParse(formData.get("candidateId")).success) {
+      return { status: "error", key: "detail.errors.readOnly" };
+    }
+    const raw = String(formData.get("dataConsentDate") ?? "").trim();
     let next: string | null = null;
-    if (mode === "set") {
-      const v = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(formData.get("dataConsentDate"));
-      if (!v.success || new Date(`${v.data}T00:00:00Z`).toISOString().slice(0, 10) !== v.data) {
+    if (raw !== "") {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || new Date(`${raw}T00:00:00Z`).toISOString().slice(0, 10) !== raw) {
         return { status: "error", key: "common.invalidInput" };
       }
-      if (v.data > latestAllowedDate() || v.data < EARLIEST_BIRTH_DATE) return { status: "error", key: "candidates.errors.consentInFuture" };
-      next = v.data;
+      if (raw > latestAllowedDate() || raw < EARLIEST_BIRTH_DATE) return { status: "error", key: "candidates.errors.consentInFuture" };
+      next = raw;
     }
     await tenantQuery(async (tx) => {
       const [cand] = await tx
@@ -184,7 +220,7 @@ export async function setConsent(_prev: FormState, formData: FormData): Promise<
         actorOrgId: me.organizationId,
         candidateId: cand.id,
         actorUserId: me.id,
-        action: mode === "revoke" ? "candidate.consent_revoke" : "candidate.consent_change",
+        action: "candidate.consent_date_change",
         entity: "candidate",
         entityId: cand.id,
         before: { dataConsentDate: cand.before },
@@ -192,8 +228,7 @@ export async function setConsent(_prev: FormState, formData: FormData): Promise<
       });
     });
     revalidatePath(`/candidates/${formData.get("candidateId")}`);
-    revalidatePath("/candidates");
-    return ok(mode === "revoke" ? "detail.consent.revoked" : "detail.consent.saved");
+    return ok("detail.consent.saved");
   });
 }
 
