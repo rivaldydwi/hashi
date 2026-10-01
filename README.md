@@ -95,7 +95,7 @@ Untuk staf TSK yang mau mencoba Hashi lewat alamat publik, jalankan **instance d
 
 ```bash
 scripts/demo-up.sh       # hidupkan: buat .env.demo (secret acak) bila belum ada, build + jalankan, seed --reset,
-                         # lalu cetak email akun demo + kata sandinya (bagikan hanya tsk.admin / tsk.staff)
+                         # lalu cetak email akun demo + kata sandinya (bagikan tsk.admin / tsk.staff untuk sisi TSK, dan lpk1.admin / lpk1.sensei untuk sisi LPK)
 scripts/demo-reset.sh    # isi ulang data demo saja (database hashi_demo + berkas dokumen demo), kata sandi tetap
 scripts/demo-down.sh     # matikan (data demo tetap ada); `--purge` menghapus volume demo sekalian
 ```

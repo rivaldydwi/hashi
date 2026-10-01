@@ -36,8 +36,8 @@ print_accounts() {
     case "$email" in
       tsk.admin@*) role="Admin TSK (bahasa Jepang)  <- untuk staf TSK" ;;
       tsk.staff@*) role="Staf TSK                   <- untuk staf TSK" ;;
-      lpk1.admin@*) role="Admin LPK Bandung" ;;
-      lpk1.sensei@*) role="Sensei LPK Bandung" ;;
+      lpk1.admin@*) role="Admin LPK Bandung        <- untuk demo sisi LPK" ;;
+      lpk1.sensei@*) role="Sensei LPK Bandung       <- untuk demo sisi LPK" ;;
       lpk2.admin@*) role="Admin LPK Surabaya" ;;
       lpk3.admin@*) role="Admin LPK Medan (bukan mitra)" ;;
       admin@*) role="Super admin (jangan diberikan ke pihak luar)" ;;
