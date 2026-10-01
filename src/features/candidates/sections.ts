@@ -26,8 +26,12 @@ export type FieldDef = {
 /** basic = boleh dilihat sensei; detail = hanya LPK_ADMIN dan TSK. */
 export type Level = "basic" | "detail";
 
+/** Pasangan [lebih awal, lebih akhir]: nilai kedua tidak boleh lebih kecil dari yang pertama (tanggal atau tahun). */
+export type OrderedPair = [earlier: string, later: string];
+
 export type SingleSectionDef = {
   key: string;
+  orderedDates?: OrderedPair[];
   table: "candidates" | "candidate_private";
   level: Level;
   fields: FieldDef[];
@@ -35,6 +39,7 @@ export type SingleSectionDef = {
 
 export type ListSectionDef = {
   key: string;
+  orderedDates?: OrderedPair[];
   table: "candidate_family_members" | "candidate_educations" | "candidate_work_histories" | "candidate_certificates";
   level: "detail";
   fields: FieldDef[];
@@ -100,6 +105,7 @@ export const SINGLE_SECTIONS: SingleSectionDef[] = [
     key: "identity",
     table: "candidate_private",
     level: "detail",
+    orderedDates: [["passportIssuedDate", "passportExpiryDate"]],
     fields: [
       { name: "nationalId", kind: "text", max: 40 },
       { name: "familyCardNumber", kind: "text", max: 40 },
@@ -142,6 +148,7 @@ export const LIST_SECTIONS: ListSectionDef[] = [
     key: "education",
     table: "candidate_educations",
     level: "detail",
+    orderedDates: [["startYear", "endYear"]],
     summary: ["schoolName", "major", "startYear", "endYear"],
     fields: [
       { name: "schoolName", kind: "text", required: true, max: 160 },
@@ -154,6 +161,7 @@ export const LIST_SECTIONS: ListSectionDef[] = [
     key: "work",
     table: "candidate_work_histories",
     level: "detail",
+    orderedDates: [["startDate", "endDate"]],
     summary: ["companyName", "position", "startDate", "endDate"],
     fields: [
       { name: "companyName", kind: "text", required: true, max: 160 },
@@ -220,8 +228,36 @@ function fieldSchema(f: FieldDef): z.ZodType {
 }
 
 /** Skema zod untuk sekumpulan kolom. Hasil parse: { namaKolom: nilai | null }. */
-export function buildSchema(fields: FieldDef[]) {
-  return z.object(Object.fromEntries(fields.map((f) => [f.name, fieldSchema(f)])));
+export function buildSchema(fields: FieldDef[], orderedDates: OrderedPair[] = []) {
+  return z
+    .object(Object.fromEntries(fields.map((f) => [f.name, fieldSchema(f)])))
+    .superRefine((v, ctx) => {
+      const values = v as Record<string, string | number | null>;
+      for (const [earlier, later] of orderedDates) {
+        const a = values[earlier];
+        const b = values[later];
+        if (a !== null && a !== undefined && b !== null && b !== undefined && a > b) {
+          ctx.addIssue({ code: "custom", path: [later], message: "order" });
+        }
+      }
+    });
+}
+
+/** Satu baris/isian dianggap kosong bila semua kolomnya kosong (teks kosong, boolean tidak dicentang). */
+export function isBlank(fields: FieldDef[], raw: Record<string, unknown>): boolean {
+  return fields.every((f) => (f.kind === "boolean" ? !(raw[f.name] === "on" || raw[f.name] === "true") : String(raw[f.name] ?? "").trim() === ""));
+}
+
+// Form tambah kandidat memakai nama kolom apa adanya untuk bagian satu-baris, jadi nama kolom antar-bagian
+// tidak boleh sama. Diperiksa saat modul dimuat (gagal keras lebih baik daripada isian saling menimpa).
+{
+  const seen = new Map<string, string>();
+  for (const s of SINGLE_SECTIONS) {
+    for (const f of s.fields) {
+      if (seen.has(f.name)) throw new Error(`sections.ts: kolom "${f.name}" ada di bagian "${seen.get(f.name)}" dan "${s.key}"`);
+      seen.set(f.name, s.key);
+    }
+  }
 }
 
 /** Nilai dari database -> nilai awal input form (string / boolean). */

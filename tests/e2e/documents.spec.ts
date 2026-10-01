@@ -196,10 +196,10 @@ test("form tambah kandidat: formulir persetujuan opsional; file tidak valid memb
   await login(page, lpk.adminEmail, lpk.adminPassword);
   const fill = async (name: string) => {
     await page.goto("/candidates/new");
-    await page.locator("#fullName").fill(name);
-    await page.locator("#gender").selectOption("FEMALE");
-    await page.locator("#birthDate").fill("2002-02-02");
-    await page.locator("#field").fill("Konstruksi");
+    await page.locator("#basic-fullName").fill(name);
+    await page.locator("#basic-gender").selectOption("FEMALE");
+    await page.locator("#basic-birthDate").fill("2002-02-02");
+    await page.locator("#basic-field").fill("Konstruksi");
     await page.locator("#dataConsentDate").fill("2026-08-05");
   };
 
@@ -207,7 +207,7 @@ test("form tambah kandidat: formulir persetujuan opsional; file tidak valid memb
   await fill(bad);
   await page.locator("#consentForm").setInputFiles({ name: "persetujuan.pdf", mimeType: "application/pdf", buffer: Buffer.from("bukan pdf") });
   await page.locator("main form button[type=submit]").click();
-  await expect(page.locator("p[role=alert]")).toHaveText("File bukan PDF, JPG, atau PNG yang valid.");
+  await expect(page.getByTestId("form-error")).toHaveText("File bukan PDF, JPG, atau PNG yang valid.");
   expect(await ownerQuery("select 1 from candidates where full_name = $1", [bad])).toHaveLength(0);
 
   const good = `Form Sah ${run}`;

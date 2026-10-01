@@ -19,10 +19,10 @@ test.beforeAll(async ({ browser }) => {
 });
 
 async function fillCandidate(page: Page, v: { name: string; gender: "MALE" | "FEMALE"; birth: string; field: string; consent: string }) {
-  await page.locator("#fullName").fill(v.name);
-  await page.locator("#gender").selectOption(v.gender);
-  await page.locator("#birthDate").fill(v.birth);
-  await page.locator("#field").fill(v.field);
+  await page.locator("#basic-fullName").fill(v.name);
+  await page.locator("#basic-gender").selectOption(v.gender);
+  await page.locator("#basic-birthDate").fill(v.birth);
+  await page.locator("#basic-field").fill(v.field);
   await page.locator("#dataConsentDate").fill(v.consent);
 }
 
@@ -60,7 +60,7 @@ test("admin LPK menambah kandidat: muncul di daftar dan tercatat di audit log", 
   );
   expect(cand.stage).toBe("STUDYING");
   expect(cand.data_consent_date).toBe("2026-08-01");
-  const logs = await ownerQuery<{ action: string; organization_id: string; actor_org_id: string; candidate_id: string; after: { fullName: string; dataConsentDate: string } }>(
+  const logs = await ownerQuery<{ action: string; organization_id: string; actor_org_id: string; candidate_id: string; after: { fields: string[]; sharedWithTsk: boolean } }>(
     "select action, organization_id, actor_org_id, candidate_id, after from audit_logs where entity_id = $1",
     [cand.id],
   );
@@ -69,8 +69,9 @@ test("admin LPK menambah kandidat: muncul di daftar dan tercatat di audit log", 
   expect(logs[0].organization_id).toBe(cand.organization_id);
   expect(logs[0].actor_org_id).toBe(cand.organization_id);
   expect(logs[0].candidate_id).toBe(cand.id);
-  expect(logs[0].after.fullName).toBe(nameA);
-  expect(logs[0].after.dataConsentDate).toBe("2026-08-01");
+  expect(logs[0].after.fields).toContain("fullName"); // audit hanya mencatat NAMA kolom, bukan isinya
+  expect(JSON.stringify(logs[0].after)).not.toContain(nameA);
+  expect(logs[0].after.sharedWithTsk).toBe(false);
 });
 
 test("tanggal persetujuan di masa depan ditolak server, dan tidak ada kandidat yang tersimpan", async ({ page }) => {
@@ -84,7 +85,7 @@ test("tanggal persetujuan di masa depan ditolak server, dan tidak ada kandidat y
     (el as HTMLInputElement).value = v;
   }, future);
   await page.locator("main form button[type=submit]").click();
-  await expect(page.locator("p[role=alert]")).toHaveText("Tanggal tidak boleh di masa depan.");
+  await expect(page.getByTestId("form-error")).toHaveText("Tanggal tidak boleh di masa depan.");
   const rows = await ownerQuery("select 1 from candidates where full_name = $1", [`Ditolak ${run}`]);
   expect(rows).toHaveLength(0);
 });
@@ -131,10 +132,10 @@ test("form tambah: tanggal formulir opsional; berbagi ke TSK bawaan mati, dan me
   const nameD = `Kandidat Uji D${run}`;
   const fillMin = async (name: string) => {
     await page.goto("/candidates/new");
-    await page.locator("#fullName").fill(name);
-    await page.locator("#gender").selectOption("MALE");
-    await page.locator("#birthDate").fill("2000-06-06");
-    await page.locator("#field").fill("Pertanian");
+    await page.locator("#basic-fullName").fill(name);
+    await page.locator("#basic-gender").selectOption("MALE");
+    await page.locator("#basic-birthDate").fill("2000-06-06");
+    await page.locator("#basic-field").fill("Pertanian");
   };
   const stateOf = async (name: string) =>
     (await ownerQuery<{ shared: boolean; d: string | null; by: string | null }>(

@@ -243,21 +243,14 @@
     "prev": "Sebelumnya",
     "next": "Berikutnya",
     "newTitle": "Tambah kandidat",
-    "newIntro": "Isi data minimal dulu. Data pribadi, keluarga, pendidikan, dan dokumen dilengkapi di halaman detail.",
-    "fullName": "Nama lengkap (sesuai paspor)",
-    "gender": "Jenis kelamin",
-    "birthDate": "Tanggal lahir",
-    "field": "Bidang",
-    "fieldHint": "Bidang kerja SSW yang dituju, mis. Pengolahan makanan & minuman.",
+    "newIntro": "Hanya nama, jenis kelamin, tanggal lahir, dan bidang yang wajib. Bagian lain boleh dikosongkan dan dilengkapi nanti di halaman detail. Dokumen seperti paspor dan ijazah diunggah di halaman detail.",
     "consentDate": "Tanggal tanda tangan formulir persetujuan (opsional)",
     "consentHint": "Hanya catatan; tidak menentukan siapa yang bisa melihat kandidat.",
-    "genders": {
-      "MALE": "Laki-laki",
-      "FEMALE": "Perempuan"
-    },
     "errors": {
       "birthDateInvalid": "Tanggal lahir tidak valid.",
-      "consentInFuture": "Tanggal tidak boleh di masa depan."
+      "consentInFuture": "Tanggal tidak boleh di masa depan.",
+      "invalid": "Ada isian yang tidak valid. Periksa bagian berikut (kolom yang bermasalah ditandai merah); isian Anda tidak hilang.",
+      "saveFailed": "Gagal menyimpan. Tidak ada data yang tersimpan; isian Anda masih di halaman ini, silakan coba lagi."
     },
     "consentForm": "Formulir persetujuan (opsional)",
     "consentFormHint": "Unggah formulir persetujuan yang sudah ditandatangani (PDF, JPG, atau PNG, maks. 10 MB). Bisa juga diunggah nanti di halaman detail.",
@@ -266,7 +259,17 @@
     "shareHint": "Bawaan: tidak dibagikan, sehingga hanya LPK Anda yang melihatnya. Bisa diubah kapan saja di halaman detail.",
     "colShared": "TSK",
     "shared": "Dibagikan",
-    "notShared": "Belum dibagikan"
+    "notShared": "Belum dibagikan",
+    "form": {
+      "legend": "* wajib diisi.",
+      "noRows": "Belum ada baris. Tambahkan bila perlu.",
+      "addRow": "Tambah baris",
+      "removeRow": "Hapus baris",
+      "rowN": "Baris {n}",
+      "extrasTitle": "Berbagi dan formulir persetujuan",
+      "save": "Simpan kandidat",
+      "fieldInvalid": "Isian ini tidak valid."
+    }
   },
   "detail": {
     "saved": "Perubahan disimpan.",

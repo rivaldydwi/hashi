@@ -12,27 +12,55 @@ import type { FieldDef } from "./sections";
 type Values = Record<string, string | boolean>;
 
 /** Kolom-kolom form, digambar dari definisi bagian. Label & pilihan diambil dari messages (detail.sections.*). */
-function FieldInputs({ section, fields, values }: { section: string; fields: FieldDef[]; values: Values }) {
+export function FieldInputs({
+  section,
+  fields,
+  values,
+  idPrefix,
+  namePrefix = "",
+  invalid = [],
+  suggestions = {},
+  dateMax = {},
+}: {
+  section: string;
+  fields: FieldDef[];
+  values: Values;
+  /** Awalan id input (bawaan: nama bagian). Baris berulang memakai awalan unik per baris. */
+  idPrefix?: string;
+  /** Awalan atribut name (form tambah kandidat: "family.3."), kosong untuk form edit per bagian. */
+  namePrefix?: string;
+  /** Nama kolom yang ditandai tidak valid (dari validasi server). */
+  invalid?: string[];
+  /** Saran isian per kolom (datalist). */
+  suggestions?: Record<string, string[]>;
+  /** Batas maksimum tanggal per kolom date. */
+  dateMax?: Record<string, string>;
+}) {
   const t = useTranslations(`detail.sections.${section}`);
+  const tf = useTranslations("candidates.form");
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {fields.map((f) => {
-        const id = `${section}-${f.name}`;
+        const id = `${idPrefix ?? section}-${f.name}`;
+        const bad = invalid.includes(f.name);
+        const inputName = `${namePrefix}${f.name}`;
+        const cls = bad ? `${inputClass} !border-rose-500 !ring-2 !ring-rose-100` : inputClass;
         const wide = f.kind === "textarea";
+        const list = suggestions[f.name]?.length ? `${id}-list` : undefined;
         return (
-          <div key={f.name} className={`space-y-1.5 ${wide ? "sm:col-span-2" : ""}`}>
+          <div key={f.name} className={`space-y-1.5 ${wide ? "sm:col-span-2" : ""}`} data-invalid={bad || undefined}>
             {f.kind === "boolean" ? (
-              <label className="flex items-center gap-2 text-sm text-stone-800">
-                <input type="checkbox" id={id} name={f.name} defaultChecked={values[f.name] === true} className="h-4 w-4 rounded border-stone-300" />
+              <label className="flex items-center gap-2 py-1 text-sm text-stone-800">
+                <input type="checkbox" id={id} name={inputName} defaultChecked={values[f.name] === true} className="h-5 w-5 rounded border-stone-300" />
                 {t(`fields.${f.name}`)}
               </label>
             ) : (
               <>
                 <label htmlFor={id} className={labelClass}>{t(`fields.${f.name}`)}{f.required && " *"}</label>
                 {f.kind === "textarea" ? (
-                  <textarea id={id} name={f.name} rows={3} required={f.required} maxLength={f.max ?? 2000} defaultValue={String(values[f.name] ?? "")} className={inputClass} />
+                  <textarea id={id} name={inputName} rows={3} required={f.required} maxLength={f.max ?? 2000} defaultValue={String(values[f.name] ?? "")} className={cls} aria-invalid={bad || undefined} />
                 ) : f.kind === "select" ? (
-                  <select id={id} name={f.name} required={f.required} defaultValue={String(values[f.name] ?? "")} className={inputClass}>
+                  <select id={id} name={inputName} required={f.required} defaultValue={String(values[f.name] ?? "")} className={cls} aria-invalid={bad || undefined}>
                     <option value="">—</option>
                     {f.options!.map((o) => (
                       <option key={o} value={o}>{t(`options.${f.name}.${o}`)}</option>
@@ -41,16 +69,27 @@ function FieldInputs({ section, fields, values }: { section: string; fields: Fie
                 ) : (
                   <input
                     id={id}
-                    name={f.name}
+                    name={inputName}
                     type={f.kind === "date" ? "date" : f.kind === "int" ? "number" : f.kind === "email" ? "email" : "text"}
+                    inputMode={f.kind === "int" ? "numeric" : undefined}
                     required={f.required}
                     min={f.kind === "int" ? f.min : undefined}
-                    max={f.kind === "int" ? f.max : undefined}
+                    max={f.kind === "int" ? f.max : f.kind === "date" ? dateMax[f.name] : undefined}
                     maxLength={f.kind === "text" || f.kind === "email" ? (f.max ?? 200) : undefined}
                     defaultValue={String(values[f.name] ?? "")}
-                    className={inputClass}
+                    list={list}
+                    className={cls}
+                    aria-invalid={bad || undefined}
                   />
                 )}
+                {list && (
+                  <datalist id={list}>
+                    {suggestions[f.name].map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
+                )}
+                {bad && <p className="text-xs text-rose-700">{tf("fieldInvalid")}</p>}
               </>
             )}
           </div>

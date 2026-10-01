@@ -23,26 +23,18 @@ import type { FormState } from "@/lib/form-state";
 import { requireUser, tenantQuery, type CurrentUser } from "@/lib/session";
 import { noteAuditEntry } from "@/db/audit-entries";
 import { auditChange, ok, requireEditable, run, uuid } from "./guards";
+import { LIST_TABLES } from "./tables";
 import { EARLIEST_BIRTH_DATE, latestAllowedDate } from "./validation";
 import { getCandidateForAction } from "./detail-queries";
 import { contentAccess, isTskRole } from "./permissions";
 import { buildSchema, changedFields, listSection, singleSection, type FieldDef } from "./sections";
-
-// Tabel dinamis per bagian. Nama kolom di definisi bagian = nama properti tabel Drizzle.
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const LIST_TABLES: Record<string, any> = {
-  candidate_family_members: candidateFamilyMembers,
-  candidate_educations: candidateEducations,
-  candidate_work_histories: candidateWorkHistories,
-  candidate_certificates: candidateCertificates,
-};
 
 /** Simpan satu bagian berbaris tunggal (data dasar, kontak, paspor, kesehatan, ...). */
 export async function saveSection(_prev: FormState, formData: FormData): Promise<FormState> {
   return run(async (me) => {
     const def = singleSection(String(formData.get("section")));
     if (!def) return { status: "error", key: "common.invalidInput" };
-    const parsed = buildSchema(def.fields).safeParse(Object.fromEntries(formData));
+    const parsed = buildSchema(def.fields, def.orderedDates).safeParse(Object.fromEntries(formData));
     if (!parsed.success) return { status: "error", key: "common.invalidInput" };
     const values = parsed.data as Record<string, unknown>;
 
@@ -76,7 +68,7 @@ export async function saveRow(_prev: FormState, formData: FormData): Promise<For
     const def = listSection(String(formData.get("section")));
     if (!def) return { status: "error", key: "common.invalidInput" };
     const table = LIST_TABLES[def.table];
-    const parsed = buildSchema(def.fields).safeParse(Object.fromEntries(formData));
+    const parsed = buildSchema(def.fields, def.orderedDates).safeParse(Object.fromEntries(formData));
     if (!parsed.success) return { status: "error", key: "common.invalidInput" };
     const values = parsed.data as Record<string, unknown>;
     const rowId = formData.get("rowId");

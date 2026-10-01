@@ -13,7 +13,7 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 | --- | --- |
 | **Super admin** | Menambah LPK/TSK beserta admin pertamanya, mengubah data organisasi, mengelola pengguna di organisasi mana pun, membuat dan menonaktifkan kemitraan LPK–TSK |
 | **Admin LPK / TSK** | Menambah staf (sensei / staf TSK), mengubah nama, peran, bahasa, membuat kata sandi sementara baru, menonaktifkan / mengaktifkan kembali |
-| **Admin LPK** (kandidat) | Menambah kandidat, melengkapi data per bagian di halaman detail, mengunggah/menghapus dokumen, mengubah status di LPK, dan **mengatur berbagi ke TSK mitra** (bawaan: tidak dibagikan; mengaktifkan butuh konfirmasi "siswa sudah setuju"; mematikannya membuat TSK langsung tidak bisa melihat kandidatnya lagi) |
+| **Admin LPK** (kandidat) | Menambah kandidat lewat **satu form lengkap** (semua bagian dalam satu halaman, hanya nama, jenis kelamin, tanggal lahir, dan bidang yang wajib; bagian berulang bisa ditambah/dihapus barisnya; nyaman di ponsel; isian tidak hilang saat ada error), melengkapi atau mengubah data per bagian di halaman detail, mengunggah/menghapus dokumen, mengubah status di LPK, dan **mengatur berbagi ke TSK mitra** (bawaan: tidak dibagikan; mengaktifkan butuh konfirmasi "siswa sudah setuju"; mematikannya membuat TSK langsung tidak bisa melihat kandidatnya lagi) |
 | **Sensei** | Melihat daftar dan data dasar kandidat saja (tanpa data sensitif dan dokumen) |
 | **Admin / staf TSK** | Melihat kandidat LPK mitra yang **dibagikan** ke TSK, mengunduh dokumen, mengambil keputusan dan menulis catatan; mengedit data hanya setelah keputusan *Lulus interview client* atau sesudahnya |
 | **Semua pengguna** | Login, ganti bahasa, ganti kata sandi di *Akun saya* |

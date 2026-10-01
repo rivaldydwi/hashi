@@ -137,6 +137,16 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   Menambah/menghapus kolom = 1 migration kecil + 1 baris di `sections.ts` + label di `detail.sections.<bagian>`
   (id dan ja). Nama kolom = nama properti tabel Drizzle. Sensei hanya mendapat bagian `level: "basic"`; bagian lain
   TIDAK dibaca dan TIDAK dirender (bukan disembunyikan CSS). Audit perubahan data hanya mencatat NAMA kolom.
+- **Form tambah kandidat** (`/candidates/new`, hanya LPK_ADMIN) menampilkan SEMUA bagian di satu halaman dan juga
+  diturunkan dari `sections.ts` (tidak ada definisi kolom ganda; label dari `detail.sections.*`). Wajib hanya kolom
+  `required` di bagian satu-baris (nama, jenis kelamin, tanggal lahir, bidang); baris berulang yang kosong diabaikan.
+  Nama input: kolom bagian satu-baris apa adanya (nama kolom antar-bagian harus unik; dicek saat modul dimuat),
+  baris berulang `<bagian>.<nomorBaris>.<kolom>`. Action `addCandidate` memvalidasi per bagian (zod dari definisi),
+  mengembalikan `fieldErrors` ({bagian | bagian.baris: [kolom]}), lalu menyimpan kandidat + data sensitif + baris
+  + formulir + audit dalam SATU transaksi (file ditulis paling akhir; gagal = semua dibatalkan, pesan `saveFailed`).
+  Audit `candidate.create` hanya memuat NAMA kolom terisi dan jumlah baris. Form dikirim lewat `onSubmit` manual
+  (`startTransition(() => formAction(data))`), BUKAN atribut `action`: React mengosongkan form uncontrolled setelah
+  form-action selesai, sehingga isian hilang saat error. Aturan urutan tanggal/tahun ada di `orderedDates` per bagian.
 - **i18n**: setiap teks UI ada di `messages/id.json` DAN `messages/ja.json` dengan kunci identik.
   Istilah Jepang: TSK = 登録支援機関, 面談, 入管.
 - Peran per jenis organisasi ada di `src/lib/permissions.ts` (sama dengan trigger DB).
