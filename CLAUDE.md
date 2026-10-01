@@ -153,6 +153,18 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   = hari ini di Tokyo (`todayInTskTz`, sama dengan trigger). LPK_ADMIN melihat "Penilaian dari TSK" (baca saja, hanya yang dibagikan
   oleh kemitraan aktif; komponen mengembalikan null bila kosong); sensei: tidak dirender dan datanya tidak dibaca (tes cek DOM + HTML).
   Audit: jenis, periode, nama kolom, visibility dari/ke; tanpa isi catatan.
+- **Hapus kandidat permanen** (`candidates/delete-actions.ts`, `DeleteCandidate.tsx`, migration 0013): HANYA LPK_ADMIN pemilik, ditegakkan
+  di UI (komponen tidak dirender untuk peran lain), server action (peran + organisasi + ketik nama/kode persis), RLS (`candidates_lpk_admin_delete`),
+  dan trigger `candidates_block_delete` (BEFORE DELETE: menolak bila ada keputusan TSK DOCUMENT_PROCESS atau DEPARTED dari TSK mana pun, daftar
+  eksplisit, berlaku juga bagi sistem; dilewati bila `pg_trigger_depth() > 1`, yaitu hapus berantai dari organisasi; TRUNCATE tidak memicunya,
+  jadi `db:seed --reset` aman). Cascade lewat FK `ON DELETE CASCADE` di SEMUA tabel ber-`candidate_id` (dites lewat `information_schema`: tabel
+  baru ber-candidate_id yang tidak cascade akan gagal di `test:rls`); `audit_logs` TANPA FK sehingga riwayat bertahan. Urutan: audit + DELETE dalam
+  satu transaksi, berkas disk dihapus SETELAH commit (gagal -> log + audit `candidate.delete_files_failed`). Audit `candidate.delete`: id, kode
+  (8 karakter id), jumlah baris; JANGAN nama/isi. `candidate_delete_summary()` (SECURITY DEFINER, `COALESCE` pada pemeriksaan peran: NULL dalam
+  `NOT` melewati IF) memberi angka untuk dialog, null selain LPK_ADMIN pemilik. E2E hanya boleh menghapus kandidat buatannya sendiri.
+- **Bahasa pengguna**: `users.languages` (enum `language` id/ja/en, array, CHECK `language_array_ok`: >=1, tanpa NULL/duplikat) = bahasa yang DIKUASAI;
+  `users.locale` (id/ja) = bahasa TAMPILAN, hanya diubah tombol bahasa (`setLocale`) dan TIDAK ditampilkan di daftar/form pengguna.
+  Pengguna baru: `locale` awal dari `languages` (id jika ada, lalu ja, lalu id). Audit hanya mencatat nama kolom `languages`.
 - **Audit log**: `audit(tx, {organizationId, actorOrgId, candidateId, …})`. Perubahan kandidat disimpan di
   `organizationId` = LPK PEMILIK kandidat (supaya LPK ikut melihat aksi TSK), `actorOrgId` = organisasi pelaku,
   `candidateId` wajib diisi (policy insert memeriksanya). Untuk log biasa `actorOrgId` otomatis = `organizationId`.

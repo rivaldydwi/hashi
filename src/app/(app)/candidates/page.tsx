@@ -53,6 +53,12 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
         }
       />
 
+      {sp.deleted && (
+        <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid="candidate-deleted">
+          {t("deleted")}
+        </p>
+      )}
+
       {sp.added && (
         <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid="candidate-added">
           {t("added")}

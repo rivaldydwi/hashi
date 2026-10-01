@@ -92,6 +92,13 @@
       "when": 1790835272170,
       "tag": "0012_user_languages",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790836616682,
+      "tag": "0013_candidate_delete",
+      "breakpoints": true
     }
   ]
 }

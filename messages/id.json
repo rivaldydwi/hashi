@@ -281,7 +281,8 @@
     "filterAttendance": "Kehadiran minimal (%)",
     "filterJlpt": "Level JLPT",
     "jlptAtLeast": "{level} atau lebih tinggi",
-    "filterAssessmentHint": "Rata-rata nilai dan kehadiran dihitung dari tiga penilaian bulanan LPK terbaru; level JLPT dari sertifikat. Kandidat yang belum punya datanya tidak ikut."
+    "filterAssessmentHint": "Rata-rata nilai dan kehadiran dihitung dari tiga penilaian bulanan LPK terbaru; level JLPT dari sertifikat. Kandidat yang belum punya datanya tidak ikut.",
+    "deleted": "Kandidat dihapus permanen."
   },
   "detail": {
     "saved": "Perubahan disimpan.",
@@ -635,5 +636,31 @@
     "id": "Indonesia",
     "ja": "Jepang",
     "en": "Inggris"
+  },
+  "deleteCandidate": {
+    "zoneTitle": "Zona berbahaya",
+    "zoneIntro": "Hapus permanen dipakai untuk data yang salah input atau database kandidat yang sudah tidak dipakai. Kandidat yang hanya tidak aktif lagi sebaiknya dinonaktifkan lewat status Mundur.",
+    "open": "Hapus permanen",
+    "title": "Hapus kandidat ini secara permanen?",
+    "irreversible": "Tindakan ini tidak bisa dibatalkan. Data yang sudah dihapus tidak dapat dikembalikan.",
+    "willBeDeleted": "Yang ikut terhapus:",
+    "items": {
+      "documents": "Dokumen (beserta berkasnya)",
+      "assessmentsLpk": "Penilaian bulanan LPK",
+      "assessmentsTsk": "Penilaian TSK (kunjungan dan interview)",
+      "notes": "Catatan TSK",
+      "selections": "Keputusan TSK"
+    },
+    "alsoPersonal": "Termasuk data pribadi, kontak, identitas, keluarga, pendidikan, riwayat kerja, dan sertifikat. Riwayat audit tetap tersimpan (tanpa nama dan isi data).",
+    "tskWarning": "Kandidat ini sedang dibagikan ke TSK dan punya data milik TSK. Keputusan, catatan, dan penilaian milik TSK ikut hilang dan TSK tidak bisa lagi melihatnya.",
+    "suggestion": "Kalau hanya tidak aktif lagi, pakai Nonaktifkan (status Mundur) agar riwayatnya tetap tersimpan.",
+    "confirmLabel": "Ketik nama kandidat persis (atau kode {code}) untuk mengonfirmasi",
+    "cancel": "Batal",
+    "submit": "Hapus permanen",
+    "deleting": "Menghapus...",
+    "errors": {
+      "confirmMismatch": "Teks konfirmasi tidak cocok dengan nama kandidat.",
+      "blocked": "Kandidat tidak bisa dihapus karena sedang diproses atau sudah berangkat (keputusan TSK: Proses dokumen / Berangkat). Gunakan Nonaktifkan (status Mundur) agar riwayatnya tetap tersimpan."
+    }
   }
 }

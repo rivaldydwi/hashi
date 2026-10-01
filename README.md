@@ -218,9 +218,28 @@ Keputusan TSK tidak mengubah status LPK, dan tiap TSK hanya melihat keputusannya
 
 | Peran | Baca | Tulis |
 | --- | --- | --- |
-| **Admin LPK** | Semua data kandidat LPK-nya, termasuk data sensitif (`candidate_private`), keluarga, dokumen, **keputusan semua TSK mitra**, dan catatan TSK yang **dibagikan** | Semua data, di semua status. Satu-satunya yang mengubah status LPK, opsi berbagi ke TSK, dan tanggal formulir |
+| **Admin LPK** | Semua data kandidat LPK-nya, termasuk data sensitif (`candidate_private`), keluarga, dokumen, **keputusan semua TSK mitra**, dan catatan TSK yang **dibagikan** | Semua data, di semua status. Satu-satunya yang mengubah status LPK, opsi berbagi ke TSK, dan tanggal formulir, **dan satu-satunya yang boleh menghapus kandidat permanen** (lihat di bawah) |
 | **Sensei** | Profil dasar saja (daftar, pendidikan, kerja, sertifikat) + keputusan TSK. Tanpa data sensitif, keluarga, dokumen | Tidak ada |
 | **Admin / staf TSK** (mitra aktif) | Semua kandidat LPK mitra di **semua status** (termasuk Belajar dan Mundur) beserta data sensitif dan dokumen, **hanya jika kandidat dibagikan ke TSK** (`shared_with_tsk`) | (1) Keputusan + catatan (`Hanya TSK` atau `Bagikan ke LPK`) **milik organisasinya sendiri**, tanpa mengubah status LPK. (2) Edit isi data (kandidat, data sensitif, dokumen/keluarga/pendidikan/kerja/sertifikat: tambah & ubah) **hanya jika keputusannya** `PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, atau `DEPARTED` **dan** LPK belum menandai kandidat *Mundur*. Menghapus: hanya **dokumen**, dan hanya bila boleh mengedit (baris data lain tidak pernah) |
+
+**Hapus kandidat permanen** (v0.3): hanya **Admin LPK pemilik** (UI, server action, RLS `DELETE`, semuanya). Berbeda dari *Nonaktifkan*
+(status Mundur, riwayat tetap tersimpan), hapus permanen dipakai untuk data salah input atau database yang tidak dipakai lagi. Tombol
+ada di bagian *Zona berbahaya* paling bawah halaman detail (tidak ada di DOM untuk sensei, TSK, maupun LPK lain). Dialog dalam halaman
+menampilkan nama kandidat, peringatan "tidak bisa dibatalkan", jumlah data yang ikut terhapus (dokumen, penilaian LPK, penilaian TSK,
+catatan TSK, keputusan TSK; peringatan khusus bila kandidat dibagikan dan punya data milik TSK), saran memakai Nonaktifkan, dan
+kolom konfirmasi: ketik nama kandidat persis (atau kodenya, 8 karakter pertama id, bila lebih pendek dari nama).
+**Diblokir** bila ada keputusan TSK `DOCUMENT_PROCESS` atau `DEPARTED` (sedang diproses / sudah berangkat): pesan mengarahkan ke
+Nonaktifkan; ditegakkan juga oleh trigger database `candidates_block_delete` (daftar eksplisit; berlaku bagi siapa pun, termasuk
+sistem). Semua data turunan ikut terhapus lewat FK `ON DELETE CASCADE` dalam satu transaksi; berkas dokumen dihapus **setelah**
+commit (kegagalan tidak membatalkan hapus DB; dicatat di log dan audit `candidate.delete_files_failed` dengan `filesFailed`).
+Audit `candidate.delete` hanya memuat id, kode, dan jumlah baris per jenis data, **tidak pernah nama atau isi**, dan bertahan setelah
+kandidat hilang (`audit_logs` tanpa FK ke kandidat). Hapus organisasi (cascade) dan `db:seed -- --reset` (TRUNCATE) tidak terhalang
+penjaga.
+
+**Bahasa pengguna** (v0.3): kolom *Bahasa* di daftar pengguna adalah bahasa yang **dikuasai** (`users.languages`: Indonesia, Jepang,
+Inggris; minimal satu, tanpa duplikat), dipilih lewat kotak centang di form tambah/ubah pengguna. Bahasa **tampilan** (`users.locale`,
+hanya id/ja) diubah lewat tombol bahasa dan tidak lagi tampil di daftar. (Bug sebelumnya: tombol bahasa menulis `users.locale` milik
+pengguna yang login, dan kolom Bahasa menampilkan nilai itu.)
 
 **Penilaian kandidat** (面談 bulanan oleh LPK, plus penilaian TSK): LPK_ADMIN dan sensei menulis dan membaca penilaian
 bulanan LPK (satu per kandidat per bulan; penilai selalu user yang login, tanggal tidak boleh di masa depan). TSK membaca

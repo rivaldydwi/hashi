@@ -146,11 +146,19 @@ test("filter nilai, kehadiran, dan JLPT di /candidates; kolom nilai terakhir", a
 
   await page.goto(`/candidates?q=${q}`);
   await expect(page.getByTestId("candidate-row").filter({ hasText: NAME }).getByTestId("latest-avg")).toHaveText("4.0");
-  // Kandidat tanpa penilaian tidak lolos filter nilai
-  await page.goto("/candidates?avg=1");
-  const withAvg = await page.getByTestId("candidate-total").textContent();
-  await page.goto("/candidates");
-  expect(Number(withAvg)).toBeLessThan(Number(await page.getByTestId("candidate-total").textContent()));
+  // Kandidat tanpa penilaian tidak lolos filter nilai (seed sudah lengkap, jadi dipakai kandidat uji kedua tanpa penilaian)
+  const bare = await createScratchCandidate({ name: `Uji Tanpa Nilai ${run}` });
+  try {
+    const bq = encodeURIComponent(`Uji Tanpa Nilai ${run}`);
+    await page.goto(`/candidates?q=${bq}`);
+    await expect(page.getByTestId("candidate-total")).toHaveText("1");
+    await page.goto(`/candidates?q=${bq}&avg=1`);
+    await expect(page.getByTestId("candidate-total")).toHaveText("0");
+    await page.goto(`/candidates?q=${bq}&attendance=0`);
+    await expect(page.getByTestId("candidate-total")).toHaveText("0");
+  } finally {
+    await deleteScratchCandidate(bare.id);
+  }
 
   // Sisi TSK juga punya kolom dan filter
   const tsk = await page.context().browser()!.newContext();

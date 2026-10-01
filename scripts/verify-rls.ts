@@ -1667,6 +1667,146 @@ async function main() {
     `${lang.ownRows}/${lang.allRows}/${lang.otherOrg} dari ${lpk1UserCount}`,
   );
 
+  // --- L. Hapus kandidat permanen: hanya LPK_ADMIN pemilik; blokir DOCUMENT_PROCESS / DEPARTED; cascade tuntas; audit bertahan ---
+  const del: Record<string, unknown> = {};
+  const BLOCKING = ["DOCUMENT_PROCESS", "DEPARTED"]; // sengaja eksplisit (jangan `>=` pada enum)
+  const platformOrg = byName("Hashi Platform");
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const mk = async (label: string) => {
+      const [c] = await tx.insert(candidates).values({ organizationId: lpk1.id, fullName: `Hapus Uji ${label}-${uniq()}`, gender: "MALE", birthDate: "2000-01-01", field: "Konstruksi", stage: "READY", sharedWithTsk: true }).returning();
+      return c;
+    };
+    const fill = async (c: { id: string }) => {
+      await tx.insert(candidatePrivate).values({ candidateId: c.id, nationalId: `DUMMY-${uniq()}` });
+      await tx.insert(candidateFamilyMembers).values({ candidateId: c.id, relation: "FATHER", name: "Ayah Uji" });
+      await tx.insert(candidateEducations).values({ candidateId: c.id, schoolName: "SMK Uji" });
+      await tx.insert(candidateWorkHistories).values({ candidateId: c.id, companyName: "PT Uji" });
+      await tx.insert(candidateCertificates).values({ candidateId: c.id, type: "JLPT", levelOrField: "N4" });
+      await tx.insert(candidateDocuments).values([sampleDoc(c.id), sampleDoc(c.id)]);
+      await tx.insert(candidateSelections).values({ candidateId: c.id, tskOrgId: tsk.id, decision: "PASSED_TSK_INTERVIEW" });
+      await tx.insert(candidateNotes).values([{ candidateId: c.id, tskOrgId: tsk.id, body: "catatan uji", visibility: "TSK_ONLY" }, { candidateId: c.id, tskOrgId: tsk.id, body: "catatan dibagikan", visibility: "SHARED_WITH_LPK" }]);
+      await tx.insert(candidateAssessments).values([
+        { candidateId: c.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-01-10", assessorId: lpkAdminUser.id },
+        { candidateId: c.id, orgId: tsk.id, kind: "TSK_VISIT", assessedOn: "2020-01-11", assessorId: tskAdminUser.id },
+      ]);
+    };
+    const count = async (table: string, id: string) =>
+      Number((await tx.execute(sql.raw(`select count(*)::int as n from ${table} where candidate_id = '${id}'`))).rows[0].n);
+    const auditCount = async (id: string) => Number((await tx.execute(sql`select count(*)::int as n from audit_logs where candidate_id = ${id}`)).rows[0].n);
+    const A = await mk("A");
+    await fill(A);
+    await tx.insert(auditLogs).values({ organizationId: lpk1.id, actorOrgId: lpk1.id, candidateId: A.id, action: "candidate.update", entity: "candidate", entityId: A.id });
+
+    // ---- Siapa yang bisa menghapus: DELETE dengan WHERE dan TANPA WHERE (probe Part H) tidak mengenai satu baris pun, kecuali LPK_ADMIN pemilik
+    const attemptsBy: Array<[string, string, string, string | null]> = [
+      ["sensei", lpk1.id, "LPK_SENSEI", lpkAdminUser.id],
+      ["tskAdmin", tsk.id, "TSK_ADMIN", tskAdminUser.id],
+      ["tskStaff", tsk.id, "TSK_STAFF", staffUser.id],
+      ["lpk2Admin", lpk2.id, "LPK_ADMIN", null],
+      ["lpk3Admin", lpk3.id, "LPK_ADMIN", null],
+      ["superAdmin", platformOrg.id, "SUPER_ADMIN", null],
+      ["roleNull", lpk1.id, "", null],
+      ["tskB", tskB, "TSK_ADMIN", null],
+    ];
+    for (const [label, org, role, uid] of attemptsBy) {
+      await actAs(tx, org, role || null, uid);
+      del[`where/${label}`] = (await rowsOf(tx, (t) => t.delete(candidates).where(eq(candidates.id, A.id)).returning({ id: candidates.id }))).n;
+      del[`nowhere/${label}`] = await rowsOf(tx, (t) => t.delete(candidates).returning({ id: candidates.id }));
+      del[`summary/${label}`] = (await tx.execute(sql`select candidate_delete_summary(${A.id}::uuid) as s`)).rows[0].s;
+    }
+    await actAsSystem(tx);
+    del.stillThere = (await tx.select().from(candidates).where(eq(candidates.id, A.id))).length;
+
+    // ---- Ringkasan untuk dialog: hanya LPK_ADMIN pemilik, angkanya cocok
+    await actAs(tx, lpk1.id, "LPK_ADMIN");
+    del.summary = (await tx.execute(sql`select candidate_delete_summary(${A.id}::uuid) as s`)).rows[0].s;
+
+    // ---- LPK_ADMIN pemilik: DELETE tanpa WHERE hanya mengenai kandidat organisasinya (dibatasi stage supaya tidak kena baris yang diblokir)
+    await actAs(tx, lpk1.id, "LPK_ADMIN");
+    const withdrawnIds = (await rowsOf(tx, (t) => t.delete(candidates).where(eq(candidates.stage, "WITHDRAWN")).returning({ id: candidates.id, org: candidates.organizationId })));
+    del.ownOrgOnly = withdrawnIds.err === null && withdrawnIds.n === all.filter((c) => c.organizationId === lpk1.id && c.stage === "WITHDRAWN").length;
+    // DELETE tanpa WHERE sama sekali: ditolak trigger karena ada kandidat LPK-nya yang berstatus diproses/berangkat (tidak ada yang terhapus)
+    del.nowhereOwner = await attempt(tx, (t) => t.delete(candidates));
+
+    // ---- Hapus berhasil + cascade tuntas + audit bertambah
+    const auditBefore = await auditCount(A.id);
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    await tx.insert(auditLogs).values({ organizationId: lpk1.id, actorOrgId: lpk1.id, candidateId: A.id, actorUserId: lpkAdminUser.id, action: "candidate.delete", entity: "candidate", entityId: A.id });
+    del.deleted = (await rowsOf(tx, (t) => t.delete(candidates).where(eq(candidates.id, A.id)).returning({ id: candidates.id }))).n;
+    await actAsSystem(tx);
+    const tables = (await tx.execute(sql`select table_name from information_schema.columns where table_schema = 'public' and column_name = 'candidate_id' and table_name <> 'audit_logs' order by 1`)).rows.map((r) => String(r.table_name));
+    const leftovers: string[] = [];
+    for (const t of tables) if ((await count(t, A.id)) !== 0) leftovers.push(t);
+    del.tables = tables;
+    del.leftovers = leftovers;
+    del.auditDelta = (await auditCount(A.id)) - auditBefore;
+    del.candidateGone = (await tx.select().from(candidates).where(eq(candidates.id, A.id))).length;
+
+    // ---- Blokir: keputusan DOCUMENT_PROCESS / DEPARTED menolak hapus (LPK_ADMIN pemilik DAN sistem); keputusan lain boleh
+    for (const d of selectionDecision.enumValues) {
+      const c = await mk(`B-${d}`);
+      await tx.insert(candidateSelections).values({ candidateId: c.id, tskOrgId: tsk.id, decision: d });
+      await actAs(tx, lpk1.id, "LPK_ADMIN");
+      const r = await rowsOf(tx, (t) => t.delete(candidates).where(eq(candidates.id, c.id)).returning({ id: candidates.id }));
+      const stillThere = (await tx.select().from(candidates).where(eq(candidates.id, c.id))).length;
+      const blocked = BLOCKING.includes(d);
+      del[`block/${d}`] = blocked ? r.err !== null && /tidak bisa dihapus/.test(r.err) && stillThere === 1 : r.err === null && r.n === 1 && stillThere === 0;
+      if (blocked) {
+        await actAsSystem(tx);
+        const viaSystem = await rowsOf(tx, (t) => t.delete(candidates).where(eq(candidates.id, c.id)).returning({ id: candidates.id }));
+        del[`blockSystem/${d}`] = viaSystem.err !== null && /tidak bisa dihapus/.test(viaSystem.err) && (await tx.select().from(candidates).where(eq(candidates.id, c.id))).length === 1;
+      }
+      await actAsSystem(tx);
+    }
+    // TSK lain yang memegang keputusan DEPARTED juga memblokir (trigger membaca keputusan SEMUA TSK, bukan hanya milik sesi)
+    const D = await mk("TSKB");
+    await tx.insert(candidateSelections).values([{ candidateId: D.id, tskOrgId: tsk.id, decision: "NONE" }, { candidateId: D.id, tskOrgId: tskB, decision: "DEPARTED" }]);
+    await actAs(tx, lpk1.id, "LPK_ADMIN");
+    const viaOther = await rowsOf(tx, (t) => t.delete(candidates).where(eq(candidates.id, D.id)).returning({ id: candidates.id }));
+    del.blockOtherTsk = viaOther.err !== null && /tidak bisa dihapus/.test(viaOther.err);
+    await actAsSystem(tx);
+
+    // ---- Jalur sah lain tidak terhalang: hapus organisasi (cascade) walau ada kandidat DEPARTED
+    const [orgX] = await tx.insert(organizations).values({ name: "LPK Uji Cascade", type: "LPK", country: "ID", defaultLocale: "id" }).returning();
+    const [cx] = await tx.insert(candidates).values({ organizationId: orgX.id, fullName: "Cascade Uji", gender: "MALE", birthDate: "2000-01-01", field: "Konstruksi" }).returning();
+    await tx.insert(candidateSelections).values({ candidateId: cx.id, tskOrgId: tsk.id, decision: "DEPARTED" });
+    del.orgCascade = await attempt(tx, (t) => t.delete(organizations).where(eq(organizations.id, orgX.id)));
+    del.orgCascadeGone = (await tx.select().from(candidates).where(eq(candidates.id, cx.id))).length;
+  });
+  const none0 = (kind: string) => attemptsLabels.every((l) => del[`${kind}/${l}`] === 0);
+  const attemptsLabels = ["sensei", "tskAdmin", "tskStaff", "lpk2Admin", "lpk3Admin", "superAdmin", "roleNull", "tskB"];
+  // TANPA WHERE: LPK_ADMIN organisasi lain hanya bisa menghapus kandidat MILIKNYA (Medan: semua 12; Surabaya: ditolak trigger karena
+  // ada kandidat diproses/berangkat), bukan kandidat uji di Bandung; peran lain tidak mengenai satu baris pun.
+  const nw = (l: string) => del[`nowhere/${l}`] as { n: number; err: string | null };
+  const zeroRows = ["sensei", "tskAdmin", "tskStaff", "superAdmin", "roleNull", "tskB"];
+  check(
+    "Hapus kandidat: DELETE (dengan dan TANPA WHERE) tidak mengenai satu baris pun untuk sensei, TSK_ADMIN, TSK_STAFF, super admin, peran null, dan TSK lain; LPK_ADMIN organisasi lain hanya kandidat miliknya sendiri",
+    none0("where") && zeroRows.every((l) => nw(l).n === 0 && nw(l).err === null) &&
+      nw("lpk3Admin").err === null && nw("lpk3Admin").n === ownCount(lpk3.id) &&
+      nw("lpk2Admin").n === 0 && /tidak bisa dihapus/.test(String(nw("lpk2Admin").err)) &&
+      del.stillThere === 1,
+    JSON.stringify(attemptsLabels.map((l) => `${l}:${del[`where/${l}`]}/${nw(l).n}${nw(l).err ? "!" : ""}`)),
+  );
+  check(
+    "Hapus kandidat: ringkasan jumlah data hanya untuk LPK_ADMIN pemilik (peran/organisasi lain mendapat NULL), angkanya cocok",
+    attemptsLabels.every((l) => del[`summary/${l}`] === null) &&
+      JSON.stringify(Object.entries(del.summary as object).sort()) === JSON.stringify(Object.entries({ documents: 2, assessmentsLpk: 1, assessmentsTsk: 1, notes: 2, selections: 1, privateRows: 1, family: 1, educations: 1, works: 1, certificates: 1, blocked: false }).sort()),
+    JSON.stringify(attemptsLabels.map((l) => `${l}:${JSON.stringify(del[`summary/${l}`])}`)),
+  );
+  check("Hapus kandidat: DELETE tanpa WHERE oleh LPK_ADMIN hanya menyentuh organisasinya; tanpa pembatas ditolak trigger karena ada kandidat diproses/berangkat", del.ownOrgOnly === true && typeof del.nowhereOwner === "string" && /tidak bisa dihapus/.test(String(del.nowhereOwner)), String(del.nowhereOwner ?? ""));
+  check(
+    "Hapus kandidat: LPK_ADMIN pemilik berhasil; semua tabel ber-candidate_id kosong sesudahnya (diperiksa lewat information_schema), audit_logs justru bertambah 1",
+    del.deleted === 1 && del.candidateGone === 0 && (del.leftovers as string[]).length === 0 && (del.tables as string[]).length >= 9 && del.auditDelta === 1,
+    `tabel: ${(del.tables as string[]).join(",")}; sisa: ${(del.leftovers as string[]).join(",") || "-"}; audit +${del.auditDelta}`,
+  );
+  check(
+    "Hapus kandidat: keputusan DOCUMENT_PROCESS dan DEPARTED memblokir (juga bagi sistem dan bila hanya TSK lain yang memegang keputusan itu); keputusan lain tidak",
+    selectionDecision.enumValues.every((d) => del[`block/${d}`] === true) && BLOCKING.every((d) => del[`blockSystem/${d}`] === true) && del.blockOtherTsk === true,
+    selectionDecision.enumValues.map((d) => `${d}:${del[`block/${d}`]}`).join(" "),
+  );
+  check("Hapus kandidat: hapus organisasi (cascade) tidak terhalang penjaga walau ada kandidat DEPARTED", del.orgCascade === null && del.orgCascadeGone === 0, String(del.orgCascade ?? ""));
+
   await pool.end();
   await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);

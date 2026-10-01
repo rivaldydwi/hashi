@@ -13,6 +13,9 @@ import { canSeeLevel, contentAccess, isTskRole, TSK_INTERVIEW_DECISIONS } from "
 import { AssessmentsSection } from "@/features/assessments/AssessmentsSection";
 import { TskAssessmentsSection } from "@/features/assessments/TskAssessmentsSection";
 import { listMonthly, listTsk } from "@/features/assessments/queries";
+import { DeleteCandidate } from "@/features/candidates/DeleteCandidate";
+import { loadDeleteSummary } from "@/features/candidates/delete-actions";
+import { candidateCode } from "@/features/candidates/delete-shared";
 import { DocumentsSection } from "@/features/documents/DocumentsSection";
 import { LIST_SECTIONS, SINGLE_SECTIONS } from "@/features/candidates/sections";
 import { requireUser, tenantQuery } from "@/lib/session";
@@ -42,6 +45,8 @@ export default async function CandidateDetailPage({
   // TSK membaca LPK_MONTHLY (baca saja) dan penilaian TSK miliknya; LPK_ADMIN membaca penilaian TSK yang dibagikan (RLS yang menyaring)
   const tskSide = isTskRole(me.role);
   const monthly = lpkSide || tskSide ? await tenantQuery((tx) => listMonthly(tx, id)) : [];
+  // Ringkasan data yang ikut terhapus (hanya Admin LPK pemilik; fungsi DB sempit)
+  const deleteSummary = me.role === "LPK_ADMIN" ? await tenantQuery((tx) => loadDeleteSummary(tx, id)) : null;
   const tskAssessments = tskSide || me.role === "LPK_ADMIN" ? await tenantQuery((tx) => listTsk(tx, id)) : [];
 
   const t = await getTranslations("detail");
@@ -143,6 +148,10 @@ export default async function CandidateDetailPage({
 
         {ownerLpk && full && <DecisionPanel me={me} detail={{ ...full, candidateId: candidate.id }} />}
         {full && <NotesPanel me={me} candidateId={candidate.id} notes={full.notes} />}
+
+        {ownerLpk && deleteSummary && (
+          <DeleteCandidate candidateId={candidate.id} name={candidate.fullName} code={candidateCode(candidate.id)} summary={deleteSummary} shared={candidate.sharedWithTsk} />
+        )}
       </div>
     </>
   );
