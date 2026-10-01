@@ -5,7 +5,7 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 
 > Status: **v0.3** — fondasi (login, dua bahasa, isolasi data RLS), kelola organisasi/pengguna/kemitraan, dan
 > **profil kandidat lengkap** (daftar, tambah, halaman detail, dokumen, persetujuan data, keputusan & catatan TSK).
-> Penilaian bulanan (sisi LPK) sudah ada; sisi TSK, seleksi (job order, shortlist) menyusul.
+> Penilaian kandidat (bulanan LPK dan kunjungan/interview TSK) sudah ada; seleksi (job order, shortlist) menyusul.
 
 ## Fitur saat ini
 
@@ -181,6 +181,12 @@ rata-rata dan indikator naik/turun/tetap. Menu *Penilaian* dan kartu di beranda 
 **belum dinilai bulan ini**. "Bulan ini" dan "hari ini" mengikuti `APP_TIMEZONE` (`src/db/time.ts`, bawaan `Asia/Jakarta`).
 Di /candidates ada filter rata-rata nilai minimal, kehadiran minimal (keduanya dari tiga penilaian bulanan terbaru), dan level
 JLPT (dari sertifikat), serta kolom *Nilai terakhir*. Catatan penilaian tidak boleh berisi data medis.
+
+Sisi TSK (halaman detail kandidat yang dibagikan): penilaian bulanan LPK tampil **baca saja**. Bagian *Penilaian TSK* punya form
+*Kunjungan* (selalu tersedia) dan *Interview TSK* (nonaktif dengan penjelasan sampai keputusan TSK itu *Lulus wawancara TSK* atau
+sesudahnya). Tiap penilaian TSK bisa *Hanya TSK* (bawaan) atau *Bagikan ke LPK*; yang dibagikan muncul bagi Admin LPK di bagian
+*Penilaian dari TSK* (baca saja, disembunyikan bila kosong; sensei tidak pernah melihatnya). Mengubah: penilainya atau Admin TSK.
+Batas tanggal form TSK adalah hari ini di Tokyo.
 
 Kandidat yang belum dibagikan hanya terlihat oleh LPK pemiliknya, di semua tabel (data sensitif, keluarga, pendidikan,
 kerja, sertifikat, dokumen, keputusan, catatan, penilaian, audit). Opsi berbagi ada di bagian *Status* halaman detail (dan di form

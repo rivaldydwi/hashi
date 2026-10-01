@@ -11,8 +11,8 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 1. ✅ Fondasi: login, i18n ID/JP, multi-tenant RLS, Docker, CI
 2. ✅ Kelola organisasi, pengguna, kemitraan (v0.2)
 3. ✅ **Profil kandidat**: daftar, tambah, halaman detail, keputusan & catatan TSK, persetujuan data, dokumen, audit
-4. ⏭ **Penilaian kandidat**: ✅ skema + RLS + tes (bagian A) · ✅ UI LPK (B) · ⏭ UI TSK (C)
-   5. Seleksi (job order, shortlist) · 6. Lembar client PDF (bahasa Jepang)
+4. ✅ **Penilaian kandidat**: skema + RLS + tes (A) · UI LPK (B) · UI TSK (C)
+5. ⏭ Seleksi (job order, shortlist) · 6. Lembar client PDF (bahasa Jepang)
 7. Pengingat dokumen kedaluwarsa · 8. Siap pilot (dummy 200 siswa) · 9. Demo ke TSK
 
 Keputusan penyimpanan file dokumen (langkah 3): **Docker named volume di disk**, bukan object storage.
@@ -129,6 +129,14 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   (avg, attendance, jlpt) dari 3 penilaian LPK terbaru: statistik dihitung di query terpisah (window function, bukan subquery
   berkorelasi), dipasang sebagai daftar id; kandidat tanpa data itu tidak lolos filter. Label aspek: "Kebugaran" (bukan kesehatan);
   catatan penilaian dilarang berisi data medis (teks bantuan di form).
+  **UI TSK** (`TskAssessmentsSection`, `TskAssessmentForm`, `tsk-actions.ts` `saveTskAssessment`, `listTsk`): TSK melihat penilaian
+  bulanan LPK BACA SAJA (`AssessmentsSection readOnly`, tanpa form), form kunjungan (TSK_VISIT) selalu ada, form interview
+  (TSK_INTERVIEW) NONAKTIF + penjelasan sampai keputusan TSK itu IN `TSK_INTERVIEW_DECISIONS` (`candidates/permissions.ts`, cermin
+  `tsk_interview_decision` di DB; daftar eksplisit, bukan `>=`; server juga memeriksa dan RLS tetap penjaga akhir). Pilihan
+  visibility "Hanya TSK" (bawaan) / "Bagikan ke LPK"; ubah: penilainya atau TSK_ADMIN (tombol ubah hanya bila boleh). Batas tanggal form TSK
+  = hari ini di Tokyo (`todayInTskTz`, sama dengan trigger). LPK_ADMIN melihat "Penilaian dari TSK" (baca saja, hanya yang dibagikan
+  oleh kemitraan aktif; komponen mengembalikan null bila kosong); sensei: tidak dirender dan datanya tidak dibaca (tes cek DOM + HTML).
+  Audit: jenis, periode, nama kolom, visibility dari/ke; tanpa isi catatan.
 - **Audit log**: `audit(tx, {organizationId, actorOrgId, candidateId, …})`. Perubahan kandidat disimpan di
   `organizationId` = LPK PEMILIK kandidat (supaya LPK ikut melihat aksi TSK), `actorOrgId` = organisasi pelaku,
   `candidateId` wajib diisi (policy insert memeriksanya). Untuk log biasa `actorOrgId` otomatis = `organizationId`.

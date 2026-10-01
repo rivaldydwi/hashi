@@ -596,7 +596,8 @@
     "errors": {
       "duplicateMonth": "Kandidat ini sudah punya penilaian bulanan untuk bulan tersebut. Ubah penilaian yang ada.",
       "notAllowed": "Anda tidak bisa mengubah penilaian ini.",
-      "future": "Tanggal penilaian tidak boleh di masa depan."
+      "future": "Tanggal penilaian tidak boleh di masa depan.",
+      "interviewNotAllowed": "Interview hanya bisa dicatat setelah keputusan Anda untuk kandidat ini mencapai Lulus wawancara TSK atau sesudahnya."
     },
     "pendingTitle": "Belum dinilai bulan ini",
     "pendingIntro": "Kandidat Belajar atau Siap seleksi yang belum punya penilaian bulanan untuk {month}.",
@@ -604,6 +605,27 @@
     "pendingEmpty": "Semua kandidat sudah dinilai bulan ini. 🎉",
     "lastAssessed": "terakhir {month}, rata-rata {avg}",
     "neverAssessed": "belum pernah dinilai",
-    "assessNow": "Nilai sekarang"
+    "assessNow": "Nilai sekarang",
+    "detail": "Detail",
+    "tsk": {
+      "title": "Penilaian TSK",
+      "intro": "Kunjungan dan interview oleh TSK Anda. Bawaannya hanya terbaca oleh TSK; bagikan ke LPK bila perlu.",
+      "lpkTitle": "Penilaian dari TSK",
+      "lpkIntro": "Penilaian yang sengaja dibagikan TSK mitra kepada LPK. Hanya Admin LPK yang melihatnya; riwayat ini tidak bisa diubah dari sini.",
+      "readOnlyTitle": "Penilaian bulanan LPK",
+      "readOnlyIntro": "Riwayat penilaian bulanan dari LPK. Hanya baca: TSK tidak bisa mengubahnya.",
+      "addVisit": "Tambah kunjungan",
+      "addInterview": "Tambah interview TSK",
+      "interviewLocked": "Interview TSK baru bisa dicatat setelah keputusan Anda untuk kandidat ini mencapai Lulus wawancara TSK atau sesudahnya (diajukan ke client, lulus wawancara client, proses dokumen, berangkat).",
+      "kinds": {
+        "TSK_VISIT": "Kunjungan",
+        "TSK_INTERVIEW": "Interview TSK (面談)"
+      },
+      "visibility": "Siapa yang boleh melihat",
+      "tskOnly": "Hanya TSK",
+      "shared": "Bagikan ke LPK",
+      "shareWarning": "Bila dibagikan, Admin LPK pemilik kandidat dapat membaca nilai, catatan, dan tindak lanjut ini. Sensei LPK tidak.",
+      "empty": "Belum ada penilaian."
+    }
   }
 }

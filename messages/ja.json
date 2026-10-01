@@ -596,7 +596,8 @@
     "errors": {
       "duplicateMonth": "この候補者には、その月の月次評価がすでにあります。既存の評価を編集してください。",
       "notAllowed": "この評価は編集できません。",
-      "future": "評価日は未来の日付にできません。"
+      "future": "評価日は未来の日付にできません。",
+      "interviewNotAllowed": "面談の評価は、この候補者に対する貴社の判断が「TSK面談合格」以降になってから記録できます。"
     },
     "pendingTitle": "今月未評価",
     "pendingIntro": "{month}の月次評価がまだない学習中・選考準備完了の候補者です。",
@@ -604,6 +605,27 @@
     "pendingEmpty": "今月はすべての候補者の評価が完了しています。🎉",
     "lastAssessed": "前回 {month}、平均 {avg}",
     "neverAssessed": "未評価",
-    "assessNow": "今すぐ評価"
+    "assessNow": "今すぐ評価",
+    "detail": "詳細",
+    "tsk": {
+      "title": "TSKの評価",
+      "intro": "貴社TSKによる訪問・面談の評価です。初期設定はTSKのみ閲覧可。必要に応じてLPKに共有できます。",
+      "lpkTitle": "TSKからの評価",
+      "lpkIntro": "提携TSKがLPKに共有した評価です。閲覧できるのはLPK管理者のみで、ここから編集はできません。",
+      "readOnlyTitle": "LPKの月次評価",
+      "readOnlyIntro": "LPKによる月次評価の履歴です。閲覧のみで、TSKは編集できません。",
+      "addVisit": "訪問を追加",
+      "addInterview": "TSK面談を追加",
+      "interviewLocked": "TSK面談の評価は、この候補者に対する貴社の判断が「TSK面談合格」以降（クライアント提出、クライアント面接合格、書類手続き、出国）になってから記録できます。",
+      "kinds": {
+        "TSK_VISIT": "訪問",
+        "TSK_INTERVIEW": "TSK面談"
+      },
+      "visibility": "閲覧できる範囲",
+      "tskOnly": "TSKのみ",
+      "shared": "LPKに共有",
+      "shareWarning": "共有すると、候補者の所属LPKの管理者がこの評価・メモ・フォローアップを読めます。LPKの講師は読めません。",
+      "empty": "評価はまだありません。"
+    }
   }
 }

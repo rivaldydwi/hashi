@@ -37,3 +37,7 @@ export function trendOf(current: number | null, previous: number | null): Trend 
 }
 
 export const formatAvg = (v: number | null) => (v === null ? "—" : v.toFixed(1));
+
+/** Kolom form penilaian TSK (kunjungan / interview): tanpa kehadiran dan tes (itu milik LPK). Label memakai bagian "assessment". */
+export const TSK_ASSESSMENT_FIELDS: FieldDef[] = ASSESSMENT_FIELDS.filter((f) => !["attendancePct", "testName", "testScore"].includes(f.name));
+export const TSK_KINDS = ["TSK_VISIT", "TSK_INTERVIEW"] as const;

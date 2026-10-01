@@ -27,14 +27,14 @@ const toValues = (row: MonthlyRow | null, today: string): Record<string, string 
  * dan tren dibanding penilaian sebelumnya. Hanya berisi penilaian (tidak ada data sensitif dari candidate_private),
  * jadi aman dirender untuk sensei. Tabel di layar lebar, kartu di ponsel.
  */
-export async function AssessmentsSection({ candidateId, rows, me }: { candidateId: string; rows: MonthlyRow[]; me: CurrentUser }) {
+export async function AssessmentsSection({ candidateId, rows, me, readOnly = false }: { candidateId: string; rows: MonthlyRow[]; me: CurrentUser; readOnly?: boolean }) {
   const t = await getTranslations("assessments");
   const ts = await getTranslations("detail.sections.assessment");
   const format = await getFormatter();
   const today = todayInAppTz(); // batas tanggal form = hari ini menurut APP_TIMEZONE
   const month = (period: string) => format.dateTime(new Date(`${period}T00:00:00Z`), { month: "long", year: "numeric", timeZone: "UTC" });
   const day = (d: string) => format.dateTime(new Date(`${d}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" });
-  const canEdit = (r: MonthlyRow) => me.role === "LPK_ADMIN" || (me.role === "LPK_SENSEI" && r.assessorId === me.id);
+  const canEdit = (r: MonthlyRow) => !readOnly && me.role === "LPK_ADMIN" || (me.role === "LPK_SENSEI" && r.assessorId === me.id);
 
   const items = rows.map((r, i) => {
     const avg = averageOf(r);
@@ -52,7 +52,7 @@ export async function AssessmentsSection({ candidateId, rows, me }: { candidateI
 
   const Detail = ({ r }: { r: MonthlyRow }) => (
     <details className="text-sm">
-      <summary className="cursor-pointer font-medium text-brand-700">{t("detailAndEdit")}</summary>
+      <summary className="cursor-pointer font-medium text-brand-700">{readOnly ? t("detail") : t("detailAndEdit")}</summary>
       <dl className="mt-2 grid gap-2 sm:grid-cols-2">
         <div>
           <dt className="text-xs text-stone-500">{ts("fields.note")}</dt>
@@ -70,20 +70,22 @@ export async function AssessmentsSection({ candidateId, rows, me }: { candidateI
       {canEdit(r) ? (
         <AssessmentForm candidateId={candidateId} assessmentId={r.id} values={toValues(r, today)} maxDate={today} />
       ) : (
-        <p className="mt-2 text-xs text-stone-500">{t("notEditable")}</p>
+        !readOnly && <p className="mt-2 text-xs text-stone-500">{t("notEditable")}</p>
       )}
     </details>
   );
 
   return (
     <section id="penilaian" className={`${cardClass} scroll-mt-4 p-4 sm:p-5`} data-testid="section-assessments">
-      <h2 className="font-medium">{ts("title")}</h2>
-      <p className="mt-1 text-sm text-stone-500">{t("intro")}</p>
+      <h2 className="font-medium">{readOnly ? t("tsk.readOnlyTitle") : ts("title")}</h2>
+      <p className="mt-1 text-sm text-stone-500">{readOnly ? t("tsk.readOnlyIntro") : t("intro")}</p>
 
-      <details className="mt-3 rounded-lg border border-stone-200 p-3" open={rows.length === 0}>
-        <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="assessment-add-toggle">+ {t("add")}</summary>
-        <AssessmentForm candidateId={candidateId} values={toValues(null, today)} maxDate={today} />
-      </details>
+      {!readOnly && (
+        <details className="mt-3 rounded-lg border border-stone-200 p-3" open={rows.length === 0}>
+          <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="assessment-add-toggle">+ {t("add")}</summary>
+          <AssessmentForm candidateId={candidateId} values={toValues(null, today)} maxDate={today} />
+        </details>
+      )}
 
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-stone-500" data-testid="assessment-empty">{t("empty")}</p>

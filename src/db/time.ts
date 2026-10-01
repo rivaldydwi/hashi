@@ -23,3 +23,11 @@ export function periodMonthsAgo(n: number, now: Date = new Date()): string {
   const idx = y * 12 + (m - 1) - n;
   return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, "0")}-01`;
 }
+
+/** Zona waktu TSK (Jepang). Batas tanggal form penilaian TSK = hari ini di sini, sama dengan batas trigger database. */
+export const TSK_TIMEZONE = "Asia/Tokyo";
+
+/** Tanggal kalender (YYYY-MM-DD) saat ini di zona waktu TSK. */
+export function todayInTskTz(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TSK_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}

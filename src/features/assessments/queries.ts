@@ -1,6 +1,6 @@
-import { and, asc, desc, eq, isNull, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, inArray, ne, sql } from "drizzle-orm";
 import type { Tx } from "@/db";
-import { candidateAssessments, candidateCertificates, candidates, users } from "@/db/schema";
+import { candidateAssessments, candidateCertificates, candidates, organizations, users } from "@/db/schema";
 
 /** Riwayat penilaian bulanan LPK satu kandidat (terbaru dulu), dengan nama penilai bila terbaca. */
 export function listMonthly(tx: Tx, candidateId: string) {
@@ -123,3 +123,34 @@ export function matchAssessmentFilters(
   }
   return out;
 }
+
+/**
+ * Penilaian TSK (kunjungan / interview) satu kandidat, terbaru dulu. RLS yang menentukan isinya: TSK hanya melihat milik
+ * organisasinya, LPK_ADMIN hanya yang dibagikan (SHARED_WITH_LPK) oleh TSK mitra aktif. Nama penilai bisa kosong
+ * (pengguna TSK tidak terbaca LPK), jadi nama organisasi TSK ikut diambil.
+ */
+export function listTsk(tx: Tx, candidateId: string) {
+  return tx
+    .select({
+      id: candidateAssessments.id,
+      kind: candidateAssessments.kind,
+      assessedOn: candidateAssessments.assessedOn,
+      durationMinutes: candidateAssessments.durationMinutes,
+      scoreJapanese: candidateAssessments.scoreJapanese,
+      scoreAttitude: candidateAssessments.scoreAttitude,
+      scoreFitness: candidateAssessments.scoreFitness,
+      scoreMotivation: candidateAssessments.scoreMotivation,
+      note: candidateAssessments.note,
+      followUp: candidateAssessments.followUp,
+      visibility: candidateAssessments.visibility,
+      assessorId: candidateAssessments.assessorId,
+      assessorName: users.name,
+      orgName: organizations.name,
+    })
+    .from(candidateAssessments)
+    .innerJoin(organizations, eq(organizations.id, candidateAssessments.orgId))
+    .leftJoin(users, eq(users.id, candidateAssessments.assessorId))
+    .where(and(eq(candidateAssessments.candidateId, candidateId), ne(candidateAssessments.kind, "LPK_MONTHLY")))
+    .orderBy(desc(candidateAssessments.assessedOn), desc(candidateAssessments.createdAt));
+}
+export type TskRow = Awaited<ReturnType<typeof listTsk>>[number];

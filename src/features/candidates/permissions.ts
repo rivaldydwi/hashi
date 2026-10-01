@@ -31,3 +31,6 @@ export function contentAccess(role: Role, stage: CandidateStage, myDecision: Sel
 export function canSeeLevel(role: Role, level: Level) {
   return level === "basic" || role === "LPK_ADMIN" || isTskRole(role);
 }
+
+/** Keputusan TSK yang membuka penilaian interview TSK (sama dengan tsk_interview_decision di database). Daftar eksplisit, bukan `>=`. */
+export const TSK_INTERVIEW_DECISIONS: readonly SelectionDecision[] = ["PASSED_TSK_INTERVIEW", "SUBMITTED_TO_CLIENT", "PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"];
