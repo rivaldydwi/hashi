@@ -17,6 +17,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   smallint,
   text,
   timestamp,
@@ -436,6 +437,89 @@ export const candidateAssessments = pgTable(
     check("candidate_assessments_test_score_check", sql`${t.testScore} is null or ${t.testScore} >= 0`),
     check("candidate_assessments_visibility_check", sql`${t.kind} <> 'LPK_MONTHLY' or ${t.visibility} = 'TSK_ONLY'`),
   ],
+);
+
+// ---------------------------------------------------------------------------------------------
+// Klien (配属先) milik TSK: perusahaan (法人) -> lokasi kerja (事業所) -> PIC. Semua baris punya org_id = organisasi TSK pemilik;
+// LPK tidak bisa melihatnya sama sekali (RLS). Lihat drizzle/0016_clients.sql.
+// ---------------------------------------------------------------------------------------------
+export const clientCompanies = pgTable(
+  "client_companies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id") // organisasi TSK pemilik
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // nama 法人 (Jepang)
+    nameAlt: text("name_alt"), // nama alternatif / romaji
+    corporateNumber: text("corporate_number"), // 法人番号 (13 digit), opsional
+    hqAddress: text("hq_address"),
+    phone: text("phone"),
+    note: text("note"),
+    active: boolean("active").notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [
+    index("client_companies_org_name_idx").on(t.orgId, t.name),
+    check("client_companies_corporate_number_check", sql`${t.corporateNumber} is null or ${t.corporateNumber} ~ '^[0-9]{13}$'`),
+  ],
+);
+
+export const clientSites = pgTable(
+  "client_sites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => clientCompanies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // nama lokasi (事業所)
+    address: text("address"),
+    phone: text("phone"),
+    note: text("note"),
+    active: boolean("active").notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [index("client_sites_company_idx").on(t.companyId), index("client_sites_org_idx").on(t.orgId)],
+);
+
+// PIC lokasi (boleh lebih dari satu). Nama dan telepon PIC TIDAK PERNAH masuk audit.
+export const clientSiteContacts = pgTable(
+  "client_site_contacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => clientSites.id, { onDelete: "cascade" }),
+    roleTitle: text("role_title"), // mis. 管理者, 施設長
+    name: text("name").notNull(),
+    phone: text("phone"),
+    active: boolean("active").notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [index("client_site_contacts_site_idx").on(t.siteId)],
+);
+
+// Bidang kerja yang diterima lokasi (banyak ke banyak).
+export const clientSiteFields = pgTable(
+  "client_site_fields",
+  {
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => clientSites.id, { onDelete: "cascade" }),
+    fieldId: uuid("field_id")
+      .notNull()
+      .references(() => skillFields.id, { onDelete: "restrict" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.siteId, t.fieldId] }), index("client_site_fields_field_idx").on(t.fieldId)],
 );
 
 // Log perubahan data: siapa, kapan, apa (sebelum/sesudah).

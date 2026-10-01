@@ -22,6 +22,7 @@ export type FieldDef = {
   max?: number; // panjang teks, atau nilai maksimum untuk int
   min?: number; // nilai minimum untuk int
   options?: readonly string[]; // untuk select
+  pattern?: string; // untuk text: ekspresi reguler (sumber) yang harus cocok, mis. nomor badan hukum 13 digit
 };
 
 /** basic = boleh dilihat sensei; detail = hanya LPK_ADMIN dan TSK. */
@@ -208,7 +209,7 @@ function fieldSchema(f: FieldDef): z.ZodType {
   switch (f.kind) {
     case "text":
     case "textarea":
-      return optional((v) => v.length <= (f.max ?? (f.kind === "textarea" ? 2000 : 200)));
+      return optional((v) => v.length <= (f.max ?? (f.kind === "textarea" ? 2000 : 200)) && (!f.pattern || new RegExp(f.pattern).test(v)));
     case "email":
       return optional((v) => v.length <= (f.max ?? 254) && z.email().safeParse(v).success);
     case "date":

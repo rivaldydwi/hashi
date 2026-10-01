@@ -32,6 +32,10 @@ import {
   candidateSelections,
   candidateStage,
   candidateWorkHistories,
+  clientCompanies,
+  clientSiteContacts,
+  clientSiteFields,
+  clientSites,
   organizations,
   partnerships,
   selectionDecision,
@@ -1847,6 +1851,139 @@ async function main() {
     typeof sfr.codeChange === "string" && /tidak bisa diubah/.test(sfr.codeChange) && sfr.nameChange === null && typeof sfr.badCode === "string" && /check/i.test(sfr.badCode) &&
       typeof sfr.deleteUsed === "string" && /foreign key|violates/i.test(sfr.deleteUsed) && sfr.deleteFresh === 1,
     String(sfr.deleteUsed ?? ""),
+  );
+
+  // --- N. Klien (client_companies / client_sites / client_site_contacts / client_site_fields): milik TSK, LPK tidak melihat sama sekali ---
+  const cl: Record<string, Record<string, unknown>> = {};
+  const clientTables = [
+    ["companies", clientCompanies],
+    ["sites", clientSites],
+    ["contacts", clientSiteContacts],
+    ["siteFields", clientSiteFields],
+  ] as const;
+  let clientIds: { aCompany: string; aSite: string; aContact: string; bCompany: string; bSite: string; tskB: string } | null = null;
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const mkSet = async (org: string, label: string) => {
+      const [co] = await tx.insert(clientCompanies).values({ orgId: org, name: `Perusahaan ${label}` }).returning();
+      const [si] = await tx.insert(clientSites).values({ orgId: org, companyId: co.id, name: `Lokasi ${label}` }).returning();
+      const [ct] = await tx.insert(clientSiteContacts).values({ orgId: org, siteId: si.id, name: `PIC ${label}`, phone: "000" }).returning();
+      const [food] = await tx.select({ id: skillFields.id }).from(skillFields).where(eq(skillFields.code, "food"));
+      await tx.insert(clientSiteFields).values({ siteId: si.id, fieldId: food.id, orgId: org });
+      return { co: co.id, si: si.id, ct: ct.id };
+    };
+    const a = await mkSet(tsk.id, "A");
+    const b = await mkSet(tskB, "B");
+    clientIds = { aCompany: a.co, aSite: a.si, aContact: a.ct, bCompany: b.co, bSite: b.si, tskB };
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    const actors: Array<[string, string, string | null, string | null]> = [
+      ["tskAdminA", tsk.id, "TSK_ADMIN", tskAdminUser.id],
+      ["tskStaffA", tsk.id, "TSK_STAFF", staffUser.id],
+      ["tskAdminB", tskB, "TSK_ADMIN", adminB],
+      ["lpkAdmin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id],
+      ["sensei", lpk1.id, "LPK_SENSEI", lpkAdminUser.id],
+      ["superAdmin", platformOrg.id, "SUPER_ADMIN", null],
+      ["roleNull", tsk.id, null, null],
+    ];
+    const MARK = "DITANDAI-";
+    for (const [who, org, role, uid] of actors) {
+      cl[who] = {};
+      await actAs(tx, org, role, uid);
+      for (const [name, table] of clientTables) {
+        cl[who][`read/${name}`] = (await tx.select().from(table)).length;
+      }
+      // INSERT atas nama TSK A (organisasi sesi untuk TSK; untuk peran lain dicoba memakai org TSK A)
+      await scratch(tx, async (sp) => {
+        await actAs(sp, org, role, uid);
+        cl[who].insertCompany = await attempt(sp, (t) => t.insert(clientCompanies).values({ orgId: tsk.id, name: `Baru ${who}` }));
+        cl[who].insertSite = await attempt(sp, (t) => t.insert(clientSites).values({ orgId: tsk.id, companyId: a.co, name: `Baru ${who}` }));
+        cl[who].insertContact = await attempt(sp, (t) => t.insert(clientSiteContacts).values({ orgId: tsk.id, siteId: a.si, name: `Baru ${who}` }));
+      }); // dibatalkan: baris uji tidak menumpuk untuk pelaku berikutnya
+      // UPDATE tanpa WHERE: baris apa yang berubah (dihitung sebagai sistem)
+      await scratch(tx, async (sp) => {
+        await actAs(sp, org, role, uid);
+        await attempt(sp, (t) => t.update(clientCompanies).set({ note: MARK + "co" }));
+        await attempt(sp, (t) => t.update(clientSites).set({ note: MARK + "si" }));
+        await attempt(sp, (t) => t.update(clientSiteContacts).set({ phone: MARK + "ct" }));
+        await actAsSystem(sp);
+        cl[who].updated = [
+          ...(await sp.select({ o: clientCompanies.orgId }).from(clientCompanies).where(eq(clientCompanies.note, MARK + "co"))).map((r) => `co:${r.o}`),
+          ...(await sp.select({ o: clientSites.orgId }).from(clientSites).where(eq(clientSites.note, MARK + "si"))).map((r) => `si:${r.o}`),
+          ...(await sp.select({ o: clientSiteContacts.orgId }).from(clientSiteContacts).where(eq(clientSiteContacts.phone, MARK + "ct"))).map((r) => `ct:${r.o}`),
+        ];
+      });
+      // DELETE tanpa WHERE (dalam savepoint): baris yang hilang per tabel
+      for (const [name, table] of clientTables) {
+        await scratch(tx, async (sp) => {
+          await actAs(sp, org, role, uid);
+          await attempt(sp, (t) => t.delete(table));
+          await actAsSystem(sp);
+          cl[who][`deleted/${name}`] = (await sp.select().from(table)).length;
+        });
+      }
+    }
+    await actAsSystem(tx);
+    cl.total = Object.fromEntries(await Promise.all(clientTables.map(async ([name, table]) => [name, (await tx.select().from(table)).length])));
+    // Integritas (sistem): rantai org konsisten, org_id tetap, nomor badan hukum 13 digit, pemilik harus TSK
+    cl.integrity = {
+      siteWrongOrg: await attempt(tx, (t) => t.insert(clientSites).values({ orgId: tskB, companyId: a.co, name: "Salah org" })),
+      contactWrongOrg: await attempt(tx, (t) => t.insert(clientSiteContacts).values({ orgId: tskB, siteId: a.si, name: "Salah org" })),
+      fieldWrongOrg: await attempt(tx, async (t) => {
+        const [f] = await t.select({ id: skillFields.id }).from(skillFields).where(eq(skillFields.code, "kaigo"));
+        await t.insert(clientSiteFields).values({ siteId: a.si, fieldId: f.id, orgId: tskB });
+      }),
+      orgChange: await attempt(tx, (t) => t.update(clientCompanies).set({ orgId: tskB }).where(eq(clientCompanies.id, a.co))),
+      siteMove: await attempt(tx, (t) => t.update(clientSites).set({ companyId: b.co }).where(eq(clientSites.id, a.si))),
+      contactMove: await attempt(tx, (t) => t.update(clientSiteContacts).set({ siteId: b.si }).where(eq(clientSiteContacts.id, a.ct))),
+      lpkOwner: await attempt(tx, (t) => t.insert(clientCompanies).values({ orgId: lpk1.id, name: "LPK tidak boleh" })),
+      badNumber: await attempt(tx, (t) => t.insert(clientCompanies).values({ orgId: tsk.id, name: "x", corporateNumber: "12345" })),
+      okNumber: await attempt(tx, (t) => t.insert(clientCompanies).values({ orgId: tsk.id, name: "y", corporateNumber: "1234567890123" })),
+      dupField: await attempt(tx, async (t) => {
+        const [f] = await t.select({ id: skillFields.id }).from(skillFields).where(eq(skillFields.code, "food"));
+        await t.insert(clientSiteFields).values({ siteId: a.si, fieldId: f.id, orgId: tsk.id });
+      }),
+      deleteUsedField: await attempt(tx, async (t) => {
+        const [f] = await t.select({ id: skillFields.id }).from(skillFields).where(eq(skillFields.code, "food"));
+        await t.delete(skillFields).where(eq(skillFields.id, f.id));
+      }),
+    };
+  });
+  const noAccess = ["lpkAdmin", "sensei", "superAdmin", "roleNull"];
+  const rowsOk = (who: string, expectRead: Record<string, number>) => clientTables.every(([n]) => cl[who][`read/${n}`] === expectRead[n]);
+  const own1 = { companies: 1, sites: 1, contacts: 1, siteFields: 1 };
+  const none4 = { companies: 0, sites: 0, contacts: 0, siteFields: 0 };
+  check(
+    "Klien: LPK_ADMIN, sensei, super admin (jalur aplikasi) dan peran null tidak bisa SELECT satu baris pun; TSK hanya melihat milik organisasinya (A dan B terpisah)",
+    noAccess.every((w) => rowsOk(w, none4)) && rowsOk("tskAdminA", own1) && rowsOk("tskStaffA", own1) && rowsOk("tskAdminB", own1),
+    JSON.stringify(Object.fromEntries(["tskAdminA", "tskAdminB", "lpkAdmin"].map((w) => [w, clientTables.map(([n]) => cl[w][`read/${n}`]).join("/")]))),
+  );
+  check(
+    "Klien: INSERT ditolak untuk LPK, sensei, super admin, peran null, dan TSK lain; diterima untuk TSK_ADMIN dan TSK_STAFF pemilik",
+    noAccess.concat(["tskAdminB"]).every((w) => ["insertCompany", "insertSite", "insertContact"].every((k) => typeof cl[w][k] === "string" && /row-level security|tidak bisa|harus milik|hanya boleh dimiliki/i.test(String(cl[w][k])))) &&
+      ["tskAdminA", "tskStaffA"].every((w) => ["insertCompany", "insertSite", "insertContact"].every((k) => cl[w][k] === null)),
+    JSON.stringify(Object.fromEntries(["lpkAdmin", "sensei", "superAdmin", "roleNull", "tskAdminB", "tskAdminA", "tskStaffA"].map((w) => [w, ["insertCompany", "insertSite", "insertContact"].map((k) => (cl[w][k] === null ? "ok" : String(cl[w][k]).slice(0, 50))).join(" | ")]))),
+  );
+  const onlyA = (arr: unknown) => Array.isArray(arr) && arr.length === 3 && arr.every((x) => String(x).endsWith(tsk.id));
+  check(
+    "Klien: UPDATE tanpa WHERE hanya mengenai baris milik TSK yang bersangkutan (LPK, sensei, super admin, peran null tidak sama sekali; TSK B tidak menyentuh A)",
+    noAccess.every((w) => (cl[w].updated as unknown[]).length === 0) && onlyA(cl.tskAdminA.updated) && onlyA(cl.tskStaffA.updated) &&
+      (cl.tskAdminB.updated as string[]).length === 3 && (cl.tskAdminB.updated as string[]).every((x) => clientIds && x.endsWith(clientIds.tskB)),
+  );
+  const tot = cl.total as Record<string, number>;
+  check(
+    "Klien: DELETE tanpa WHERE: TSK_STAFF tidak menghapus perusahaan, lokasi, maupun PIC (hanya baris bidang lokasi); TSK_ADMIN hanya milik TSK-nya; LPK, sensei, super admin, peran null tidak sama sekali",
+    noAccess.every((w) => clientTables.every(([n]) => cl[w][`deleted/${n}`] === tot[n])) &&
+      cl.tskStaffA["deleted/companies"] === tot.companies && cl.tskStaffA["deleted/sites"] === tot.sites && cl.tskStaffA["deleted/contacts"] === tot.contacts && cl.tskStaffA["deleted/siteFields"] === tot.siteFields - 1 &&
+      clientTables.every(([n]) => cl.tskAdminA[`deleted/${n}`] === tot[n] - 1 && cl.tskAdminB[`deleted/${n}`] === tot[n] - 1),
+    JSON.stringify(Object.fromEntries(["tskStaffA", "tskAdminA"].map((w) => [w, clientTables.map(([n]) => `${n}:${cl[w][`deleted/${n}`]}/${tot[n]}`).join(" ")]))),
+  );
+  const ig = cl.integrity as Record<string, string | null>;
+  check(
+    "Klien: rantai org_id konsisten dan tidak bisa diubah/dipindah; pemilik harus TSK; nomor badan hukum 13 digit; bidang ganda ditolak; bidang yang dipakai lokasi tidak bisa dihapus",
+    ["siteWrongOrg", "contactWrongOrg", "fieldWrongOrg", "orgChange", "siteMove", "contactMove", "lpkOwner", "badNumber", "dupField", "deleteUsedField"].every((k) => typeof ig[k] === "string") &&
+      ig.okNumber === null && /tidak bisa diganti/.test(String(ig.orgChange)) && /tidak bisa dipindah/.test(String(ig.siteMove)) && /hanya boleh dimiliki organisasi TSK/.test(String(ig.lpkOwner)) &&
+      /client_companies_corporate_number_check/.test(String(ig.badNumber)) && /foreign key|violates/i.test(String(ig.deleteUsedField)),
+    JSON.stringify(Object.fromEntries(Object.entries(ig).map(([k, v]) => [k, v === null ? "ok" : String(v).slice(0, 40)]))),
   );
 
   await pool.end();

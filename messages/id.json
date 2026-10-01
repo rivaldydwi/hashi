@@ -24,7 +24,8 @@
     "account": "Akun saya",
     "candidates": "Kandidat",
     "assessments": "Penilaian",
-    "skillFields": "Bidang kerja"
+    "skillFields": "Bidang kerja",
+    "clients": "Klien"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -691,6 +692,81 @@
       "codeTaken": "Kode itu sudah dipakai bidang lain.",
       "inUse": "Bidang sudah dipakai, jadi tidak bisa dihapus. Nonaktifkan saja.",
       "notFound": "Bidang tidak ditemukan."
+    }
+  },
+  "clients": {
+    "title": "Klien",
+    "intro": "Perusahaan penerima (配属先法人) dan lokasi kerja (事業所) milik TSK Anda. Tidak terlihat oleh LPK.",
+    "search": "Cari",
+    "searchPlaceholder": "Nama perusahaan atau lokasi",
+    "showInactive": "Tampilkan yang nonaktif",
+    "apply": "Terapkan",
+    "reset": "Reset",
+    "addCompany": "Tambah perusahaan",
+    "newCompanyTitle": "Perusahaan baru",
+    "addSite": "Tambah lokasi",
+    "newSiteTitle": "Lokasi kerja baru",
+    "addContact": "Tambah PIC",
+    "empty": "Belum ada klien. Mulai dengan menambah perusahaan.",
+    "noMatch": "Tidak ada klien yang cocok.",
+    "noSites": "Belum ada lokasi kerja.",
+    "noFields": "Belum ada bidang kerja yang diterima.",
+    "noContacts": "Belum ada PIC.",
+    "companyDetails": "Data perusahaan",
+    "siteDetails": "Data lokasi",
+    "sitesTitle": "Lokasi kerja",
+    "contactsTitle": "PIC lokasi",
+    "statusTitle": "Status",
+    "acceptedFields": "Bidang kerja yang diterima",
+    "acceptedFieldsHint": "Job order di lokasi ini hanya bisa memakai bidang yang dicentang.",
+    "inactive": "Nonaktif",
+    "active": "Aktif",
+    "activate": "Aktifkan",
+    "deactivate": "Nonaktifkan",
+    "save": "Simpan",
+    "edit": "Ubah",
+    "deletePermanent": "Hapus permanen",
+    "deleteConfirm": "Ya, hapus permanen",
+    "deleteCompanyWarning": "Perusahaan beserta semua lokasi dan PIC-nya dihapus dan tidak bisa dikembalikan. Tidak bisa dilakukan bila ada job order atau penempatan. Kalau hanya tidak dipakai lagi, pakai Nonaktifkan.",
+    "deleteSiteWarning": "Lokasi beserta PIC-nya dihapus dan tidak bisa dikembalikan. Tidak bisa dilakukan bila ada job order atau penempatan. Kalau hanya tidak dipakai lagi, pakai Nonaktifkan.",
+    "deleteContactWarning": "PIC ini dihapus dan tidak bisa dikembalikan. Kalau hanya sudah tidak menjabat, pakai Nonaktifkan.",
+    "saved": "Tersimpan.",
+    "activated": "Diaktifkan.",
+    "deactivated": "Dinonaktifkan.",
+    "deleted": "Klien dihapus permanen.",
+    "errors": {
+      "invalid": "Isian tidak valid. Periksa nama (wajib) dan nomor badan hukum (13 digit).",
+      "notFound": "Data tidak ditemukan.",
+      "forbidden": "Anda tidak punya akses untuk ini.",
+      "adminOnly": "Hanya Admin TSK yang boleh menghapus permanen.",
+      "inUse": "Tidak bisa dihapus karena masih punya job order atau penempatan. Nonaktifkan saja."
+    },
+    "forms": {
+      "company": {
+        "fields": {
+          "name": "Nama perusahaan (法人名)",
+          "nameAlt": "Nama alternatif / romaji",
+          "corporateNumber": "Nomor badan hukum (13 digit)",
+          "hqAddress": "Alamat kantor pusat",
+          "phone": "Telepon",
+          "note": "Catatan"
+        }
+      },
+      "site": {
+        "fields": {
+          "name": "Nama lokasi (事業所名)",
+          "address": "Alamat lokasi kerja",
+          "phone": "Telepon lokasi",
+          "note": "Catatan"
+        }
+      },
+      "contact": {
+        "fields": {
+          "roleTitle": "Jabatan / peran (mis. 管理者, 施設長)",
+          "name": "Nama PIC",
+          "phone": "Telepon PIC"
+        }
+      }
     }
   }
 }

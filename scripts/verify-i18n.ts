@@ -3,6 +3,7 @@
 // Pemakaian: npm run test:i18n
 import { readFileSync } from "node:fs";
 import { documentType } from "../src/db/schema";
+import { CLIENT_SECTIONS } from "../src/features/clients/fields";
 import { ASSESSMENT_FIELDS } from "../src/features/assessments/fields";
 import { LIST_SECTIONS, SINGLE_SECTIONS } from "../src/features/candidates/sections";
 
@@ -31,6 +32,13 @@ for (const s of [...SINGLE_SECTIONS, ...LIST_SECTIONS, { key: "assessment", fiel
   }
   for (const key of need) for (const [lang, dict] of [["id", id], ["ja", ja]] as const) {
     if (!(key in dict)) problems.push(`label hilang (${lang}): ${key}`);
+  }
+}
+
+for (const [section, defs] of Object.entries(CLIENT_SECTIONS)) {
+  for (const f of defs) {
+    const key = `clients.forms.${section}.fields.${f.name}`;
+    for (const [lang, dict] of [["id", id], ["ja", ja]] as const) if (!(key in dict)) problems.push(`label hilang (${lang}): ${key}`);
   }
 }
 

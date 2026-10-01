@@ -24,7 +24,8 @@
     "account": "アカウント",
     "candidates": "候補者",
     "assessments": "評価",
-    "skillFields": "職種分野"
+    "skillFields": "職種分野",
+    "clients": "配属先"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -691,6 +692,81 @@
       "codeTaken": "そのコードは別の分野で使われています。",
       "inUse": "使用中の分野のため削除できません。無効化してください。",
       "notFound": "分野が見つかりません。"
+    }
+  },
+  "clients": {
+    "title": "配属先",
+    "intro": "貴社（登録支援機関）の配属先法人と事業所です。LPKからは見えません。",
+    "search": "検索",
+    "searchPlaceholder": "法人名または事業所名",
+    "showInactive": "無効なものも表示",
+    "apply": "絞り込む",
+    "reset": "リセット",
+    "addCompany": "法人を追加",
+    "newCompanyTitle": "新しい配属先法人",
+    "addSite": "事業所を追加",
+    "newSiteTitle": "新しい事業所",
+    "addContact": "担当者を追加",
+    "empty": "配属先がまだありません。まず法人を追加してください。",
+    "noMatch": "該当する配属先がありません。",
+    "noSites": "事業所がまだありません。",
+    "noFields": "受け入れ可能な分野がまだありません。",
+    "noContacts": "担当者がまだいません。",
+    "companyDetails": "法人情報",
+    "siteDetails": "事業所情報",
+    "sitesTitle": "事業所",
+    "contactsTitle": "事業所の担当者",
+    "statusTitle": "状態",
+    "acceptedFields": "受け入れ可能な分野",
+    "acceptedFieldsHint": "この事業所の求人は、チェックした分野のみ使えます。",
+    "inactive": "無効",
+    "active": "有効",
+    "activate": "有効にする",
+    "deactivate": "無効にする",
+    "save": "保存",
+    "edit": "編集",
+    "deletePermanent": "完全に削除",
+    "deleteConfirm": "はい、完全に削除します",
+    "deleteCompanyWarning": "法人と、そのすべての事業所・担当者が削除され、元に戻せません。求人または配属がある場合は削除できません。使わなくなっただけなら「無効にする」を使ってください。",
+    "deleteSiteWarning": "事業所と担当者が削除され、元に戻せません。求人または配属がある場合は削除できません。使わなくなっただけなら「無効にする」を使ってください。",
+    "deleteContactWarning": "この担当者を削除します。元に戻せません。退任しただけなら「無効にする」を使ってください。",
+    "saved": "保存しました。",
+    "activated": "有効にしました。",
+    "deactivated": "無効にしました。",
+    "deleted": "配属先を完全に削除しました。",
+    "errors": {
+      "invalid": "入力が正しくありません。名称（必須）と法人番号（13桁）を確認してください。",
+      "notFound": "データが見つかりません。",
+      "forbidden": "この操作の権限がありません。",
+      "adminOnly": "完全削除ができるのは登録支援機関の管理者のみです。",
+      "inUse": "求人または配属があるため削除できません。無効にしてください。"
+    },
+    "forms": {
+      "company": {
+        "fields": {
+          "name": "法人名",
+          "nameAlt": "別名／ローマ字",
+          "corporateNumber": "法人番号（13桁）",
+          "hqAddress": "本社所在地",
+          "phone": "電話番号",
+          "note": "備考"
+        }
+      },
+      "site": {
+        "fields": {
+          "name": "事業所名",
+          "address": "事業所住所",
+          "phone": "事業所電話番号",
+          "note": "備考"
+        }
+      },
+      "contact": {
+        "fields": {
+          "roleTitle": "役職・役割（例：管理者、施設長）",
+          "name": "担当者名",
+          "phone": "担当者電話番号"
+        }
+      }
     }
   }
 }

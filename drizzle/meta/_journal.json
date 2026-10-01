@@ -113,6 +113,13 @@
       "when": 1790897911759,
       "tag": "0015_drop_candidate_field_text",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790898411491,
+      "tag": "0016_clients",
+      "breakpoints": true
     }
   ]
 }

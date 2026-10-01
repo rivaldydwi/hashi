@@ -17,12 +17,13 @@ export default async function SkillFieldsPage() {
   const t = await getTranslations("skillFields");
   const { rows, usage } = await withSystem(async (tx) => ({
     rows: await listSkillFields(tx),
-    // Jumlah pemakaian per bidang (kandidat; klien dan job order ditambahkan di bagian berikutnya); hanya angka
+    // Jumlah pemakaian per bidang (kandidat dan lokasi klien; job order ditambahkan di bagian C); hanya angka
     usage: new Map(
       (
         (await tx.execute(sql`
           select f.id::text as id,
-            (select count(*) from candidates c where c.field_id = f.id)::int as n
+            ((select count(*) from candidates c where c.field_id = f.id)
+             + (select count(*) from client_site_fields s where s.field_id = f.id))::int as n
           from skill_fields f`)).rows as Array<{ id: string; n: number }>
       ).map((r) => [r.id, r.n]),
     ),

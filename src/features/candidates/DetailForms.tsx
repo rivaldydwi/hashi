@@ -23,6 +23,7 @@ export function FieldInputs({
   suggestions = {},
   dateMax = {},
   hintNames = [],
+  labelNs,
 }: {
   section: string;
   fields: FieldDef[];
@@ -39,8 +40,10 @@ export function FieldInputs({
   dateMax?: Record<string, string>;
   /** Kolom yang menampilkan teks bantuan (detail.sections.<bagian>.hints.<kolom>) di bawah input. */
   hintNames?: string[];
+  /** Namespace label (bawaan: detail.sections.<bagian>); form di luar halaman kandidat memakai namespace sendiri. */
+  labelNs?: string;
 }) {
-  const t = useTranslations(`detail.sections.${section}`);
+  const t = useTranslations(labelNs ?? `detail.sections.${section}`);
   const tf = useTranslations("candidates.form");
   const skillOptions = useSkillFieldOptions();
   return (
