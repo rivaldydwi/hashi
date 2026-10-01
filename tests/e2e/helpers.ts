@@ -81,3 +81,23 @@ export async function ownerQuery<T extends Record<string, unknown>>(sql: string,
     await client.end();
   }
 }
+
+/**
+ * Kandidat uji milik tes sendiri (dibuat lewat database, dihapus lewat `deleteScratchCandidate`). Dipakai supaya tes yang
+ * menambah/menghapus data kandidat TIDAK menyentuh data seed (seed lengkap dan dijaga `npm run verify:seed`).
+ * Kandidat baru: tanpa keputusan TSK, tanpa penilaian, tanpa dokumen, dan tanpa data sensitif.
+ */
+export async function createScratchCandidate(opts: { name: string; org?: string; stage?: "STUDYING" | "READY" | "WITHDRAWN"; shared?: boolean }) {
+  const [row] = await ownerQuery<{ id: string; organization_id: string }>(
+    `insert into candidates (organization_id, full_name, gender, birth_date, field, stage, shared_with_tsk)
+     select o.id, $1, 'MALE', '2000-05-15', 'Pengolahan makanan & minuman', $3, $4 from organizations o where o.name = $2
+     returning id, organization_id`,
+    [opts.name, opts.org ?? "LPK Demo Bandung", opts.stage ?? "STUDYING", opts.shared ?? true],
+  );
+  return { id: row.id, orgId: row.organization_id, name: opts.name };
+}
+
+/** Hapus kandidat uji (turunannya ikut terhapus lewat FK cascade). Log audit tidak ikut terhapus. */
+export async function deleteScratchCandidate(id: string) {
+  await ownerQuery("delete from candidates where id = $1", [id]);
+}

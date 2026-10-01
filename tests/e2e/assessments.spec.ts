@@ -1,9 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { periodMonthsAgo, todayInAppTz } from "../../src/db/time";
-import { login, ownerQuery, unique } from "./helpers";
+import { createScratchCandidate, deleteScratchCandidate, login, ownerQuery, unique } from "./helpers";
 
-// Penilaian bulanan LPK (langkah 4, bagian B). Kandidat demo "Agus Pratama" (LPK Bandung): kandidat pertama tiap
-// LPK di seed sengaja belum pernah dinilai. Semua data uji dibersihkan di akhir (afterAll); audit tidak bisa dihapus,
+// Penilaian bulanan LPK (langkah 4, bagian B). Kandidat uji SENDIRI di LPK Bandung (belum pernah dinilai; seed sudah lengkap, jadi tidak
+// dipakai). Dihapus di akhir (afterAll); audit tidak bisa dihapus,
 // jadi pemeriksaan audit dibatasi ke baris sejak tes dimulai.
 
 test.describe.configure({ mode: "serial" });
@@ -20,19 +20,16 @@ const thisMonthDate = today;
 const lastMonthDate = `${periodMonthsAgo(1).slice(0, 7)}-15`;
 const tomorrow = new Date(new Date(`${today}T00:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
 
+const NAME = `Uji Nilai ${run}`;
+const q = encodeURIComponent(NAME);
+
 test.beforeAll(async () => {
-  const [c] = await ownerQuery<{ id: string }>(
-    "select c.id from candidates c join organizations o on o.id = c.organization_id where c.full_name = 'Agus Pratama' and o.name = 'LPK Demo Bandung'",
-  );
-  cid = c.id;
+  cid = (await createScratchCandidate({ name: NAME })).id;
   url = `/candidates/${cid}`;
-  expect(await ownerQuery("select 1 from candidate_assessments where candidate_id = $1", [cid])).toHaveLength(0); // prasyarat: belum pernah dinilai
 });
 
 test.afterAll(async () => {
-  await ownerQuery("delete from candidate_assessments where candidate_id = $1", [cid]);
-  await ownerQuery("delete from candidate_certificates where candidate_id = $1 and level_or_field = $2", [cid, `N4-${run}`]);
-  await ownerQuery("delete from candidate_private where candidate_id = $1", [cid]);
+  await deleteScratchCandidate(cid); // penilaian, sertifikat, dan data pribadi uji ikut terhapus (cascade)
 });
 
 async function fillAndSave(page: Page, v: { date: string; scores: [string, string, string, string]; attendance: string; note?: string }) {
@@ -46,7 +43,7 @@ async function fillAndSave(page: Page, v: { date: string; scores: [string, strin
   await form.getByTestId("assessment-submit").click();
 }
 
-test("daftar belum dinilai: Agus muncul, hitungan di beranda sama; TSK dan super admin tidak punya halamannya", async ({ page, browser }) => {
+test("daftar belum dinilai: kandidat uji muncul, hitungan di beranda sama; TSK dan super admin tidak punya halamannya", async ({ page, browser }) => {
   await login(page, "lpk1.sensei@hashi.test");
   await page.goto("/");
   const dash = Number(await page.getByTestId("pending-count").textContent());
@@ -54,7 +51,7 @@ test("daftar belum dinilai: Agus muncul, hitungan di beranda sama; TSK dan super
   const total = Number(await page.getByTestId("pending-total").textContent());
   expect(total).toBe(dash);
   expect(total).toBeGreaterThan(0);
-  await expect(page.getByTestId("pending-row").filter({ hasText: "Agus Pratama" })).toHaveCount(1);
+  await expect(page.getByTestId("pending-row").filter({ hasText: NAME })).toHaveCount(1);
   await expect(page.getByTestId("pending-row").filter({ hasText: "belum pernah dinilai" }).first()).toBeVisible();
 
   for (const email of ["tsk.admin@hashi.test", "admin@hashi.test"]) {
@@ -113,10 +110,10 @@ test("bulan yang sama ditolak dengan pesan jelas; tanggal masa depan ditolak ser
   await expect(page.getByTestId("assessment-row")).toHaveCount(2);
 });
 
-test("Agus hilang dari daftar belum dinilai dan hitungan beranda turun", async ({ page }) => {
+test("kandidat uji hilang dari daftar belum dinilai dan hitungan beranda turun", async ({ page }) => {
   await login(page, "lpk1.sensei@hashi.test");
   await page.goto("/assessments/pending");
-  await expect(page.getByTestId("pending-row").filter({ hasText: "Agus Pratama" })).toHaveCount(0);
+  await expect(page.getByTestId("pending-row").filter({ hasText: NAME })).toHaveCount(0);
   const total = Number(await page.getByTestId("pending-total").textContent());
   await page.goto("/");
   expect(Number(await page.getByTestId("pending-count").textContent())).toBe(total);
@@ -133,8 +130,8 @@ test("filter nilai, kehadiran, dan JLPT di /candidates; kolom nilai terakhir", a
   await ownerQuery("insert into candidate_certificates (candidate_id, type, level_or_field) values ($1, 'JLPT', $2)", [cid, `N4-${run}`]);
   await login(page, "lpk1.admin@hashi.test");
   const listed = async (qs: string) => {
-    await page.goto(`/candidates?q=Agus&${qs}`);
-    return (await page.getByTestId("candidate-row").filter({ hasText: "Agus Pratama" }).count()) === 1;
+    await page.goto(`/candidates?q=${q}&${qs}`);
+    return (await page.getByTestId("candidate-row").filter({ hasText: NAME }).count()) === 1;
   };
   // rata-rata tiga penilaian terbaru = (4.0 + 2.0) / 2 = 3.0; kehadiran = (90 + 70) / 2 = 80
   expect(await listed("avg=3")).toBe(true);
@@ -147,8 +144,8 @@ test("filter nilai, kehadiran, dan JLPT di /candidates; kolom nilai terakhir", a
   expect(await listed("avg=3&attendance=80&jlpt=N4")).toBe(true);
   expect(await listed("avg=3&attendance=80&jlpt=N3")).toBe(false);
 
-  await page.goto("/candidates?q=Agus");
-  await expect(page.getByTestId("candidate-row").filter({ hasText: "Agus Pratama" }).getByTestId("latest-avg")).toHaveText("4.0");
+  await page.goto(`/candidates?q=${q}`);
+  await expect(page.getByTestId("candidate-row").filter({ hasText: NAME }).getByTestId("latest-avg")).toHaveText("4.0");
   // Kandidat tanpa penilaian tidak lolos filter nilai
   await page.goto("/candidates?avg=1");
   const withAvg = await page.getByTestId("candidate-total").textContent();

@@ -1,9 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login, ownerQuery, unique } from "./helpers";
+import { createScratchCandidate, deleteScratchCandidate, login, ownerQuery, unique } from "./helpers";
 
-// Halaman detail kandidat (langkah 3, bagian 2). Memakai kandidat demo "Agus Pratama" (LPK Bandung,
-// Belajar, belum ada keputusan TSK) dan MEMBERSIHKAN semua perubahan di akhir (afterAll), supaya angka
-// data demo yang dipakai tes lain tidak bergeser.
+// Halaman detail kandidat (langkah 3, bagian 2). Memakai kandidat uji SENDIRI (LPK Bandung, Belajar, dibagikan ke TSK,
+// belum ada keputusan) yang dihapus di akhir, supaya data seed (lengkap, dijaga verify:seed) tidak tersentuh.
 
 test.describe.configure({ mode: "serial" });
 
@@ -17,25 +16,15 @@ const startedAt = new Date(); // audit log tidak bisa dihapus: hanya periksa bar
 let cid = "";
 let url = "";
 
+const NAME = `Uji Detail ${run}`;
+
 test.beforeAll(async () => {
-  const [c] = await ownerQuery<{ id: string }>(
-    "select c.id from candidates c join organizations o on o.id = c.organization_id where c.full_name = 'Agus Pratama' and o.name = 'LPK Demo Bandung'",
-  );
-  cid = c.id;
+  cid = (await createScratchCandidate({ name: NAME })).id;
   url = `/candidates/${cid}`;
-  const pre = await ownerQuery("select 1 from candidate_selections where candidate_id = $1", [cid]);
-  expect(pre).toHaveLength(0); // prasyarat: belum ada keputusan TSK
 });
 
 test.afterAll(async () => {
-  for (const sql of [
-    "delete from candidate_notes where candidate_id = $1",
-    "delete from candidate_selections where candidate_id = $1",
-    "delete from candidate_private where candidate_id = $1",
-    "delete from candidate_family_members where candidate_id = $1",
-    "delete from candidate_educations where candidate_id = $1",
-    "update candidates set hobby = null, stage = 'STUDYING' where id = $1",
-  ]) await ownerQuery(sql, [cid]);
+  await deleteScratchCandidate(cid);
 });
 
 async function openEdit(page: Page, section: string) {
@@ -59,8 +48,8 @@ test("sensei hanya melihat data dasar: data sensitif tidak ada di HTML", async (
   );
 
   await login(page, "lpk1.sensei@hashi.test");
-  await page.goto("/candidates");
-  await page.getByRole("link", { name: "Agus Pratama" }).click();
+  await page.goto(`/candidates?q=${encodeURIComponent(NAME)}`);
+  await page.getByRole("link", { name: NAME }).click();
   await expect(page).toHaveURL(url);
   await expect(page.getByTestId("section-basic")).toBeVisible();
   await expect(page.getByTestId("section-about")).toBeVisible();
@@ -79,7 +68,7 @@ test("sensei hanya melihat data dasar: data sensitif tidak ada di HTML", async (
   for (const secret of [PHONE, NIK, FAMILY, SHARED_NOTE, "catatan-medis-sensitif", ...["contact", "identity", "health", "family", "decision", "notes"].map((s) => `data-testid="section-${s}"`)]) {
     expect(html, `HTML sensei tidak boleh memuat: ${secret}`).not.toContain(secret);
   }
-  expect(html).toContain("Agus Pratama");
+  expect(html).toContain(NAME);
 });
 
 test("admin LPK melengkapi data per bagian; audit hanya mencatat nama kolom, bukan isinya", async ({ page }) => {
@@ -133,8 +122,8 @@ test("admin LPK melengkapi data per bagian; audit hanya mencatat nama kolom, buk
 
 test("TSK melihat kandidat yang masih belajar dan mengambil keputusan; data isi baca-saja sebelum PASSED_CLIENT_INTERVIEW", async ({ page }) => {
   await login(page, "tsk.admin@hashi.test");
-  await page.goto("/candidates?q=Agus");
-  await page.getByRole("link", { name: "Agus Pratama" }).click();
+  await page.goto(`/candidates?q=${encodeURIComponent(NAME)}`);
+  await page.getByRole("link", { name: NAME }).click();
   await expect(page).toHaveURL(url);
 
   // Bagian sensitif terlihat oleh TSK, tetapi baca-saja dengan penjelasan

@@ -81,6 +81,15 @@ port 3111, volume sendiri; detail di README ("Demo untuk pihak luar"). Perintah 
 `scripts/demo-lib.sh` (`-p hashi-demo --env-file .env.demo`). `db-guard` menerima `_demo` selain `_dev`/`_test`. Compose memakai
 `${DB_NAME:-hashi}`, jadi produksi tidak berubah (config identik). Produksi tidak boleh dibuka ke internet; demo hanya data dummy.
 
+### Seed demo lengkap
+
+`scripts/seed.ts` memakai `src/db/demo-data.ts` (PRNG ber-seed tetap, id deterministik) dan `src/db/demo-files.ts` (PDF/PNG dummy,
+tata letak storage sama dengan unggahan asli). Semua kandidat lengkap; `npm run verify:seed` (baca-saja, dijalankan CI setelah seed)
+menjaganya dan memakai fungsi query yang SAMA dengan halaman (`src/db/candidate-list.ts`, dipakai ulang oleh `features/*/queries.ts`).
+Service `migrate` memasang volume `docs-data` + `STORAGE_DIR` supaya seed menulis berkasnya; `--reset` menghapus folder UUID lama.
+Tes yang mengubah data kandidat WAJIB memakai kandidat uji sendiri (`createScratchCandidate` di `tests/e2e/helpers.ts`), bukan kandidat seed.
+`verify-rls.ts`: `sandbox()` berjalan lewat koneksi OWNER untuk mengosongkan turunan kandidat lalu `SET LOCAL ROLE hashi_app`.
+
 ## Batasan server
 
 OptiPlex bukan server khusus Hashi — ada layanan lain yang jalan di sana:

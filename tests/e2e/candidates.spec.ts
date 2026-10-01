@@ -5,7 +5,7 @@ import { createIsolatedLpk, login, ownerQuery, unique } from "./helpers";
 // Penambahan data memakai LPK baru per run (createIsolatedLpk) supaya angka data demo tidak bergeser.
 // Angka data demo (dari scripts/seed.ts) untuk TSK Demo Tokyo: 21 kandidat terlihat =
 //   8 Belajar + 11 Siap seleksi + 2 Mundur (3 kandidat LPK mitra belum dibagikan ke TSK);
-//   keputusan: 4 shortlist, 2 lulus wawancara TSK, 2 diajukan ke client, 2 lulus interview client, 11 belum diputuskan.
+//   keputusan: 3 shortlist, 2 lulus wawancara TSK, 2 diajukan ke client, 2 lulus interview client, 2 proses dokumen, 2 berangkat, 2 ditolak, 6 belum diputuskan.
 
 test.describe.configure({ mode: "serial" });
 
@@ -189,11 +189,14 @@ test("TSK melihat 21 kandidat di semua status; filter status & keputusan; tidak 
   await filter("stage=STUDYING", 8); // TSK melihat kandidat yang masih belajar
   await filter("stage=READY", 11);
   await filter("stage=WITHDRAWN", 2);
-  await filter("decision=SHORTLISTED", 4);
+  await filter("decision=SHORTLISTED", 3);
   await filter("decision=PASSED_TSK_INTERVIEW", 2);
   await filter("decision=SUBMITTED_TO_CLIENT", 2);
   await filter("decision=PASSED_CLIENT_INTERVIEW", 2);
-  await filter("decision=NONE", 11); // belum ada baris keputusan
+  await filter("decision=DOCUMENT_PROCESS", 2);
+  await filter("decision=DEPARTED", 2);
+  await filter("decision=REJECTED", 2);
+  await filter("decision=NONE", 6); // belum ada baris keputusan
   await filter("stage=STUDYING&decision=SHORTLISTED", 2); // shortlist walau LPK-nya masih Belajar
   await filter("decision=BUKAN_NILAI_VALID&stage=NGAWUR", 21); // nilai tak dikenal diabaikan
 

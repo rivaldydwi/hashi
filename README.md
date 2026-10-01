@@ -66,13 +66,30 @@ curl -fsS http://127.0.0.1:3110/api/health
 
 Buka `http://<IP-OptiPlex-atau-Tailscale>:3100`.
 
+### Isi data demo (seed lengkap)
+
+`npm run db:seed` mengisi 36 kandidat (3 LPK × 12) **lengkap**, semuanya fiktif dan dibangkitkan dari PRNG ber-seed tetap
+(`src/db/demo-data.ts`; id dan isi sama setiap reseed pada hari yang sama): profil dan motivasi, riwayat Jepang (sebagian pernah ke
+Jepang, 2 pernah ditolak visa), kontak (email `.test`, telepon `0812-0000-xxxx`), identitas berawalan `DUMMY` (paspor: 2 sudah lewat,
+4 kurang dari 6 bulan, sisanya > 2 tahun), kesehatan, keluarga 3-5 orang, pendidikan, riwayat kerja, sertifikat (JLPT N5-N2 sejalan
+dengan lama belajar, JFT-Basic, ujian skill SSW untuk Siap seleksi), 3-6 penilaian bulanan LPK (sekitar 40% belum dinilai bulan ini),
+dan 4 dokumen dummy per kandidat (paspor, ijazah, foto, medical check-up; PDF/PNG valid ditulis ke `STORAGE_DIR` dengan tata letak
+unggahan asli). Sisi TSK: 15 keputusan (setiap nilai keputusan minimal 2 kandidat, 6 sisanya belum diputuskan), 11 catatan, dan
+kunjungan/interview TSK. `--reset` ikut menghapus berkas dokumen lama (hanya folder berawalan UUID di dalam `STORAGE_DIR`).
+
+`npm run verify:seed` (hanya membaca, aman di database mana pun) gagal bila ada kolom demo kosong, kandidat tanpa JLPT / <3 penilaian /
+tanpa dokumen, nilai keputusan yang hilang, filter di `/candidates` (nilai ≥ 4, kehadiran ≥ 90, JLPT, bidang, keputusan) yang kosong
+atau menghasilkan semua kandidat, atau berkas yatim di storage. Filter memakai fungsi yang sama dengan halaman
+(`src/db/candidate-list.ts`). CI menjalankannya setelah seed. Catatan: filter "JLPT N5" berarti "N5 atau lebih tinggi", jadi
+memang mengembalikan semua kandidat (cukup tidak kosong).
+
 ### Akun demo
 
 Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.env` sebelum seed).
 
 | Email | Peran | Yang terlihat |
 | --- | --- | --- |
-| `tsk.admin@hashi.test` | Admin TSK (bahasa Jepang) | 21 dari 24 kandidat 2 LPK mitra, semua status (3 sengaja belum dibagikan: 2 di Bandung, 1 di Surabaya). Sudah ada 10 keputusan demo (shortlist s/d lulus interview client) |
+| `tsk.admin@hashi.test` | Admin TSK (bahasa Jepang) | 21 dari 24 kandidat 2 LPK mitra, semua status (3 sengaja belum dibagikan: 2 di Bandung, 1 di Surabaya). Sudah ada 15 keputusan demo yang mencakup semua nilai keputusan (shortlist s/d berangkat, ditolak) |
 | `tsk.staff@hashi.test` | Staf TSK | Sama seperti admin TSK |
 | `lpk1.admin@hashi.test` | Admin LPK Bandung | 12 kandidat miliknya (2 belum dibagikan ke TSK), bisa mengedit semuanya dan mengatur berbagi; melihat keputusan TSK tanpa catatannya |
 | `lpk1.sensei@hashi.test` | Sensei LPK Bandung | 12 kandidat miliknya, hanya profil dasar (tanpa data sensitif dan dokumen), hanya baca |

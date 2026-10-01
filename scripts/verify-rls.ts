@@ -136,6 +136,11 @@ async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL belum di-set");
   const { db, pool } = createDb(url, 2);
+  // Koneksi OWNER hanya dipakai sandbox() untuk mengosongkan turunan kandidat (hashi_app tidak punya DELETE di sebagian tabel,
+  // dan seed demo kini lengkap); setelah itu sandbox kembali ke role hashi_app (SET LOCAL ROLE) sehingga yang diuji tetap hak aplikasi.
+  const ownerUrl = process.env.MIGRATE_DATABASE_URL;
+  if (!ownerUrl) throw new Error("MIGRATE_DATABASE_URL belum di-set");
+  const { db: ownerDb, pool: ownerPool } = createDb(ownerUrl, 1);
 
   const who = await db.execute(sql`select current_user as u`);
   check("Terhubung sebagai hashi_app", who.rows[0]?.u === "hashi_app", String(who.rows[0]?.u));
@@ -160,7 +165,6 @@ async function main() {
   const tskExpected = tskVisible.length;
   const unshared = all.filter((c) => isPartner(c) && !c.sharedWithTsk); // dari LPK mitra, belum dibagikan ke TSK
   const seededSelections = await withSystem((tx) => tx.select().from(candidateSelections), db);
-  const hasSelection = (id: string) => seededSelections.some((s) => s.candidateId === id);
 
   // 1. Tanpa konteks: tidak melihat apa pun
   const noCtx = await db.transaction(async (tx) => ({
@@ -210,7 +214,8 @@ async function main() {
 
   // 4. TSK tidak bisa mengubah isi data kandidat yang keputusannya belum PASSED_CLIENT_INTERVIEW dst.
   //    (pemeriksaan lengkap per keputusan ada di bagian "Profil kandidat" di bawah)
-  const target = tskRows.find((r) => r.stage === "READY" && !hasSelection(r.id))!;
+  const decisionOf = (id: string) => seededSelections.find((s) => s.candidateId === id)?.decision;
+  const target = tskRows.find((r) => r.stage === "READY" && !["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"].includes(decisionOf(r.id) ?? "NONE"))!;
   const updated = await withTenant({ orgId: tsk.id, role: "TSK_ADMIN" },
     (tx) => tx.update(candidates).set({ fullName: "DIUBAH TSK" }).where(eq(candidates.id, target.id)).returning(),
     db,
@@ -337,8 +342,13 @@ async function main() {
   // ==========================================================================
   const EDIT_DECISIONS = ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"]; // sengaja ditulis eksplisit
   const consented = (c: (typeof all)[number]) => c.sharedWithTsk; // 'terlihat oleh TSK'
+  // Seed demo kini lengkap (semua kandidat punya data sensitif, dokumen, penilaian, dan sebagian keputusan). Kandidat uji
+  // dipilih dari yang terlihat TSK; `sandbox()` mengosongkan turunannya (di dalam transaksi yang selalu di-rollback)
+  // supaya tiap tes mulai dari kandidat "bersih".
+  // Kandidat dengan keputusan seed yang membuka hak edit TSK dilewati: himpunan "bisa diedit TSK" dihitung dari seed dan tidak boleh berubah.
+  const editableSeed = (id: string) => seededSelections.some((s) => s.candidateId === id && EDIT_DECISIONS.includes(s.decision));
   const pick = (org: string, stage: string) =>
-    all.find((c) => c.organizationId === org && c.stage === stage && consented(c) && !hasSelection(c.id))!;
+    all.find((c) => c.organizationId === org && c.stage === stage && consented(c) && !editableSeed(c.id) && c.dataConsentDate !== null)!; // tanggal formulir terisi: tes "ubah ke null" harus benar-benar mengubah
   const ready1 = pick(lpk1.id, "READY");
   const studying1 = pick(lpk1.id, "STUDYING");
   const withdrawn1 = pick(lpk1.id, "WITHDRAWN");
@@ -359,12 +369,26 @@ async function main() {
   const uniq = () => `uji-${++seq}`; // update ke nilai yang sama bukan perubahan, jadi selalu pakai nilai baru
 
   async function sandbox(fn: (tx: Tx) => Promise<void>) {
-    await errorMessage(() =>
+    const err = await errorMessage(() =>
       withSystem(async (tx) => {
+        await clearCleanTargets(tx); // sebagai owner
+        await tx.execute(sql`set local role hashi_app`); // selanjutnya: hak aplikasi, sama seperti produksi
         await fn(tx);
         throw new Rollback();
-      }, db),
+      }, ownerDb),
     );
+    if (err) throw new Error(`sandbox gagal (kesalahan di dalam tes, bukan hasil pemeriksaan): ${err}`);
+  }
+  /**
+   * Kosongkan data turunan SEMUA kandidat (kecuali keputusan TSK, yang hanya dikosongkan untuk kandidat uji). Hanya di dalam
+   * sandbox, yang selalu di-rollback. Seed demo lengkap, sedangkan tes menghitung baris yang ia sisipkan sendiri.
+   */
+  async function clearCleanTargets(tx: Tx) {
+    const ids = [ready1, studying1, withdrawn1, outsider, hidden].map((c) => c.id);
+    await tx.delete(candidateSelections).where(inArray(candidateSelections.candidateId, ids));
+    for (const t of [candidateDocuments, candidateNotes, candidateAssessments, candidateCertificates, candidateEducations, candidateFamilyMembers, candidateWorkHistories, candidatePrivate]) {
+      await tx.delete(t);
+    }
   }
   /** TSK kedua (mitra LPK Bandung) untuk menguji isolasi antar-TSK. Dipanggil dalam mode sistem. */
   async function makeTskB(tx: Tx) {
@@ -1043,7 +1067,9 @@ async function main() {
         const left = new Set((await t.select({ id: candidateAssessments.assessorId }).from(candidateAssessments).where(lt(candidateAssessments.period, "2021-01-01"))).map((r) => r.id));
         return probeAssessors.filter((id) => !left.has(id));
       });
-      await probe("selections", w, (t) => t.update(candidateSelections).set({ decision: "REJECTED" }), async (t) => (await t.select({ id: candidateSelections.tskOrgId }).from(candidateSelections).where(eq(candidateSelections.decision, "REJECTED"))).map((r) => r.id));
+      // Penanda perubahan = decided_at diset ke waktu yang tidak mungkin ada di seed (nilai keputusan tidak cocok: seed memakai semuanya)
+      const MARK = new Date("2001-01-01T00:00:00Z");
+      await probe("selections", w, (t) => t.update(candidateSelections).set({ decidedAt: MARK }), async (t) => (await t.select({ id: candidateSelections.tskOrgId }).from(candidateSelections).where(eq(candidateSelections.decidedAt, MARK))).map((r) => r.id));
       await probe("notes", w, (t, m) => t.update(candidateNotes).set({ body: m }), async (t, m) => (await t.select({ id: candidateNotes.authorId }).from(candidateNotes).where(eq(candidateNotes.body, m))).map((r) => r.id ?? "-"));
     }
     blk.tskBId = [tskB];
@@ -1642,6 +1668,7 @@ async function main() {
   );
 
   await pool.end();
+  await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);
   process.exit(failures === 0 ? 0 : 1);
 }

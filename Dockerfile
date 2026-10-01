@@ -24,6 +24,10 @@ COPY scripts ./scripts
 # HANYA src/db (bukan seluruh src). Script di scripts/ tidak boleh mengimpor dari luar src/db;
 # CI menjalankan test:rls dari image ini untuk memastikannya.
 COPY src/db ./src/db
+# Folder dokumen untuk seed demo (volume docs-data dipasang di sini oleh compose). Dibuat dan di-chown SEBELUM `USER node`,
+# supaya volume baru yang kosong mewarisi pemilik node dan seed bisa menulis berkas dummy.
+ENV STORAGE_DIR=/app/docs-data
+RUN mkdir -p /app/docs-data && chown node:node /app/docs-data
 USER node
 CMD ["npm", "run", "db:migrate"]
 

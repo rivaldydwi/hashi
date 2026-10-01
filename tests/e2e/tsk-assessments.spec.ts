@@ -1,9 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { todayInTskTz } from "../../src/db/time";
-import { login, ownerQuery, unique } from "./helpers";
+import { createScratchCandidate, deleteScratchCandidate, login, ownerQuery, unique } from "./helpers";
 
-// Penilaian TSK (langkah 4, bagian C). Kandidat demo "Agus Pratama" (LPK Bandung, dibagikan ke TSK, belum ada keputusan
-// TSK dan belum pernah dinilai). Semua data uji dibersihkan di akhir; audit tidak bisa dihapus, jadi dibatasi created_at.
+// Penilaian TSK (langkah 4, bagian C). Kandidat uji SENDIRI (LPK Bandung, dibagikan ke TSK, belum ada keputusan
+// TSK dan belum pernah dinilai), dihapus di akhir; audit tidak bisa dihapus, jadi dibatasi created_at.
 // tsk.staff berlocale Indonesia (teks bisa diperiksa); tsk.admin berlocale Jepang (dipakai lewat testid / id saja).
 
 test.describe.configure({ mode: "serial" });
@@ -20,15 +20,10 @@ let url = "";
 let tskOrg = "";
 
 test.beforeAll(async () => {
-  const [c] = await ownerQuery<{ id: string }>(
-    "select c.id from candidates c join organizations o on o.id = c.organization_id where c.full_name = 'Agus Pratama' and o.name = 'LPK Demo Bandung'",
-  );
-  cid = c.id;
+  cid = (await createScratchCandidate({ name: `Uji TSK ${run}` })).id;
   url = `/candidates/${cid}`;
   const [o] = await ownerQuery<{ id: string }>("select o.id from users u join organizations o on o.id = u.organization_id where u.email = 'tsk.staff@hashi.test'");
   tskOrg = o.id;
-  expect(await ownerQuery("select 1 from candidate_selections where candidate_id = $1", [cid])).toHaveLength(0);
-  expect(await ownerQuery("select 1 from candidate_assessments where candidate_id = $1", [cid])).toHaveLength(0);
   await ownerQuery(
     // trigger mengisi penilai dari app.user_id: set di CTE yang dirujuk insert supaya berjalan lebih dulu
     "with s as (select set_config('app.user_id', u.id::text, true) from users u where u.email = 'lpk1.admin@hashi.test') insert into candidate_assessments (candidate_id, org_id, kind, assessed_on, score_japanese, note) select c.id, c.organization_id, 'LPK_MONTHLY', current_date - 40, 3, 'catatan LPK bulanan' from candidates c, s where c.id = $1",
@@ -37,8 +32,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await ownerQuery("delete from candidate_assessments where candidate_id = $1", [cid]);
-  await ownerQuery("delete from candidate_selections where candidate_id = $1", [cid]);
+  await deleteScratchCandidate(cid);
 });
 
 async function fill(page: Page, prefix: string, v: { date?: string; scores?: string[]; note?: string; visibility?: "TSK_ONLY" | "SHARED_WITH_LPK" }) {

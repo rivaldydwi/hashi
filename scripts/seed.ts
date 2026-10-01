@@ -1,21 +1,31 @@
-// Isi database dengan data DEMO (bukan data asli).
+// Isi database dengan data DEMO yang lengkap (bukan data asli). Semua nilai fiktif dan dibangkitkan dari PRNG ber-seed
+// tetap (src/db/demo-data.ts), jadi reseed pada hari yang sama menghasilkan data identik (id, isi, dan berkas dokumen).
 // Pemakaian: npm run db:seed          -> isi kalau database masih kosong
-//            npm run db:seed -- --reset -> hapus semua data dulu, lalu isi ulang
+//            npm run db:seed -- --reset -> hapus semua data (dan berkas dokumen lama) dulu, lalu isi ulang
 //
 // Berjalan sebagai role OWNER (MIGRATE_DATABASE_URL) dengan bypass RLS.
+// Berkas dokumen dummy ditulis ke STORAGE_DIR (bawaan ./docs-data), tata letak sama dengan unggahan asli.
 
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
 import { createDb, withSystem } from "../src/db";
 import { assertTestDatabase } from "./db-guard";
-import { periodMonthsAgo, todayInAppTz } from "../src/db/time";
-import { randomUUID } from "node:crypto";
+import { periodMonthsAgo, currentPeriod, todayInAppTz } from "../src/db/time";
+import { buildAssessments, buildProfile, FIELDS, type DemoProfile } from "../src/db/demo-data";
+import { addDays, addMonths, uuidFor } from "../src/db/demo-rng";
+import { clearDocumentStorage, demoDocumentPath, dummyPdf, dummyPng, storageRootFor, writeDemoFile } from "../src/db/demo-files";
 import {
   candidates,
   candidateAssessments,
+  candidateCertificates,
+  candidateDocuments,
+  candidateEducations,
+  candidateFamilyMembers,
   candidateNotes,
+  candidatePrivate,
   candidateSelections,
+  candidateWorkHistories,
   organizations,
   partnerships,
   users,
@@ -57,34 +67,21 @@ const LAST_NAMES: Array<[string, string]> = [
   ["Setiawan", "スティアワン"],
 ];
 
-const FIELDS = [
-  "Pengolahan makanan & minuman",
-  "Jasa makanan (restoran)",
-  "Perawatan lansia (kaigo)",
-  "Manufaktur industri",
-  "Konstruksi",
-  "Pertanian",
-];
+// Status LPK per indeks (12 kandidat per LPK). Status LPK hanya STUDYING / READY / WITHDRAWN; keputusan TSK terpisah
+// (candidate_selections), jadi kandidat yang masih STUDYING pun bisa sudah di-shortlist TSK.
+const STAGES: CandidateStage[] = ["STUDYING", "STUDYING", "STUDYING", "STUDYING", "READY", "READY", "READY", "READY", "READY", "READY", "READY", "WITHDRAWN"];
 
-// Sebaran per LPK (12 kandidat): status di LPK + keputusan TSK mitra (kalau ada).
-// Status LPK hanya STUDYING / READY / WITHDRAWN; keputusan TSK terpisah (candidate_selections),
-// jadi kandidat yang masih STUDYING pun bisa sudah di-shortlist TSK.
-const PIPELINE: Array<{ stage: CandidateStage; decision?: SelectionDecision }> = [
-  { stage: "STUDYING" },
-  { stage: "STUDYING" },
-  { stage: "STUDYING" },
-  { stage: "STUDYING", decision: "SHORTLISTED" },
-  { stage: "READY" }, // LPK Bandung: indeks 4 dan 6 tidak dibagikan ke TSK (lihat NOT_SHARED)
-  { stage: "READY" },
-  { stage: "READY" },
-  { stage: "READY", decision: "SHORTLISTED" },
-  { stage: "READY", decision: "PASSED_TSK_INTERVIEW" },
-  { stage: "READY", decision: "SUBMITTED_TO_CLIENT" },
-  { stage: "READY", decision: "PASSED_CLIENT_INTERVIEW" },
-  { stage: "WITHDRAWN" },
-];
+// Keputusan TSK per LPK mitra (indeks kandidat -> keputusan). Dirancang supaya SETIAP nilai keputusan punya >= 2 kandidat
+// yang DIBAGIKAN ke TSK (lihat NOT_SHARED) dan keputusan lanjut hanya untuk kandidat berstatus Siap seleksi:
+// SHORTLISTED 3, PASSED_TSK_INTERVIEW 2, SUBMITTED_TO_CLIENT 2, PASSED_CLIENT_INTERVIEW 2, DOCUMENT_PROCESS 2, DEPARTED 2,
+// REJECTED 2, dan 6 kandidat terlihat belum diputuskan. LPK Medan (bukan mitra) tidak punya keputusan.
+const DECISIONS: Record<number, Record<number, SelectionDecision>> = {
+  0: { 1: "REJECTED", 3: "SHORTLISTED", 5: "DOCUMENT_PROCESS", 7: "DEPARTED", 8: "PASSED_TSK_INTERVIEW", 9: "SUBMITTED_TO_CLIENT", 10: "PASSED_CLIENT_INTERVIEW" },
+  1: { 1: "REJECTED", 3: "SHORTLISTED", 4: "SHORTLISTED", 6: "DOCUMENT_PROCESS", 7: "DEPARTED", 8: "PASSED_TSK_INTERVIEW", 9: "SUBMITTED_TO_CLIENT", 10: "PASSED_CLIENT_INTERVIEW" },
+  2: {},
+};
 
-// Berbagi ke TSK (candidates.shared_with_tsk) per LPK, berdasarkan indeks kandidat di PIPELINE.
+// Berbagi ke TSK (candidates.shared_with_tsk) per LPK, berdasarkan indeks kandidat.
 // TSK demo hanya melihat yang dibagikan: LPK Bandung menahan 2 kandidat READY, LPK Surabaya 1 READY,
 // sehingga TSK melihat 21 dari 24. LPK Medan (bukan mitra) membagikan semuanya, supaya tes "LPK non-mitra
 // tidak terlihat" benar-benar menguji kemitraan, bukan opsi berbagi.
@@ -93,41 +90,93 @@ const NOT_SHARED: Record<number, number[]> = { 0: [4, 6], 1: [5], 2: [] };
 // untuk 1 kandidat yang DIBAGIKAN (LPK Bandung, indeks 8) dan dibiarkan terisi untuk 1 yang tidak dibagikan.
 const NO_CONSENT_DATE: Record<number, number[]> = { 0: [8], 1: [], 2: [] };
 
-function candidateRows(orgId: string, offset: number, orgIndex: number) {
-  return PIPELINE.map(({ stage, decision }, i) => {
+const ORG_NAMES = ["LPK Demo Bandung", "LPK Demo Surabaya", "LPK Non-Mitra Medan"];
+const OFFSETS = [0, 5, 11];
+
+function candidateRows(orgId: string, orgIndex: number, today: string) {
+  const offset = OFFSETS[orgIndex];
+  return STAGES.map((stage, i) => {
     const [first, firstKana, gender] = FIRST_NAMES[(i + offset) % FIRST_NAMES.length];
     const [last, lastKana] = LAST_NAMES[(i * 3 + offset) % LAST_NAMES.length];
     const year = 1998 + ((i + offset) % 8);
     const month = String(((i * 5 + offset) % 12) + 1).padStart(2, "0");
+    const birthDate = `${year}-${month}-15`;
+    const fieldIndex = (i + offset) % FIELDS.length;
+    const fullName = `${first} ${last}`;
+    const profile = buildProfile({ orgIndex, i, stage, gender, fullName, firstName: first, lastName: last, birthDate, fieldIndex, today });
     return {
-      decision,
+      orgIndex,
+      i,
+      profile,
+      decision: DECISIONS[orgIndex][i],
       row: {
-        id: randomUUID(),
+        id: uuidFor(`candidate:${orgIndex}:${i}`),
         organizationId: orgId,
-        fullName: `${first} ${last}`,
+        fullName,
         nameKatakana: `${firstKana}・${lastKana}`,
         gender,
-        birthDate: `${year}-${month}-15`,
-        field: FIELDS[(i + offset) % FIELDS.length],
+        birthDate,
+        field: FIELDS[fieldIndex],
         stage,
-        dataConsentDate: NO_CONSENT_DATE[orgIndex].includes(i)
-          ? null
-          : `2026-${String(((i + offset) % 6) + 1).padStart(2, "0")}-10`,
+        dataConsentDate: NO_CONSENT_DATE[orgIndex].includes(i) ? null : `2026-${String(((i + offset) % 6) + 1).padStart(2, "0")}-10`,
         sharedWithTsk: !NOT_SHARED[orgIndex].includes(i),
+        ...profile.candidatePatch,
       },
     };
   });
 }
 
+// Catatan TSK demo: [orgIndex, indeks, visibilitas, penulis(admin|staff), isi]. Campuran Jepang (admin) dan Indonesia (staf).
+const TSK_NOTES: Array<[number, number, "TSK_ONLY" | "SHARED_WITH_LPK", "admin" | "staff", string]> = [
+  [0, 3, "TSK_ONLY", "admin", "面談メモ：日本語の聞き取りは良好。介護分野の経験について追加で確認したい。"],
+  [0, 5, "SHARED_WITH_LPK", "staff", "Mohon perbarui foto paspor dan kirim ulang scan halaman identitas sebelum proses dokumen berlanjut."],
+  [0, 7, "TSK_ONLY", "staff", "Sudah berangkat sesuai jadwal. Pantau kabar dari perusahaan penerima bulan depan."],
+  [0, 8, "SHARED_WITH_LPK", "admin", "面談メモ：健康診断書の再提出をお願いします。"],
+  [0, 9, "TSK_ONLY", "admin", "面談メモ：クライアントの印象は良い。条件面の希望（寮・残業）を確認する。"],
+  [0, 9, "SHARED_WITH_LPK", "staff", "Berkas sudah diajukan ke client. Mohon siapkan kandidat untuk wawancara online minggu depan."],
+  [0, 10, "SHARED_WITH_LPK", "admin", "クライアント面接に合格。次は在留資格認定証明書の手続きに進みます。"],
+  [1, 3, "TSK_ONLY", "staff", "Semangat tinggi, tetapi bahasa Jepang masih perlu diperkuat sebelum wawancara."],
+  [1, 6, "TSK_ONLY", "admin", "書類審査中。パスポートの有効期限に注意。"],
+  [1, 8, "SHARED_WITH_LPK", "staff", "Wawancara TSK berjalan baik. Mohon lengkapi surat izin keluarga."],
+  [1, 10, "TSK_ONLY", "admin", "面談メモ：経験は十分。クライアント提出の候補に推薦する。"],
+];
+
+// Penilaian TSK demo: [orgIndex, indeks, jenis, hariLalu, visibilitas, penulis, skor J/A/F/M, catatan]
+const TSK_ASSESSMENTS: Array<[number, number, "TSK_VISIT" | "TSK_INTERVIEW", number, "TSK_ONLY" | "SHARED_WITH_LPK", "admin" | "staff", [number, number, number, number], string]> = [
+  [0, 3, "TSK_VISIT", 40, "TSK_ONLY", "staff", [3, 4, 4, 4], "Kunjungan ke LPK: kelas tertib, siswa antusias."],
+  [0, 5, "TSK_VISIT", 25, "SHARED_WITH_LPK", "staff", [4, 4, 4, 4], "Bertemu langsung di LPK: komunikasi baik."],
+  [0, 8, "TSK_VISIT", 33, "TSK_ONLY", "admin", [4, 4, 5, 4], "Kunjungan: kondisi asrama bersih dan teratur."],
+  [0, 7, "TSK_INTERVIEW", 70, "TSK_ONLY", "admin", [4, 4, 4, 5], "面談 TSK: motivasi tinggi."],
+  [0, 8, "TSK_INTERVIEW", 20, "TSK_ONLY", "admin", [4, 4, 4, 5], "面談 TSK: motivasi tinggi, pelafalan perlu diperhalus."],
+  [0, 9, "TSK_INTERVIEW", 14, "SHARED_WITH_LPK", "admin", [5, 4, 4, 5], "面談 TSK: layak diajukan ke client."],
+  [0, 10, "TSK_INTERVIEW", 9, "SHARED_WITH_LPK", "staff", [5, 5, 4, 5], "Interview TSK: sangat siap, jawaban jelas dan percaya diri."],
+  [1, 3, "TSK_VISIT", 30, "TSK_ONLY", "staff", [3, 3, 4, 4], "Kunjungan: perlu tambahan jam percakapan."],
+  [1, 4, "TSK_VISIT", 18, "SHARED_WITH_LPK", "admin", [4, 4, 4, 4], "Kunjungan: perkembangan baik sejak bulan lalu."],
+  [1, 8, "TSK_INTERVIEW", 26, "TSK_ONLY", "admin", [4, 4, 5, 4], "面談 TSK: kuat di bidang praktik."],
+  [1, 9, "TSK_INTERVIEW", 12, "SHARED_WITH_LPK", "staff", [4, 5, 4, 4], "Interview TSK: lanjut ke tahap pengajuan client."],
+  [1, 10, "TSK_INTERVIEW", 6, "TSK_ONLY", "admin", [5, 4, 4, 5], "面談 TSK: pengalaman kerja relevan, rekomendasi kuat."],
+];
+
+const DOC_TYPES = [
+  { type: "PASSPORT", file: "paspor", ext: "pdf", label: "Paspor" },
+  { type: "DIPLOMA", file: "ijazah", ext: "pdf", label: "Ijazah" },
+  { type: "PHOTO", file: "foto", ext: "png", label: "Pas foto" },
+  { type: "MEDICAL_CHECKUP", file: "medical-checkup", ext: "pdf", label: "Medical check-up" },
+] as const;
+
 async function main() {
   const url = process.env.MIGRATE_DATABASE_URL;
   if (!url) throw new Error("MIGRATE_DATABASE_URL belum di-set");
   const reset = process.argv.includes("--reset");
-  // --reset menghapus SEMUA data: hanya boleh di database dev/test
+  // --reset menghapus SEMUA data: hanya boleh di database dev/test/demo
   if (reset) assertTestDatabase("db:seed --reset");
 
   const { db, pool } = createDb(url, 1);
   const passwordHash = await bcrypt.hash(PASSWORD, 12);
+  const today = todayInAppTz();
+  const root = storageRootFor();
+  const files: Array<{ path: string; data: Buffer }> = [];
+  let summary = "";
 
   await withSystem(async (tx) => {
     const existing = await tx.select({ id: organizations.id }).from(organizations).limit(1);
@@ -137,19 +186,21 @@ async function main() {
     }
     if (reset) {
       console.log("⚠ --reset: menghapus semua data...");
-      await tx.execute(
-        sql`truncate table audit_logs, candidates, users, partnerships, organizations restart identity cascade`,
-      );
+      // TRUNCATE tidak memicu trigger BEFORE DELETE per baris (mis. penjaga hapus kandidat), jadi reset tidak terhalang aturan blokir.
+      await tx.execute(sql`truncate table audit_logs, candidates, users, partnerships, organizations restart identity cascade`);
     }
+    const removed = await clearDocumentStorage(root);
+    if (removed > 0) console.log(`⚠ Berkas dokumen lama dihapus (${removed} folder organisasi di ${root}).`);
 
+    const orgId = (name: string) => uuidFor(`org:${name}`);
     const [platform, tsk, lpk1, lpk2, lpk3] = await tx
       .insert(organizations)
       .values([
-        { name: "Hashi Platform", type: "PLATFORM", country: "JP", defaultLocale: "id" },
-        { name: "TSK Demo Tokyo", type: "TSK", country: "JP", defaultLocale: "ja" },
-        { name: "LPK Demo Bandung", type: "LPK", country: "ID", defaultLocale: "id" },
-        { name: "LPK Demo Surabaya", type: "LPK", country: "ID", defaultLocale: "id" },
-        { name: "LPK Non-Mitra Medan", type: "LPK", country: "ID", defaultLocale: "id" },
+        { id: orgId("Hashi Platform"), name: "Hashi Platform", type: "PLATFORM", country: "JP", defaultLocale: "id" },
+        { id: orgId("TSK Demo Tokyo"), name: "TSK Demo Tokyo", type: "TSK", country: "JP", defaultLocale: "ja" },
+        { id: orgId(ORG_NAMES[0]), name: ORG_NAMES[0], type: "LPK", country: "ID", defaultLocale: "id" },
+        { id: orgId(ORG_NAMES[1]), name: ORG_NAMES[1], type: "LPK", country: "ID", defaultLocale: "id" },
+        { id: orgId(ORG_NAMES[2]), name: ORG_NAMES[2], type: "LPK", country: "ID", defaultLocale: "id" },
       ])
       .returning();
 
@@ -159,113 +210,116 @@ async function main() {
       { lpkId: lpk2.id, tskId: tsk.id },
     ]);
 
+    const U = (email: string) => uuidFor(`user:${email}`);
     await tx.insert(users).values([
-      { organizationId: platform.id, email: "admin@hashi.test", name: "Super Admin", role: "SUPER_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
-      { organizationId: tsk.id, email: "tsk.admin@hashi.test", name: "田中 一郎", role: "TSK_ADMIN", locale: "ja", languages: ["ja", "id", "en"], passwordHash },
-      { organizationId: tsk.id, email: "tsk.staff@hashi.test", name: "Rina Staf TSK", role: "TSK_STAFF", locale: "id", languages: ["ja", "id"], passwordHash },
-      { organizationId: lpk1.id, email: "lpk1.admin@hashi.test", name: "Admin LPK Bandung", role: "LPK_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
-      { organizationId: lpk1.id, email: "lpk1.sensei@hashi.test", name: "Sensei Bandung", role: "LPK_SENSEI", locale: "id", languages: ["id", "ja"], passwordHash },
-      { organizationId: lpk2.id, email: "lpk2.admin@hashi.test", name: "Admin LPK Surabaya", role: "LPK_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
-      { organizationId: lpk3.id, email: "lpk3.admin@hashi.test", name: "Admin LPK Medan", role: "LPK_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
+      { id: U("admin@hashi.test"), organizationId: platform.id, email: "admin@hashi.test", name: "Super Admin", role: "SUPER_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
+      { id: U("tsk.admin@hashi.test"), organizationId: tsk.id, email: "tsk.admin@hashi.test", name: "田中 一郎", role: "TSK_ADMIN", locale: "ja", languages: ["ja", "id", "en"], passwordHash },
+      { id: U("tsk.staff@hashi.test"), organizationId: tsk.id, email: "tsk.staff@hashi.test", name: "Rina Staf TSK", role: "TSK_STAFF", locale: "id", languages: ["ja", "id"], passwordHash },
+      { id: U("lpk1.admin@hashi.test"), organizationId: lpk1.id, email: "lpk1.admin@hashi.test", name: "Admin LPK Bandung", role: "LPK_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
+      { id: U("lpk1.sensei@hashi.test"), organizationId: lpk1.id, email: "lpk1.sensei@hashi.test", name: "Sensei Bandung", role: "LPK_SENSEI", locale: "id", languages: ["id", "ja"], passwordHash },
+      { id: U("lpk2.admin@hashi.test"), organizationId: lpk2.id, email: "lpk2.admin@hashi.test", name: "Admin LPK Surabaya", role: "LPK_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
+      { id: U("lpk3.admin@hashi.test"), organizationId: lpk3.id, email: "lpk3.admin@hashi.test", name: "Admin LPK Medan", role: "LPK_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
     ]);
 
-    const seeded = [
-      ...candidateRows(lpk1.id, 0, 0),
-      ...candidateRows(lpk2.id, 5, 1),
-      ...candidateRows(lpk3.id, 11, 2),
-    ];
+    const orgs = [lpk1, lpk2, lpk3];
+    const seeded = orgs.flatMap((o, orgIndex) => candidateRows(o.id, orgIndex, today));
     await tx.insert(candidates).values(seeded.map((c) => c.row));
 
-    // Keputusan TSK demo hanya untuk LPK mitra (Bandung, Surabaya); LPK Medan tidak bermitra.
-    const [tskAdmin] = await tx.select({ id: users.id }).from(users).where(eq(users.email, "tsk.admin@hashi.test"));
-    const partnerIds = new Set([lpk1.id, lpk2.id]);
-    const decided = seeded.filter((c) => c.decision && partnerIds.has(c.row.organizationId));
-    await tx.insert(candidateSelections).values(
-      decided.map((c) => ({
-        candidateId: c.row.id,
-        tskOrgId: tsk.id,
-        decision: c.decision!,
-        decidedBy: tskAdmin.id,
-      })),
+    // ---- Data sensitif, keluarga, pendidikan, kerja, sertifikat
+    await tx.insert(candidatePrivate).values(seeded.map((c) => ({ candidateId: c.row.id, ...c.profile.private })));
+    await tx.insert(candidateFamilyMembers).values(seeded.flatMap((c) => c.profile.family.map((f) => ({ candidateId: c.row.id, ...f }))));
+    await tx.insert(candidateEducations).values(seeded.flatMap((c) => c.profile.educations.map((e) => ({ candidateId: c.row.id, ...e }))));
+    await tx.insert(candidateWorkHistories).values(seeded.flatMap((c) => c.profile.works.map((w) => ({ candidateId: c.row.id, ...w }))));
+    await tx.insert(candidateCertificates).values(seeded.flatMap((c) => c.profile.certificates.map((x) => ({ candidateId: c.row.id, ...x }))));
+
+    // ---- Dokumen dummy (metadata + berkas; berkas ditulis setelah transaksi selesai)
+    const pdfs = new Map(DOC_TYPES.filter((d) => d.ext === "pdf").map((d) => [d.type, dummyPdf(d.label)]));
+    const png = dummyPng();
+    const adminOf = (orgIndex: number) => U(["lpk1.admin@hashi.test", "lpk2.admin@hashi.test", "lpk3.admin@hashi.test"][orgIndex]);
+    const docRows: Array<typeof candidateDocuments.$inferInsert> = [];
+    for (const c of seeded) {
+      const pr: DemoProfile["private"] = c.profile.private;
+      for (const d of DOC_TYPES) {
+        const id = uuidFor(`doc:${c.row.id}:${d.type}`);
+        const data = d.ext === "png" ? png : pdfs.get(d.type)!;
+        docRows.push({
+          id,
+          candidateId: c.row.id,
+          type: d.type,
+          originalFilename: `${d.file}-${c.row.fullName.toLowerCase().replace(/\s+/g, "-")}.${d.ext}`,
+          mimeType: d.ext === "png" ? "image/png" : "application/pdf",
+          sizeBytes: data.length,
+          issuedDate: d.type === "PASSPORT" ? pr.passportIssuedDate : d.type === "DIPLOMA" ? c.profile.diplomaDate : d.type === "MEDICAL_CHECKUP" ? c.profile.mcuDate : addDays(today, -60),
+          expiryDate: d.type === "PASSPORT" ? pr.passportExpiryDate : d.type === "MEDICAL_CHECKUP" ? addMonths(c.profile.mcuDate, 6) : null,
+          uploadedBy: adminOf(c.orgIndex),
+        });
+        files.push({ path: demoDocumentPath(root, c.row.organizationId, c.row.id, id, d.ext), data });
+      }
+    }
+    await tx.insert(candidateDocuments).values(docRows);
+
+    // ---- Keputusan TSK (hanya LPK mitra)
+    const tskAdminId = U("tsk.admin@hashi.test");
+    const tskStaffId = U("tsk.staff@hashi.test");
+    const tskUser = (who: "admin" | "staff") => (who === "admin" ? tskAdminId : tskStaffId);
+    const byKey = new Map(seeded.map((c) => [`${c.orgIndex}.${c.i}`, c]));
+    const decided = seeded.filter((c) => c.decision);
+    await tx.insert(candidateSelections).values(decided.map((c) => ({ candidateId: c.row.id, tskOrgId: tsk.id, decision: c.decision!, decidedBy: tskAdminId })));
+
+    await tx.insert(candidateNotes).values(
+      TSK_NOTES.map(([o, i, visibility, who, body]) => ({ candidateId: byKey.get(`${o}.${i}`)!.row.id, tskOrgId: tsk.id, authorId: tskUser(who), body, visibility })),
     );
 
-    // Catatan TSK demo (面談メモ): satu hanya untuk TSK, satu dibagikan ke LPK.
-    await tx.insert(candidateNotes).values([
-      {
-        candidateId: decided[1].row.id,
-        tskOrgId: tsk.id,
-        authorId: tskAdmin.id,
-        body: "面談メモ：日本語の聞き取りは良好。介護分野の経験について追加で確認したい。",
-        visibility: "TSK_ONLY",
-      },
-      {
-        candidateId: decided[1].row.id,
-        tskOrgId: tsk.id,
-        authorId: tskAdmin.id,
-        body: "面談メモ：健康診断書の再提出をお願いします。",
-        visibility: "SHARED_WITH_LPK",
-      },
-    ]);
-
-    // ---- Penilaian (langkah 4): riwayat bulanan LPK 3-6 bulan untuk sebagian kandidat, + sedikit penilaian TSK ----
-    const userId = async (email: string) => (await tx.select({ id: users.id }).from(users).where(eq(users.email, email)))[0].id;
-    const assessors: Record<number, string[]> = {
-      0: [await userId("lpk1.admin@hashi.test"), await userId("lpk1.sensei@hashi.test")],
-      1: [await userId("lpk2.admin@hashi.test")],
-      2: [await userId("lpk3.admin@hashi.test")],
+    // ---- Penilaian bulanan LPK (3-6 per kandidat, ~40% belum dinilai bulan ini)
+    const staff: Record<number, string[]> = {
+      0: [U("lpk1.admin@hashi.test"), U("lpk1.sensei@hashi.test")],
+      1: [U("lpk2.admin@hashi.test")],
+      2: [U("lpk3.admin@hashi.test")],
     };
-    const today = todayInAppTz();
-    const dayInPeriod = (period: string) => {
-      const d = `${period.slice(0, 7)}-12`;
-      return d > today ? today : d; // bulan berjalan: jangan di masa depan
-    };
-    const orgOrder = [lpk1.id, lpk2.id, lpk3.id];
     const lpkRows: Array<typeof candidateAssessments.$inferInsert> = [];
-    seeded.forEach((c, n) => {
-      const orgIndex = orgOrder.indexOf(c.row.organizationId);
-      const i = n % PIPELINE.length;
-      if (c.row.stage === "WITHDRAWN" || i === 0) return; // idx 0 tiap LPK sengaja belum pernah dinilai
-      const history = 3 + (i % 4); // 3..6 bulan
-      const skipThisMonth = i % 3 === 0; // sebagian belum dinilai bulan ini
-      for (let j = 0; j < history; j++) {
-        const monthsAgo = history - 1 - j + (skipThisMonth ? 1 : 0); // j = 0 paling lama
-        const period = periodMonthsAgo(monthsAgo);
-        const staff = assessors[orgIndex];
-        lpkRows.push({
-          candidateId: c.row.id,
-          orgId: c.row.organizationId,
-          kind: "LPK_MONTHLY",
-          assessedOn: dayInPeriod(period),
-          assessorId: staff[(i + j) % staff.length],
-          durationMinutes: 30,
-          scoreJapanese: Math.min(5, 2 + Math.floor(j / 2) + (i % 2)),
-          scoreAttitude: Math.min(5, 3 + (j % 2)),
-          scoreFitness: 3 + (i % 3 === 0 ? 1 : 0),
-          scoreMotivation: Math.min(5, 3 + Math.floor(j / 3)),
-          attendancePct: 80 + ((i * 7 + j * 3) % 21),
-          testName: j % 3 === 2 ? "Tryout JLPT N4" : null,
-          testScore: j % 3 === 2 ? 90 + j * 8 : null,
-          note: `面談 bulan ke-${j + 1}: perkembangan baik.`,
-          followUp: j === history - 1 ? "Perbanyak latihan kanji dan percakapan." : null,
-        });
+    for (const c of seeded) {
+      const list = buildAssessments({ orgIndex: c.orgIndex, i: c.i, stage: c.row.stage, bestJlpt: c.profile.bestJlpt, today, currentPeriod: currentPeriod(), periodOf: (n) => periodMonthsAgo(n) });
+      for (const a of list) {
+        const { assessorSlot, ...rest } = a;
+        lpkRows.push({ candidateId: c.row.id, orgId: c.row.organizationId, kind: "LPK_MONTHLY", assessorId: staff[c.orgIndex][assessorSlot % staff[c.orgIndex].length], ...rest });
       }
-    });
+    }
     await tx.insert(candidateAssessments).values(lpkRows);
 
-    // Penilaian TSK (hanya untuk kandidat LPK Bandung yang dibagikan dan keputusannya sesuai)
-    const bandung = seeded.slice(0, PIPELINE.length);
-    const tskAdminId = await userId("tsk.admin@hashi.test");
-    const tskStaffId = await userId("tsk.staff@hashi.test");
-    await tx.insert(candidateAssessments).values([
-      { candidateId: bandung[5].row.id, orgId: tsk.id, kind: "TSK_VISIT", assessedOn: today, assessorId: tskStaffId, scoreJapanese: 4, scoreAttitude: 4, note: "Bertemu langsung di LPK: komunikasi baik.", visibility: "TSK_ONLY" },
-      { candidateId: bandung[8].row.id, orgId: tsk.id, kind: "TSK_INTERVIEW", assessedOn: today, assessorId: tskAdminId, scoreJapanese: 4, scoreMotivation: 5, note: "面談 TSK: motivasi tinggi.", visibility: "TSK_ONLY" },
-      { candidateId: bandung[9].row.id, orgId: tsk.id, kind: "TSK_INTERVIEW", assessedOn: today, assessorId: tskAdminId, scoreJapanese: 5, scoreAttitude: 4, note: "面談 TSK: layak diajukan ke client.", visibility: "SHARED_WITH_LPK" },
-    ]);
+    // ---- Penilaian TSK (kunjungan kapan saja; interview hanya untuk keputusan yang membukanya)
+    const interviewOk = new Set<SelectionDecision>(["PASSED_TSK_INTERVIEW", "SUBMITTED_TO_CLIENT", "PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"]);
+    const tskRows = TSK_ASSESSMENTS.map(([o, i, kind, daysAgo, visibility, who, [sj, sa, sf, sm], note]) => {
+      const c = byKey.get(`${o}.${i}`)!;
+      if (kind === "TSK_INTERVIEW" && !(c.decision && interviewOk.has(c.decision))) throw new Error(`interview TSK tidak sesuai keputusan untuk ${o}.${i}`);
+      return {
+        candidateId: c.row.id,
+        orgId: tsk.id,
+        kind,
+        assessedOn: addDays(today, -daysAgo),
+        assessorId: tskUser(who),
+        durationMinutes: kind === "TSK_VISIT" ? 60 : 45,
+        scoreJapanese: sj,
+        scoreAttitude: sa,
+        scoreFitness: sf,
+        scoreMotivation: sm,
+        note,
+        followUp: kind === "TSK_INTERVIEW" ? "Lanjut sesuai keputusan TSK; kabari LPK bila ada dokumen tambahan." : null,
+        visibility,
+      } satisfies typeof candidateAssessments.$inferInsert;
+    });
+    await tx.insert(candidateAssessments).values(tskRows);
 
-    console.log(`✓ Seed selesai: 5 organisasi, 7 pengguna, 36 kandidat demo (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, 2 catatan TSK, ${lpkRows.length} penilaian bulanan LPK + 3 penilaian TSK`);
-    console.log(`  Password semua akun demo: ${PASSWORD}`);
+    summary = `✓ Seed selesai: 5 organisasi, 7 pengguna, ${seeded.length} kandidat demo lengkap (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, ${TSK_NOTES.length} catatan TSK, ${lpkRows.length} penilaian bulanan LPK + ${tskRows.length} penilaian TSK, ${docRows.length} dokumen dummy`;
   }, db);
 
+  if (files.length > 0) {
+    for (const f of files) await writeDemoFile(f.path, f.data);
+    console.log(`✓ ${files.length} berkas dokumen dummy ditulis ke ${root}`);
+  }
+  if (summary) {
+    console.log(summary);
+    console.log(`  Password semua akun demo: ${PASSWORD}`);
+  }
   await pool.end();
 }
 

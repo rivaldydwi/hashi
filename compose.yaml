@@ -33,6 +33,9 @@ services:
       MIGRATE_DATABASE_URL: postgresql://hashi_owner:${DB_OWNER_PASSWORD}@db:5432/${DB_NAME:-hashi}
       DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/${DB_NAME:-hashi}
       SEED_PASSWORD: ${SEED_PASSWORD:-}
+      STORAGE_DIR: /app/docs-data # seed menulis berkas dokumen dummy ke volume yang sama dengan app
+    volumes:
+      - docs-data:/app/docs-data
     depends_on:
       db:
         condition: service_healthy

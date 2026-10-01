@@ -1,10 +1,10 @@
 import { access, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { createIsolatedLpk, login, ownerQuery, unique } from "./helpers";
+import { createIsolatedLpk, createScratchCandidate, deleteScratchCandidate, login, ownerQuery, unique } from "./helpers";
 
-// Dokumen kandidat (langkah 3, bagian 3). Kandidat demo "Dewi Kusuma" (LPK Bandung, Belajar, belum ada
-// keputusan TSK); semua perubahan dibersihkan di akhir. File disimpan di folder e2e sendiri (.e2e-docs).
+// Dokumen kandidat (langkah 3, bagian 3). Kandidat uji SENDIRI (LPK Bandung, Belajar, belum ada
+// keputusan TSK, tanpa dokumen) yang dihapus di akhir; data seed tidak tersentuh. File disimpan di folder e2e sendiri (.e2e-docs).
 
 test.describe.configure({ mode: "serial" });
 
@@ -19,17 +19,14 @@ let url = "";
 let pdfId = "";
 
 test.beforeAll(async () => {
-  const [c] = await ownerQuery<{ id: string; organization_id: string }>(
-    "select c.id, c.organization_id from candidates c join organizations o on o.id = c.organization_id where c.full_name = 'Dewi Kusuma' and o.name = 'LPK Demo Bandung'",
-  );
+  const c = await createScratchCandidate({ name: `Uji Dokumen ${run}` });
   cid = c.id;
-  orgId = c.organization_id;
+  orgId = c.orgId;
   url = `/candidates/${cid}`;
-  expect(await ownerQuery("select 1 from candidate_selections where candidate_id = $1", [cid])).toHaveLength(0);
 });
 
 test.afterAll(async () => {
-  for (const sql of ["delete from candidate_documents where candidate_id = $1", "delete from candidate_selections where candidate_id = $1"]) await ownerQuery(sql, [cid]);
+  await deleteScratchCandidate(cid);
   await rm(ROOT, { recursive: true, force: true });
 });
 

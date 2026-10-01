@@ -38,6 +38,8 @@ jobs:
         run: psql "$MIGRATE_DATABASE_URL" -c "CREATE ROLE hashi_app LOGIN NOBYPASSRLS PASSWORD 'app-ci'"
       - run: npm run db:migrate
       - run: npm run db:seed
+      - name: Periksa kelengkapan seed demo (filter bermakna, tanpa berkas yatim)
+        run: npm run verify:seed
       - run: npm run test:rls
       - run: npm run build
       - run: npm run typecheck
@@ -84,7 +86,10 @@ jobs:
         run: docker run --rm --network host postgres:16-alpine psql "$MIGRATE_DATABASE_URL" -c "CREATE ROLE hashi_app LOGIN NOBYPASSRLS PASSWORD 'app-ci'"
       - name: Migrate (dari image tools)
         run: docker run --rm --network host -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci
+      # Volume bernama dipasang ke /app/docs-data (seperti di compose): seed menulis berkas dummy, verify:seed memeriksanya
       - name: Seed (dari image tools)
-        run: docker run --rm --network host -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci npm run db:seed
+        run: docker run --rm --network host -v ci-docs:/app/docs-data -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci npm run db:seed
+      - name: verify:seed (dari image tools)
+        run: docker run --rm --network host -v ci-docs:/app/docs-data -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci npm run verify:seed
       - name: test:rls (dari image tools)
         run: docker run --rm --network host -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci npm run test:rls
