@@ -12,3 +12,4 @@ docs-data/
 .e2e-docs/
 test-results/
 playwright-report/
+hashi-backups/
