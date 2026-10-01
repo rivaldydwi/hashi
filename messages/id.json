@@ -111,8 +111,11 @@
       "lastAdmin": "Organisasi harus punya minimal satu admin aktif.",
       "roleNotAllowed": "Peran ini tidak tersedia untuk organisasi ini.",
       "notFound": "Pengguna tidak ditemukan.",
-      "selfReset": "Gunakan halaman Akun saya untuk mengganti kata sandi sendiri."
-    }
+      "selfReset": "Gunakan halaman Akun saya untuk mengganti kata sandi sendiri.",
+      "languagesRequired": "Pilih minimal satu bahasa yang dikuasai."
+    },
+    "fieldLanguages": "Bahasa yang dikuasai",
+    "languagesHint": "Pilih semua bahasa yang dikuasai (minimal satu). Ini bukan bahasa tampilan: itu diatur lewat tombol bahasa."
   },
   "orgs": {
     "title": "Organisasi",
@@ -627,5 +630,10 @@
       "shareWarning": "Bila dibagikan, Admin LPK pemilik kandidat dapat membaca nilai, catatan, dan tindak lanjut ini. Sensei LPK tidak.",
       "empty": "Belum ada penilaian."
     }
+  },
+  "userLanguages": {
+    "id": "Indonesia",
+    "ja": "Jepang",
+    "en": "Inggris"
   }
 }

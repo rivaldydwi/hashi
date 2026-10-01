@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { withTenant, type Tx } from "@/db";
-import { organizations, users, type Role } from "@/db/schema";
+import { organizations, users, type Language, type Role } from "@/db/schema";
 
 export type CurrentUser = {
   id: string;
@@ -11,6 +11,8 @@ export type CurrentUser = {
   email: string;
   role: Role;
   locale: "id" | "ja";
+  /** Bahasa yang dikuasai (bukan bahasa tampilan). */
+  languages: Language[];
   mustChangePassword: boolean;
   organizationId: string;
   organizationType: "PLATFORM" | "LPK" | "TSK";
@@ -58,6 +60,7 @@ export const getCurrentUser = cache(async (): Promise<LookupResult> => {
       email: row.user.email,
       role: row.user.role,
       locale: row.user.locale,
+      languages: row.user.languages,
       mustChangePassword: row.user.mustChangePassword,
       organizationId: row.org.id,
       organizationType: row.org.type,

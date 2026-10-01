@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/PageHeader";
 import { cardClass } from "@/components/styles";
+import { LanguageChips } from "@/features/users/LanguageChips";
 import { ChangePasswordForm } from "@/features/account/ChangePasswordForm";
 import { requireUser } from "@/lib/session";
 
@@ -11,12 +13,12 @@ export default async function AccountPage() {
   const me = await requireUser();
   const t = await getTranslations();
 
-  const rows: Array<[string, string]> = [
+  const rows: Array<[string, ReactNode]> = [
     [t("users.fieldName"), me.name],
     [t("users.fieldEmail"), me.email],
     [t("users.fieldRole"), t(`roles.${me.role}`)],
     [t("account.organization"), me.organizationName],
-    [t("users.fieldLanguage"), t(`languages.${me.locale}`)],
+    [t("users.colLanguage"), <LanguageChips key="languages" languages={me.languages} />],
   ];
 
   return (

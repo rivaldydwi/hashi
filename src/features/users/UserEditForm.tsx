@@ -4,9 +4,10 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { FormAlert, SubmitButton } from "@/components/FormBits";
 import { cardClass, inputClass, labelClass } from "@/components/styles";
-import type { Locale, Role } from "@/db/schema";
+import type { Language, Role } from "@/db/schema";
 import { idle, type FormState } from "@/lib/form-state";
 import { updateUser } from "./actions";
+import { LanguageCheckboxes } from "./LanguageCheckboxes";
 
 export function UserEditForm({
   user,
@@ -14,7 +15,7 @@ export function UserEditForm({
   orgId,
   isSelf,
 }: {
-  user: { id: string; name: string; email: string; role: Role; locale: Locale };
+  user: { id: string; name: string; email: string; role: Role; languages: Language[] };
   roles: readonly Role[];
   orgId?: string;
   isSelf: boolean;
@@ -46,14 +47,8 @@ export function UserEditForm({
           </select>
           {isSelf && <input type="hidden" name="role" value={user.role} />}
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor="locale" className={labelClass}>{t("users.fieldLanguage")}</label>
-          <select id="locale" name="locale" defaultValue={user.locale} className={inputClass}>
-            <option value="id">{t("languages.id")}</option>
-            <option value="ja">{t("languages.ja")}</option>
-          </select>
-        </div>
       </div>
+      <LanguageCheckboxes defaultValue={user.languages} />
       <FormAlert state={state} />
       <SubmitButton>{t("common.save")}</SubmitButton>
     </form>

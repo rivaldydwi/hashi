@@ -1601,6 +1601,46 @@ async function main() {
     docRules.valid ?? "",
   );
 
+  // --- K. Bahasa yang dikuasai pengguna (users.languages) ---
+  const lang: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const target = (await tx.select({ id: users.id }).from(users).where(eq(users.email, "lpk1.sensei@hashi.test")))[0].id;
+    const setLang = (t: Tx, literal: string) => t.execute(sql`update users set languages = ${literal}::language[] where id = ${target}`);
+    lang.empty = await attempt(tx, (t) => setLang(t, "{}"));
+    lang.dup = await attempt(tx, (t) => setLang(t, "{id,id}"));
+    lang.dupMixed = await attempt(tx, (t) => setLang(t, "{id,ja,id}"));
+    lang.outside = await attempt(tx, (t) => setLang(t, "{id,fr}"));
+    lang.withNull = await attempt(tx, (t) => setLang(t, "{id,NULL}"));
+    lang.nullArray = await attempt(tx, (t) => t.execute(sql`update users set languages = null where id = ${target}`));
+    lang.ok = await attempt(tx, (t) => setLang(t, "{ja,en,id}"));
+    lang.insertEmpty = await attempt(tx, (t) =>
+      t.execute(sql`insert into users (organization_id, email, name, role, password_hash, languages) values (${lpk1.id}, ${`kosong-${uniq()}@hashi.test`}, 'Uji', 'LPK_SENSEI', 'x', '{}')`),
+    );
+    // Admin LPK1: bisa mengubah languages pengguna organisasinya; TANPA WHERE hanya menyentuh organisasinya; tidak menyentuh LPK lain
+    await actAs(tx, lpk1.id, "LPK_ADMIN");
+    lang.ownRows = (await rowsOf(tx, (t) => t.update(users).set({ languages: ["en"] }).where(eq(users.id, target)).returning({ id: users.id }))).n;
+    lang.allRows = (await rowsOf(tx, (t) => t.update(users).set({ languages: ["ja"] }).returning({ id: users.id }))).n;
+  });
+  const lpk1UserCount = (await withSystem((tx) => tx.select({ id: users.id }).from(users).where(eq(users.organizationId, lpk1.id)), db)).length;
+  await sandbox(async (tx) => {
+    const otherUser = (await tx.select({ id: users.id }).from(users).where(eq(users.email, "lpk2.admin@hashi.test")))[0].id;
+    await actAs(tx, lpk1.id, "LPK_ADMIN");
+    lang.otherOrg = (await rowsOf(tx, (t) => t.update(users).set({ languages: ["en"] }).where(eq(users.id, otherUser)).returning({ id: users.id }))).n;
+    await actAs(tx, lpk1.id, "LPK_SENSEI");
+    lang.senseiOwn = (await rowsOf(tx, (t) => t.update(users).set({ languages: ["en"] }).where(eq(users.organizationId, lpk1.id)).returning({ id: users.id }))).n;
+  });
+  const bad = [lang.empty, lang.dup, lang.dupMixed, lang.outside, lang.withNull, lang.nullArray, lang.insertEmpty];
+  check(
+    "Bahasa pengguna: CHECK menolak array kosong, duplikat, nilai di luar id/ja/en, NULL; kombinasi valid diterima",
+    bad.every((e) => typeof e === "string") && lang.ok === null && [lang.empty, lang.dup, lang.dupMixed, lang.withNull, lang.insertEmpty].every((e) => /users_languages_check/.test(String(e))) && /enum language/.test(String(lang.outside)),
+    JSON.stringify(bad.map((e) => String(e).slice(0, 60))),
+  );
+  check(
+    "Bahasa pengguna: admin hanya mengubah pengguna organisasinya (UPDATE tanpa WHERE hanya menyentuh organisasinya; LPK lain 0 baris)",
+    lang.ownRows === 1 && lang.allRows === lpk1UserCount && lang.otherOrg === 0,
+    `${lang.ownRows}/${lang.allRows}/${lang.otherOrg} dari ${lpk1UserCount}`,
+  );
+
   await pool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);
   process.exit(failures === 0 ? 0 : 1);

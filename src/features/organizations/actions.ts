@@ -52,6 +52,7 @@ export async function createOrganization(_prev: FormState, formData: FormData): 
           email: input.adminEmail,
           role: ADMIN_ROLE_BY_ORG_TYPE[input.type],
           locale: input.defaultLocale,
+          languages: [input.defaultLocale], // bahasa yang dikuasai admin pertama; bisa diubah di form pengguna
           passwordHash,
           mustChangePassword: true,
         })

@@ -20,7 +20,7 @@ export default async function AdminNewUserPage({ params }: { params: Promise<{ i
   return (
     <>
       <PageHeader title={t("newTitle")} intro={`${org.name} · ${t("newIntro")}`} backHref={base} backLabel={org.name} />
-      <UserCreateForm roles={ROLES_BY_ORG_TYPE[org.type]} defaultLocale={org.defaultLocale} orgId={id} backHref={base} />
+      <UserCreateForm roles={ROLES_BY_ORG_TYPE[org.type]} orgId={id} backHref={base} />
     </>
   );
 }

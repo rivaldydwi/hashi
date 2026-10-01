@@ -9,7 +9,7 @@ const publicUserColumns = {
   name: users.name,
   email: users.email,
   role: users.role,
-  locale: users.locale,
+  languages: users.languages,
   active: users.active,
   mustChangePassword: users.mustChangePassword,
   lastLoginAt: users.lastLoginAt,

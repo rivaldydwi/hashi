@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { cardClass, tableHeadClass } from "@/components/styles";
+import { LanguageChips } from "./LanguageChips";
 import type { UserRow } from "./queries";
 
 export async function UserTable({
@@ -44,7 +45,7 @@ export async function UserTable({
                   <div className="text-xs text-stone-500">{u.email}</div>
                 </td>
                 <td className="px-5 py-3 whitespace-nowrap">{t(`roles.${u.role}`)}</td>
-                <td className="px-5 py-3 whitespace-nowrap">{t(`languages.${u.locale}`)}</td>
+                <td className="px-5 py-3 whitespace-nowrap"><LanguageChips languages={u.languages} /></td>
                 <td className="px-5 py-3">
                   {!u.active ? (
                     <span className="rounded-full bg-stone-200 px-2.5 py-0.5 text-xs font-medium text-stone-700">

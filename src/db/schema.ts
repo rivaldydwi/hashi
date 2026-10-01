@@ -36,6 +36,8 @@ export const role = pgEnum("role", [
 ]);
 
 export const locale = pgEnum("locale", ["id", "ja"]);
+// Bahasa yang DIKUASAI pengguna (boleh lebih dari satu). Beda dari `locale` (bahasa tampilan, hanya id/ja).
+export const language = pgEnum("language", ["id", "ja", "en"]);
 
 export const gender = pgEnum("gender", ["MALE", "FEMALE"]);
 
@@ -158,7 +160,8 @@ export const users = pgTable(
     name: text("name").notNull(),
     passwordHash: text("password_hash").notNull(),
     role: role("role").notNull(),
-    locale: locale("locale").notNull().default("id"),
+    locale: locale("locale").notNull().default("id"), // preferensi bahasa TAMPILAN (diubah tombol bahasa), bukan bahasa yang dikuasai
+    languages: language("languages").array().notNull().default(sql`ARRAY['id']::language[]`), // bahasa yang dikuasai; CHECK: 1+ elemen, tanpa duplikat
     active: boolean("active").notNull().default(true),
     // true setelah dibuat/di-reset admin dengan kata sandi sementara
     mustChangePassword: boolean("must_change_password").notNull().default(false),
@@ -170,6 +173,7 @@ export const users = pgTable(
   (t) => [
     uniqueIndex("users_email_key").on(t.email),
     index("users_organization_idx").on(t.organizationId),
+    check("users_languages_check", sql`language_array_ok(${t.languages})`),
   ],
 );
 
@@ -494,4 +498,5 @@ export type DocumentType = (typeof documentType.enumValues)[number];
 export type CandidateStage = (typeof candidateStage.enumValues)[number];
 export type Role = (typeof role.enumValues)[number];
 export type Locale = (typeof locale.enumValues)[number];
+export type Language = (typeof language.enumValues)[number];
 export type OrgType = (typeof orgType.enumValues)[number];

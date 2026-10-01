@@ -160,13 +160,13 @@ async function main() {
     ]);
 
     await tx.insert(users).values([
-      { organizationId: platform.id, email: "admin@hashi.test", name: "Super Admin", role: "SUPER_ADMIN", locale: "id", passwordHash },
-      { organizationId: tsk.id, email: "tsk.admin@hashi.test", name: "田中 一郎", role: "TSK_ADMIN", locale: "ja", passwordHash },
-      { organizationId: tsk.id, email: "tsk.staff@hashi.test", name: "Rina Staf TSK", role: "TSK_STAFF", locale: "id", passwordHash },
-      { organizationId: lpk1.id, email: "lpk1.admin@hashi.test", name: "Admin LPK Bandung", role: "LPK_ADMIN", locale: "id", passwordHash },
-      { organizationId: lpk1.id, email: "lpk1.sensei@hashi.test", name: "Sensei Bandung", role: "LPK_SENSEI", locale: "id", passwordHash },
-      { organizationId: lpk2.id, email: "lpk2.admin@hashi.test", name: "Admin LPK Surabaya", role: "LPK_ADMIN", locale: "id", passwordHash },
-      { organizationId: lpk3.id, email: "lpk3.admin@hashi.test", name: "Admin LPK Medan", role: "LPK_ADMIN", locale: "id", passwordHash },
+      { organizationId: platform.id, email: "admin@hashi.test", name: "Super Admin", role: "SUPER_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
+      { organizationId: tsk.id, email: "tsk.admin@hashi.test", name: "田中 一郎", role: "TSK_ADMIN", locale: "ja", languages: ["ja", "id", "en"], passwordHash },
+      { organizationId: tsk.id, email: "tsk.staff@hashi.test", name: "Rina Staf TSK", role: "TSK_STAFF", locale: "id", languages: ["ja", "id"], passwordHash },
+      { organizationId: lpk1.id, email: "lpk1.admin@hashi.test", name: "Admin LPK Bandung", role: "LPK_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
+      { organizationId: lpk1.id, email: "lpk1.sensei@hashi.test", name: "Sensei Bandung", role: "LPK_SENSEI", locale: "id", languages: ["id", "ja"], passwordHash },
+      { organizationId: lpk2.id, email: "lpk2.admin@hashi.test", name: "Admin LPK Surabaya", role: "LPK_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
+      { organizationId: lpk3.id, email: "lpk3.admin@hashi.test", name: "Admin LPK Medan", role: "LPK_ADMIN", locale: "id", languages: ["id", "en"], passwordHash },
     ]);
 
     const seeded = [

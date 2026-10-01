@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { users, role as roleEnum, locale as localeEnum } from "@/db/schema";
+import { users, role as roleEnum, language as languageEnum } from "@/db/schema";
+import { initialLocale, normalizeLanguages } from "@/lib/languages";
 import { audit } from "@/lib/audit";
 import { ActionError, pgErrorCode, PG_UNIQUE_VIOLATION } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
@@ -18,15 +19,23 @@ const createSchema = z.object({
   name: nameSchema,
   email: z.email().max(254).transform((v) => v.trim().toLowerCase()),
   role: z.enum(roleEnum.enumValues),
-  locale: z.enum(localeEnum.enumValues),
 });
 
 const updateSchema = z.object({
   userId: z.uuid(),
   name: nameSchema,
   role: z.enum(roleEnum.enumValues),
-  locale: z.enum(localeEnum.enumValues),
 });
+
+const languagesSchema = z.array(z.enum(languageEnum.enumValues)).min(1);
+
+/** Bahasa yang dikuasai dari kotak centang (`languages`, bisa banyak). Kosong / tidak dikenal = error dengan pesan khusus. */
+function languagesFrom(formData: FormData) {
+  const parsed = languagesSchema.safeParse(formData.getAll("languages"));
+  return parsed.success ? normalizeLanguages(parsed.data) : null;
+}
+
+const sameLanguages = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 function orgIdFrom(formData: FormData) {
   const v = formData.get("orgId");
@@ -44,6 +53,8 @@ export async function createUser(_prev: FormState, formData: FormData): Promise<
   const scope = await userAdminScope(orgIdFrom(formData));
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { status: "error", key: "common.invalidInput" };
+  const languages = languagesFrom(formData);
+  if (!languages) return { status: "error", key: "users.errors.languagesRequired" };
   const input = parsed.data;
 
   const tempPassword = generateTempPassword();
@@ -62,7 +73,8 @@ export async function createUser(_prev: FormState, formData: FormData): Promise<
           name: input.name,
           email: input.email,
           role: input.role,
-          locale: input.locale,
+          languages,
+          locale: initialLocale(languages), // bahasa tampilan awal; selanjutnya diubah lewat tombol bahasa
           passwordHash,
           mustChangePassword: true,
         })
@@ -74,7 +86,7 @@ export async function createUser(_prev: FormState, formData: FormData): Promise<
         action: "user.create",
         entity: "user",
         entityId: row.id,
-        after: { name: input.name, email: input.email, role: input.role, locale: input.locale },
+        after: { name: input.name, email: input.email, role: input.role, languages },
       });
       return row;
     });
@@ -91,6 +103,8 @@ export async function updateUser(_prev: FormState, formData: FormData): Promise<
   const scope = await userAdminScope(orgIdFrom(formData));
   const parsed = updateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { status: "error", key: "common.invalidInput" };
+  const languages = languagesFrom(formData);
+  if (!languages) return { status: "error", key: "users.errors.languagesRequired" };
   const input = parsed.data;
 
   try {
@@ -110,7 +124,7 @@ export async function updateUser(_prev: FormState, formData: FormData): Promise<
 
       await tx
         .update(users)
-        .set({ name: input.name, role: input.role, locale: input.locale })
+        .set({ name: input.name, role: input.role, languages }) // `locale` (bahasa tampilan) sengaja tidak disentuh
         .where(eq(users.id, target.id));
 
       await audit(tx, {
@@ -119,8 +133,9 @@ export async function updateUser(_prev: FormState, formData: FormData): Promise<
         action: "user.update",
         entity: "user",
         entityId: target.id,
-        before: { name: target.name, role: target.role, locale: target.locale },
-        after: { name: input.name, role: input.role, locale: input.locale },
+        before: { name: target.name, role: target.role },
+        // `languages` hanya dicatat NAMA kolomnya (bila berubah), seperti kolom lain yang tidak memuat isi
+        after: { name: input.name, role: input.role, ...(sameLanguages(target.languages, languages) ? {} : { changed: ["languages"] }) },
       });
     });
 

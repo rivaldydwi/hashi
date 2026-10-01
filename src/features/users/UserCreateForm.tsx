@@ -5,18 +5,17 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { FormAlert, SubmitButton, TempPasswordNotice } from "@/components/FormBits";
 import { btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
-import type { Locale, Role } from "@/db/schema";
+import type { Role } from "@/db/schema";
 import { idle, type FormState } from "@/lib/form-state";
 import { createUser } from "./actions";
+import { LanguageCheckboxes } from "./LanguageCheckboxes";
 
 export function UserCreateForm({
   roles,
-  defaultLocale,
   orgId,
   backHref,
 }: {
   roles: readonly Role[];
-  defaultLocale: Locale;
   orgId?: string;
   backHref: string;
 }) {
@@ -57,14 +56,8 @@ export function UserCreateForm({
             ))}
           </select>
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor="locale" className={labelClass}>{t("users.fieldLanguage")}</label>
-          <select id="locale" name="locale" defaultValue={defaultLocale} className={inputClass}>
-            <option value="id">{t("languages.id")}</option>
-            <option value="ja">{t("languages.ja")}</option>
-          </select>
-        </div>
       </div>
+      <LanguageCheckboxes defaultValue={["id"]} />
       <FormAlert state={state} />
       <div className="flex gap-2">
         <SubmitButton>{t("users.add")}</SubmitButton>

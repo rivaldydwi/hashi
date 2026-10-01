@@ -13,7 +13,7 @@ export default async function NewUserPage() {
   return (
     <>
       <PageHeader title={t("newTitle")} intro={t("newIntro")} backHref="/users" backLabel={t("title")} />
-      <UserCreateForm roles={ROLES_BY_ORG_TYPE[org.type]} defaultLocale={org.defaultLocale} backHref="/users" />
+      <UserCreateForm roles={ROLES_BY_ORG_TYPE[org.type]} backHref="/users" />
     </>
   );
 }
