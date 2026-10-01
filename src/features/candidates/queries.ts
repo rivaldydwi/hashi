@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, isNotNull, isNull, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { Tx } from "@/db";
 import {
   candidates,
@@ -18,6 +18,12 @@ export type CandidateFilters = {
   field: string;
   /** Hanya untuk TSK: keputusan TSK itu sendiri. NONE = belum ada baris keputusan atau NONE. */
   decision: SelectionDecision | "";
+  /** Rata-rata nilai minimal (1-5), dari tiga penilaian bulanan LPK terbaru. "" = tidak difilter. */
+  avg: string;
+  /** Kehadiran rata-rata minimal (0-100), dari tiga penilaian bulanan terbaru. */
+  attendance: string;
+  /** Level JLPT tertinggi minimal, mis. "N4" = N4 atau lebih tinggi. */
+  jlpt: string;
   page: number;
 };
 
@@ -25,6 +31,13 @@ type Params = Record<string, string | string[] | undefined>;
 
 function one(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v)?.trim() ?? "";
+}
+
+/** Angka dari URL dalam rentang [min, max], dikembalikan sebagai string bersih; nilai tak valid = "" (diabaikan). */
+function numberParam(v: string | string[] | undefined, min: number, max: number): string {
+  const s = one(v).replace(",", ".");
+  const n = Number(s);
+  return s !== "" && Number.isFinite(n) && n >= min && n <= max ? String(n) : "";
 }
 
 /** Baca filter dari URL. Nilai yang tidak dikenal diabaikan (bukan error), supaya URL lama tidak rusak. */
@@ -37,6 +50,9 @@ export function parseFilters(sp: Params, isTsk: boolean): CandidateFilters {
     stage: (candidateStage.enumValues as readonly string[]).includes(stage) ? (stage as CandidateStage) : "",
     field: one(sp.field).slice(0, 120),
     decision: isTsk && (selectionDecision.enumValues as readonly string[]).includes(decision) ? (decision as SelectionDecision) : "",
+    avg: numberParam(sp.avg, 1, 5),
+    attendance: numberParam(sp.attendance, 0, 100),
+    jlpt: /^N[1-5]$/.test(one(sp.jlpt)) ? one(sp.jlpt) : "",
     page: Number.isFinite(page) && page > 0 ? page : 1,
   };
 }
@@ -53,7 +69,7 @@ const NO_TSK = "00000000-0000-0000-0000-000000000000";
  * Daftar kandidat yang terlihat oleh pemanggil (RLS yang menentukan: LPK = miliknya, TSK = mitra
  * dengan persetujuan data). `tskOrgId` diisi untuk TSK supaya keputusan miliknya ikut ditampilkan.
  */
-export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId: string | null) {
+export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId: string | null, onlyIds: string[] | null = null) {
   const conds = [];
   if (filters.q) {
     const pattern = likePattern(filters.q);
@@ -68,6 +84,8 @@ export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId
         : eq(candidateSelections.decision, filters.decision),
     );
   }
+  // Filter nilai/kehadiran/JLPT dihitung di query terpisah (assessments/queries.ts), lalu dipasang sebagai daftar id
+  if (onlyIds) conds.push(onlyIds.length ? inArray(candidates.id, onlyIds) : sql`false`);
   const where = conds.length ? and(...conds) : undefined;
   const ownDecision = and(eq(candidateSelections.candidateId, candidates.id), eq(candidateSelections.tskOrgId, tskOrgId ?? NO_TSK));
 

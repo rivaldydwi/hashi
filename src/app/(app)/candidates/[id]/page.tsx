@@ -10,6 +10,8 @@ import { getFormatter } from "next-intl/server";
 import { DecisionPanel, ListSectionCard, NotesPanel, SectionCard } from "@/features/candidates/DetailSections";
 import { loadDetail } from "@/features/candidates/detail-queries";
 import { canSeeLevel, contentAccess, isTskRole } from "@/features/candidates/permissions";
+import { AssessmentsSection } from "@/features/assessments/AssessmentsSection";
+import { listMonthly } from "@/features/assessments/queries";
 import { DocumentsSection } from "@/features/documents/DocumentsSection";
 import { LIST_SECTIONS, SINGLE_SECTIONS } from "@/features/candidates/sections";
 import { requireUser, tenantQuery } from "@/lib/session";
@@ -34,6 +36,9 @@ export default async function CandidateDetailPage({
 
   const detail = await tenantQuery((tx) => loadDetail(tx, me, id));
   if (!detail) notFound(); // tidak ada, atau tidak terlihat oleh organisasi ini (RLS)
+  // Penilaian bulanan LPK: hanya dibaca dan dirender untuk LPK_ADMIN dan sensei (sisi TSK = bagian C)
+  const lpkSide = me.role === "LPK_ADMIN" || me.role === "LPK_SENSEI";
+  const monthly = lpkSide ? await tenantQuery((tx) => listMonthly(tx, id)) : [];
 
   const t = await getTranslations("detail");
   const { candidate, full } = detail;
@@ -120,6 +125,8 @@ export default async function CandidateDetailPage({
           ))}
 
         {full && <DocumentsSection candidateId={candidate.id} docs={full.documents} canEdit={access.canEdit} />}
+
+        {lpkSide && <AssessmentsSection candidateId={candidate.id} rows={monthly} me={me} />}
 
         {ownerLpk && full && <DecisionPanel me={me} detail={{ ...full, candidateId: candidate.id }} />}
         {full && <NotesPanel me={me} candidateId={candidate.id} notes={full.notes} />}

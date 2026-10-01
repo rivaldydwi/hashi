@@ -17,6 +17,7 @@ import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { assertTestDatabase } from "./db-guard";
 import { createDb, withSystem, withTenant, type Tx } from "../src/db";
 import { platformOverview } from "../src/db/queries";
+import { todayInAppTz } from "../src/db/time";
 import { assessmentAuditEntry, noteAuditEntry } from "../src/db/audit-entries";
 import {
   auditLogs,
@@ -1261,6 +1262,20 @@ async function main() {
   );
 
   // --- J. Penilaian (candidate_assessments) ---
+  // Form LPK membatasi tanggal ke "hari ini" menurut APP_TIMEZONE (Jakarta); trigger memakai tanggal Tokyo.
+  // Bukti bahwa tanggal Jakarta TIDAK PERNAH melewati tanggal Tokyo (jadi form tidak pernah ditolak trigger): 72 instan per jam.
+  {
+    const rows = await withSystem((tx) =>
+      tx.execute(sql`select g::text as ts, ((g at time zone 'Asia/Jakarta')::date)::text as jkt, ((g at time zone 'Asia/Tokyo')::date)::text as tyo
+        from generate_series(timestamptz '2026-03-01 00:00+00', timestamptz '2026-03-03 23:00+00', interval '1 hour') g`),
+    );
+    const list = rows.rows as Array<{ ts: string; jkt: string; tyo: string }>;
+    check(
+      "Zona waktu: tanggal Jakarta (batas form) tidak pernah melewati tanggal Tokyo (batas trigger), dan todayInAppTz sama dengan SQL",
+      list.length === 72 && list.every((r) => r.jkt <= r.tyo && todayInAppTz(new Date(r.ts)) === r.jkt),
+      `${list.length} instan; ${list.filter((r) => r.jkt > r.tyo || todayInAppTz(new Date(r.ts)) !== r.jkt).length} pelanggaran`,
+    );
+  }
   const senseiUser = allUsers.find((u) => u.email === "lpk1.sensei@hashi.test")!;
   const OLD = "2021-01-01"; // baris uji memakai 2020; baris seed memakai bulan-bulan terakhir
   const INTERVIEW_OK = ["PASSED_TSK_INTERVIEW", "SUBMITTED_TO_CLIENT", "PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"]; // sengaja eksplisit

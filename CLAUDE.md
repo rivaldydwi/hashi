@@ -11,7 +11,7 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 1. ✅ Fondasi: login, i18n ID/JP, multi-tenant RLS, Docker, CI
 2. ✅ Kelola organisasi, pengguna, kemitraan (v0.2)
 3. ✅ **Profil kandidat**: daftar, tambah, halaman detail, keputusan & catatan TSK, persetujuan data, dokumen, audit
-4. ⏭ **Penilaian kandidat**: ✅ skema + RLS + tes (bagian A) · ⏭ UI LPK (B) dan TSK (C)
+4. ⏭ **Penilaian kandidat**: ✅ skema + RLS + tes (bagian A) · ✅ UI LPK (B) · ⏭ UI TSK (C)
    5. Seleksi (job order, shortlist) · 6. Lembar client PDF (bahasa Jepang)
 7. Pengingat dokumen kedaluwarsa · 8. Siap pilot (dummy 200 siswa) · 9. Demo ke TSK
 
@@ -121,6 +121,14 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   (dari `app.user_id`, tidak bisa dipalsukan), menolak tanggal di masa depan (batas = tanggal Tokyo), dan mengunci
   candidate_id/org_id/kind/assessor_id. Audit WAJIB lewat `assessmentAuditEntry()` (`src/db/audit-entries.ts`): jenis, periode, NAMA
   kolom, visibility dari/ke; tanpa isi `note`/`follow_up`. "Bulan berjalan" memakai `APP_TIMEZONE` di `src/db/time.ts`.
+  **UI LPK** (`src/features/assessments/`): `fields.ts` (`ASSESSMENT_FIELDS`, rata-rata, tren), `AssessmentsSection` (bagian "Penilaian"
+  di detail, hanya LPK_ADMIN + sensei, hanya LPK_MONTHLY; tabel di md+, kartu di ponsel), `AssessmentForm`, `actions.ts`
+  (`saveAssessment`), `queries.ts` (`listMonthly`, `pendingCandidates`, `assessmentStats`, `jlptBest`, `matchAssessmentFilters`).
+  Batas tanggal form = `todayInAppTz()` (Jakarta, lebih ketat dari batas Tokyo di trigger, jadi form tidak pernah ditolak trigger;
+  dibuktikan di `verify-rls.ts`). Halaman `/assessments/pending` + kartu di beranda memakai `currentPeriod()`. Filter /candidates
+  (avg, attendance, jlpt) dari 3 penilaian LPK terbaru: statistik dihitung di query terpisah (window function, bukan subquery
+  berkorelasi), dipasang sebagai daftar id; kandidat tanpa data itu tidak lolos filter. Label aspek: "Kebugaran" (bukan kesehatan);
+  catatan penilaian dilarang berisi data medis (teks bantuan di form).
 - **Audit log**: `audit(tx, {organizationId, actorOrgId, candidateId, …})`. Perubahan kandidat disimpan di
   `organizationId` = LPK PEMILIK kandidat (supaya LPK ikut melihat aksi TSK), `actorOrgId` = organisasi pelaku,
   `candidateId` wajib diisi (policy insert memeriksanya). Untuk log biasa `actorOrgId` otomatis = `organizationId`.

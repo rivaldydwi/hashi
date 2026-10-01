@@ -3,9 +3,11 @@ import { getTranslations } from "next-intl/server";
 import { DecisionBadge } from "@/components/DecisionBadge";
 import { StageBadge } from "@/components/StageBadge";
 import { cardClass, tableHeadClass } from "@/components/styles";
+import { formatAvg } from "@/features/assessments/fields";
+import type { Stats } from "@/features/assessments/queries";
 import type { CandidateListRow } from "./queries";
 
-export async function CandidateTable({ rows, isTsk }: { rows: CandidateListRow[]; isTsk: boolean }) {
+export async function CandidateTable({ rows, isTsk, stats }: { rows: CandidateListRow[]; isTsk: boolean; stats: Map<string, Stats> }) {
   const t = await getTranslations("candidates");
 
   return (
@@ -18,6 +20,7 @@ export async function CandidateTable({ rows, isTsk }: { rows: CandidateListRow[]
               {isTsk && <th className="px-5 py-2 font-medium">{t("colLpk")}</th>}
               <th className="px-5 py-2 font-medium">{t("colField")}</th>
               <th className="px-5 py-2 font-medium">{t("colStage")}</th>
+              <th className="px-5 py-2 font-medium">{t("colLatest")}</th>
               {!isTsk && <th className="px-5 py-2 font-medium">{t("colShared")}</th>}
               {isTsk && <th className="px-5 py-2 font-medium">{t("colDecision")}</th>}
             </tr>
@@ -34,6 +37,9 @@ export async function CandidateTable({ rows, isTsk }: { rows: CandidateListRow[]
                 {isTsk && <td className="px-5 py-3 text-stone-700">{c.lpkName}</td>}
                 <td className="px-5 py-3 text-stone-700">{c.field ?? "—"}</td>
                 <td className="px-5 py-3"><StageBadge stage={c.stage} /></td>
+                <td className="px-5 py-3 tabular-nums" data-testid="latest-avg">
+                  {stats.get(c.id) ? formatAvg(stats.get(c.id)!.latestAvg) : "—"}
+                </td>
                 {!isTsk && (
                   <td className="px-5 py-3 text-xs" data-testid="shared-cell">
                     <span className={`rounded-full px-2.5 py-0.5 font-medium ${c.sharedWithTsk ? "bg-sky-50 text-sky-800" : "bg-stone-100 text-stone-600"}`}>

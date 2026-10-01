@@ -69,7 +69,8 @@ test("sensei hanya melihat data dasar: data sensitif tidak ada di HTML", async (
   for (const s of ["contact", "identity", "health", "japan", "family", "education", "work", "certificates", "decision", "notes"]) {
     await expect(page.locator(`[data-testid=section-${s}]`)).toHaveCount(0);
   }
-  await expect(page.locator("summary")).toHaveCount(0); // tidak ada tombol Ubah
+  // Tidak ada tombol Ubah di bagian data kandidat (bagian Penilaian memang punya form untuk sensei)
+  await expect(page.locator("[data-testid^=section-]:not([data-testid=section-assessments]) summary")).toHaveCount(0);
 
   // Dan tidak ada di HTML mentah yang dikirim server (termasuk payload RSC)
   const html = await (await page.request.get(url)).text();

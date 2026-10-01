@@ -3,6 +3,7 @@
 // Pemakaian: npm run test:i18n
 import { readFileSync } from "node:fs";
 import { documentType } from "../src/db/schema";
+import { ASSESSMENT_FIELDS } from "../src/features/assessments/fields";
 import { LIST_SECTIONS, SINGLE_SECTIONS } from "../src/features/candidates/sections";
 
 const load = (l: string) => JSON.parse(readFileSync(`messages/${l}.json`, "utf8")) as Record<string, unknown>;
@@ -21,7 +22,7 @@ for (const k of Object.keys(id)) if (!(k in ja)) problems.push(`kunci hanya ada 
 for (const k of Object.keys(ja)) if (!(k in id)) problems.push(`kunci hanya ada di ja: ${k}`);
 for (const [k, v] of Object.entries({ ...id, ...ja })) if (!v.trim()) problems.push(`teks kosong: ${k}`);
 
-for (const s of [...SINGLE_SECTIONS, ...LIST_SECTIONS]) {
+for (const s of [...SINGLE_SECTIONS, ...LIST_SECTIONS, { key: "assessment", fields: ASSESSMENT_FIELDS }]) {
   const base = `detail.sections.${s.key}`;
   const need = [`${base}.title`];
   for (const f of s.fields) {

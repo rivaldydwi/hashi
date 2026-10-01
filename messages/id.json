@@ -22,7 +22,8 @@
     "organizations": "Organisasi",
     "partnerships": "Kemitraan",
     "account": "Akun saya",
-    "candidates": "Kandidat"
+    "candidates": "Kandidat",
+    "assessments": "Penilaian"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -62,7 +63,9 @@
     "colType": "Jenis",
     "colUsers": "Pengguna",
     "colCandidates": "Kandidat",
-    "viewAll": "Lihat semua"
+    "viewAll": "Lihat semua",
+    "pendingAssessments": "Belum dinilai bulan ini",
+    "pendingAssessmentsHint": "Kandidat Belajar / Siap seleksi tanpa penilaian bulanan bulan ini. Klik untuk melihat daftarnya."
   },
   "users": {
     "title": "Pengguna",
@@ -269,7 +272,13 @@
       "extrasTitle": "Berbagi dan formulir persetujuan",
       "save": "Simpan kandidat",
       "fieldInvalid": "Isian ini tidak valid."
-    }
+    },
+    "colLatest": "Nilai terakhir",
+    "filterAvg": "Rata-rata nilai minimal",
+    "filterAttendance": "Kehadiran minimal (%)",
+    "filterJlpt": "Level JLPT",
+    "jlptAtLeast": "{level} atau lebih tinggi",
+    "filterAssessmentHint": "Rata-rata nilai dan kehadiran dihitung dari tiga penilaian bulanan LPK terbaru; level JLPT dari sertifikat. Kandidat yang belum punya datanya tidak ikut."
   },
   "detail": {
     "saved": "Perubahan disimpan.",
@@ -437,6 +446,55 @@
             "SKILL_TEST": "Ujian skill SSW"
           }
         }
+      },
+      "assessment": {
+        "title": "Penilaian",
+        "fields": {
+          "assessedOn": "Tanggal 面談",
+          "durationMinutes": "Durasi (menit)",
+          "scoreJapanese": "Bahasa Jepang",
+          "scoreAttitude": "Sikap belajar",
+          "scoreFitness": "Kebugaran",
+          "scoreMotivation": "Motivasi",
+          "attendancePct": "Kehadiran (%)",
+          "testName": "Nama tes (opsional)",
+          "testScore": "Skor tes (opsional)",
+          "note": "Catatan",
+          "followUp": "Tindak lanjut"
+        },
+        "options": {
+          "scoreJapanese": {
+            "1": "1 – Perlu perbaikan besar",
+            "2": "2 – Kurang",
+            "3": "3 – Cukup",
+            "4": "4 – Baik",
+            "5": "5 – Sangat baik"
+          },
+          "scoreAttitude": {
+            "1": "1 – Perlu perbaikan besar",
+            "2": "2 – Kurang",
+            "3": "3 – Cukup",
+            "4": "4 – Baik",
+            "5": "5 – Sangat baik"
+          },
+          "scoreFitness": {
+            "1": "1 – Perlu perbaikan besar",
+            "2": "2 – Kurang",
+            "3": "3 – Cukup",
+            "4": "4 – Baik",
+            "5": "5 – Sangat baik"
+          },
+          "scoreMotivation": {
+            "1": "1 – Perlu perbaikan besar",
+            "2": "2 – Kurang",
+            "3": "3 – Cukup",
+            "4": "4 – Baik",
+            "5": "5 – Sangat baik"
+          }
+        },
+        "hints": {
+          "note": "Jangan menulis diagnosis atau data medis di sini. Data kesehatan ada di bagian Kesehatan."
+        }
       }
     },
     "documents": {
@@ -515,5 +573,37 @@
     "PLATFORM": "Platform",
     "LPK": "LPK",
     "TSK": "TSK"
+  },
+  "assessments": {
+    "intro": "Penilaian bulanan (面談・評価) oleh LPK. Satu penilaian per kandidat per bulan.",
+    "add": "Tambah penilaian bulanan",
+    "save": "Simpan penilaian",
+    "saving": "Menyimpan...",
+    "saved": "Penilaian disimpan.",
+    "empty": "Belum ada penilaian bulanan.",
+    "colMonth": "Bulan",
+    "colAvg": "Rata-rata",
+    "colTest": "Tes",
+    "assessor": "Penilai",
+    "minutes": "menit",
+    "detailAndEdit": "Detail dan ubah",
+    "notEditable": "Hanya admin LPK atau penilai yang bisa mengubah penilaian ini.",
+    "trend": {
+      "up": "naik",
+      "down": "turun",
+      "same": "tetap"
+    },
+    "errors": {
+      "duplicateMonth": "Kandidat ini sudah punya penilaian bulanan untuk bulan tersebut. Ubah penilaian yang ada.",
+      "notAllowed": "Anda tidak bisa mengubah penilaian ini.",
+      "future": "Tanggal penilaian tidak boleh di masa depan."
+    },
+    "pendingTitle": "Belum dinilai bulan ini",
+    "pendingIntro": "Kandidat Belajar atau Siap seleksi yang belum punya penilaian bulanan untuk {month}.",
+    "pendingSuffix": "kandidat belum dinilai",
+    "pendingEmpty": "Semua kandidat sudah dinilai bulan ini. 🎉",
+    "lastAssessed": "terakhir {month}, rata-rata {avg}",
+    "neverAssessed": "belum pernah dinilai",
+    "assessNow": "Nilai sekarang"
   }
 }

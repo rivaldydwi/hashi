@@ -22,7 +22,8 @@
     "organizations": "組織",
     "partnerships": "提携",
     "account": "アカウント",
-    "candidates": "候補者"
+    "candidates": "候補者",
+    "assessments": "評価"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -62,7 +63,9 @@
     "colType": "種別",
     "colUsers": "ユーザー",
     "colCandidates": "候補者",
-    "viewAll": "すべて見る"
+    "viewAll": "すべて見る",
+    "pendingAssessments": "今月未評価",
+    "pendingAssessmentsHint": "今月の月次評価がない学習中・選考準備完了の候補者です。クリックして一覧を表示します。"
   },
   "users": {
     "title": "ユーザー管理",
@@ -269,7 +272,13 @@
       "extrasTitle": "共有と同意書",
       "save": "候補者を保存",
       "fieldInvalid": "この入力は正しくありません。"
-    }
+    },
+    "colLatest": "最新の評価",
+    "filterAvg": "平均評価の下限",
+    "filterAttendance": "出席率の下限（%）",
+    "filterJlpt": "JLPTレベル",
+    "jlptAtLeast": "{level}以上",
+    "filterAssessmentHint": "平均評価と出席率は、LPKの直近3回の月次評価から算出します。JLPTは資格情報から判定します。データのない候補者は対象外です。"
   },
   "detail": {
     "saved": "保存しました。",
@@ -437,6 +446,55 @@
             "SKILL_TEST": "特定技能評価試験"
           }
         }
+      },
+      "assessment": {
+        "title": "評価",
+        "fields": {
+          "assessedOn": "面談日",
+          "durationMinutes": "時間（分）",
+          "scoreJapanese": "日本語",
+          "scoreAttitude": "学習態度",
+          "scoreFitness": "体力・体調管理",
+          "scoreMotivation": "意欲",
+          "attendancePct": "出席率（%）",
+          "testName": "テスト名（任意）",
+          "testScore": "テスト点数（任意）",
+          "note": "メモ",
+          "followUp": "フォローアップ"
+        },
+        "options": {
+          "scoreJapanese": {
+            "1": "1 – 要大幅改善",
+            "2": "2 – やや不足",
+            "3": "3 – 普通",
+            "4": "4 – 良い",
+            "5": "5 – 非常に良い"
+          },
+          "scoreAttitude": {
+            "1": "1 – 要大幅改善",
+            "2": "2 – やや不足",
+            "3": "3 – 普通",
+            "4": "4 – 良い",
+            "5": "5 – 非常に良い"
+          },
+          "scoreFitness": {
+            "1": "1 – 要大幅改善",
+            "2": "2 – やや不足",
+            "3": "3 – 普通",
+            "4": "4 – 良い",
+            "5": "5 – 非常に良い"
+          },
+          "scoreMotivation": {
+            "1": "1 – 要大幅改善",
+            "2": "2 – やや不足",
+            "3": "3 – 普通",
+            "4": "4 – 良い",
+            "5": "5 – 非常に良い"
+          }
+        },
+        "hints": {
+          "note": "診断名や医療情報は、ここに書かないでください。健康に関する情報は「健康状態」の項目に入力します。"
+        }
       }
     },
     "documents": {
@@ -515,5 +573,37 @@
     "PLATFORM": "プラットフォーム",
     "LPK": "LPK",
     "TSK": "登録支援機関"
+  },
+  "assessments": {
+    "intro": "LPKによる月次の面談・評価です。候補者1人につき月1回。",
+    "add": "月次評価を追加",
+    "save": "評価を保存",
+    "saving": "保存中...",
+    "saved": "評価を保存しました。",
+    "empty": "月次評価はまだありません。",
+    "colMonth": "月",
+    "colAvg": "平均",
+    "colTest": "テスト",
+    "assessor": "評価者",
+    "minutes": "分",
+    "detailAndEdit": "詳細・編集",
+    "notEditable": "この評価を編集できるのはLPK管理者または評価者のみです。",
+    "trend": {
+      "up": "上昇",
+      "down": "下降",
+      "same": "変化なし"
+    },
+    "errors": {
+      "duplicateMonth": "この候補者には、その月の月次評価がすでにあります。既存の評価を編集してください。",
+      "notAllowed": "この評価は編集できません。",
+      "future": "評価日は未来の日付にできません。"
+    },
+    "pendingTitle": "今月未評価",
+    "pendingIntro": "{month}の月次評価がまだない学習中・選考準備完了の候補者です。",
+    "pendingSuffix": "名が未評価",
+    "pendingEmpty": "今月はすべての候補者の評価が完了しています。🎉",
+    "lastAssessed": "前回 {month}、平均 {avg}",
+    "neverAssessed": "未評価",
+    "assessNow": "今すぐ評価"
   }
 }

@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/PageHeader";
 import { btnPrimary, btnSecondary, cardClass } from "@/components/styles";
+import { assessmentStats, jlptBest, matchAssessmentFilters } from "@/features/assessments/queries";
 import { CandidateFilters } from "@/features/candidates/CandidateFilters";
 import { CandidateTable } from "@/features/candidates/CandidateTable";
 import { LIST_PAGE_SIZE, listCandidates, listFields, parseFilters } from "@/features/candidates/queries";
+import { candidates } from "@/db/schema";
 import { requireUser, tenantQuery } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Candidates" };
@@ -22,16 +24,21 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
   const isTsk = me.organizationType === "TSK";
   const filters = parseFilters(sp, isTsk);
 
-  const { list, fields } = await tenantQuery(async (tx) => ({
-    list: await listCandidates(tx, filters, isTsk ? me.organizationId : null),
-    fields: await listFields(tx),
-  }));
+  const { list, fields, stats } = await tenantQuery(async (tx) => {
+    // Filter nilai/JLPT: statistik dihitung terpisah (tanpa subquery berkorelasi), lalu dipasang sebagai daftar id.
+    const stats = await assessmentStats(tx);
+    const onlyIds =
+      filters.avg || filters.attendance || filters.jlpt
+        ? matchAssessmentFilters(filters, stats, await jlptBest(tx), (await tx.select({ id: candidates.id }).from(candidates)).map((r) => r.id))
+        : null;
+    return { list: await listCandidates(tx, filters, isTsk ? me.organizationId : null, onlyIds), fields: await listFields(tx), stats };
+  });
 
   const pages = Math.max(1, Math.ceil(list.total / LIST_PAGE_SIZE));
-  const active = filters.q || filters.stage || filters.field || filters.decision;
+  const active = filters.q || filters.stage || filters.field || filters.decision || filters.avg || filters.attendance || filters.jlpt;
   const pageHref = (page: number) => {
     const params = new URLSearchParams();
-    for (const [k, v] of Object.entries({ q: filters.q, stage: filters.stage, field: filters.field, decision: filters.decision })) {
+    for (const [k, v] of Object.entries({ q: filters.q, stage: filters.stage, field: filters.field, decision: filters.decision, avg: filters.avg, attendance: filters.attendance, jlpt: filters.jlpt })) {
       if (v) params.set(k, v);
     }
     if (page > 1) params.set("page", String(page));
@@ -76,7 +83,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
           )}
         </div>
       ) : (
-        <CandidateTable rows={list.rows} isTsk={isTsk} />
+        <CandidateTable rows={list.rows} isTsk={isTsk} stats={stats} />
       )}
 
       {pages > 1 && (

@@ -5,6 +5,8 @@ import { withSystem, withTenant } from "@/db";
 import { platformOverview } from "@/db/queries";
 import { candidates, candidateStage, organizations, type Role } from "@/db/schema";
 import { StageBadge } from "@/components/StageBadge";
+import { pendingCandidates } from "@/features/assessments/queries";
+import { currentPeriod } from "@/db/time";
 import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +32,8 @@ async function TenantDashboard({ orgId, role, isTsk }: { orgId: string; role: Ro
   const tType = await getTranslations("orgTypes");
 
   // Semua query lewat withTenant: RLS yang menentukan data mana yang terlihat.
-  const { byStage, partners, recent } = await withTenant({ orgId, role }, async (tx) => ({
+  const lpkSide = role === "LPK_ADMIN" || role === "LPK_SENSEI";
+  const { byStage, partners, recent, pending } = await withTenant({ orgId, role }, async (tx) => ({
     byStage: await tx
       .select({ stage: candidates.stage, total: count() })
       .from(candidates)
@@ -53,6 +56,8 @@ async function TenantDashboard({ orgId, role, isTsk }: { orgId: string; role: Ro
       .innerJoin(organizations, eq(organizations.id, candidates.organizationId))
       .orderBy(desc(candidates.createdAt), asc(candidates.fullName))
       .limit(10),
+    // Hitungan "belum dinilai bulan ini" (bulan berjalan menurut APP_TIMEZONE), hanya sisi LPK
+    pending: lpkSide ? (await pendingCandidates(tx, currentPeriod())).length : null,
   }));
 
   const counts = new Map(byStage.map((r) => [r.stage, r.total]));
@@ -85,6 +90,14 @@ async function TenantDashboard({ orgId, role, isTsk }: { orgId: string; role: Ro
           </ul>
         </div>
       </section>
+
+      {pending !== null && (
+        <Link href="/assessments/pending" className="block rounded-2xl border border-stone-200 bg-white p-5 hover:border-brand-700" data-testid="pending-card">
+          <p className="text-sm text-stone-500">{t("pendingAssessments")}</p>
+          <p className="mt-2 text-4xl font-semibold tabular-nums" data-testid="pending-count">{pending}</p>
+          <p className="mt-1 text-xs text-stone-500">{t("pendingAssessmentsHint")}</p>
+        </Link>
+      )}
 
       <section className="rounded-2xl border border-stone-200 bg-white p-5">
         <h2 className="font-medium">{t("partners")}</h2>

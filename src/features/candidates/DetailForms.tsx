@@ -21,6 +21,7 @@ export function FieldInputs({
   invalid = [],
   suggestions = {},
   dateMax = {},
+  hintNames = [],
 }: {
   section: string;
   fields: FieldDef[];
@@ -35,6 +36,8 @@ export function FieldInputs({
   suggestions?: Record<string, string[]>;
   /** Batas maksimum tanggal per kolom date. */
   dateMax?: Record<string, string>;
+  /** Kolom yang menampilkan teks bantuan (detail.sections.<bagian>.hints.<kolom>) di bawah input. */
+  hintNames?: string[];
 }) {
   const t = useTranslations(`detail.sections.${section}`);
   const tf = useTranslations("candidates.form");
@@ -89,6 +92,7 @@ export function FieldInputs({
                     ))}
                   </datalist>
                 )}
+                {hintNames.includes(f.name) && <p className="text-xs text-stone-500">{t(`hints.${f.name}`)}</p>}
                 {bad && <p className="text-xs text-rose-700">{tf("fieldInvalid")}</p>}
               </>
             )}
