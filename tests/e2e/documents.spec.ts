@@ -196,7 +196,7 @@ test("form tambah kandidat: formulir persetujuan opsional; file tidak valid memb
     await page.locator("#basic-fullName").fill(name);
     await page.locator("#basic-gender").selectOption("FEMALE");
     await page.locator("#basic-birthDate").fill("2002-02-02");
-    await page.locator("#basic-field").fill("Konstruksi");
+    await page.locator("#basic-fieldId").selectOption({ label: "Konstruksi" });
     await page.locator("#dataConsentDate").fill("2026-08-05");
   };
 

@@ -23,7 +23,8 @@
     "partnerships": "提携",
     "account": "アカウント",
     "candidates": "候補者",
-    "assessments": "評価"
+    "assessments": "評価",
+    "skillFields": "職種分野"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -256,7 +257,8 @@
       "birthDateInvalid": "生年月日が正しくありません。",
       "consentInFuture": "未来の日付は指定できません。",
       "invalid": "正しくない入力があります。次の項目を確認してください（問題のある欄は赤く表示されます）。入力内容は消えていません。",
-      "saveFailed": "保存に失敗しました。データは何も保存されていません。入力内容はこのページに残っています。もう一度お試しください。"
+      "saveFailed": "保存に失敗しました。データは何も保存されていません。入力内容はこのページに残っています。もう一度お試しください。",
+      "skillFieldInvalid": "職種分野が無効、または無効化されています。"
     },
     "consentForm": "同意書（任意）",
     "consentFormHint": "署名済みの同意書をアップロードできます（PDF・JPG・PNG、最大10MB）。後から詳細ページでも追加できます。",
@@ -325,10 +327,10 @@
           "birthDate": "生年月日",
           "birthPlace": "出生地",
           "maritalStatus": "婚姻状況",
-          "field": "分野",
           "heightCm": "身長",
           "weightKg": "体重",
-          "dominantHand": "利き手"
+          "dominantHand": "利き手",
+          "fieldId": "分野"
         },
         "options": {
           "gender": {
@@ -661,6 +663,34 @@
     "errors": {
       "confirmMismatch": "確認の入力が候補者の氏名と一致しません。",
       "blocked": "手続き中または出国済みの候補者は削除できません（TSKの判断：書類手続き／出国）。記録を残すため「辞退」ステータスにしてください。"
+    }
+  },
+  "skillFields": {
+    "title": "職種分野",
+    "intro": "候補者・配属先・求人で使う職種分野（特定技能など）のマスターです。使用中の分野は削除できませんが、無効化できます。",
+    "add": "分野を追加",
+    "code": "コード",
+    "names": "名称（インドネシア語／日本語）と並び順",
+    "nameId": "インドネシア語名",
+    "nameJa": "日本語名",
+    "sortOrder": "並び順",
+    "status": "状態",
+    "active": "有効",
+    "inactive": "無効",
+    "save": "保存",
+    "activate": "有効にする",
+    "deactivate": "無効にする",
+    "delete": "削除",
+    "usedHint": "{n}件で使用中",
+    "created": "分野を追加しました。",
+    "saved": "分野を保存しました。",
+    "activated": "分野を有効にしました。",
+    "deactivated": "分野を無効にしました。",
+    "deleted": "分野を削除しました。",
+    "errors": {
+      "codeTaken": "そのコードは別の分野で使われています。",
+      "inUse": "使用中の分野のため削除できません。無効化してください。",
+      "notFound": "分野が見つかりません。"
     }
   }
 }

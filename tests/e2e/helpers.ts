@@ -89,8 +89,8 @@ export async function ownerQuery<T extends Record<string, unknown>>(sql: string,
  */
 export async function createScratchCandidate(opts: { name: string; org?: string; stage?: "STUDYING" | "READY" | "WITHDRAWN"; shared?: boolean }) {
   const [row] = await ownerQuery<{ id: string; organization_id: string }>(
-    `insert into candidates (organization_id, full_name, gender, birth_date, field, stage, shared_with_tsk)
-     select o.id, $1, 'MALE', '2000-05-15', 'Pengolahan makanan & minuman', $3, $4 from organizations o where o.name = $2
+    `insert into candidates (organization_id, full_name, gender, birth_date, field_id, stage, shared_with_tsk)
+     select o.id, $1, 'MALE', '2000-05-15', (select id from skill_fields where code = 'food'), $3, $4 from organizations o where o.name = $2
      returning id, organization_id`,
     [opts.name, opts.org ?? "LPK Demo Bandung", opts.stage ?? "STUDYING", opts.shared ?? true],
   );

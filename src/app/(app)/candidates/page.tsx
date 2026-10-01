@@ -6,7 +6,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { btnPrimary, btnSecondary, cardClass } from "@/components/styles";
 import { CandidateFilters } from "@/features/candidates/CandidateFilters";
 import { CandidateTable } from "@/features/candidates/CandidateTable";
-import { LIST_PAGE_SIZE, listCandidatesFiltered, listFields, parseFilters } from "@/features/candidates/queries";
+import { LIST_PAGE_SIZE, listCandidatesFiltered, parseFilters } from "@/features/candidates/queries";
+import { getSkillFieldOptions } from "@/features/skill-fields/server";
 import { requireUser, tenantQuery } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Candidates" };
@@ -22,10 +23,8 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
   const isTsk = me.organizationType === "TSK";
   const filters = parseFilters(sp, isTsk);
 
-  const { list, stats, fields } = await tenantQuery(async (tx) => ({
-    ...(await listCandidatesFiltered(tx, filters, isTsk ? me.organizationId : null)),
-    fields: await listFields(tx),
-  }));
+  const { list, stats } = await tenantQuery((tx) => listCandidatesFiltered(tx, filters, isTsk ? me.organizationId : null));
+  const fields = (await getSkillFieldOptions()).filter((f) => f.active || f.code === filters.field);
 
   const pages = Math.max(1, Math.ceil(list.total / LIST_PAGE_SIZE));
   const active = filters.q || filters.stage || filters.field || filters.decision || filters.avg || filters.attendance || filters.jlpt;

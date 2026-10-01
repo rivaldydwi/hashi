@@ -22,7 +22,7 @@ import { ActionError } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
 import { requireUser, tenantQuery, type CurrentUser } from "@/lib/session";
 import { noteAuditEntry } from "@/db/audit-entries";
-import { auditChange, ok, requireEditable, run, uuid } from "./guards";
+import { assertSkillFieldUsable, auditChange, ok, requireEditable, run, uuid } from "./guards";
 import { LIST_TABLES } from "./tables";
 import { EARLIEST_BIRTH_DATE, latestAllowedDate } from "./validation";
 import { getCandidateForAction } from "./detail-queries";
@@ -43,6 +43,7 @@ export async function saveSection(_prev: FormState, formData: FormData): Promise
       let before: Record<string, unknown> | undefined;
       if (def.table === "candidates") {
         [before] = await tx.select().from(candidates).where(eq(candidates.id, cand.id));
+        await assertSkillFieldUsable(tx, values.fieldId, (before as { fieldId: string | null } | undefined)?.fieldId ?? null);
         const done = await tx.update(candidates).set(values).where(eq(candidates.id, cand.id)).returning({ id: candidates.id });
         if (done.length !== 1) throw new ActionError("detail.errors.readOnly"); // RLS menolak diam-diam
       } else {

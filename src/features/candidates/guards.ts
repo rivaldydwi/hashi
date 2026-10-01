@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import type { Tx } from "@/db";
+import { skillFields } from "@/db/schema";
 import { audit } from "@/lib/audit";
 import { ActionError } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
@@ -51,4 +53,15 @@ export async function requireEditable(tx: Tx, me: CurrentUser, candidateId: unkn
   const access = contentAccess(me.role, cand.stage, cand.myDecision);
   if (!access.canEdit) throw new ActionError("detail.errors.readOnly");
   return { cand, access };
+}
+
+/**
+ * Bidang kerja yang dipilih harus ada dan AKTIF (bidang nonaktif hanya boleh dipertahankan bila sudah dipakai kandidat itu).
+ * Nilai kosong dilewati (wajib-tidaknya diatur skema form).
+ */
+export async function assertSkillFieldUsable(tx: Tx, fieldId: unknown, currentFieldId: string | null = null) {
+  if (fieldId === null || fieldId === undefined || fieldId === "") return;
+  if (fieldId === currentFieldId) return;
+  const [f] = await tx.select({ active: skillFields.active }).from(skillFields).where(eq(skillFields.id, String(fieldId))).limit(1);
+  if (!f || !f.active) throw new ActionError("candidates.errors.skillFieldInvalid");
 }

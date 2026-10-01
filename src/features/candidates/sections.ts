@@ -12,7 +12,8 @@ import {
   maritalStatus,
 } from "@/db/schema";
 
-export type FieldKind = "text" | "textarea" | "date" | "select" | "boolean" | "int" | "email";
+/** skillField = pilihan dari tabel master skill_fields (nilai = id bidang kerja); opsinya diisi dari konteks UI, bukan dari definisi. */
+export type FieldKind = "text" | "textarea" | "date" | "select" | "boolean" | "int" | "email" | "skillField";
 
 export type FieldDef = {
   name: string;
@@ -63,7 +64,7 @@ export const SINGLE_SECTIONS: SingleSectionDef[] = [
       { name: "birthDate", kind: "date", required: true },
       { name: "birthPlace", kind: "text", max: 120 },
       { name: "maritalStatus", kind: "select", options: maritalStatus.enumValues },
-      { name: "field", kind: "text", required: true, max: 120 },
+      { name: "fieldId", kind: "skillField", required: true },
       { name: "heightCm", kind: "int", min: 100, max: 230 },
       { name: "weightKg", kind: "int", min: 25, max: 250 },
       { name: "dominantHand", kind: "select", options: dominantHand.enumValues },
@@ -214,6 +215,8 @@ function fieldSchema(f: FieldDef): z.ZodType {
       return optional(isoDate);
     case "select":
       return optional((v) => (f.options ?? []).includes(v));
+    case "skillField":
+      return optional((v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v));
     case "int":
       return raw
         .refine((v) => {

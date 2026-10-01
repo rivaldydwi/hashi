@@ -5,6 +5,7 @@ import type { NoteVisibility, SelectionDecision } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
 import type { Detail } from "./detail-queries";
 import { DecisionForm, NoteAddForm, NoteEditForm, RowForm, SectionForm } from "./DetailForms";
+import { getSkillFieldOptions } from "@/features/skill-fields/server";
 import { isTskRole, type ContentAccess } from "./permissions";
 import { toFormValue, type FieldDef, type ListSectionDef, type SingleSectionDef } from "./sections";
 
@@ -14,11 +15,13 @@ async function useFormatValue(sectionKey: string) {
   const t = await getTranslations(`detail.sections.${sectionKey}`);
   const tc = await getTranslations("common");
   const format = await getFormatter();
+  const skill = new Map((await getSkillFieldOptions()).map((o) => [o.id, o.label]));
   return (f: FieldDef, raw: unknown): string => {
     if (f.kind === "boolean") return raw === true ? tc("yes") : tc("no");
     if (raw === null || raw === undefined || raw === "") return "—";
     if (f.kind === "date") return format.dateTime(new Date(`${String(raw)}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" });
     if (f.kind === "select") return t(`options.${f.name}.${String(raw)}`);
+    if (f.kind === "skillField") return skill.get(String(raw)) ?? "—";
     if (f.kind === "int" && f.name === "heightCm") return `${raw} cm`;
     if (f.kind === "int" && f.name === "weightKg") return `${raw} kg`;
     return String(raw);

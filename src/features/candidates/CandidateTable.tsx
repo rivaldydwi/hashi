@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { DecisionBadge } from "@/components/DecisionBadge";
 import { StageBadge } from "@/components/StageBadge";
 import { cardClass, tableHeadClass } from "@/components/styles";
@@ -9,6 +9,7 @@ import type { CandidateListRow } from "./queries";
 
 export async function CandidateTable({ rows, isTsk, stats }: { rows: CandidateListRow[]; isTsk: boolean; stats: Map<string, Stats> }) {
   const t = await getTranslations("candidates");
+  const locale = await getLocale();
 
   return (
     <div className={`${cardClass} overflow-hidden`}>
@@ -35,7 +36,7 @@ export async function CandidateTable({ rows, isTsk, stats }: { rows: CandidateLi
                   {c.nameKatakana && <div className="text-xs text-stone-500">{c.nameKatakana}</div>}
                 </td>
                 {isTsk && <td className="px-5 py-3 text-stone-700">{c.lpkName}</td>}
-                <td className="px-5 py-3 text-stone-700">{c.field ?? "—"}</td>
+                <td className="px-5 py-3 text-stone-700">{(locale === "ja" ? c.fieldNameJa : c.fieldNameId) ?? "—"}</td>
                 <td className="px-5 py-3"><StageBadge stage={c.stage} /></td>
                 <td className="px-5 py-3 tabular-nums" data-testid="latest-avg">
                   {stats.get(c.id) ? formatAvg(stats.get(c.id)!.latestAvg) : "—"}

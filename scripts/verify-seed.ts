@@ -7,7 +7,7 @@
 import "dotenv/config";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { getTableColumns, sql } from "drizzle-orm";
+import { eq, getTableColumns, sql } from "drizzle-orm";
 import { createDb, withSystem, withTenant } from "../src/db";
 import { listCandidatesFiltered, parseFilters } from "../src/db/candidate-list";
 import { currentPeriod } from "../src/db/time";
@@ -23,6 +23,7 @@ import {
   candidates,
   organizations,
   selectionDecision,
+  skillFields,
   users,
   type Role,
 } from "../src/db/schema";
@@ -158,7 +159,7 @@ async function main() {
     const run = (params: Record<string, string>) =>
       withTenant({ orgId: ctx.orgId, role: ctx.role }, async (tx) => (await listCandidatesFiltered(tx, parseFilters(params, ctx.isTsk), ctx.isTsk ? ctx.orgId : null)).list.total, appDb.db);
     const all = await run({});
-    const fields = await withTenant({ orgId: ctx.orgId, role: ctx.role }, async (tx) => (await tx.selectDistinct({ f: candidates.field }).from(candidates)).map((r) => r.f!).sort(), appDb.db);
+    const fields = await withTenant({ orgId: ctx.orgId, role: ctx.role }, async (tx) => (await tx.selectDistinct({ f: skillFields.code }).from(candidates).innerJoin(skillFields, eq(skillFields.id, candidates.fieldId))).map((r) => r.f).sort(), appDb.db);
     const cases: Array<[string, Record<string, string>, boolean]> = [
       ["nilai minimal 4", { avg: "4" }, true],
       ["kehadiran minimal 90", { attendance: "90" }, true],

@@ -35,6 +35,7 @@ import {
   organizations,
   partnerships,
   selectionDecision,
+  skillFields,
   users,
 } from "../src/db/schema";
 
@@ -1674,7 +1675,7 @@ async function main() {
   await sandbox(async (tx) => {
     const tskB = await makeTskB(tx);
     const mk = async (label: string) => {
-      const [c] = await tx.insert(candidates).values({ organizationId: lpk1.id, fullName: `Hapus Uji ${label}-${uniq()}`, gender: "MALE", birthDate: "2000-01-01", field: "Konstruksi", stage: "READY", sharedWithTsk: true }).returning();
+      const [c] = await tx.insert(candidates).values({ organizationId: lpk1.id, fullName: `Hapus Uji ${label}-${uniq()}`, gender: "MALE", birthDate: "2000-01-01", stage: "READY", sharedWithTsk: true }).returning();
       return c;
     };
     const fill = async (c: { id: string }) => {
@@ -1769,7 +1770,7 @@ async function main() {
 
     // ---- Jalur sah lain tidak terhalang: hapus organisasi (cascade) walau ada kandidat DEPARTED
     const [orgX] = await tx.insert(organizations).values({ name: "LPK Uji Cascade", type: "LPK", country: "ID", defaultLocale: "id" }).returning();
-    const [cx] = await tx.insert(candidates).values({ organizationId: orgX.id, fullName: "Cascade Uji", gender: "MALE", birthDate: "2000-01-01", field: "Konstruksi" }).returning();
+    const [cx] = await tx.insert(candidates).values({ organizationId: orgX.id, fullName: "Cascade Uji", gender: "MALE", birthDate: "2000-01-01", }).returning();
     await tx.insert(candidateSelections).values({ candidateId: cx.id, tskOrgId: tsk.id, decision: "DEPARTED" });
     del.orgCascade = await attempt(tx, (t) => t.delete(organizations).where(eq(organizations.id, orgX.id)));
     del.orgCascadeGone = (await tx.select().from(candidates).where(eq(candidates.id, cx.id))).length;
@@ -1806,6 +1807,47 @@ async function main() {
     selectionDecision.enumValues.map((d) => `${d}:${del[`block/${d}`]}`).join(" "),
   );
   check("Hapus kandidat: hapus organisasi (cascade) tidak terhalang penjaga walau ada kandidat DEPARTED", del.orgCascade === null && del.orgCascadeGone === 0, String(del.orgCascade ?? ""));
+
+  // --- M. Bidang kerja (skill_fields): semua peran membaca; menulis hanya mode sistem; kode tetap; yang dipakai tidak bisa dihapus ---
+  const sfr: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const readers: Array<[string, string, string | null]> = [["lpkAdmin", lpk1.id, "LPK_ADMIN"], ["sensei", lpk1.id, "LPK_SENSEI"], ["tskAdmin", tsk.id, "TSK_ADMIN"], ["tskStaff", tsk.id, "TSK_STAFF"], ["superAdmin", platformOrg.id, "SUPER_ADMIN"]];
+    for (const [label, org, role] of readers) {
+      await actAs(tx, org, role);
+      sfr[`read/${label}`] = (await tx.select().from(skillFields)).length;
+      sfr[`insert/${label}`] = await attempt(tx, (t) => t.insert(skillFields).values({ code: `uji-${uniq()}`, nameId: "Uji", nameJa: "試験" }));
+      sfr[`updateAll/${label}`] = (await rowsOf(tx, (t) => t.update(skillFields).set({ nameId: uniq() }).returning({ id: skillFields.id }))).n;
+      sfr[`deleteAll/${label}`] = (await rowsOf(tx, (t) => t.delete(skillFields).returning({ id: skillFields.id }))).n;
+    }
+    await actAs(tx, "00000000-0000-0000-0000-000000000000", null);
+    await tx.execute(sql`select set_config('app.org_id', '', true)`);
+    sfr.readNoCtx = (await tx.select().from(skillFields)).length;
+    // Sistem: tambah, kode tidak bisa diubah, bidang yang dipakai kandidat tidak bisa dihapus, yang belum dipakai bisa
+    await actAsSystem(tx);
+    const [fresh] = await tx.insert(skillFields).values({ code: `uji-${uniq()}`, nameId: "Uji", nameJa: "試験" }).returning();
+    sfr.codeChange = await attempt(tx, (t) => t.update(skillFields).set({ code: `ubah-${uniq()}` }).where(eq(skillFields.id, fresh.id)));
+    sfr.nameChange = await attempt(tx, (t) => t.update(skillFields).set({ nameJa: "更新" }).where(eq(skillFields.id, fresh.id)));
+    sfr.badCode = await attempt(tx, (t) => t.insert(skillFields).values({ code: "Kode Salah!", nameId: "x", nameJa: "x" }));
+    const [used] = await tx.select({ id: skillFields.id }).from(skillFields).where(eq(skillFields.code, "food"));
+    sfr.deleteUsed = await attempt(tx, (t) => t.delete(skillFields).where(eq(skillFields.id, used.id)));
+    sfr.deleteFresh = (await rowsOf(tx, (t) => t.delete(skillFields).where(eq(skillFields.id, fresh.id)).returning({ id: skillFields.id }))).n;
+  });
+  const totalFields = (await withSystem((tx) => tx.select().from(skillFields), db)).length;
+  check(
+    "Bidang kerja: semua peran berkonteks membaca seluruh master; tanpa konteks 0 baris",
+    ["lpkAdmin", "sensei", "tskAdmin", "tskStaff", "superAdmin"].every((l) => sfr[`read/${l}`] === totalFields) && sfr.readNoCtx === 0 && totalFields >= 6,
+    `${totalFields} bidang`,
+  );
+  check(
+    "Bidang kerja: INSERT, UPDATE dan DELETE tanpa WHERE ditolak untuk semua peran aplikasi (menulis hanya mode sistem)",
+    ["lpkAdmin", "sensei", "tskAdmin", "tskStaff", "superAdmin"].every((l) => typeof sfr[`insert/${l}`] === "string" && /row-level security/i.test(String(sfr[`insert/${l}`])) && sfr[`updateAll/${l}`] === 0 && sfr[`deleteAll/${l}`] === 0),
+  );
+  check(
+    "Bidang kerja: kode tetap (tidak bisa diubah) dan berformat huruf kecil; nama bisa diubah; bidang yang dipakai kandidat tidak bisa dihapus (FK), yang belum dipakai bisa",
+    typeof sfr.codeChange === "string" && /tidak bisa diubah/.test(sfr.codeChange) && sfr.nameChange === null && typeof sfr.badCode === "string" && /check/i.test(sfr.badCode) &&
+      typeof sfr.deleteUsed === "string" && /foreign key|violates/i.test(sfr.deleteUsed) && sfr.deleteFresh === 1,
+    String(sfr.deleteUsed ?? ""),
+  );
 
   await pool.end();
   await ownerPool.end();

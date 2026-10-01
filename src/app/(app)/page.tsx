@@ -1,9 +1,9 @@
 import { asc, count, desc, eq, ne } from "drizzle-orm";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { withSystem, withTenant } from "@/db";
 import { platformOverview } from "@/db/queries";
-import { candidates, candidateStage, organizations, type Role } from "@/db/schema";
+import { candidates, candidateStage, organizations, skillFields, type Role } from "@/db/schema";
 import { StageBadge } from "@/components/StageBadge";
 import { pendingCandidates } from "@/features/assessments/queries";
 import { currentPeriod } from "@/db/time";
@@ -30,6 +30,7 @@ export default async function DashboardPage() {
 async function TenantDashboard({ orgId, role, isTsk }: { orgId: string; role: Role; isTsk: boolean }) {
   const t = await getTranslations("dashboard");
   const tType = await getTranslations("orgTypes");
+  const locale = await getLocale();
 
   // Semua query lewat withTenant: RLS yang menentukan data mana yang terlihat.
   const lpkSide = role === "LPK_ADMIN" || role === "LPK_SENSEI";
@@ -48,12 +49,14 @@ async function TenantDashboard({ orgId, role, isTsk }: { orgId: string; role: Ro
         id: candidates.id,
         fullName: candidates.fullName,
         nameKatakana: candidates.nameKatakana,
-        field: candidates.field,
+        fieldNameId: skillFields.nameId,
+        fieldNameJa: skillFields.nameJa,
         stage: candidates.stage,
         lpkName: organizations.name,
       })
       .from(candidates)
       .innerJoin(organizations, eq(organizations.id, candidates.organizationId))
+      .leftJoin(skillFields, eq(skillFields.id, candidates.fieldId))
       .orderBy(desc(candidates.createdAt), asc(candidates.fullName))
       .limit(10),
     // Hitungan "belum dinilai bulan ini" (bulan berjalan menurut APP_TIMEZONE), hanya sisi LPK
@@ -142,7 +145,7 @@ async function TenantDashboard({ orgId, role, isTsk }: { orgId: string; role: Ro
                       {c.nameKatakana && <div className="text-xs text-stone-500">{c.nameKatakana}</div>}
                     </td>
                     <td className="px-5 py-3 text-stone-700">{c.lpkName}</td>
-                    <td className="px-5 py-3 text-stone-700">{c.field ?? "—"}</td>
+                    <td className="px-5 py-3 text-stone-700">{(locale === "ja" ? c.fieldNameJa : c.fieldNameId) ?? "—"}</td>
                     <td className="px-5 py-3">
                       <StageBadge stage={c.stage} />
                     </td>

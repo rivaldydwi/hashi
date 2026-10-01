@@ -20,7 +20,7 @@ const emptyValues = (fields: FieldDef[]) => Object.fromEntries(fields.map((f) =>
  * mengosongkan form uncontrolled setelah sebuah form-action selesai. Dengan cara ini input, pilihan, baris
  * berulang, dan berkas yang sudah dipilih tetap utuh; server hanya menambahkan penanda kolom yang tidak valid.
  */
-export function CandidateCreateForm({ fieldSuggestions, maxDate }: { fieldSuggestions: string[]; maxDate: string }) {
+export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
   const t = useTranslations("candidates");
   const tAll = useTranslations(); // pesan error datang sebagai kunci lengkap (mis. "candidates.errors.invalid")
   const tf = useTranslations("candidates.form");
@@ -85,7 +85,6 @@ export function CandidateCreateForm({ fieldSuggestions, maxDate }: { fieldSugges
             fields={s.fields}
             values={emptyValues(s.fields)}
             invalid={fieldErrors[s.key]}
-            suggestions={s.key === "basic" ? { field: fieldSuggestions } : {}}
             dateMax={s.key === "basic" ? { birthDate: maxDate } : {}}
           />
         </section>

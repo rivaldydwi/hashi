@@ -6,6 +6,7 @@ import { FormAlert, SubmitButton } from "@/components/FormBits";
 import { btnDanger, btnSecondary, inputClass, labelClass } from "@/components/styles";
 import { candidateStage, selectionDecision, type CandidateStage, type SelectionDecision } from "@/db/schema";
 import { idle, type FormState } from "@/lib/form-state";
+import { useSkillFieldOptions } from "@/features/skill-fields/SkillFieldsProvider";
 import { addNote, changeStage, deleteRow, saveRow, saveSection, setConsentDate, setDecision, setSharing, updateNote } from "./detail-actions";
 import type { FieldDef } from "./sections";
 
@@ -41,6 +42,7 @@ export function FieldInputs({
 }) {
   const t = useTranslations(`detail.sections.${section}`);
   const tf = useTranslations("candidates.form");
+  const skillOptions = useSkillFieldOptions();
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {fields.map((f) => {
@@ -62,6 +64,15 @@ export function FieldInputs({
                 <label htmlFor={id} className={labelClass}>{t(`fields.${f.name}`)}{f.required && " *"}</label>
                 {f.kind === "textarea" ? (
                   <textarea id={id} name={inputName} rows={3} required={f.required} maxLength={f.max ?? 2000} defaultValue={String(values[f.name] ?? "")} className={cls} aria-invalid={bad || undefined} />
+                ) : f.kind === "skillField" ? (
+                  <select id={id} name={inputName} required={f.required} defaultValue={String(values[f.name] ?? "")} className={cls} aria-invalid={bad || undefined}>
+                    <option value="">—</option>
+                    {skillOptions
+                      .filter((o) => o.active || o.id === values[f.name]) // bidang nonaktif hanya tampil bila sedang dipakai
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>{o.label}{o.active ? "" : " (nonaktif)"}</option>
+                      ))}
+                  </select>
                 ) : f.kind === "select" ? (
                   <select id={id} name={inputName} required={f.required} defaultValue={String(values[f.name] ?? "")} className={cls} aria-invalid={bad || undefined}>
                     <option value="">—</option>

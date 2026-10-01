@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, isNull, inArray, ne } from "drizzle-orm";
 import type { Tx } from "@/db";
 export { assessmentStats, jlptBest, matchAssessmentFilters, type Stats } from "@/db/candidate-list";
-import { candidateAssessments, candidates, organizations, users } from "@/db/schema";
+import { candidateAssessments, candidates, organizations, skillFields, users } from "@/db/schema";
 
 /** Riwayat penilaian bulanan LPK satu kandidat (terbaru dulu), dengan nama penilai bila terbaca. */
 export function listMonthly(tx: Tx, candidateId: string) {
@@ -33,8 +33,9 @@ export type MonthlyRow = Awaited<ReturnType<typeof listMonthly>>[number];
 /** Kandidat berstatus Belajar / Siap seleksi yang BELUM punya LPK_MONTHLY pada `period` (awal bulan berjalan). */
 export function pendingCandidates(tx: Tx, period: string) {
   return tx
-    .select({ id: candidates.id, fullName: candidates.fullName, nameKatakana: candidates.nameKatakana, field: candidates.field, stage: candidates.stage })
+    .select({ id: candidates.id, fullName: candidates.fullName, nameKatakana: candidates.nameKatakana, fieldNameId: skillFields.nameId, fieldNameJa: skillFields.nameJa, stage: candidates.stage })
     .from(candidates)
+    .leftJoin(skillFields, eq(skillFields.id, candidates.fieldId))
     .leftJoin(
       candidateAssessments,
       and(eq(candidateAssessments.candidateId, candidates.id), eq(candidateAssessments.kind, "LPK_MONTHLY"), eq(candidateAssessments.period, period)),

@@ -12,7 +12,7 @@ import { eq, sql } from "drizzle-orm";
 import { createDb, withSystem } from "../src/db";
 import { assertTestDatabase } from "./db-guard";
 import { periodMonthsAgo, currentPeriod, todayInAppTz } from "../src/db/time";
-import { buildAssessments, buildProfile, FIELDS, type DemoProfile } from "../src/db/demo-data";
+import { buildAssessments, buildProfile, FIELD_JA, FIELD_KEYS, FIELDS, type DemoProfile } from "../src/db/demo-data";
 import { addDays, addMonths, uuidFor } from "../src/db/demo-rng";
 import { clearDocumentStorage, demoDocumentPath, dummyPdf, dummyPng, storageRootFor, writeDemoFile } from "../src/db/demo-files";
 import {
@@ -28,6 +28,7 @@ import {
   candidateWorkHistories,
   organizations,
   partnerships,
+  skillFields,
   users,
   type CandidateStage,
   type SelectionDecision,
@@ -93,7 +94,7 @@ const NO_CONSENT_DATE: Record<number, number[]> = { 0: [8], 1: [], 2: [] };
 const ORG_NAMES = ["LPK Demo Bandung", "LPK Demo Surabaya", "LPK Non-Mitra Medan"];
 const OFFSETS = [0, 5, 11];
 
-function candidateRows(orgId: string, orgIndex: number, today: string) {
+function candidateRows(orgId: string, orgIndex: number, today: string, fieldIds: Record<string, string>) {
   const offset = OFFSETS[orgIndex];
   return STAGES.map((stage, i) => {
     const [first, firstKana, gender] = FIRST_NAMES[(i + offset) % FIRST_NAMES.length];
@@ -116,7 +117,7 @@ function candidateRows(orgId: string, orgIndex: number, today: string) {
         nameKatakana: `${firstKana}・${lastKana}`,
         gender,
         birthDate,
-        field: FIELDS[fieldIndex],
+        fieldId: fieldIds[FIELD_KEYS[fieldIndex % FIELD_KEYS.length]],
         stage,
         dataConsentDate: NO_CONSENT_DATE[orgIndex].includes(i) ? null : `2026-${String(((i + offset) % 6) + 1).padStart(2, "0")}-10`,
         sharedWithTsk: !NOT_SHARED[orgIndex].includes(i),
@@ -222,7 +223,13 @@ async function main() {
     ]);
 
     const orgs = [lpk1, lpk2, lpk3];
-    const seeded = orgs.flatMap((o, orgIndex) => candidateRows(o.id, orgIndex, today));
+    // Bidang kerja (master): dari migration 0014; dilengkapi bila belum ada (mis. database yang dibuat tanpa migration data)
+    await tx
+      .insert(skillFields)
+      .values(FIELD_KEYS.map((code, i) => ({ code, nameId: FIELDS[i], nameJa: FIELD_JA[i], sortOrder: (i + 1) * 10 })))
+      .onConflictDoNothing({ target: skillFields.code });
+    const fieldIds = Object.fromEntries((await tx.select({ id: skillFields.id, code: skillFields.code }).from(skillFields)).map((r) => [r.code, r.id]));
+    const seeded = orgs.flatMap((o, orgIndex) => candidateRows(o.id, orgIndex, today, fieldIds));
     await tx.insert(candidates).values(seeded.map((c) => c.row));
 
     // ---- Data sensitif, keluarga, pendidikan, kerja, sertifikat

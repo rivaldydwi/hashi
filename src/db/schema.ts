@@ -119,6 +119,22 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 };
 
+// Bidang kerja (SSW dst.) sebagai tabel master: dipakai kandidat, klien, dan job order. Dikelola super admin.
+export const skillFields = pgTable(
+  "skill_fields",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(), // kode stabil, tidak bisa diubah (trigger)
+    nameId: text("name_id").notNull(),
+    nameJa: text("name_ja").notNull(),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("skill_fields_code_key").on(t.code), check("skill_fields_code_check", sql`${t.code} ~ '^[a-z0-9][a-z0-9-]{0,39}$'`)],
+);
+
+
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -192,7 +208,7 @@ export const candidates = pgTable(
     birthDate: date("birth_date"),
     birthPlace: text("birth_place"),
     maritalStatus: maritalStatus("marital_status"),
-    field: text("field"), // bidang SSW, mis. "Pengolahan makanan"
+    fieldId: uuid("field_id").references(() => skillFields.id, { onDelete: "restrict" }), // bidang kerja (tabel master skill_fields)
     stage: candidateStage("stage").notNull().default("STUDYING"),
     // Tanggal tanda tangan formulir persetujuan siswa. OPSIONAL, hanya catatan; BUKAN gerbang visibilitas.
     dataConsentDate: date("data_consent_date"),
@@ -216,7 +232,7 @@ export const candidates = pgTable(
     specialSkill: text("special_skill"),
     ...timestamps,
   },
-  (t) => [index("candidates_org_stage_idx").on(t.organizationId, t.stage)],
+  (t) => [index("candidates_org_stage_idx").on(t.organizationId, t.stage), index("candidates_field_idx").on(t.fieldId)],
 );
 
 // Data sensitif kandidat (1 baris per kandidat). Sensei TIDAK bisa membacanya;

@@ -11,7 +11,7 @@ export async function CandidateFilters({
   isTsk,
 }: {
   filters: Filters;
-  fields: string[];
+  fields: Array<{ code: string; label: string }>;
   isTsk: boolean;
 }) {
   const t = await getTranslations();
@@ -46,7 +46,7 @@ export async function CandidateFilters({
           <select id="field" name="field" defaultValue={filters.field} className={inputClass}>
             <option value="">{t("candidates.all")}</option>
             {fields.map((f) => (
-              <option key={f} value={f}>{f}</option>
+              <option key={f.code} value={f.code}>{f.label}</option>
             ))}
           </select>
         </div>

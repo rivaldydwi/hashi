@@ -43,7 +43,7 @@ async function fillRequired(page: Page, name: string, field = "Konstruksi") {
   await page.locator("#basic-fullName").fill(name);
   await page.locator("#basic-gender").selectOption("FEMALE");
   await page.locator("#basic-birthDate").fill("2001-03-04");
-  await page.locator("#basic-field").fill(field);
+  await page.locator("#basic-fieldId").selectOption({ label: field });
 }
 const save = (page: Page) => page.getByTestId("save-candidate").click();
 const idOf = async (name: string) => (await ownerQuery<{ id: string }>("select id from candidates where full_name = $1", [name]))[0]?.id;
@@ -148,7 +148,7 @@ test("hanya isian wajib: tersimpan, tanpa data sensitif dan baris kosong; berbag
   expect(await count("candidate_private", id)).toBe(0);
   for (const t of ["candidate_family_members", "candidate_educations", "candidate_work_histories", "candidate_certificates", "candidate_documents"]) expect(await count(t, id)).toBe(0);
   const [log] = await ownerQuery<{ after: { fields: string[]; rows: Record<string, number> } }>("select after from audit_logs where candidate_id = $1 and action = 'candidate.create'", [id]);
-  expect(log.after.fields).toEqual(["birthDate", "field", "fullName", "gender"]);
+  expect(log.after.fields).toEqual(["birthDate", "fieldId", "fullName", "gender"]);
   expect(Object.values(log.after.rows).every((n) => n === 0)).toBe(true);
 });
 

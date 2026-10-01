@@ -4,6 +4,8 @@ import { BrandMark } from "@/components/BrandMark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Nav, type NavItem } from "@/components/Nav";
 import { logout } from "@/lib/actions";
+import { SkillFieldsProvider } from "@/features/skill-fields/SkillFieldsProvider";
+import { getSkillFieldOptions } from "@/features/skill-fields/server";
 import { requireUser } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -12,6 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (user.mustChangePassword) redirect("/change-password");
 
   const t = await getTranslations();
+  const skillOptions = await getSkillFieldOptions();
 
   const nav: NavItem[] = [{ href: "/", label: t("nav.dashboard") }];
   if (user.role !== "SUPER_ADMIN") nav.push({ href: "/candidates", label: t("nav.candidates") });
@@ -22,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (user.role === "SUPER_ADMIN") {
     nav.push({ href: "/admin/organizations", label: t("nav.organizations") });
     nav.push({ href: "/admin/partnerships", label: t("nav.partnerships") });
+    nav.push({ href: "/admin/skill-fields", label: t("nav.skillFields") });
   }
   nav.push({ href: "/account", label: t("nav.account") });
 
@@ -58,7 +62,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Nav items={nav} />
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <SkillFieldsProvider options={skillOptions}>{children}</SkillFieldsProvider>
+      </main>
       <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-stone-400">{t("common.version")}</footer>
     </div>
   );

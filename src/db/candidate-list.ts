@@ -1,6 +1,6 @@
 // Daftar kandidat + filter nilai/kehadiran/JLPT. Ada di src/db (bukan src/features) supaya script (verify:seed)
 // memakai fungsi YANG SAMA dengan halaman /candidates; aturannya tidak ditulis ulang di tempat lain.
-import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Tx } from "./index";
 import {
   candidateAssessments,
@@ -10,6 +10,7 @@ import {
   candidateStage,
   organizations,
   selectionDecision,
+  skillFields,
   type CandidateStage,
   type SelectionDecision,
 } from "./schema";
@@ -19,6 +20,7 @@ export const LIST_PAGE_SIZE = 25;
 export type CandidateFilters = {
   q: string;
   stage: CandidateStage | "";
+  /** Kode bidang kerja (skill_fields.code); "" = semua. */
   field: string;
   /** Hanya untuk TSK: keputusan TSK itu sendiri. NONE = belum ada baris keputusan atau NONE. */
   decision: SelectionDecision | "";
@@ -52,7 +54,7 @@ export function parseFilters(sp: Params, isTsk: boolean): CandidateFilters {
   return {
     q: one(sp.q).slice(0, 100),
     stage: (candidateStage.enumValues as readonly string[]).includes(stage) ? (stage as CandidateStage) : "",
-    field: one(sp.field).slice(0, 120),
+    field: /^[a-z0-9][a-z0-9-]{0,39}$/.test(one(sp.field)) ? one(sp.field) : "",
     decision: isTsk && (selectionDecision.enumValues as readonly string[]).includes(decision) ? (decision as SelectionDecision) : "",
     avg: numberParam(sp.avg, 1, 5),
     attendance: numberParam(sp.attendance, 0, 100),
@@ -80,7 +82,7 @@ export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId
     conds.push(or(ilike(candidates.fullName, pattern), ilike(candidates.nameKatakana, pattern)));
   }
   if (filters.stage) conds.push(eq(candidates.stage, filters.stage));
-  if (filters.field) conds.push(eq(candidates.field, filters.field));
+  if (filters.field) conds.push(eq(skillFields.code, filters.field));
   if (tskOrgId && filters.decision) {
     conds.push(
       filters.decision === "NONE"
@@ -96,6 +98,7 @@ export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId
   const [{ total }] = await tx
     .select({ total: count() })
     .from(candidates)
+    .leftJoin(skillFields, eq(skillFields.id, candidates.fieldId))
     .leftJoin(candidateSelections, ownDecision)
     .where(where);
 
@@ -104,7 +107,9 @@ export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId
       id: candidates.id,
       fullName: candidates.fullName,
       nameKatakana: candidates.nameKatakana,
-      field: candidates.field,
+      fieldCode: skillFields.code,
+      fieldNameId: skillFields.nameId,
+      fieldNameJa: skillFields.nameJa,
       stage: candidates.stage,
       lpkName: organizations.name,
       decision: candidateSelections.decision,
@@ -112,6 +117,7 @@ export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId
     })
     .from(candidates)
     .innerJoin(organizations, eq(organizations.id, candidates.organizationId))
+    .leftJoin(skillFields, eq(skillFields.id, candidates.fieldId))
     .leftJoin(candidateSelections, ownDecision)
     .where(where)
     .orderBy(desc(candidates.createdAt), asc(candidates.fullName), asc(candidates.id))
@@ -123,15 +129,7 @@ export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId
 
 export type CandidateListRow = Awaited<ReturnType<typeof listCandidates>>["rows"][number];
 
-/** Bidang yang sudah dipakai kandidat yang terlihat (untuk filter dan saran isian). */
-export async function listFields(tx: Tx): Promise<string[]> {
-  const rows = await tx
-    .selectDistinct({ field: candidates.field })
-    .from(candidates)
-    .where(isNotNull(candidates.field))
-    .orderBy(asc(candidates.field));
-  return rows.map((r) => r.field!).filter(Boolean);
-}
+export { listSkillFields } from "./skill-fields";
 
 export type Stats = { latestAvg: number | null; latestPeriod: string; avg3: number | null; attendance3: number | null };
 

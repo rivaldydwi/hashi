@@ -23,7 +23,8 @@
     "partnerships": "Kemitraan",
     "account": "Akun saya",
     "candidates": "Kandidat",
-    "assessments": "Penilaian"
+    "assessments": "Penilaian",
+    "skillFields": "Bidang kerja"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -256,7 +257,8 @@
       "birthDateInvalid": "Tanggal lahir tidak valid.",
       "consentInFuture": "Tanggal tidak boleh di masa depan.",
       "invalid": "Ada isian yang tidak valid. Periksa bagian berikut (kolom yang bermasalah ditandai merah); isian Anda tidak hilang.",
-      "saveFailed": "Gagal menyimpan. Tidak ada data yang tersimpan; isian Anda masih di halaman ini, silakan coba lagi."
+      "saveFailed": "Gagal menyimpan. Tidak ada data yang tersimpan; isian Anda masih di halaman ini, silakan coba lagi.",
+      "skillFieldInvalid": "Bidang kerja tidak valid atau sudah nonaktif."
     },
     "consentForm": "Formulir persetujuan (opsional)",
     "consentFormHint": "Unggah formulir persetujuan yang sudah ditandatangani (PDF, JPG, atau PNG, maks. 10 MB). Bisa juga diunggah nanti di halaman detail.",
@@ -325,10 +327,10 @@
           "birthDate": "Tanggal lahir",
           "birthPlace": "Tempat lahir",
           "maritalStatus": "Status pernikahan",
-          "field": "Bidang",
           "heightCm": "Tinggi badan",
           "weightKg": "Berat badan",
-          "dominantHand": "Tangan dominan"
+          "dominantHand": "Tangan dominan",
+          "fieldId": "Bidang"
         },
         "options": {
           "gender": {
@@ -661,6 +663,34 @@
     "errors": {
       "confirmMismatch": "Teks konfirmasi tidak cocok dengan nama kandidat.",
       "blocked": "Kandidat tidak bisa dihapus karena sedang diproses atau sudah berangkat (keputusan TSK: Proses dokumen / Berangkat). Gunakan Nonaktifkan (status Mundur) agar riwayatnya tetap tersimpan."
+    }
+  },
+  "skillFields": {
+    "title": "Bidang kerja",
+    "intro": "Master bidang kerja (SSW dan lainnya) yang dipakai kandidat, klien, dan job order. Bidang yang sudah dipakai tidak bisa dihapus, tetapi bisa dinonaktifkan.",
+    "add": "Tambah bidang",
+    "code": "Kode",
+    "names": "Nama (Indonesia / Jepang) dan urutan",
+    "nameId": "Nama Indonesia",
+    "nameJa": "Nama Jepang",
+    "sortOrder": "Urutan",
+    "status": "Status",
+    "active": "Aktif",
+    "inactive": "Nonaktif",
+    "save": "Simpan",
+    "activate": "Aktifkan",
+    "deactivate": "Nonaktifkan",
+    "delete": "Hapus",
+    "usedHint": "Dipakai {n} data",
+    "created": "Bidang ditambahkan.",
+    "saved": "Bidang disimpan.",
+    "activated": "Bidang diaktifkan.",
+    "deactivated": "Bidang dinonaktifkan.",
+    "deleted": "Bidang dihapus.",
+    "errors": {
+      "codeTaken": "Kode itu sudah dipakai bidang lain.",
+      "inUse": "Bidang sudah dipakai, jadi tidak bisa dihapus. Nonaktifkan saja.",
+      "notFound": "Bidang tidak ditemukan."
     }
   }
 }

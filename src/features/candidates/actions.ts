@@ -10,6 +10,7 @@ import { audit } from "@/lib/audit";
 import { ActionError } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
 import { requireRole, tenantQuery } from "@/lib/session";
+import { assertSkillFieldUsable } from "./guards";
 import { buildSchema, isBlank, LIST_SECTIONS, SINGLE_SECTIONS } from "./sections";
 import { LIST_TABLES } from "./tables";
 import { createExtrasSchema, EARLIEST_BIRTH_DATE, latestAllowedDate } from "./validation";
@@ -114,6 +115,7 @@ export async function addCandidate(_prev: FormState, formData: FormData): Promis
   let createdId: string;
   try {
     createdId = await tenantQuery(async (tx) => {
+      await assertSkillFieldUsable(tx, (candidateValues as { fieldId?: unknown }).fieldId);
       const [row] = await tx
         .insert(candidates)
         .values({

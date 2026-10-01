@@ -22,7 +22,7 @@ async function fillCandidate(page: Page, v: { name: string; gender: "MALE" | "FE
   await page.locator("#basic-fullName").fill(v.name);
   await page.locator("#basic-gender").selectOption(v.gender);
   await page.locator("#basic-birthDate").fill(v.birth);
-  await page.locator("#basic-field").fill(v.field);
+  await page.locator("#basic-fieldId").selectOption({ label: v.field });
   await page.locator("#dataConsentDate").fill(v.consent);
 }
 
@@ -99,7 +99,7 @@ test("filter bidang, status, dan pencarian nama bekerja (termasuk karakter khusu
   await page.goto("/candidates");
   await expectTotal(page, 2);
 
-  await page.locator("#field").selectOption("Konstruksi");
+  await page.locator("#field").selectOption({ label: "Konstruksi" });
   await page.getByRole("button", { name: "Terapkan" }).click();
   await expectTotal(page, 1);
   await expect(page.getByTestId("candidate-table")).toContainText(nameB);
@@ -135,7 +135,7 @@ test("form tambah: tanggal formulir opsional; berbagi ke TSK bawaan mati, dan me
     await page.locator("#basic-fullName").fill(name);
     await page.locator("#basic-gender").selectOption("MALE");
     await page.locator("#basic-birthDate").fill("2000-06-06");
-    await page.locator("#basic-field").fill("Pertanian");
+    await page.locator("#basic-fieldId").selectOption({ label: "Pertanian" });
   };
   const stateOf = async (name: string) =>
     (await ownerQuery<{ shared: boolean; d: string | null; by: string | null }>(

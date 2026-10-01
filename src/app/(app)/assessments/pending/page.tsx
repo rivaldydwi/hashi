@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/PageHeader";
 import { StageBadge } from "@/components/StageBadge";
 import { btnPrimary, cardClass } from "@/components/styles";
@@ -18,6 +18,7 @@ export default async function PendingAssessmentsPage() {
   if (me.role !== "LPK_ADMIN" && me.role !== "LPK_SENSEI") redirect("/");
   const t = await getTranslations("assessments");
   const format = await getFormatter();
+  const locale = await getLocale();
   const period = currentPeriod();
   const monthLabel = (p: string) => format.dateTime(new Date(`${p}T00:00:00Z`), { month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -41,7 +42,7 @@ export default async function PendingAssessmentsPage() {
                   <Link href={`/candidates/${c.id}#penilaian`} className="font-medium text-brand-700 hover:underline">{c.fullName}</Link>
                   {c.nameKatakana && <span className="ml-2 text-xs text-stone-500">{c.nameKatakana}</span>}
                   <p className="mt-0.5 text-xs text-stone-500">
-                    {c.field ?? "—"} · {s ? t("lastAssessed", { month: monthLabel(s.latestPeriod), avg: formatAvg(s.latestAvg) }) : t("neverAssessed")}
+                    {(locale === "ja" ? c.fieldNameJa : c.fieldNameId) ?? "—"} · {s ? t("lastAssessed", { month: monthLabel(s.latestPeriod), avg: formatAvg(s.latestAvg) }) : t("neverAssessed")}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

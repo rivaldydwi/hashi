@@ -9,7 +9,7 @@ export type Stage = "STUDYING" | "READY" | "WITHDRAWN";
 export const FIELD_KEYS = ["food", "restaurant", "kaigo", "manufacture", "construction", "agri"] as const;
 export type FieldKey = (typeof FIELD_KEYS)[number];
 
-/** Kolom `candidates.field` per bidang; urutan sama dengan FIELD_KEYS. */
+/** Nama Indonesia bidang kerja (skill_fields.name_id); urutan sama dengan FIELD_KEYS. */
 export const FIELDS = [
   "Pengolahan makanan & minuman",
   "Jasa makanan (restoran)",
@@ -18,6 +18,9 @@ export const FIELDS = [
   "Konstruksi",
   "Pertanian",
 ] as const;
+
+/** Nama Jepang bidang (urutan sama dengan FIELDS / FIELD_KEYS). */
+export const FIELD_JA = ["飲食料品製造業", "外食業", "介護", "製造業（工業製品）", "建設", "農業"] as const;
 
 const CITIES: Record<number, { cities: string[]; province: string; streets: string[] }> = {
   0: { cities: ["Bandung", "Cimahi", "Garut", "Tasikmalaya", "Sumedang", "Cianjur"], province: "Jawa Barat", streets: ["Jl. Cihampelas", "Jl. Setiabudi", "Jl. Soekarno-Hatta", "Jl. Dipatiukur", "Jl. Cibaduyut", "Jl. Kiaracondong"] },
