@@ -7,6 +7,9 @@ import { formatAvg } from "@/features/assessments/fields";
 import type { Stats } from "@/features/assessments/queries";
 import type { CandidateListRow } from "./queries";
 
+// Tabel di layar lebar; di ponsel (< md) tiap baris menjadi kartu: kolom jadi pasangan label-nilai (label dari data-label, tanpa duplikasi DOM).
+const cell = "flex items-center justify-between gap-3 py-1 before:text-xs before:text-ink-2 before:content-[attr(data-label)] md:table-cell md:px-5 md:py-3 md:before:content-none";
+
 export async function CandidateTable({ rows, isTsk, stats }: { rows: CandidateListRow[]; isTsk: boolean; stats: Map<string, Stats> }) {
   const t = await getTranslations("candidates");
   const locale = await getLocale();
@@ -14,41 +17,41 @@ export async function CandidateTable({ rows, isTsk, stats }: { rows: CandidateLi
   return (
     <div className={`${cardClass} overflow-hidden`}>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm" data-testid="candidate-table">
-          <thead className={tableHeadClass}>
+        <table className="block w-full text-left text-sm md:table" data-testid="candidate-table">
+          <thead className={`${tableHeadClass} max-md:sr-only`}>
             <tr>
-              <th className="px-5 py-2 font-medium">{t("colName")}</th>
-              {isTsk && <th className="px-5 py-2 font-medium">{t("colLpk")}</th>}
-              <th className="px-5 py-2 font-medium">{t("colField")}</th>
-              <th className="px-5 py-2 font-medium">{t("colStage")}</th>
-              <th className="px-5 py-2 font-medium">{t("colLatest")}</th>
-              {!isTsk && <th className="px-5 py-2 font-medium">{t("colShared")}</th>}
-              {isTsk && <th className="px-5 py-2 font-medium">{t("colDecision")}</th>}
+              <th className="px-5 py-2 font-medium max-md:block">{t("colName")}</th>
+              {isTsk && <th className="px-5 py-2 font-medium max-md:block">{t("colLpk")}</th>}
+              <th className="px-5 py-2 font-medium max-md:block">{t("colField")}</th>
+              <th className="px-5 py-2 font-medium max-md:block">{t("colStage")}</th>
+              <th className="px-5 py-2 font-medium max-md:block">{t("colLatest")}</th>
+              {!isTsk && <th className="px-5 py-2 font-medium max-md:block">{t("colShared")}</th>}
+              {isTsk && <th className="px-5 py-2 font-medium max-md:block">{t("colDecision")}</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100">
+          <tbody className="block divide-y divide-line md:table-row-group">
             {rows.map((c) => (
-              <tr key={c.id} data-testid="candidate-row">
-                <td className="px-5 py-3">
-                  <Link href={`/candidates/${c.id}`} className="font-medium text-brand-700 hover:underline">
+              <tr key={c.id} data-testid="candidate-row" className="block max-md:px-4 max-md:py-3 md:table-row">
+                <td className="block md:table-cell md:px-5 md:py-3">
+                  <Link href={`/candidates/${c.id}`} className="inline-flex min-h-11 items-center font-medium text-accent-text hover:underline md:min-h-0">
                     {c.fullName}
                   </Link>
-                  {c.nameKatakana && <div className="text-xs text-stone-500">{c.nameKatakana}</div>}
+                  {c.nameKatakana && <div className="text-xs text-ink-2">{c.nameKatakana}</div>}
                 </td>
-                {isTsk && <td className="px-5 py-3 text-stone-700">{c.lpkName}</td>}
-                <td className="px-5 py-3 text-stone-700">{(locale === "ja" ? c.fieldNameJa : c.fieldNameId) ?? "—"}</td>
-                <td className="px-5 py-3"><StageBadge stage={c.stage} /></td>
-                <td className="px-5 py-3 tabular-nums" data-testid="latest-avg">
+                {isTsk && <td data-label={t("colLpk")} className={`${cell} text-ink-menu`}>{c.lpkName}</td>}
+                <td data-label={t("colField")} className={`${cell} text-ink-menu`}>{(locale === "ja" ? c.fieldNameJa : c.fieldNameId) ?? "—"}</td>
+                <td data-label={t("colStage")} className={cell}><StageBadge stage={c.stage} /></td>
+                <td data-label={t("colLatest")} className={`${cell} tabular-nums`} data-testid="latest-avg">
                   {stats.get(c.id) ? formatAvg(stats.get(c.id)!.latestAvg) : "—"}
                 </td>
                 {!isTsk && (
-                  <td className="px-5 py-3 text-xs" data-testid="shared-cell">
-                    <span className={`rounded-full px-2.5 py-0.5 font-medium ${c.sharedWithTsk ? "bg-sky-50 text-sky-800" : "bg-stone-100 text-stone-600"}`}>
+                  <td data-label={t("colShared")} className={`${cell} text-xs`} data-testid="shared-cell">
+                    <span className={`rounded-full px-2.5 py-0.5 font-medium ${c.sharedWithTsk ? "bg-sky-50 text-sky-900" : "bg-stone-100 text-stone-800"}`}>
                       {c.sharedWithTsk ? t("shared") : t("notShared")}
                     </span>
                   </td>
                 )}
-                {isTsk && <td className="px-5 py-3"><DecisionBadge decision={c.decision} /></td>}
+                {isTsk && <td data-label={t("colDecision")} className={cell}><DecisionBadge decision={c.decision} /></td>}
               </tr>
             ))}
           </tbody>

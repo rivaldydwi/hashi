@@ -5,6 +5,12 @@ import { useFormStatus } from "react-dom";
 import { useTranslations } from "next-intl";
 import type { FormState } from "@/lib/form-state";
 import { btnPrimary } from "./styles";
+import { useToast } from "./Toast";
+
+/** Ikon berputar kecil untuk keadaan memproses (berhenti berputar bila pengguna meminta gerak berkurang). */
+export function Spinner() {
+  return <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true" className="animate-spin"><path d="M12 3a9 9 0 1 0 9 9" /></svg>;
+}
 
 /** Tombol submit yang otomatis nonaktif selama form diproses. */
 export function SubmitButton({
@@ -21,7 +27,8 @@ export function SubmitButton({
   const { pending } = useFormStatus();
   const t = useTranslations("common");
   return (
-    <button type="submit" disabled={pending} className={className} name={name} value={value}>
+    <button type="submit" disabled={pending} aria-busy={pending} className={className} name={name} value={value}>
+      {pending && <Spinner />}
       {pending ? t("saving") : children}
     </button>
   );
@@ -35,7 +42,7 @@ export function FormAlert({ state }: { state: FormState }) {
   return (
     <p
       role={ok ? "status" : "alert"}
-      className={`rounded-lg px-3 py-2 text-sm ${ok ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}
+      className={`rounded-xl border px-3 py-2 text-sm ${ok ? "border-emerald-300 bg-emerald-50 text-emerald-900" : "border-rose-300 bg-rose-50 text-rose-900"}`}
     >
       {t(state.key)}
     </p>
@@ -46,6 +53,7 @@ export function FormAlert({ state }: { state: FormState }) {
 export function TempPasswordNotice({ password, email }: { password: string; email: string }) {
   const t = useTranslations();
   const [copied, setCopied] = useState(false);
+  const toast = useToast();
   return (
     <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-4" data-testid="temp-password">
       <p className="text-sm font-medium text-amber-900">{t("users.tempTitle")}</p>
@@ -56,8 +64,13 @@ export function TempPasswordNotice({ password, email }: { password: string; emai
         <button
           type="button"
           onClick={async () => {
-            await navigator.clipboard.writeText(password);
-            setCopied(true);
+            try {
+              await navigator.clipboard.writeText(password);
+              setCopied(true);
+              toast(t("common.copied"));
+            } catch {
+              toast(t("common.copyFailed"), "error"); // izin papan klip ditolak: pengguna masih bisa menyalin manual
+            }
           }}
           className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-100"
         >

@@ -5,6 +5,7 @@ import { Sidebar, type SidebarItem, type SoonItem } from "@/components/shell/Sid
 import { ShellFrame } from "@/components/shell/ShellFrame";
 import { Topbar } from "@/components/shell/Topbar";
 import { viewCandidateIds } from "@/db/dashboard-queries";
+import { ToastProvider } from "@/components/Toast";
 import { SkillFieldsProvider } from "@/features/skill-fields/SkillFieldsProvider";
 import { getSkillFieldOptions } from "@/features/skill-fields/server";
 import { longDate, tzForOrgType } from "@/lib/org-time";
@@ -60,6 +61,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <SkillFieldsProvider options={skillOptions}>
+      <ToastProvider>
       <ShellFrame
         sidebar={<Sidebar items={items} soon={soon} org={{ name: user.organizationName, roleLabel: t(`roles.${user.role}`) }} user={{ name: user.name, email: user.email }} />}
         topbar={
@@ -70,6 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       >
         {children}
       </ShellFrame>
+      </ToastProvider>
     </SkillFieldsProvider>
   );
 }

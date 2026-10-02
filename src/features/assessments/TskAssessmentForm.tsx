@@ -45,7 +45,7 @@ export function TskAssessmentForm({
       <input type="hidden" name="candidateId" value={candidateId} />
       <input type="hidden" name="kind" value={kind} />
       {assessmentId && <input type="hidden" name="assessmentId" value={assessmentId} />}
-      <FieldInputs section="assessment" idPrefix={prefix} fields={TSK_ASSESSMENT_FIELDS} values={values} dateMax={{ assessedOn: maxDate }} hintNames={["note"]} />
+      <FieldInputs section="assessment" idPrefix={prefix} fields={TSK_ASSESSMENT_FIELDS} values={values} dateMax={{ assessedOn: maxDate }} hintNames={["note"]} autoFilled={assessmentId ? [] : ["assessedOn"]} />
       <fieldset className="space-y-1">
         <legend className={labelClass}>{t("tsk.visibility")}</legend>
         <label className="flex items-center gap-2 text-sm">

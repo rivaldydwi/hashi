@@ -52,7 +52,7 @@ test("sensei hanya melihat data dasar: data sensitif tidak ada di HTML", async (
 
   await login(page, "lpk1.sensei@hashi.test");
   await page.goto(`/candidates?q=${encodeURIComponent(NAME)}`);
-  await page.getByRole("link", { name: NAME }).click();
+  await page.getByTestId("candidate-row").getByRole("link", { name: NAME }).click();
   await expect(page).toHaveURL(url);
   await expect(page.getByTestId("section-basic")).toBeVisible();
   await expect(page.getByTestId("section-about")).toBeVisible();
@@ -126,7 +126,7 @@ test("admin LPK melengkapi data per bagian; audit hanya mencatat nama kolom, buk
 test("TSK melihat kandidat yang masih belajar dan mengambil keputusan; data isi baca-saja sebelum PASSED_CLIENT_INTERVIEW", async ({ page }) => {
   await login(page, "tsk.admin@hashi.test");
   await page.goto(`/candidates?q=${encodeURIComponent(NAME)}`);
-  await page.getByRole("link", { name: NAME }).click();
+  await page.getByTestId("candidate-row").getByRole("link", { name: NAME }).click();
   await expect(page).toHaveURL(url);
 
   // Bagian sensitif terlihat oleh TSK, tetapi baca-saja dengan penjelasan

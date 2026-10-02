@@ -14,7 +14,8 @@
     "invalidInput": "Periksa kembali isian Anda.",
     "notFound": "Data tidak ditemukan.",
     "yes": "Ya",
-    "no": "Tidak"
+    "no": "Tidak",
+    "copyFailed": "Tidak bisa menyalin otomatis. Salin secara manual."
   },
   "nav": {
     "dashboard": "Beranda",
@@ -348,7 +349,12 @@
       "rowN": "Baris {n}",
       "extrasTitle": "Berbagi dan formulir persetujuan",
       "save": "Simpan kandidat",
-      "fieldInvalid": "Isian ini tidak valid."
+      "fieldInvalid": "Isian ini tidak valid.",
+      "fixHint": "Perbaiki isian di bagian berikut, lalu simpan lagi. Isian lain tidak hilang.",
+      "sectionNav": "Loncat ke bagian",
+      "completeness": "Kelengkapan profil",
+      "leaveConfirm": "Isian belum disimpan. Tinggalkan halaman ini?",
+      "autoFilled": "Diisi otomatis, periksa."
     },
     "colLatest": "Nilai terakhir",
     "filterAvg": "Rata-rata nilai minimal",
@@ -366,7 +372,22 @@
       "awaiting": "Menunggu keputusan",
       "placed": "Penempatan aktif"
     },
-    "viewClear": "Hapus filter"
+    "viewClear": "Hapus filter",
+    "chipQ": "Nama: {q}",
+    "chipStage": "Status: {v}",
+    "chipField": "Bidang: {v}",
+    "chipDecision": "Keputusan: {v}",
+    "chipAvg": "Nilai ≥ {v}",
+    "chipAttendance": "Kehadiran ≥ {v}%",
+    "chipJlpt": "JLPT ≥ {v}",
+    "activeFilters": "Filter aktif",
+    "removeFilter": "Hapus filter {name}",
+    "clearAll": "Hapus semua filter",
+    "emptyTitle": "Belum ada kandidat",
+    "emptyBodyLpk": "Mulai dengan menambahkan kandidat pertama. Data yang kosong bisa dilengkapi nanti.",
+    "emptyBodyTsk": "Belum ada kandidat yang dibagikan LPK mitra kepada Anda.",
+    "noMatchTitle": "Tidak ada kandidat yang cocok",
+    "noMatchBody": "Coba longgarkan atau hapus sebagian filter."
   },
   "detail": {
     "saved": "Perubahan disimpan.",
@@ -440,7 +461,7 @@
         "title": "Motivasi dan pribadi",
         "fields": {
           "motivation": "Motivasi",
-          "selfPr": "自己PR (promosi diri)",
+          "selfPr": "Promosi diri (jiko PR)",
           "hobby": "Hobi",
           "specialSkill": "Keahlian khusus"
         }
@@ -542,7 +563,7 @@
       "assessment": {
         "title": "Penilaian",
         "fields": {
-          "assessedOn": "Tanggal 面談",
+          "assessedOn": "Tanggal wawancara (mendan)",
           "durationMinutes": "Durasi (menit)",
           "scoreJapanese": "Bahasa Jepang",
           "scoreAttitude": "Sikap belajar",
@@ -670,7 +691,7 @@
     "TSK": "TSK"
   },
   "assessments": {
-    "intro": "Penilaian bulanan (面談・評価) oleh LPK. Satu penilaian per kandidat per bulan.",
+    "intro": "Penilaian bulanan (wawancara/mendan) oleh LPK. Satu penilaian per kandidat per bulan.",
     "add": "Tambah penilaian bulanan",
     "save": "Simpan penilaian",
     "saving": "Menyimpan...",
@@ -714,7 +735,7 @@
       "interviewLocked": "Interview TSK baru bisa dicatat setelah keputusan Anda untuk kandidat ini mencapai Lulus wawancara TSK atau sesudahnya (diajukan ke client, lulus wawancara client, proses dokumen, berangkat).",
       "kinds": {
         "TSK_VISIT": "Kunjungan",
-        "TSK_INTERVIEW": "Interview TSK (面談)"
+        "TSK_INTERVIEW": "Interview TSK (mendan)"
       },
       "visibility": "Siapa yang boleh melihat",
       "tskOnly": "Hanya TSK",
@@ -741,7 +762,7 @@
       "assessmentsTsk": "Penilaian TSK (kunjungan dan interview)",
       "notes": "Catatan TSK",
       "selections": "Keputusan TSK",
-      "placements": "Penempatan (配属)"
+      "placements": "Penempatan (haizoku)"
     },
     "alsoPersonal": "Termasuk data pribadi, kontak, identitas, keluarga, pendidikan, riwayat kerja, dan sertifikat. Riwayat audit tetap tersimpan (tanpa nama dan isi data).",
     "tskWarning": "Kandidat ini sedang dibagikan ke TSK dan punya data milik TSK. Keputusan, catatan, dan penilaian milik TSK ikut hilang dan TSK tidak bisa lagi melihatnya.",
@@ -785,7 +806,7 @@
   },
   "clients": {
     "title": "Klien",
-    "intro": "Perusahaan penerima (配属先法人) dan lokasi kerja (事業所) milik TSK Anda. Tidak terlihat oleh LPK.",
+    "intro": "Perusahaan penerima (haizoku-saki hōjin) dan lokasi kerja (jigyōsho) milik TSK Anda. Tidak terlihat oleh LPK.",
     "search": "Cari",
     "searchPlaceholder": "Nama perusahaan atau lokasi",
     "showInactive": "Tampilkan yang nonaktif",
@@ -833,7 +854,7 @@
     "forms": {
       "company": {
         "fields": {
-          "name": "Nama perusahaan (法人名)",
+          "name": "Nama perusahaan (hōjin-mei)",
           "nameAlt": "Nama alternatif / romaji",
           "corporateNumber": "Nomor badan hukum (13 digit)",
           "hqAddress": "Alamat kantor pusat",
@@ -843,7 +864,7 @@
       },
       "site": {
         "fields": {
-          "name": "Nama lokasi (事業所名)",
+          "name": "Nama lokasi (jigyōsho-mei)",
           "address": "Alamat lokasi kerja",
           "phone": "Telepon lokasi",
           "note": "Catatan"
@@ -851,7 +872,7 @@
       },
       "contact": {
         "fields": {
-          "roleTitle": "Jabatan / peran (mis. 管理者, 施設長)",
+          "roleTitle": "Jabatan / peran (mis. kanrisha = manajer, shisetsuchō = kepala fasilitas)",
           "name": "Nama PIC",
           "phone": "Telepon PIC"
         }
@@ -860,7 +881,7 @@
   },
   "jobOrders": {
     "title": "Job order",
-    "intro": "Lowongan (求人) dari klien Anda. Ajukan kandidat yang cocok, lalu pantau sampai berangkat. Tidak terlihat oleh LPK.",
+    "intro": "Lowongan (kyūjin) dari klien Anda. Ajukan kandidat yang cocok, lalu pantau sampai berangkat. Tidak terlihat oleh LPK.",
     "add": "Tambah job order",
     "newTitle": "Job order baru",
     "chooseSite": "Pilih lokasi",
@@ -920,8 +941,8 @@
     "notOpen": "Job order tidak terbuka",
     "alreadyPlaced": "Sudah ditempatkan",
     "statusSaved": "Status job order disimpan.",
-    "placementTitle": "Penempatan (配属)",
-    "placementIntro": "Dibuat otomatis saat keputusan menjadi Berangkat. Isi atau ubah tanggal mulai kerja (就労開始日) di sini.",
+    "placementTitle": "Penempatan (haizoku)",
+    "placementIntro": "Dibuat otomatis saat keputusan menjadi Berangkat. Isi atau ubah tanggal mulai kerja (shūrō kaishibi) di sini.",
     "placementStatus": {
       "ACTIVE": "Aktif",
       "ENDED": "Selesai"
@@ -940,7 +961,7 @@
     "forms": {
       "jobOrder": {
         "fields": {
-          "title": "Judul job order (求人名)",
+          "title": "Judul job order (kyūjin-mei)",
           "fieldId": "Bidang kerja",
           "program": "Jenis program",
           "positions": "Jumlah posisi",
@@ -957,8 +978,8 @@
         },
         "options": {
           "program": {
-            "SSW": "SSW (特定技能)",
-            "TITP": "Magang / Ikusei (技能実習・育成就労)",
+            "SSW": "SSW (Specified Skilled Worker / Tokutei Ginō)",
+            "TITP": "Magang / Ikusei (Technical Intern Training / Ginō Jisshū, Ikusei Shūrō)",
             "OTHER": "Lainnya"
           },
           "minJlpt": {
@@ -976,7 +997,7 @@
       },
       "placement": {
         "fields": {
-          "startDate": "Tanggal mulai kerja (就労開始日)",
+          "startDate": "Tanggal mulai kerja (shūrō kaishibi)",
           "endDate": "Tanggal selesai",
           "status": "Status",
           "note": "Catatan"
@@ -1008,5 +1029,26 @@
     "createJobOrder": "Buat job order",
     "badgeUnrated": "{n} kandidat belum dinilai bulan ini",
     "badgeNewShared": "{n} kandidat baru dibagikan 7 hari terakhir"
+  },
+  "statusHelp": {
+    "legendStage": "Arti status belajar",
+    "legendDecision": "Arti status keputusan TSK",
+    "STUDYING": "Masih menjalani pelatihan di LPK.",
+    "READY": "Pelatihan memadai; boleh dipertimbangkan untuk seleksi.",
+    "WITHDRAWN": "Mundur dari proses; tidak diproses lebih lanjut.",
+    "NONE": "TSK belum mengambil keputusan atas kandidat ini.",
+    "SHORTLISTED": "Masuk daftar calon yang dipertimbangkan TSK.",
+    "PASSED_TSK_INTERVIEW": "Lulus wawancara oleh TSK.",
+    "SUBMITTED_TO_CLIENT": "Berkas sudah diajukan ke perusahaan penerima (klien).",
+    "PASSED_CLIENT_INTERVIEW": "Lulus interview dengan klien.",
+    "DOCUMENT_PROCESS": "Dokumen visa dan keberangkatan sedang diurus.",
+    "DEPARTED": "Sudah berangkat ke Jepang.",
+    "REJECTED": "TSK tidak melanjutkan kandidat ini."
+  },
+  "errorPage": {
+    "title": "Terjadi masalah",
+    "body": "Halaman ini tidak bisa dimuat. Data Anda tidak berubah. Coba lagi; bila masih gagal, hubungi admin dan sebutkan kode di bawah.",
+    "code": "Kode",
+    "retry": "Coba lagi"
   }
 }

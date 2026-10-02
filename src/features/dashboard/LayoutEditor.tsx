@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { defaultLayout, toStored, type ResolvedItem } from "@/db/dashboard-layout";
 import type { Role } from "@/db/schema";
 import { btnSecondary } from "@/components/styles";
+import { useToast } from "@/components/Toast";
 import { saveDashboardLayout, resetDashboardLayout } from "./actions";
 
 type Status = "idle" | "saving" | "saved" | "failed";
@@ -19,6 +20,7 @@ const ctl = "inline-flex h-11 min-w-11 items-center justify-center rounded-xl bo
 export function LayoutEditor({ role, initial, slots, labels }: { role: Role; initial: ResolvedItem[]; slots: Record<string, ReactNode>; labels: Record<string, string> }) {
   const t = useTranslations("dashboard.edit");
   const router = useRouter();
+  const toast = useToast();
   const [items, setItems] = useState(initial);
   const [status, setStatus] = useState<Status>("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,11 +32,13 @@ export function LayoutEditor({ role, initial, slots, labels }: { role: Role; ini
       try {
         const res = await saveDashboardLayout(toStored(next));
         setStatus(res.ok ? "saved" : "failed");
+        if (!res.ok) toast(t("failed"), "error");
       } catch {
         setStatus("failed");
+        toast(t("failed"), "error");
       }
     }, 350);
-  }, []);
+  }, [t, toast]);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 

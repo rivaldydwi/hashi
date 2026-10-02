@@ -23,6 +23,7 @@ export function FieldInputs({
   suggestions = {},
   dateMax = {},
   hintNames = [],
+  autoFilled = [],
   labelNs,
   skillFieldIds,
 }: {
@@ -41,6 +42,8 @@ export function FieldInputs({
   dateMax?: Record<string, string>;
   /** Kolom yang menampilkan teks bantuan (detail.sections.<bagian>.hints.<kolom>) di bawah input. */
   hintNames?: string[];
+  /** Kolom yang nilai awalnya diisi otomatis (mis. tanggal hari ini): tampil catatan "Diisi otomatis, periksa". */
+  autoFilled?: string[];
   /** Namespace label (bawaan: detail.sections.<bagian>); form di luar halaman kandidat memakai namespace sendiri. */
   labelNs?: string;
   /** Batasi pilihan bidang kerja ke id ini (mis. bidang yang diterima lokasi). Nilai yang sedang dipakai tetap ditampilkan. */
@@ -110,6 +113,7 @@ export function FieldInputs({
                   </datalist>
                 )}
                 {hintNames.includes(f.name) && <p className="text-xs text-stone-500">{t(`hints.${f.name}`)}</p>}
+                {autoFilled.includes(f.name) && <p className="text-xs text-accent-text" data-testid={`autofilled-${f.name}`}>{tf("autoFilled")}</p>}
                 {bad && <p className="text-xs text-rose-700">{tf("fieldInvalid")}</p>}
               </>
             )}

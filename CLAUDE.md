@@ -197,6 +197,12 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   lintas pengguna, bahkan admin) + CHECK objek <= 4000 karakter. Preferensi tampilan: SENGAJA tidak diaudit. Widget tersembunyi tidak di-query (`loadDashboard(user, ids)`).
   Mode atur = `/?atur=1` (`LayoutEditor`, simpan otomatis lewat `saveDashboardLayout`/`resetDashboardLayout`; tombol biasa, bukan seret-lepas). Widget baru = 1 entri katalog +
   1 `case` di `Widgets.tsx` + loader di `data.ts` + label di `dashboard.*` (id dan ja).
+- **Kamus istilah & i18n id** (`docs/glossary.md`): teks Indonesia TIDAK boleh memuat huruf Jepang telanjang (`test:i18n` menolak; izin hanya `languages.ja` di `ALLOW_CJK_IN_ID`):
+  tulis istilah Indonesia/Inggris + cara baca romaji. Status LPK/TSK memakai `StatusBadge` (ikon + teks + warna + `statusHelp.<kode>` sebagai penjelasan; `StageBadge`/`DecisionBadge` hanya
+  pembungkus) dan `StatusLegend`; status baru WAJIB punya `statusHelp` (dicek `test:i18n`). Daftar kandidat: chip filter (`ActiveFilterChips`), `EmptyState`, tabel -> kartu di ponsel
+  (CSS `data-label`, tanpa menggandakan DOM). Form panjang: nav bagian menempel, kelengkapan langsung (`candidateCompleteness` di klien), `beforeunload` saat ada perubahan, DILARANG draf di
+  localStorage/sessionStorage/IndexedDB (dijaga `tests/unit/no-draft-storage.test.ts`), nilai awal otomatis ditandai lewat `autoFilled` ("Diisi otomatis, periksa"). Umpan balik: `SubmitButton`
+  (spinner + `aria-busy`), `ToastProvider`/`useToast` (aria-live), `(app)/loading.tsx` (skeleton), `(app)/error.tsx` (batas galat; tanpa isi galat teknis), aksi berbahaya = `btnDanger`.
 - **Hapus kandidat permanen** (`candidates/delete-actions.ts`, `DeleteCandidate.tsx`, migration 0013): HANYA LPK_ADMIN pemilik, ditegakkan
   di UI (komponen tidak dirender untuk peran lain), server action (peran + organisasi + ketik nama/kode persis), RLS (`candidates_lpk_admin_delete`),
   dan trigger `candidates_block_delete` (BEFORE DELETE: menolak bila ada keputusan TSK DOCUMENT_PROCESS atau DEPARTED dari TSK mana pun, daftar

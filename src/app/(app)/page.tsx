@@ -1,4 +1,7 @@
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
+import { PageSkeleton } from "@/components/PageSkeleton";
+import type { CurrentUser } from "@/lib/session";
 import { loadDashboard } from "@/features/dashboard/data";
 import { loadLayout } from "@/features/dashboard/queries";
 import { widgetById } from "@/features/dashboard/catalog";
@@ -15,8 +18,17 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function DashboardPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
-  const t = await getTranslations("dashboard");
   const sp = await searchParams;
+  // Isi dashboard dimuat di dalam Suspense: kerangka muatan tampil selagi data dihitung. requireUser (redirect) ada di luar, jadi status HTTP tetap benar.
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <DashboardBody user={user} editing={sp.atur === "1"} />
+    </Suspense>
+  );
+}
+
+async function DashboardBody({ user, editing }: { user: CurrentUser; editing: boolean }) {
+  const t = await getTranslations("dashboard");
 
   // LPK_ADMIN tanpa kandidat: tampilkan panduan 3 langkah, bukan dashboard berisi angka nol.
   if (user.role === "LPK_ADMIN") {
@@ -25,7 +37,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   }
 
   const layout = await loadLayout(user);
-  const editing = sp.atur === "1";
   // Hanya widget yang tampil yang di-query; di mode atur semuanya dimuat supaya pratinjau dan "Tampilkan" langsung bisa.
   const shown = layout.filter((x) => editing || !x.hidden);
   const data = await loadDashboard(user, new Set(shown.map((x) => x.id)));

@@ -3,6 +3,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
+import { StatusLegend } from "@/components/StatusBadge";
+import { ActiveFilterChips } from "@/features/candidates/ActiveFilterChips";
 import { btnPrimary, btnSecondary, cardClass } from "@/components/styles";
 import { CandidateFilters } from "@/features/candidates/CandidateFilters";
 import { CandidateTable } from "@/features/candidates/CandidateTable";
@@ -57,16 +60,9 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
         </p>
       )}
 
-      {filters.view && (
-        <p className="mb-3 flex flex-wrap items-center gap-2 text-sm" data-testid="view-chip">
-          <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-accent-soft px-4 font-medium text-accent-text">
-            {t(`viewLabel.${filters.view}`)}
-          </span>
-          <Link href="/candidates" className="inline-flex min-h-11 items-center text-ink-2 underline hover:text-ink">{t("viewClear")}</Link>
-        </p>
-      )}
-
       <CandidateFilters filters={filters} fields={fields} isTsk={isTsk} />
+      <ActiveFilterChips filters={filters} fieldLabel={(code) => fields.find((f) => f.code === code)?.label ?? code} />
+      <StatusLegend kind={isTsk ? "decision" : "stage"} />
 
       <p className="mb-2 text-sm text-stone-500" data-testid="candidate-total-label">
         <span className="font-medium tabular-nums text-stone-800" data-testid="candidate-total">{list.total}</span>{" "}
@@ -74,14 +70,11 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
       </p>
 
       {list.rows.length === 0 ? (
-        <div className={`${cardClass} p-8 text-center text-sm text-stone-500`} data-testid="candidate-empty">
-          {active ? t("noMatch") : t("empty")}
-          {!active && me.role === "LPK_ADMIN" && (
-            <div className="mt-3">
-              <Link href="/candidates/new" className={btnPrimary}>+ {t("add")}</Link>
-            </div>
-          )}
-        </div>
+        active ? (
+          <EmptyState testId="candidate-empty" title={t("noMatchTitle")} body={t("noMatchBody")} action={{ href: "/candidates", label: t("clearAll") }} />
+        ) : (
+          <EmptyState testId="candidate-empty" title={t("emptyTitle")} body={isTsk ? t("emptyBodyTsk") : t("emptyBodyLpk")} action={me.role === "LPK_ADMIN" ? { href: "/candidates/new", label: `+ ${t("add")}` } : undefined} />
+        )
       ) : (
         <CandidateTable rows={list.rows} isTsk={isTsk} stats={stats} />
       )}

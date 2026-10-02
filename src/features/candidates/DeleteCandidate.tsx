@@ -3,7 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { FormAlert } from "@/components/FormBits";
-import { btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
+import { btnDanger, btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
 import { idle, type FormState } from "@/lib/form-state";
 import { deleteCandidate } from "./delete-actions";
 import { confirmationMatches, type DeleteSummary } from "./delete-shared";
@@ -40,7 +40,7 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
           setTyped("");
           dialog.current?.showModal();
         }}
-        className="mt-3 inline-flex items-center rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+        className={`${btnDanger} mt-3`}
       >
         {t("open")}
       </button>

@@ -50,6 +50,7 @@ export function AssessmentForm({
         values={values}
         dateMax={{ assessedOn: maxDate }}
         hintNames={["note"]}
+        autoFilled={assessmentId ? [] : ["assessedOn", "durationMinutes"]}
       />
       <FormAlert state={state} />
       <button type="submit" disabled={pending} className={btnPrimary} data-testid="assessment-submit">

@@ -14,7 +14,8 @@
     "invalidInput": "入力内容を確認してください。",
     "notFound": "データが見つかりません。",
     "yes": "はい",
-    "no": "いいえ"
+    "no": "いいえ",
+    "copyFailed": "自動でコピーできませんでした。手動でコピーしてください。"
   },
   "nav": {
     "dashboard": "ホーム",
@@ -348,7 +349,12 @@
       "rowN": "{n}行目",
       "extrasTitle": "共有と同意書",
       "save": "候補者を保存",
-      "fieldInvalid": "この入力は正しくありません。"
+      "fieldInvalid": "この入力は正しくありません。",
+      "fixHint": "次のセクションの入力を直して、もう一度保存してください。他の入力は消えていません。",
+      "sectionNav": "セクションへ移動",
+      "completeness": "プロフィールの完成度",
+      "leaveConfirm": "入力が保存されていません。このページを離れますか？",
+      "autoFilled": "自動入力です。内容をご確認ください。"
     },
     "colLatest": "最新の評価",
     "filterAvg": "平均評価の下限",
@@ -366,7 +372,22 @@
       "awaiting": "判断待ち",
       "placed": "配属中"
     },
-    "viewClear": "フィルターを解除"
+    "viewClear": "フィルターを解除",
+    "chipQ": "氏名：{q}",
+    "chipStage": "状況：{v}",
+    "chipField": "職種分野：{v}",
+    "chipDecision": "判断：{v}",
+    "chipAvg": "平均 {v} 以上",
+    "chipAttendance": "出席率 {v}% 以上",
+    "chipJlpt": "JLPT {v} 以上",
+    "activeFilters": "適用中のフィルター",
+    "removeFilter": "フィルター「{name}」を解除",
+    "clearAll": "すべて解除",
+    "emptyTitle": "候補者がまだいません",
+    "emptyBodyLpk": "最初の候補者を追加しましょう。空欄は後で補えます。",
+    "emptyBodyTsk": "提携LPKから共有された候補者はまだいません。",
+    "noMatchTitle": "条件に合う候補者がいません",
+    "noMatchBody": "フィルターを緩めるか、一部を解除してください。"
   },
   "detail": {
     "saved": "保存しました。",
@@ -1008,5 +1029,26 @@
     "createJobOrder": "求人を作成",
     "badgeUnrated": "今月未評価の候補者 {n}名",
     "badgeNewShared": "直近7日に共有された候補者 {n}名"
+  },
+  "statusHelp": {
+    "legendStage": "学習状況の見方",
+    "legendDecision": "登録支援機関の判断の見方",
+    "STUDYING": "LPKで研修中です。",
+    "READY": "研修が十分で、選考の検討対象にできます。",
+    "WITHDRAWN": "辞退したため、これ以上進めません。",
+    "NONE": "登録支援機関はまだ判断していません。",
+    "SHORTLISTED": "登録支援機関の候補リストに入っています。",
+    "PASSED_TSK_INTERVIEW": "登録支援機関の面接に合格しました。",
+    "SUBMITTED_TO_CLIENT": "配属先企業へ書類を提出済みです。",
+    "PASSED_CLIENT_INTERVIEW": "配属先企業の面接に合格しました。",
+    "DOCUMENT_PROCESS": "ビザや渡航の書類手続き中です。",
+    "DEPARTED": "日本へ渡航済みです。",
+    "REJECTED": "登録支援機関は進めないことにしました。"
+  },
+  "errorPage": {
+    "title": "問題が発生しました",
+    "body": "このページを読み込めませんでした。データは変更されていません。もう一度お試しください。解決しない場合は、下のコードを管理者へお伝えください。",
+    "code": "コード",
+    "retry": "再試行"
   }
 }
