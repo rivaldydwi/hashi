@@ -14,7 +14,7 @@ type Values = Record<string, string | boolean>;
 type Action = (prev: FormState, formData: FormData) => Promise<FormState>;
 
 /** Form yang dikirim lewat onSubmit manual: isian TIDAK hilang saat error (React mengosongkan form-action yang gagal). */
-function ManualForm({ action, children, testid, className = "space-y-4", progressive = false }: { action: Action; children: (s: { state: FormState; pending: boolean }) => React.ReactNode; testid?: string; className?: string; progressive?: boolean }) {
+export function ManualForm({ action, children, testid, className = "space-y-4", progressive = false }: { action: Action; children: (s: { state: FormState; pending: boolean }) => React.ReactNode; testid?: string; className?: string; progressive?: boolean }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, idle);
   // progressive: form hanya berisi input tersembunyi (tombol aktif/hapus), jadi memakai atribut `action` biasa
   if (progressive) {
@@ -39,7 +39,7 @@ function ManualForm({ action, children, testid, className = "space-y-4", progres
   );
 }
 
-function Submit({ pending, children }: { pending: boolean; children: React.ReactNode }) {
+export function Submit({ pending, children }: { pending: boolean; children: React.ReactNode }) {
   const t = useTranslations("common");
   return (
     <button type="submit" disabled={pending} className={btnPrimary} data-testid="client-submit">

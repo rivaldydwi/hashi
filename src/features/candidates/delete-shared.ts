@@ -24,6 +24,7 @@ export type DeleteSummary = {
   assessmentsTsk: number;
   notes: number;
   selections: number;
+  placements: number;
   privateRows: number;
   family: number;
   educations: number;

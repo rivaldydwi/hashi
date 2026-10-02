@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { skillFieldName } from "@/db/skill-fields";
@@ -8,6 +9,8 @@ import { ActiveToggle, ContactForm, DeleteButton, SiteForm } from "@/features/cl
 import { CONTACT_FIELDS, SITE_FIELDS } from "@/features/clients/fields";
 import { requireTsk, uuid } from "@/features/clients/guards";
 import { getSite } from "@/features/clients/queries";
+import { jobOrdersForSite } from "@/features/job-orders/queries";
+import { STATUS_STYLE } from "@/features/job-orders/status";
 import { toFormValue } from "@/features/candidates/sections";
 import { tenantQuery } from "@/lib/session";
 
@@ -21,6 +24,8 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
   const data = await tenantQuery((tx) => getSite(tx, siteId));
   if (!data || data.company.id !== id) notFound();
   const t = await getTranslations("clients");
+  const tj = await getTranslations("jobOrders");
+  const jobs = await tenantQuery((tx) => jobOrdersForSite(tx, siteId));
   const locale = await getLocale();
   const { site, company, fields, contacts } = data;
   const siteValues = Object.fromEntries(SITE_FIELDS.map((f) => [f.name, toFormValue(f, (site as Record<string, unknown>)[f.name])]));
@@ -78,6 +83,25 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
             <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="contact-add-toggle">+ {t("addContact")}</summary>
             <div className="pt-3"><ContactForm companyId={company.id} siteId={site.id} /></div>
           </details>
+        </section>
+
+        <section className={`${cardClass} p-5`} data-testid="section-site-job-orders">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-medium">{tj("title")}</h2>
+            {site.active && fields.length > 0 && <Link href={`/job-orders/new?site=${site.id}`} className="text-sm font-medium text-brand-700 hover:underline">+ {tj("add")}</Link>}
+          </div>
+          {jobs.length === 0 ? (
+            <p className="text-sm text-stone-500">{tj("empty")}</p>
+          ) : (
+            <ul className="divide-y divide-stone-100">
+              {jobs.map((j) => (
+                <li key={j.id} className="flex items-center justify-between gap-2 py-2" data-testid="site-job-order">
+                  <Link href={`/job-orders/${j.id}`} className="font-medium text-brand-700 hover:underline">{j.title}</Link>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[j.status]}`}>{tj(`status.${j.status}`)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className={`${cardClass} space-y-3 p-5`} data-testid="section-site-status">

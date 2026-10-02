@@ -5,8 +5,8 @@ import type { Tx } from "./index";
 import {
   candidateAssessments,
   candidateCertificates,
+  candidateHeadlineDecision,
   candidates,
-  candidateSelections,
   candidateStage,
   organizations,
   selectionDecision,
@@ -86,20 +86,21 @@ export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId
   if (tskOrgId && filters.decision) {
     conds.push(
       filters.decision === "NONE"
-        ? or(isNull(candidateSelections.decision), eq(candidateSelections.decision, "NONE"))
-        : eq(candidateSelections.decision, filters.decision),
+        ? or(isNull(candidateHeadlineDecision.decision), eq(candidateHeadlineDecision.decision, "NONE"))
+        : eq(candidateHeadlineDecision.decision, filters.decision),
     );
   }
   // Filter nilai/kehadiran/JLPT dihitung di query terpisah (assessments/queries.ts), lalu dipasang sebagai daftar id
   if (onlyIds) conds.push(onlyIds.length ? inArray(candidates.id, onlyIds) : sql`false`);
   const where = conds.length ? and(...conds) : undefined;
-  const ownDecision = and(eq(candidateSelections.candidateId, candidates.id), eq(candidateSelections.tskOrgId, tskOrgId ?? NO_TSK));
+  // Keputusan paling maju kandidat ini di TSK pemanggil (satu baris per kandidat; lihat view candidate_headline_decision)
+  const ownDecision = and(eq(candidateHeadlineDecision.candidateId, candidates.id), eq(candidateHeadlineDecision.tskOrgId, tskOrgId ?? NO_TSK));
 
   const [{ total }] = await tx
     .select({ total: count() })
     .from(candidates)
     .leftJoin(skillFields, eq(skillFields.id, candidates.fieldId))
-    .leftJoin(candidateSelections, ownDecision)
+    .leftJoin(candidateHeadlineDecision, ownDecision)
     .where(where);
 
   const rows = await tx
@@ -112,13 +113,13 @@ export async function listCandidates(tx: Tx, filters: CandidateFilters, tskOrgId
       fieldNameJa: skillFields.nameJa,
       stage: candidates.stage,
       lpkName: organizations.name,
-      decision: candidateSelections.decision,
+      decision: candidateHeadlineDecision.decision,
       sharedWithTsk: candidates.sharedWithTsk,
     })
     .from(candidates)
     .innerJoin(organizations, eq(organizations.id, candidates.organizationId))
     .leftJoin(skillFields, eq(skillFields.id, candidates.fieldId))
-    .leftJoin(candidateSelections, ownDecision)
+    .leftJoin(candidateHeadlineDecision, ownDecision)
     .where(where)
     .orderBy(desc(candidates.createdAt), asc(candidates.fullName), asc(candidates.id))
     .limit(LIST_PAGE_SIZE)

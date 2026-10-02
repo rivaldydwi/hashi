@@ -1,7 +1,7 @@
 import { access, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { createIsolatedLpk, createScratchCandidate, deleteScratchCandidate, login, ownerQuery, unique } from "./helpers";
+import { createIsolatedLpk, createScratchCandidate, createScratchJobOrder, deleteScratchCandidate, deleteScratchJobOrder, login, ownerQuery, unique } from "./helpers";
 
 // Dokumen kandidat (langkah 3, bagian 3). Kandidat uji SENDIRI (LPK Bandung, Belajar, belum ada
 // keputusan TSK, tanpa dokumen) yang dihapus di akhir; data seed tidak tersentuh. File disimpan di folder e2e sendiri (.e2e-docs).
@@ -17,16 +17,19 @@ let cid = "";
 let orgId = "";
 let url = "";
 let pdfId = "";
+let jo: Awaited<ReturnType<typeof createScratchJobOrder>>;
 
 test.beforeAll(async () => {
   const c = await createScratchCandidate({ name: `Uji Dokumen ${run}` });
   cid = c.id;
   orgId = c.orgId;
   url = `/candidates/${cid}`;
+  jo = await createScratchJobOrder({ tag: `docs${run}` });
 });
 
 test.afterAll(async () => {
   await deleteScratchCandidate(cid);
+  await deleteScratchJobOrder(jo);
   await rm(ROOT, { recursive: true, force: true });
 });
 
@@ -172,8 +175,8 @@ test("TSK melihat dan mengunduh dokumen, tetapi baru bisa mengunggah/menghapus s
 
   // Keputusan PASSED_CLIENT_INTERVIEW membuka hak edit: unggah lalu hapus
   await ownerQuery(
-    "insert into candidate_selections (candidate_id, tsk_org_id, decision) select $1, u.organization_id, 'PASSED_CLIENT_INTERVIEW' from users u where u.email = 'tsk.admin@hashi.test'",
-    [cid],
+    "insert into candidate_selections (candidate_id, tsk_org_id, decision, job_order_id) select $1, u.organization_id, 'PASSED_CLIENT_INTERVIEW', $2 from users u where u.email = 'tsk.admin@hashi.test'",
+    [cid, jo.id],
   );
   await page.reload();
   await openUpload(page);

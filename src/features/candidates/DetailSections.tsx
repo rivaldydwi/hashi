@@ -4,7 +4,8 @@ import { cardClass } from "@/components/styles";
 import type { NoteVisibility, SelectionDecision } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
 import type { Detail } from "./detail-queries";
-import { DecisionForm, NoteAddForm, NoteEditForm, RowForm, SectionForm } from "./DetailForms";
+import { PlacementForm } from "@/features/job-orders/JobOrderForms";
+import { DecisionForm, NoteAddForm, NoteEditForm, RowForm, SectionForm, type JobOrderOption } from "./DetailForms";
 import { getSkillFieldOptions } from "@/features/skill-fields/server";
 import { isTskRole, type ContentAccess } from "./permissions";
 import { toFormValue, type FieldDef, type ListSectionDef, type SingleSectionDef } from "./sections";
@@ -123,11 +124,20 @@ export async function ListSectionCard({
 }
 
 /** Keputusan TSK: TSK memilih keputusannya sendiri; LPK_ADMIN hanya membaca keputusan semua TSK mitra. */
-export async function DecisionPanel({ me, detail }: { me: CurrentUser; detail: NonNullable<Detail["full"]> & { candidateId: string } }) {
+export async function DecisionPanel({
+  me,
+  detail,
+  jobOrderOptions = [],
+}: {
+  me: CurrentUser;
+  detail: NonNullable<Detail["full"]> & { candidateId: string };
+  jobOrderOptions?: JobOrderOption[];
+}) {
   const t = await getTranslations("detail");
   const format = await getFormatter();
   const tsk = isTskRole(me.role);
-  const mine = detail.selections.find((s) => s.tskOrgId === me.organizationId);
+  const mine = detail.selections.filter((s) => s.tskOrgId === me.organizationId);
+  const general = mine.find((s) => s.jobOrderId === null);
 
   return (
     <section className={`${cardClass} p-5`} data-testid="section-decision">
@@ -135,10 +145,21 @@ export async function DecisionPanel({ me, detail }: { me: CurrentUser; detail: N
       {tsk ? (
         <div className="mt-3 space-y-3">
           <p className="text-sm text-stone-600">{t("decisionIntroTsk")}</p>
-          <DecisionForm candidateId={detail.candidateId} decision={(mine?.decision ?? "NONE") as SelectionDecision} />
-          {mine && (
-            <p className="text-xs text-stone-500">{t("decidedAt", { date: format.dateTime(mine.decidedAt, { dateStyle: "medium", timeStyle: "short" }) })}</p>
+          {mine.length > 0 && (
+            <ul className="space-y-1.5" data-testid="selection-list">
+              {mine.map((s) => (
+                <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="selection-row" data-decision={s.decision} data-scope={s.jobOrderId ? "job-order" : "general"}>
+                  <span>{s.jobOrderId ? `${s.jobOrderTitle} — ${s.companyName} / ${s.siteName}` : t("decisionScopeGeneral")}</span>
+                  <span className="flex items-center gap-2">
+                    <DecisionBadge decision={s.decision} />
+                    <span className="text-xs text-stone-500">{format.dateTime(s.decidedAt, { dateStyle: "medium" })}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
+          <DecisionForm candidateId={detail.candidateId} decision={(general?.decision ?? "NONE") as SelectionDecision} jobOrderOptions={jobOrderOptions} />
+          <p className="text-xs text-stone-500">{t("decisionJobOrderHint")}</p>
         </div>
       ) : (
         <div className="mt-3">
@@ -157,6 +178,34 @@ export async function DecisionPanel({ me, detail }: { me: CurrentUser; detail: N
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+/** Penempatan (配属) kandidat: hanya TSK pemilik. Baris dibuat otomatis saat keputusan menjadi Berangkat; staf mengisi/ubah 就労開始日. */
+export async function PlacementPanel({ candidateId, placements }: { candidateId: string; placements: NonNullable<Detail["full"]>["placements"] }) {
+  const t = await getTranslations("jobOrders");
+  if (placements.length === 0) return null;
+  return (
+    <section className={`${cardClass} space-y-3 p-5`} data-testid="section-placement">
+      <h2 className="font-medium">{t("placementTitle")}</h2>
+      <p className="text-sm text-stone-600">{t("placementIntro")}</p>
+      <ul className="space-y-3">
+        {placements.map((p) => (
+          <li key={p.id} className="rounded-xl border border-stone-200 p-3" data-testid="placement" data-status={p.status}>
+            <p className="mb-2 text-sm">
+              <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-medium ${p.status === "ACTIVE" ? "bg-emerald-50 text-emerald-800" : "bg-stone-200 text-stone-700"}`}>{t(`placementStatus.${p.status}`)}</span>
+              <span className="font-medium">{p.companyName}</span> / {p.siteName}
+              {p.jobOrderTitle && <span className="text-stone-500"> · {p.jobOrderTitle}</span>}
+            </p>
+            <PlacementForm
+              placementId={p.id}
+              candidateId={candidateId}
+              values={{ startDate: p.startDate, endDate: p.endDate ?? "", status: p.status, note: p.note ?? "" }}
+            />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
 import type { Tx } from "@/db";
 import { clientCompanies, clientSiteContacts, clientSiteFields, clientSites, skillFields } from "@/db/schema";
-import { audit } from "@/lib/audit";
+import { auditTsk } from "./audit";
 import { ActionError, pgErrorCode } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
 import { tenantQuery, type CurrentUser } from "@/lib/session";
@@ -26,10 +26,7 @@ async function guarded(fn: () => Promise<FormState>): Promise<FormState> {
   }
 }
 
-/** Audit klien: hanya jenis aksi, id, dan NAMA kolom. Nama/telepon PIC, catatan, dan alamat tidak pernah dicatat. */
-async function auditClient(tx: Tx, me: CurrentUser, action: string, entity: string, entityId: string, fields?: string[]) {
-  await audit(tx, { organizationId: me.organizationId, actorUserId: me.id, action, entity, entityId, after: fields ? { fields } : undefined });
-}
+const auditClient = auditTsk;
 
 const parse = (defs: FieldDef[], formData: FormData) => buildSchema(defs).safeParse(Object.fromEntries(formData));
 const filled = (defs: FieldDef[], values: Values) => defs.filter((f) => values[f.name] !== null && values[f.name] !== undefined).map((f) => f.name);

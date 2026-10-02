@@ -12,7 +12,8 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 2. ✅ Kelola organisasi, pengguna, kemitraan (v0.2)
 3. ✅ **Profil kandidat**: daftar, tambah, halaman detail, keputusan & catatan TSK, persetujuan data, dokumen, audit
 4. ✅ **Penilaian kandidat**: skema + RLS + tes (A) · UI LPK (B) · UI TSK (C)
-5. ⏭ Seleksi (job order, shortlist) · 6. Lembar client PDF (bahasa Jepang)
+5. ✅ **Klien (配属先) dan job order**: bidang kerja master, klien/lokasi/PIC milik TSK, job order, seleksi per job order, penempatan (fondasi langkah 7)
+6. ⏭ Lembar client PDF (bahasa Jepang)
 7. Pengingat dokumen kedaluwarsa · 8. Siap pilot (dummy 200 siswa) · 9. Demo ke TSK
 
 Keputusan penyimpanan file dokumen (langkah 3): **Docker named volume di disk**, bukan object storage.
@@ -90,6 +91,20 @@ Service `migrate` memasang volume `docs-data` + `STORAGE_DIR` supaya seed menuli
 Tes yang mengubah data kandidat WAJIB memakai kandidat uji sendiri (`createScratchCandidate` di `tests/e2e/helpers.ts`), bukan kandidat seed.
 `verify-rls.ts`: `sandbox()` berjalan lewat koneksi OWNER untuk mengosongkan turunan kandidat lalu `SET LOCAL ROLE hashi_app`.
 
+## Keputusan untuk langkah 7 (catatan kebutuhan, BELUM diimplementasikan)
+
+Fondasi datanya sudah ada (`placements`, klien/lokasi, job order). Kebutuhan dari staf TSK untuk modul pekerja aktif:
+
+- **LPK perlu melihat status visa dan tanggal tiba** pekerja setelah berangkat: tampilan baca-saja yang sangat terbatas, hanya dua hal itu (bukan klien, bukan job order, bukan penempatan).
+- **Penerima reminder 在留カード**: tiap pekerja punya satu staf penanggung jawab (担当); reminder dikirim ke dia dengan salinan ke Admin TSK sebagai cadangan.
+  Belum dikonfirmasi ke staf TSK.
+- **My Number**: hanya disimpan jika terbukti memang dibutuhkan dan sah. Kalau disimpan: kolom dienkripsi, opsional, hanya terlihat oleh Admin TSK, setiap akses tercatat di
+  audit, tidak masuk daftar, ekspor, PDF, atau log. Perlu dicek ke 行政書士 sebelum dipakai di data sungguhan.
+- **Jadwal reminder 在留カード** (dari spreadsheet TSK): mulai persiapan 4 bulan sebelum habis, pengajuan bisa dimulai 3 bulan sebelum habis, reminder H-30, H-14, H-7 dan setelah
+  lewat, berhenti saat tanggal terima kartu baru diisi.
+- Spreadsheet harian TSK (sheet 基本情報) menyimpan per pekerja: 配属先法人名, 配属先企業名, 就労開始日, 配属先企業住所, 配属先企業電話番号, 配属先企業担当者, 配属先企業担当者電話番号. Semuanya
+  sudah punya tempat di model (perusahaan, lokasi, PIC, penempatan.start_date).
+
 ## Batasan server
 
 OptiPlex bukan server khusus Hashi — ada layanan lain yang jalan di sana:
@@ -153,6 +168,24 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   = hari ini di Tokyo (`todayInTskTz`, sama dengan trigger). LPK_ADMIN melihat "Penilaian dari TSK" (baca saja, hanya yang dibagikan
   oleh kemitraan aktif; komponen mengembalikan null bila kosong); sensei: tidak dirender dan datanya tidak dibaca (tes cek DOM + HTML).
   Audit: jenis, periode, nama kolom, visibility dari/ke; tanpa isi catatan.
+- **Bidang kerja** (`skill_fields`, migration 0014): tabel master (kode stabil + nama id/ja + aktif + urutan), BUKAN enum/teks bebas. Dipakai
+  `candidates.field_id`, `client_site_fields`, `job_orders.field_id` (semua FK RESTRICT: yang dipakai tidak bisa dihapus). Baca: semua peran berkonteks;
+  tulis: hanya mode sistem (halaman super admin `/admin/skill-fields`). Form memakai FieldKind `skillField` (opsi dari `SkillFieldsProvider` di layout, label
+  mengikuti bahasa UI; bidang nonaktif hanya muncul bila sedang dipakai); server menolak bidang nonaktif untuk pilihan baru (`assertSkillFieldUsable`).
+- **Klien dan job order** (migration 0016-0017; `src/features/clients`, `src/features/job-orders`, `src/db/job-matching.ts`): semua tabel baru punya `org_id` TSK,
+  policy `client_owner(org_id)` (peran TSK di org sesi) / `client_owner_admin` (hapus: TSK_ADMIN). LPK, sensei, super admin (jalur aplikasi), peran null, TSK lain:
+  TIDAK bisa SELECT/INSERT/UPDATE/DELETE (UI: menu tidak ada, `notFound()` 404). Trigger menjaga rantai `org_id` (lokasi = perusahaannya, dst.), `org_id` tetap, job order
+  harus sebidang dengan bidang yang diterima lokasinya, lokasi job order tetap. Hapus perusahaan/lokasi/job order yang dirujuk = FK RESTRICT (pesan `inUse`).
+  `candidate_selections` kini satu baris per (kandidat, TSK, job order) dengan satu baris umum (`job_order_id` NULL; unique index NULLS NOT DISTINCT). CHECK
+  `candidate_selections_job_order_required`: PASSED_CLIENT_INTERVIEW / DOCUMENT_PROCESS / DEPARTED wajib job order (daftar eksplisit; di aplikasi
+  `JOB_ORDER_REQUIRED_DECISIONS`). "Keputusan" sebuah kandidat untuk daftar/hak edit/izin interview = keputusan PALING MAJU (view `candidate_headline_decision`,
+  peringkat eksplisit `selection_decision_rank`, security_invoker, tanpa job order): dipakai `candidate-list`, `getCandidateForAction`, dan seluruh sisi LPK. LPK TIDAK PERNAH
+  membaca `job_order_id`/klien (query LPK hanya lewat view; HTML dites). Audit data TSK lewat `auditTsk()` (log org TSK; nama kolom + id saja; id job order TIDAK masuk log LPK).
+  Keputusan DEPARTED membuat `placements` ACTIVE otomatis (trigger SECURITY DEFINER; unique parsial satu ACTIVE per kandidat; DEPARTED kedua saat ada ACTIVE ditolak);
+  `placements` ber-`candidate_id` (cascade saat kandidat dihapus, tercakup bagian I `verify-rls`), tidak bisa dihapus siapa pun, identitas tidak bisa diganti. Job order OPEN
+  menjadi FILLED otomatis saat terpilih >= posisi (`job_order_sync_status`; hanya arah itu, dibuka manual tidak dibalik sampai seleksi berubah). "Ajukan" (`proposeCandidate`) =
+  SUBMITTED_TO_CLIENT untuk job order itu (tidak menurunkan yang lebih maju; hanya job order OPEN; kandidat Mundur / sudah ditempatkan ditolak). Tes: `verify-rls` bagian M-O
+  (`sandbox()` + helper `decide()`/`newJobOrder()`), e2e `clients`, `job-orders`, `skill-fields`; tes yang butuh keputusan lanjut memakai `createScratchJobOrder`.
 - **Hapus kandidat permanen** (`candidates/delete-actions.ts`, `DeleteCandidate.tsx`, migration 0013): HANYA LPK_ADMIN pemilik, ditegakkan
   di UI (komponen tidak dirender untuk peran lain), server action (peran + organisasi + ketik nama/kode persis), RLS (`candidates_lpk_admin_delete`),
   dan trigger `candidates_block_delete` (BEFORE DELETE: menolak bila ada keputusan TSK DOCUMENT_PROCESS atau DEPARTED dari TSK mana pun, daftar

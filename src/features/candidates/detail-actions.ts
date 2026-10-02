@@ -22,6 +22,7 @@ import { ActionError } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
 import { requireUser, tenantQuery, type CurrentUser } from "@/lib/session";
 import { noteAuditEntry } from "@/db/audit-entries";
+import { upsertSelection } from "./selection";
 import { assertSkillFieldUsable, auditChange, ok, requireEditable, run, uuid } from "./guards";
 import { LIST_TABLES } from "./tables";
 import { EARLIEST_BIRTH_DATE, latestAllowedDate } from "./validation";
@@ -225,40 +226,26 @@ export async function setConsentDate(_prev: FormState, formData: FormData): Prom
   });
 }
 
-/** Keputusan TSK atas kandidat. Hanya peran TSK; menulis baris milik organisasi TSK-nya (RLS). */
+/**
+ * Keputusan TSK atas kandidat: umum, atau untuk satu job order (`jobOrderId`). Keputusan PASSED_CLIENT_INTERVIEW dan sesudahnya
+ * WAJIB punya job order (server, dan CHECK di database). Hanya peran TSK; menulis baris milik organisasi TSK-nya (RLS).
+ */
 export async function setDecision(_prev: FormState, formData: FormData): Promise<FormState> {
   return run(async (me) => {
     const decision = z.enum(selectionDecision.enumValues).safeParse(formData.get("decision"));
-    if (!isTskRole(me.role) || !decision.success || !uuid.safeParse(formData.get("candidateId")).success) {
+    const rawJob = formData.get("jobOrderId");
+    const jobOrderId = typeof rawJob === "string" && rawJob !== "" ? rawJob : null;
+    if (!isTskRole(me.role) || !decision.success || !uuid.safeParse(formData.get("candidateId")).success || (jobOrderId && !uuid.safeParse(jobOrderId).success)) {
       return { status: "error", key: "detail.errors.readOnly" };
     }
     await tenantQuery(async (tx) => {
       const cand = await getCandidateForAction(tx, me, formData.get("candidateId") as string);
       if (!cand) throw new ActionError("detail.errors.notFound");
-      if ((cand.myDecision ?? "NONE") === decision.data) return;
-      const done = await tx
-        .insert(candidateSelections)
-        .values({ candidateId: cand.id, tskOrgId: me.organizationId, decision: decision.data, decidedBy: me.id })
-        .onConflictDoUpdate({
-          target: [candidateSelections.candidateId, candidateSelections.tskOrgId],
-          set: { decision: decision.data, decidedBy: me.id, decidedAt: new Date() },
-        })
-        .returning({ id: candidateSelections.id });
-      if (done.length !== 1) throw new ActionError("detail.errors.readOnly");
-      await audit(tx, {
-        organizationId: cand.organizationId,
-        actorOrgId: me.organizationId,
-        candidateId: cand.id,
-        actorUserId: me.id,
-        action: "candidate.decision",
-        entity: "candidate_selection",
-        entityId: done[0].id,
-        before: { decision: cand.myDecision ?? "NONE" },
-        after: { decision: decision.data },
-      });
+      await upsertSelection(tx, me, cand, decision.data, jobOrderId);
     });
     revalidatePath(`/candidates/${formData.get("candidateId")}`);
     revalidatePath("/candidates");
+    revalidatePath("/job-orders", "layout");
     return ok("detail.decisionSaved");
   });
 }

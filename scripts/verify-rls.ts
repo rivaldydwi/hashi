@@ -24,6 +24,7 @@ import {
   candidateAssessments,
   candidateCertificates,
   candidateDocuments,
+  candidateHeadlineDecision,
   candidateEducations,
   candidateFamilyMembers,
   candidatePrivate,
@@ -36,8 +37,10 @@ import {
   clientSiteContacts,
   clientSiteFields,
   clientSites,
+  jobOrders,
   organizations,
   partnerships,
+  placements,
   selectionDecision,
   skillFields,
   users,
@@ -401,12 +404,34 @@ async function main() {
     await tx.insert(partnerships).values({ lpkId: lpk1.id, tskId: org.id });
     return org.id;
   }
-  const decide = (tx: Tx, candidateId: string, tskOrgId: string, decision: (typeof selectionDecision.enumValues)[number]) =>
-    tx
-      .insert(candidateSelections)
-      .values({ candidateId, tskOrgId, decision })
-      .onConflictDoUpdate({ target: [candidateSelections.candidateId, candidateSelections.tskOrgId], set: { decision } })
-      .returning();
+  // Keputusan yang WAJIB punya job order (sama dengan CHECK candidate_selections_job_order_required; daftar eksplisit)
+  const NEEDS_JOB_ORDER: readonly string[] = ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"];
+  /** Job order uji milik TSK tertentu (perusahaan + lokasi yang menerima bidang "food" + job order). */
+  async function newJobOrder(tx: Tx, tskOrgId: string): Promise<string> {
+    const [food] = await tx.select({ id: skillFields.id }).from(skillFields).where(eq(skillFields.code, "food"));
+    const [co] = await tx.insert(clientCompanies).values({ orgId: tskOrgId, name: `Uji ${uniq()}` }).returning({ id: clientCompanies.id });
+    const [si] = await tx.insert(clientSites).values({ orgId: tskOrgId, companyId: co.id, name: `Lokasi ${uniq()}` }).returning({ id: clientSites.id });
+    await tx.insert(clientSiteFields).values({ siteId: si.id, fieldId: food.id, orgId: tskOrgId });
+    const [jo] = await tx.insert(jobOrders).values({ orgId: tskOrgId, siteId: si.id, fieldId: food.id, title: `Job order uji ${uniq()}`, positions: 50 }).returning({ id: jobOrders.id });
+    return jo.id;
+  }
+  const selValues = async (tx: Tx, candidateId: string, tskOrgId: string, decision: (typeof selectionDecision.enumValues)[number]) => ({
+    candidateId,
+    tskOrgId,
+    decision,
+    jobOrderId: NEEDS_JOB_ORDER.includes(decision) ? await newJobOrder(tx, tskOrgId) : null,
+  });
+  /**
+   * "Ganti keputusan" = hapus baris lama kandidat x TSK itu (dan penempatannya) sebagai owner, lalu tulis satu baris baru. (Model baru:
+   * satu baris per job order, jadi upsert lama tidak cukup; hapus dilakukan lewat RESET ROLE karena hashi_app tidak punya DELETE.)
+   */
+  const decide = async (tx: Tx, candidateId: string, tskOrgId: string, decision: (typeof selectionDecision.enumValues)[number]) => {
+    await tx.execute(sql`reset role`);
+    await tx.execute(sql`delete from placements where candidate_id = ${candidateId}`);
+    await tx.execute(sql`delete from candidate_selections where candidate_id = ${candidateId} and tsk_org_id = ${tskOrgId}`);
+    await tx.execute(sql`set local role hashi_app`);
+    return tx.insert(candidateSelections).values(await selValues(tx, candidateId, tskOrgId, decision)).returning();
+  };
 
   // --- A. Siapa boleh MEMBACA apa (data sensitif & dokumen) ---
   type Seen = { priv: string[]; docs: number; family: number; edu: number; cert: number; cands: number };
@@ -1141,7 +1166,7 @@ async function main() {
   // --- I. Berbagi ke TSK (shared_with_tsk): gerbang tunggal visibilitas TSK, di SEMUA tabel turunan ---
   const sh: Record<string, unknown> = {};
   const lpkAdminUser = allUsers.find((u) => u.role === "LPK_ADMIN" && u.organizationId === lpk1.id)!;
-  type Counts = { cand: number; priv: number; fam: number; edu: number; work: number; cert: number; docs: number; sel: number; notes: number; assess: number };
+  type Counts = { cand: number; priv: number; fam: number; edu: number; work: number; cert: number; docs: number; sel: number; notes: number; assess: number; plc: number };
   await sandbox(async (tx) => {
     // Data lengkap di setiap tabel turunan untuk ready1, plus keputusan TSK yang membuka hak edit
     await tx.insert(candidatePrivate).values({ candidateId: ready1.id, nationalId: NIK });
@@ -1150,7 +1175,7 @@ async function main() {
     await tx.insert(candidateWorkHistories).values({ candidateId: ready1.id, companyName: "PT Uji" });
     await tx.insert(candidateCertificates).values({ candidateId: ready1.id, type: "JLPT", levelOrField: "N4" });
     await tx.insert(candidateDocuments).values(sampleDoc(ready1.id));
-    await decide(tx, ready1.id, tsk.id, "PASSED_CLIENT_INTERVIEW");
+    await decide(tx, ready1.id, tsk.id, "DEPARTED"); // membuka hak edit DAN membuat penempatan ACTIVE (trigger)
     // Penilaian (baris uji bertahun 2020; baris seed bulan-bulan terakhir tidak dihitung): 1 LPK_MONTHLY + 2 TSK_VISIT (satu dibagikan)
     await tx.insert(candidateAssessments).values([
       { candidateId: ready1.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessorId: lpkAdminUser.id, assessedOn: "2020-06-10" },
@@ -1175,6 +1200,7 @@ async function main() {
         sel: await n(tx.select().from(candidateSelections).where(eq(candidateSelections.candidateId, ready1.id))),
         notes: await n(tx.select().from(candidateNotes).where(eq(candidateNotes.candidateId, ready1.id))),
         assess: await n(tx.select().from(candidateAssessments).where(and(eq(candidateAssessments.candidateId, ready1.id), lt(candidateAssessments.period, "2021-01-01")))),
+        plc: await n(tx.select().from(placements).where(eq(placements.candidateId, ready1.id))),
       };
       sh[label] = c;
     };
@@ -1231,13 +1257,13 @@ async function main() {
     // Tidak ada yang tertinggal: policy/fungsi lama yang menyebut data_consent_date, dan tabel baru ber-candidate_id
     const pol = await tx.execute(sql`select tablename, policyname from pg_policies where schemaname = 'public' and (coalesce(qual, '') like '%data_consent_date%' or coalesce(with_check, '') like '%data_consent_date%')`);
     const fns = await tx.execute(sql`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosrc like '%data_consent_date%' order by 1`);
-    const tabs = await tx.execute(sql`select distinct table_name from information_schema.columns where table_schema = 'public' and column_name = 'candidate_id' order by 1`);
+    const tabs = await tx.execute(sql`select distinct c.table_name from information_schema.columns c join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name where c.table_schema = 'public' and c.column_name = 'candidate_id' and t.table_type = 'BASE TABLE' order by 1`);
     sh.leftoverPolicies = pol.rows.map((r) => `${r.tablename}.${r.policyname}`);
     sh.leftoverFns = fns.rows.map((r) => String(r.proname));
     sh.candidateTables = tabs.rows.map((r) => String(r.table_name));
   });
-  const FULL_ON: Counts = { cand: 1, priv: 1, fam: 1, edu: 1, work: 1, cert: 1, docs: 1, sel: 1, notes: 2, assess: 3 };
-  const ZERO: Counts = { cand: 0, priv: 0, fam: 0, edu: 0, work: 0, cert: 0, docs: 0, sel: 0, notes: 0, assess: 0 };
+  const FULL_ON: Counts = { cand: 1, priv: 1, fam: 1, edu: 1, work: 1, cert: 1, docs: 1, sel: 1, notes: 2, assess: 3, plc: 1 };
+  const ZERO: Counts = { cand: 0, priv: 0, fam: 0, edu: 0, work: 0, cert: 0, docs: 0, sel: 0, notes: 0, assess: 0, plc: 0 };
   const J = JSON.stringify;
   check(
     "Dibagikan: TSK melihat kandidat dan SEMUA tabel turunannya (data sensitif, keluarga, pendidikan, kerja, sertifikat, dokumen, keputusan, catatan)",
@@ -1247,7 +1273,7 @@ async function main() {
   check(
     "Dimatikan: TSK (admin dan staf) tidak melihat apa pun di SEMUA tabel itu; LPK tetap melihat datanya sendiri",
     J(sh["off/tsk"]) === J(ZERO) && J(sh["off/tsk-staff"]) === J(ZERO) &&
-      J(sh["off/lpk"]) === J({ ...FULL_ON, notes: 0, assess: 1 }),
+      J(sh["off/lpk"]) === J({ ...FULL_ON, notes: 0, assess: 1, plc: 0 }), // LPK tidak pernah membaca penempatan
     `TSK: ${J(sh["off/tsk"])} | LPK: ${J(sh["off/lpk"])}`,
   );
   check(
@@ -1285,7 +1311,7 @@ async function main() {
     J(sh.leftoverPolicies) === "[]" && J(sh.leftoverFns) === J(["enforce_tsk_cannot_change_lpk_fields"]),
     `${J(sh.leftoverPolicies)} ${J(sh.leftoverFns)}`,
   );
-  const covered = ["audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories"];
+  const covered = ["audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories", "placements"];
   check(
     "Tuntas: setiap tabel ber-candidate_id sudah tercakup tes berbagi (tabel baru ber-candidate_id harus ditambahkan ke bagian I)",
     J(sh.candidateTables) === J(covered),
@@ -1689,7 +1715,10 @@ async function main() {
       await tx.insert(candidateWorkHistories).values({ candidateId: c.id, companyName: "PT Uji" });
       await tx.insert(candidateCertificates).values({ candidateId: c.id, type: "JLPT", levelOrField: "N4" });
       await tx.insert(candidateDocuments).values([sampleDoc(c.id), sampleDoc(c.id)]);
-      await tx.insert(candidateSelections).values({ candidateId: c.id, tskOrgId: tsk.id, decision: "PASSED_TSK_INTERVIEW" });
+      const sel = await selValues(tx, c.id, tsk.id, "PASSED_CLIENT_INTERVIEW"); // dengan job order (bukan keputusan pemblokir)
+      await tx.insert(candidateSelections).values(sel);
+      const [joRow] = await tx.select({ s: jobOrders.siteId }).from(jobOrders).where(eq(jobOrders.id, sel.jobOrderId!));
+      await tx.insert(placements).values({ candidateId: c.id, orgId: tsk.id, siteId: joRow.s, jobOrderId: sel.jobOrderId, startDate: "2020-01-01", endDate: "2020-06-01", status: "ENDED" });
       await tx.insert(candidateNotes).values([{ candidateId: c.id, tskOrgId: tsk.id, body: "catatan uji", visibility: "TSK_ONLY" }, { candidateId: c.id, tskOrgId: tsk.id, body: "catatan dibagikan", visibility: "SHARED_WITH_LPK" }]);
       await tx.insert(candidateAssessments).values([
         { candidateId: c.id, orgId: lpk1.id, kind: "LPK_MONTHLY", assessedOn: "2020-01-10", assessorId: lpkAdminUser.id },
@@ -1751,7 +1780,7 @@ async function main() {
     // ---- Blokir: keputusan DOCUMENT_PROCESS / DEPARTED menolak hapus (LPK_ADMIN pemilik DAN sistem); keputusan lain boleh
     for (const d of selectionDecision.enumValues) {
       const c = await mk(`B-${d}`);
-      await tx.insert(candidateSelections).values({ candidateId: c.id, tskOrgId: tsk.id, decision: d });
+      await tx.insert(candidateSelections).values(await selValues(tx, c.id, tsk.id, d));
       await actAs(tx, lpk1.id, "LPK_ADMIN");
       const r = await rowsOf(tx, (t) => t.delete(candidates).where(eq(candidates.id, c.id)).returning({ id: candidates.id }));
       const stillThere = (await tx.select().from(candidates).where(eq(candidates.id, c.id))).length;
@@ -1766,7 +1795,7 @@ async function main() {
     }
     // TSK lain yang memegang keputusan DEPARTED juga memblokir (trigger membaca keputusan SEMUA TSK, bukan hanya milik sesi)
     const D = await mk("TSKB");
-    await tx.insert(candidateSelections).values([{ candidateId: D.id, tskOrgId: tsk.id, decision: "NONE" }, { candidateId: D.id, tskOrgId: tskB, decision: "DEPARTED" }]);
+    await tx.insert(candidateSelections).values([{ candidateId: D.id, tskOrgId: tsk.id, decision: "NONE" }, await selValues(tx, D.id, tskB, "DEPARTED")]);
     await actAs(tx, lpk1.id, "LPK_ADMIN");
     const viaOther = await rowsOf(tx, (t) => t.delete(candidates).where(eq(candidates.id, D.id)).returning({ id: candidates.id }));
     del.blockOtherTsk = viaOther.err !== null && /tidak bisa dihapus/.test(viaOther.err);
@@ -1775,7 +1804,7 @@ async function main() {
     // ---- Jalur sah lain tidak terhalang: hapus organisasi (cascade) walau ada kandidat DEPARTED
     const [orgX] = await tx.insert(organizations).values({ name: "LPK Uji Cascade", type: "LPK", country: "ID", defaultLocale: "id" }).returning();
     const [cx] = await tx.insert(candidates).values({ organizationId: orgX.id, fullName: "Cascade Uji", gender: "MALE", birthDate: "2000-01-01", }).returning();
-    await tx.insert(candidateSelections).values({ candidateId: cx.id, tskOrgId: tsk.id, decision: "DEPARTED" });
+    await tx.insert(candidateSelections).values(await selValues(tx, cx.id, tsk.id, "DEPARTED"));
     del.orgCascade = await attempt(tx, (t) => t.delete(organizations).where(eq(organizations.id, orgX.id)));
     del.orgCascadeGone = (await tx.select().from(candidates).where(eq(candidates.id, cx.id))).length;
   });
@@ -1796,8 +1825,8 @@ async function main() {
   check(
     "Hapus kandidat: ringkasan jumlah data hanya untuk LPK_ADMIN pemilik (peran/organisasi lain mendapat NULL), angkanya cocok",
     attemptsLabels.every((l) => del[`summary/${l}`] === null) &&
-      JSON.stringify(Object.entries(del.summary as object).sort()) === JSON.stringify(Object.entries({ documents: 2, assessmentsLpk: 1, assessmentsTsk: 1, notes: 2, selections: 1, privateRows: 1, family: 1, educations: 1, works: 1, certificates: 1, blocked: false }).sort()),
-    JSON.stringify(attemptsLabels.map((l) => `${l}:${JSON.stringify(del[`summary/${l}`])}`)),
+      JSON.stringify(Object.entries(del.summary as object).sort()) === JSON.stringify(Object.entries({ documents: 2, assessmentsLpk: 1, assessmentsTsk: 1, notes: 2, selections: 1, placements: 1, privateRows: 1, family: 1, educations: 1, works: 1, certificates: 1, blocked: false }).sort()),
+    JSON.stringify([del.summary, ...attemptsLabels.map((l) => `${l}:${JSON.stringify(del[`summary/${l}`])}`)]),
   );
   check("Hapus kandidat: DELETE tanpa WHERE oleh LPK_ADMIN hanya menyentuh organisasinya; tanpa pembatas ditolak trigger karena ada kandidat diproses/berangkat", del.ownOrgOnly === true && typeof del.nowhereOwner === "string" && /tidak bisa dihapus/.test(String(del.nowhereOwner)), String(del.nowhereOwner ?? ""));
   check(
@@ -1875,6 +1904,8 @@ async function main() {
     const a = await mkSet(tsk.id, "A");
     const b = await mkSet(tskB, "B");
     clientIds = { aCompany: a.co, aSite: a.si, aContact: a.ct, bCompany: b.co, bSite: b.si, tskB };
+    // Seed demo sudah punya klien TSK A (perusahaan, lokasi, PIC, job order): jumlah milik A dihitung, bukan diasumsikan 1
+    cl.aCounts = Object.fromEntries(await Promise.all(clientTables.map(async ([name, table]) => [name, (await tx.select().from(table).where(eq((table as typeof clientCompanies).orgId, tsk.id))).length]))) as Record<string, unknown>;
     const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
     const actors: Array<[string, string, string | null, string | null]> = [
       ["tskAdminA", tsk.id, "TSK_ADMIN", tskAdminUser.id],
@@ -1949,33 +1980,36 @@ async function main() {
     };
   });
   const noAccess = ["lpkAdmin", "sensei", "superAdmin", "roleNull"];
+  const aC = cl.aCounts as Record<string, number>;
   const rowsOk = (who: string, expectRead: Record<string, number>) => clientTables.every(([n]) => cl[who][`read/${n}`] === expectRead[n]);
   const own1 = { companies: 1, sites: 1, contacts: 1, siteFields: 1 };
   const none4 = { companies: 0, sites: 0, contacts: 0, siteFields: 0 };
   check(
     "Klien: LPK_ADMIN, sensei, super admin (jalur aplikasi) dan peran null tidak bisa SELECT satu baris pun; TSK hanya melihat milik organisasinya (A dan B terpisah)",
-    noAccess.every((w) => rowsOk(w, none4)) && rowsOk("tskAdminA", own1) && rowsOk("tskStaffA", own1) && rowsOk("tskAdminB", own1),
+    noAccess.every((w) => rowsOk(w, none4)) && rowsOk("tskAdminA", aC) && rowsOk("tskStaffA", aC) && rowsOk("tskAdminB", own1) && aC.companies > 1,
     JSON.stringify(Object.fromEntries(["tskAdminA", "tskAdminB", "lpkAdmin"].map((w) => [w, clientTables.map(([n]) => cl[w][`read/${n}`]).join("/")]))),
   );
   check(
     "Klien: INSERT ditolak untuk LPK, sensei, super admin, peran null, dan TSK lain; diterima untuk TSK_ADMIN dan TSK_STAFF pemilik",
     noAccess.concat(["tskAdminB"]).every((w) => ["insertCompany", "insertSite", "insertContact"].every((k) => typeof cl[w][k] === "string" && /row-level security|tidak bisa|harus milik|hanya boleh dimiliki/i.test(String(cl[w][k])))) &&
       ["tskAdminA", "tskStaffA"].every((w) => ["insertCompany", "insertSite", "insertContact"].every((k) => cl[w][k] === null)),
-    JSON.stringify(Object.fromEntries(["lpkAdmin", "sensei", "superAdmin", "roleNull", "tskAdminB", "tskAdminA", "tskStaffA"].map((w) => [w, ["insertCompany", "insertSite", "insertContact"].map((k) => (cl[w][k] === null ? "ok" : String(cl[w][k]).slice(0, 50))).join(" | ")]))),
   );
-  const onlyA = (arr: unknown) => Array.isArray(arr) && arr.length === 3 && arr.every((x) => String(x).endsWith(tsk.id));
+  const ownerEnd = (id: string) => (arr: unknown, n: number) => Array.isArray(arr) && arr.length === n && arr.every((x) => String(x).endsWith(id));
   check(
     "Klien: UPDATE tanpa WHERE hanya mengenai baris milik TSK yang bersangkutan (LPK, sensei, super admin, peran null tidak sama sekali; TSK B tidak menyentuh A)",
-    noAccess.every((w) => (cl[w].updated as unknown[]).length === 0) && onlyA(cl.tskAdminA.updated) && onlyA(cl.tskStaffA.updated) &&
-      (cl.tskAdminB.updated as string[]).length === 3 && (cl.tskAdminB.updated as string[]).every((x) => clientIds && x.endsWith(clientIds.tskB)),
+    noAccess.every((w) => (cl[w].updated as unknown[]).length === 0) &&
+      ownerEnd(tsk.id)(cl.tskAdminA.updated, aC.companies + aC.sites + aC.contacts) && ownerEnd(tsk.id)(cl.tskStaffA.updated, aC.companies + aC.sites + aC.contacts) &&
+      ownerEnd(clientIds!.tskB)(cl.tskAdminB.updated, 3),
   );
   const tot = cl.total as Record<string, number>;
   check(
-    "Klien: DELETE tanpa WHERE: TSK_STAFF tidak menghapus perusahaan, lokasi, maupun PIC (hanya baris bidang lokasi); TSK_ADMIN hanya milik TSK-nya; LPK, sensei, super admin, peran null tidak sama sekali",
+    "Klien: DELETE tanpa WHERE: TSK_STAFF tidak menghapus perusahaan, lokasi, maupun PIC (hanya baris bidang lokasi); TSK_ADMIN hanya milik TSK-nya, dan perusahaan/lokasi yang punya job order tidak terhapus (FK RESTRICT); LPK, sensei, super admin, peran null tidak sama sekali",
     noAccess.every((w) => clientTables.every(([n]) => cl[w][`deleted/${n}`] === tot[n])) &&
-      cl.tskStaffA["deleted/companies"] === tot.companies && cl.tskStaffA["deleted/sites"] === tot.sites && cl.tskStaffA["deleted/contacts"] === tot.contacts && cl.tskStaffA["deleted/siteFields"] === tot.siteFields - 1 &&
-      clientTables.every(([n]) => cl.tskAdminA[`deleted/${n}`] === tot[n] - 1 && cl.tskAdminB[`deleted/${n}`] === tot[n] - 1),
-    JSON.stringify(Object.fromEntries(["tskStaffA", "tskAdminA"].map((w) => [w, clientTables.map(([n]) => `${n}:${cl[w][`deleted/${n}`]}/${tot[n]}`).join(" ")]))),
+      cl.tskStaffA["deleted/companies"] === tot.companies && cl.tskStaffA["deleted/sites"] === tot.sites && cl.tskStaffA["deleted/contacts"] === tot.contacts && cl.tskStaffA["deleted/siteFields"] === tot.siteFields - aC.siteFields &&
+      cl.tskAdminA["deleted/companies"] === tot.companies && cl.tskAdminA["deleted/sites"] === tot.sites && // ditolak FK: A punya job order (seed)
+      cl.tskAdminA["deleted/contacts"] === tot.contacts - aC.contacts && cl.tskAdminA["deleted/siteFields"] === tot.siteFields - aC.siteFields &&
+      clientTables.every(([n]) => cl.tskAdminB[`deleted/${n}`] === tot[n] - 1), // B tidak punya job order: terhapus semua (miliknya)
+    JSON.stringify(Object.fromEntries(["tskStaffA", "tskAdminA", "tskAdminB"].map((w) => [w, clientTables.map(([n]) => `${n}:${cl[w][`deleted/${n}`]}/${tot[n]}`).join(" ")]))),
   );
   const ig = cl.integrity as Record<string, string | null>;
   check(
@@ -1984,6 +2018,205 @@ async function main() {
       ig.okNumber === null && /tidak bisa diganti/.test(String(ig.orgChange)) && /tidak bisa dipindah/.test(String(ig.siteMove)) && /hanya boleh dimiliki organisasi TSK/.test(String(ig.lpkOwner)) &&
       /client_companies_corporate_number_check/.test(String(ig.badNumber)) && /foreign key|violates/i.test(String(ig.deleteUsedField)),
     JSON.stringify(Object.fromEntries(Object.entries(ig).map(([k, v]) => [k, v === null ? "ok" : String(v).slice(0, 40)]))),
+  );
+
+  // --- O. Job order, seleksi per job order, dan penempatan ---
+  const jr: Record<string, Record<string, unknown>> = {};
+  const jx: Record<string, unknown> = {};
+  let tskBId = "";
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    tskBId = tskB;
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    const aJo = await newJobOrder(tx, tsk.id);
+    const bJo = await newJobOrder(tx, tskB);
+    const fresh = await newJobOrder(tx, tsk.id); // tidak dirujuk apa pun: boleh dihapus TSK_ADMIN
+    const [aSiteRow] = await tx.select({ s: jobOrders.siteId }).from(jobOrders).where(eq(jobOrders.id, aJo));
+    // Penempatan uji untuk TSK A dan B (ENDED supaya tidak mengganggu aturan ACTIVE; sebagai sistem)
+    const [candA] = await tx.select({ id: candidates.id }).from(candidates).where(eq(candidates.id, studying1.id));
+    const [bSiteRow] = await tx.select({ s: jobOrders.siteId }).from(jobOrders).where(eq(jobOrders.id, bJo));
+    await tx.insert(placements).values([
+      { candidateId: candA.id, orgId: tsk.id, siteId: aSiteRow.s, jobOrderId: aJo, startDate: "2020-01-01", endDate: "2020-12-31", status: "ENDED" },
+      { candidateId: candA.id, orgId: tskB, siteId: bSiteRow.s, jobOrderId: bJo, startDate: "2020-01-01", endDate: "2020-12-31", status: "ENDED" },
+    ]);
+    const actors: Array<[string, string, string | null, string | null]> = [
+      ["tskAdminA", tsk.id, "TSK_ADMIN", tskAdminUser.id],
+      ["tskStaffA", tsk.id, "TSK_STAFF", staffUser.id],
+      ["tskAdminB", tskB, "TSK_ADMIN", adminB],
+      ["lpkAdmin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id],
+      ["sensei", lpk1.id, "LPK_SENSEI", lpkAdminUser.id],
+      ["superAdmin", platformOrg.id, "SUPER_ADMIN", null],
+      ["roleNull", tsk.id, null, null],
+    ];
+    const MARK = "DITANDAI-JO";
+    for (const [who, org, role, uid] of actors) {
+      jr[who] = {};
+      await actAs(tx, org, role, uid);
+      jr[who].readJo = (await tx.select().from(jobOrders)).length;
+      jr[who].readPl = (await tx.select().from(placements)).length;
+      jr[who].readView = (await tx.select().from(candidateHeadlineDecision)).length;
+      await scratch(tx, async (sp) => {
+        await actAs(sp, org, role, uid);
+        jr[who].insertJo = await attempt(sp, async (t) => {
+          await t.insert(jobOrders).values({ orgId: tsk.id, siteId: aSiteRow.s, fieldId: (await t.select({ id: skillFields.id }).from(skillFields).where(eq(skillFields.code, "food")))[0].id, title: `Baru ${who}`, positions: 1 });
+        });
+        jr[who].insertPl = await attempt(sp, (t) => t.insert(placements).values({ candidateId: candA.id, orgId: tsk.id, siteId: aSiteRow.s, startDate: "2021-01-01", endDate: "2021-02-01", status: "ENDED" }));
+        await attempt(sp, (t) => t.update(jobOrders).set({ note: MARK }));
+        await attempt(sp, (t) => t.update(placements).set({ note: MARK }));
+        await actAsSystem(sp);
+        jr[who].updatedJo = (await sp.select({ o: jobOrders.orgId }).from(jobOrders).where(eq(jobOrders.note, MARK))).map((r) => r.o);
+        jr[who].updatedPl = (await sp.select({ o: placements.orgId }).from(placements).where(eq(placements.note, MARK))).map((r) => r.o);
+      });
+      await scratch(tx, async (sp) => {
+        await actAs(sp, org, role, uid);
+        jr[who].deleteFresh = (await rowsOf(sp, (t) => t.delete(jobOrders).where(eq(jobOrders.id, fresh)).returning({ id: jobOrders.id }))).n;
+        jr[who].deletePlAll = (await rowsOf(sp, (t) => t.delete(placements).returning({ id: placements.id }))).n;
+        jr[who].deleteJoAll = await attempt(sp, (t) => t.delete(jobOrders)); // seed: job order dirujuk seleksi -> admin A ditolak FK; B bersih
+        await actAsSystem(sp);
+        jr[who].joLeft = (await sp.select().from(jobOrders)).length;
+      });
+    }
+    await actAsSystem(tx);
+    jx.totalJo = (await tx.select().from(jobOrders)).length;
+    jx.totalPl = (await tx.select().from(placements)).length;
+    jx.aJoCount = (await tx.select().from(jobOrders).where(eq(jobOrders.orgId, tsk.id))).length;
+    jx.aPlCount = (await tx.select().from(placements).where(eq(placements.orgId, tsk.id))).length;
+
+    // ---- Aturan job_order_id pada seleksi (kandidat uji: studying1; sebagai sistem)
+    const cand = studying1.id;
+    const clearSel = async () => {
+      await tx.execute(sql`reset role`);
+      await tx.execute(sql`delete from placements where candidate_id = ${cand} and status = 'ACTIVE'`);
+      await tx.execute(sql`delete from candidate_selections where candidate_id = ${cand}`);
+      await tx.execute(sql`set local role hashi_app`);
+      await actAsSystem(tx);
+    };
+    await clearSel();
+    for (const d of selectionDecision.enumValues) {
+      await clearSel();
+      jx[`noJo/${d}`] = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: cand, tskOrgId: tsk.id, decision: d }));
+    }
+    await clearSel();
+    jx.otherTskJo = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: cand, tskOrgId: tsk.id, decision: "SUBMITTED_TO_CLIENT", jobOrderId: bJo }));
+    jx.firstGeneral = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: cand, tskOrgId: tsk.id, decision: "SHORTLISTED" }));
+    jx.secondGeneral = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: cand, tskOrgId: tsk.id, decision: "NONE" }));
+    jx.perJo1 = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: cand, tskOrgId: tsk.id, decision: "SUBMITTED_TO_CLIENT", jobOrderId: aJo }));
+    jx.perJoDup = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: cand, tskOrgId: tsk.id, decision: "REJECTED", jobOrderId: aJo }));
+    const jo2 = await newJobOrder(tx, tsk.id);
+    jx.perJo2 = await attempt(tx, (t) => t.insert(candidateSelections).values({ candidateId: cand, tskOrgId: tsk.id, decision: "SUBMITTED_TO_CLIENT", jobOrderId: jo2 }));
+    jx.moveJo = await attempt(tx, (t) => t.update(candidateSelections).set({ jobOrderId: jo2 }).where(and(eq(candidateSelections.candidateId, cand), eq(candidateSelections.jobOrderId, aJo))));
+    jx.headline = (await tx.select().from(candidateHeadlineDecision).where(and(eq(candidateHeadlineDecision.candidateId, cand), eq(candidateHeadlineDecision.tskOrgId, tsk.id)))).map((r) => r.decision);
+
+    // ---- DEPARTED membuat penempatan ACTIVE; satu ACTIVE per kandidat
+    await tx.update(candidateSelections).set({ decision: "DEPARTED" }).where(and(eq(candidateSelections.candidateId, cand), eq(candidateSelections.jobOrderId, aJo)));
+    const active = await tx.select().from(placements).where(and(eq(placements.candidateId, cand), eq(placements.status, "ACTIVE")));
+    jx.activeCount = active.length;
+    jx.activeSite = active[0]?.siteId === aSiteRow.s && active[0]?.jobOrderId === aJo && active[0]?.orgId === tsk.id;
+    jx.departedAgain = await attempt(tx, (t) => t.update(candidateSelections).set({ decision: "DEPARTED" }).where(and(eq(candidateSelections.candidateId, cand), eq(candidateSelections.jobOrderId, jo2))));
+    jx.dupActive = await attempt(tx, (t) => t.insert(placements).values({ candidateId: cand, orgId: tsk.id, siteId: aSiteRow.s, startDate: "2022-01-01" }));
+    jx.endNoDate = await attempt(tx, (t) => t.update(placements).set({ status: "ENDED" }).where(eq(placements.id, active[0].id)));
+    jx.endOk = await attempt(tx, (t) => t.update(placements).set({ status: "ENDED", endDate: "2030-01-01" }).where(eq(placements.id, active[0].id)));
+    const [otherCand] = await tx.select({ id: candidates.id }).from(candidates).where(and(eq(candidates.organizationId, lpk1.id), ne(candidates.id, cand))).limit(1);
+    jx.moveSite = await attempt(tx, (t) => t.update(placements).set({ candidateId: otherCand.id }).where(eq(placements.id, active[0].id)));
+    jx.newActiveAfterEnd = await attempt(tx, (t) => t.insert(placements).values({ candidateId: cand, orgId: tsk.id, siteId: aSiteRow.s, startDate: "2031-01-01" }));
+
+    // ---- Auto FILLED (OPEN -> FILLED bila terpilih >= posisi), dibuka manual tidak dibalik otomatis
+    await clearSel();
+    const fillJo = await newJobOrder(tx, tsk.id);
+    await tx.update(jobOrders).set({ positions: 2 }).where(eq(jobOrders.id, fillJo));
+    const cands = (await tx.select({ id: candidates.id }).from(candidates).where(eq(candidates.organizationId, lpk1.id)).limit(3)).map((c) => c.id);
+    const statusOf = async () => (await tx.select({ s: jobOrders.status }).from(jobOrders).where(eq(jobOrders.id, fillJo)))[0].s;
+    await tx.insert(candidateSelections).values({ candidateId: cands[0], tskOrgId: tsk.id, decision: "PASSED_CLIENT_INTERVIEW", jobOrderId: fillJo });
+    jx.fill1 = await statusOf();
+    await tx.insert(candidateSelections).values({ candidateId: cands[1], tskOrgId: tsk.id, decision: "SUBMITTED_TO_CLIENT", jobOrderId: fillJo });
+    jx.fillSubmitted = await statusOf();
+    await tx.update(candidateSelections).set({ decision: "DOCUMENT_PROCESS" }).where(and(eq(candidateSelections.candidateId, cands[1]), eq(candidateSelections.jobOrderId, fillJo)));
+    jx.fill2 = await statusOf();
+    await tx.update(jobOrders).set({ status: "OPEN" }).where(eq(jobOrders.id, fillJo));
+    jx.reopened = await statusOf(); // dibuka manual: tetap OPEN walau penuh
+    await tx.update(candidateSelections).set({ decision: "PASSED_CLIENT_INTERVIEW" }).where(and(eq(candidateSelections.candidateId, cands[1]), eq(candidateSelections.jobOrderId, fillJo)));
+    jx.fillAgain = await statusOf();
+    await tx.update(jobOrders).set({ status: "CLOSED" }).where(eq(jobOrders.id, fillJo));
+    await tx.update(candidateSelections).set({ decision: "DOCUMENT_PROCESS" }).where(and(eq(candidateSelections.candidateId, cands[1]), eq(candidateSelections.jobOrderId, fillJo)));
+    jx.closedStays = await statusOf(); // CLOSED tidak pernah berubah otomatis
+    await tx.update(jobOrders).set({ status: "OPEN", positions: 1 }).where(eq(jobOrders.id, fillJo));
+    jx.positionsDown = await statusOf(); // posisi diturunkan sambil OPEN: terpilih 2 >= 1 -> FILLED
+
+    // ---- Penjaga job order: bidang harus diterima lokasi; lokasi/organisasi tidak bisa diganti
+    const [agri] = await tx.select({ id: skillFields.id }).from(skillFields).where(eq(skillFields.code, "agri"));
+    jx.fieldNotAccepted = await attempt(tx, (t) => t.update(jobOrders).set({ fieldId: agri.id }).where(eq(jobOrders.id, aJo)));
+    jx.siteChange = await attempt(tx, (t) => t.update(jobOrders).set({ siteId: bSiteRow.s }).where(eq(jobOrders.id, aJo)));
+    jx.orgChange = await attempt(tx, (t) => t.update(jobOrders).set({ orgId: tskB }).where(eq(jobOrders.id, aJo)));
+    jx.badPositions = await attempt(tx, (t) => t.update(jobOrders).set({ positions: 0 }).where(eq(jobOrders.id, aJo)));
+    jx.badJlpt = await attempt(tx, (t) => t.update(jobOrders).set({ minJlpt: "N9" }).where(eq(jobOrders.id, aJo)));
+    // Site/perusahaan yang punya job order tidak bisa dihapus (FK RESTRICT)
+    jx.deleteSiteWithJo = await attempt(tx, (t) => t.delete(clientSites).where(eq(clientSites.id, aSiteRow.s)));
+    jx.deleteJoWithSelection = await attempt(tx, (t) => t.delete(jobOrders).where(eq(jobOrders.id, aJo)));
+    // View keputusan paling maju: tidak memuat job_order_id, dan LPK hanya melihat kandidatnya
+    const cols = await tx.execute(sql`select column_name from information_schema.columns where table_name = 'candidate_headline_decision' order by ordinal_position`);
+    jx.viewCols = cols.rows.map((r) => String(r.column_name));
+  });
+  const JA = "tskAdminA", JS = "tskStaffA", JB = "tskAdminB";
+  const lpkLike = ["lpkAdmin", "sensei", "superAdmin", "roleNull"];
+  check(
+    "Job order & penempatan: LPK_ADMIN, sensei, super admin (jalur aplikasi) dan peran null tidak bisa SELECT satu baris pun; TSK hanya melihat milik organisasinya",
+    lpkLike.every((w) => jr[w].readJo === 0 && jr[w].readPl === 0) && jr[JA].readJo === jx.aJoCount && jr[JS].readJo === jx.aJoCount && jr[JA].readPl === jx.aPlCount && jr[JB].readJo === 1 && jr[JB].readPl === 1,
+    `A: ${jr[JA].readJo}/${jr[JA].readPl}, B: ${jr[JB].readJo}/${jr[JB].readPl}`,
+  );
+  check(
+    "Job order & penempatan: INSERT ditolak untuk LPK, sensei, super admin, peran null, dan TSK lain; job order boleh dibuat TSK_ADMIN/TSK_STAFF pemilik; penempatan tidak bisa dibuat TSK (hanya trigger)",
+    lpkLike.concat([JB]).every((w) => typeof jr[w].insertJo === "string") && [JA, JS].every((w) => jr[w].insertJo === null) &&
+      lpkLike.concat([JA, JS, JB]).every((w) => typeof jr[w].insertPl === "string" && /row-level security/i.test(String(jr[w].insertPl))),
+  );
+  const only = (arr: unknown, org: string) => Array.isArray(arr) && arr.length > 0 && arr.every((o) => o === org);
+  check(
+    "Job order & penempatan: UPDATE tanpa WHERE hanya mengenai baris milik TSK bersangkutan (LPK, sensei, super admin, peran null tidak sama sekali)",
+    lpkLike.every((w) => (jr[w].updatedJo as unknown[]).length === 0 && (jr[w].updatedPl as unknown[]).length === 0) &&
+      only(jr[JA].updatedJo, tsk.id) && only(jr[JS].updatedJo, tsk.id) && only(jr[JA].updatedPl, tsk.id) && only(jr[JB].updatedJo, tskBId) &&
+      (jr[JA].updatedJo as unknown[]).length === (jx.aJoCount as number) + 1 && (jr[JS].updatedJo as unknown[]).length === (jx.aJoCount as number) + 1, // +1: job order yang baru dibuat TSK pemilik di savepoint yang sama
+    JSON.stringify([lpkLike.map((w) => [(jr[w].updatedJo as unknown[]).length, (jr[w].updatedPl as unknown[]).length]), (jr[JA].updatedJo as unknown[]).length, jx.aJoCount, (jr[JA].updatedPl as unknown[]).length, (jr[JB].updatedJo as unknown[]).length, String(jr[JA].insertJo).slice(0, 80)]),
+  );
+  check(
+    "Job order & penempatan: DELETE: TSK_STAFF tidak bisa menghapus job order; TSK_ADMIN hanya yang miliknya dan belum dirujuk (FK RESTRICT menahan sisanya); penempatan tidak bisa dihapus siapa pun; LPK/sensei/super admin/peran null tidak sama sekali",
+    lpkLike.every((w) => jr[w].deleteFresh === 0 && jr[w].deletePlAll === 0 && jr[w].joLeft === jx.totalJo) && jr[JS].deleteFresh === 0 && jr[JS].joLeft === jx.totalJo &&
+      jr[JA].deleteFresh === 1 && jr[JB].deleteFresh === 0 && [JA, JB].every((w) => typeof jr[w].deleteJoAll === "string" && /foreign key|violates/i.test(String(jr[w].deleteJoAll))) && // dirujuk seleksi (A) / penempatan (B)
+      jr[JB].joLeft === jx.totalJo &&
+      [JA, JS, JB].every((w) => jr[w].deletePlAll === 0),
+    `A hapus bebas: ${jr[JA].deleteFresh}, A hapus semua: ${String(jr[JA].deleteJoAll).slice(0, 60)}`,
+  );
+  const needs = ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"];
+  check(
+    "Seleksi: PASSED_CLIENT_INTERVIEW, DOCUMENT_PROCESS, dan DEPARTED WAJIB punya job order (CHECK); keputusan lain boleh umum",
+    selectionDecision.enumValues.every((d) => (needs.includes(d) ? /candidate_selections_job_order_required/.test(String(jx[`noJo/${d}`])) : jx[`noJo/${d}`] === null)),
+    selectionDecision.enumValues.map((d) => `${d}:${jx[`noJo/${d}`] === null ? "ok" : "tolak"}`).join(" "),
+  );
+  check(
+    "Seleksi per job order: job order milik TSK lain ditolak; satu baris umum + satu per job order (NULL dihitung sama); duplikat ditolak; job order tidak bisa dipindah; keputusan paling maju menjadi headline",
+    typeof jx.otherTskJo === "string" && /harus milik TSK yang sama/.test(String(jx.otherTskJo)) && jx.firstGeneral === null && /unique|duplicate/i.test(String(jx.secondGeneral)) &&
+      jx.perJo1 === null && /unique|duplicate/i.test(String(jx.perJoDup)) && jx.perJo2 === null && /tidak bisa dipindahkan/.test(String(jx.moveJo)) && JSON.stringify(jx.headline) === JSON.stringify(["SUBMITTED_TO_CLIENT"]),
+    `${String(jx.secondGeneral).slice(0, 50)} | ${JSON.stringify(jx.headline)}`,
+  );
+  check(
+    "Penempatan: keputusan DEPARTED membuat penempatan ACTIVE (lokasi, job order, TSK dari job order); DEPARTED kedua saat sudah ada ACTIVE ditolak; maksimal satu ACTIVE per kandidat; selesai wajib tanggal; identitas tidak bisa diganti",
+    jx.activeCount === 1 && jx.activeSite === true && /penempatan aktif/.test(String(jx.departedAgain)) && /placements_one_active_key|unique/i.test(String(jx.dupActive)) &&
+      /placements_ended_check/.test(String(jx.endNoDate)) && jx.endOk === null && /tidak bisa diganti/.test(String(jx.moveSite)) && jx.newActiveAfterEnd === null,
+    JSON.stringify([jx.activeCount, jx.activeSite, String(jx.departedAgain).slice(0, 60), String(jx.dupActive).slice(0, 60), String(jx.endNoDate).slice(0, 70), jx.endOk, String(jx.moveSite).slice(0, 60), jx.newActiveAfterEnd]),
+  );
+  check(
+    "Job order terisi otomatis: OPEN -> FILLED hanya saat terpilih (PASSED_CLIENT_INTERVIEW, DOCUMENT_PROCESS, DEPARTED) >= posisi; diajukan saja tidak menghitung; dibuka manual tidak dibalik sampai seleksi berubah lagi; CLOSED tidak berubah; posisi diturunkan menghitung ulang",
+    jx.fill1 === "OPEN" && jx.fillSubmitted === "OPEN" && jx.fill2 === "FILLED" && jx.reopened === "OPEN" && jx.fillAgain === "FILLED" && jx.closedStays === "CLOSED" && jx.positionsDown === "FILLED",
+    [jx.fill1, jx.fillSubmitted, jx.fill2, jx.reopened, jx.fillAgain, jx.closedStays, jx.positionsDown].join(" > "),
+  );
+  check(
+    "Penjaga job order: bidang harus diterima lokasi; lokasi dan organisasi tidak bisa diganti; posisi >= 1; level JLPT valid; lokasi/job order yang dirujuk tidak bisa dihapus (FK RESTRICT)",
+    /bidang job order/.test(String(jx.fieldNotAccepted)) && /tidak bisa diganti/.test(String(jx.siteChange)) && /tidak bisa diganti/.test(String(jx.orgChange)) &&
+      /job_orders_positions_check/.test(String(jx.badPositions)) && /job_orders_min_jlpt_check/.test(String(jx.badJlpt)) &&
+      /foreign key|violates/i.test(String(jx.deleteSiteWithJo)) && /foreign key|violates/i.test(String(jx.deleteJoWithSelection)),
+  );
+  check(
+    "View keputusan paling maju (dipakai LPK) tidak memuat job order; LPK_ADMIN hanya melihat keputusan kandidat miliknya, TSK lain tidak melihat milik TSK ini",
+    JSON.stringify(jx.viewCols) === JSON.stringify(["candidate_id", "tsk_org_id", "decision", "decided_at"]) && jr[JB].readView === 0 && (jr[JA].readView as number) > 0 && jr.sensei.readView !== undefined,
+    `${JSON.stringify(jx.viewCols)} A=${jr[JA].readView} B=${jr[JB].readView} LPK=${jr.lpkAdmin.readView}`,
   );
 
   await pool.end();

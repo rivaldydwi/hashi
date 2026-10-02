@@ -19,13 +19,14 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
   const [typed, setTyped] = useState("");
   const [state, action, pending] = useActionState<FormState, FormData>(deleteCandidate, idle);
   const matches = confirmationMatches(typed, name, candidateId);
-  const tskData = summary.assessmentsTsk + summary.notes + summary.selections;
+  const tskData = summary.assessmentsTsk + summary.notes + summary.selections + summary.placements;
   const rows: Array<[string, number]> = [
     ["documents", summary.documents],
     ["assessmentsLpk", summary.assessmentsLpk],
     ["assessmentsTsk", summary.assessmentsTsk],
     ["notes", summary.notes],
     ["selections", summary.selections],
+    ["placements", summary.placements],
   ];
 
   return (

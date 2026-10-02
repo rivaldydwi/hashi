@@ -5,7 +5,7 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 
 > Status: **v0.3** — fondasi (login, dua bahasa, isolasi data RLS), kelola organisasi/pengguna/kemitraan, dan
 > **profil kandidat lengkap** (daftar, tambah, halaman detail, dokumen, persetujuan data, keputusan & catatan TSK).
-> Penilaian kandidat (bulanan LPK dan kunjungan/interview TSK) sudah ada; seleksi (job order, shortlist) menyusul.
+> Penilaian kandidat (bulanan LPK dan kunjungan/interview TSK) dan **klien (配属先) + job order + penempatan** milik TSK sudah ada.
 
 ## Fitur saat ini
 
@@ -16,6 +16,8 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 | **Admin LPK** (kandidat) | Menambah kandidat lewat **satu form lengkap** (semua bagian dalam satu halaman, hanya nama, jenis kelamin, tanggal lahir, dan bidang yang wajib; bagian berulang bisa ditambah/dihapus barisnya; nyaman di ponsel; isian tidak hilang saat ada error), melengkapi atau mengubah data per bagian di halaman detail, mengunggah/menghapus dokumen, mengubah status di LPK, dan **mengatur berbagi ke TSK mitra** (bawaan: tidak dibagikan; mengaktifkan butuh konfirmasi "siswa sudah setuju"; mematikannya membuat TSK langsung tidak bisa melihat kandidatnya lagi) |
 | **Sensei** | Melihat daftar dan data dasar kandidat saja (tanpa data sensitif dan dokumen) |
 | **Admin / staf TSK** | Melihat kandidat LPK mitra yang **dibagikan** ke TSK, mengunduh dokumen, mengambil keputusan dan menulis catatan; mengedit data hanya setelah keputusan *Lulus interview client* atau sesudahnya |
+| **Admin / staf TSK** (klien dan job order) | Mengelola **klien** (法人 → lokasi 事業所 → PIC, beserta bidang kerja yang diterima lokasi), membuat **job order** (求人) dan melihat **kandidat cocok** (bidang sama, syarat bahasa/gender ditandai hijau/merah, urut nilai terbaru), menekan **Ajukan**, memantau terisi/ditutup, dan mengisi **tanggal mulai kerja (就労開始日)** penempatan. Hapus permanen klien/lokasi/PIC/job order: hanya **Admin TSK** |
+| **Super admin** (bidang kerja) | Mengelola master **bidang kerja** (`skill_fields`): menambah, mengubah nama, menonaktifkan; yang sudah dipakai tidak bisa dihapus |
 | **Semua pengguna** | Login, ganti bahasa, ganti kata sandi di *Akun saya* |
 
 Cara kerja akun baru:
@@ -74,11 +76,12 @@ Jepang, 2 pernah ditolak visa), kontak (email `.test`, telepon `0812-0000-xxxx`)
 4 kurang dari 6 bulan, sisanya > 2 tahun), kesehatan, keluarga 3-5 orang, pendidikan, riwayat kerja, sertifikat (JLPT N5-N2 sejalan
 dengan lama belajar, JFT-Basic, ujian skill SSW untuk Siap seleksi), 3-6 penilaian bulanan LPK (sekitar 40% belum dinilai bulan ini),
 dan 4 dokumen dummy per kandidat (paspor, ijazah, foto, medical check-up; PDF/PNG valid ditulis ke `STORAGE_DIR` dengan tata letak
-unggahan asli). Sisi TSK: 15 keputusan (setiap nilai keputusan minimal 2 kandidat, 6 sisanya belum diputuskan), 11 catatan, dan
-kunjungan/interview TSK. `--reset` ikut menghapus berkas dokumen lama (hanya folder berawalan UUID di dalam `STORAGE_DIR`).
+unggahan asli). Sisi TSK: 15 keputusan (setiap nilai keputusan minimal 2 kandidat, 6 sisanya belum diputuskan), 11 catatan, kunjungan/interview TSK,
+3 perusahaan klien dengan 5 lokasi (6 bidang, 1-2 PIC tiap lokasi), 6 job order (4 Terbuka, 1 Terisi otomatis, 1 Ditutup) yang dikaitkan ke keputusan
+sebidang, dan 2 penempatan aktif (kandidat Berangkat). `--reset` ikut menghapus berkas dokumen lama (hanya folder berawalan UUID di dalam `STORAGE_DIR`).
 
 `npm run verify:seed` (hanya membaca, aman di database mana pun) gagal bila ada kolom demo kosong, kandidat tanpa JLPT / <3 penilaian /
-tanpa dokumen, nilai keputusan yang hilang, filter di `/candidates` (nilai ≥ 4, kehadiran ≥ 90, JLPT, bidang, keputusan) yang kosong
+tanpa dokumen, nilai keputusan yang hilang, lokasi tanpa PIC, job order OPEN tanpa kandidat cocok, keputusan *Lulus interview client* dan sesudahnya tanpa job order, filter di `/candidates` (nilai ≥ 4, kehadiran ≥ 90, JLPT, bidang, keputusan) yang kosong
 atau menghasilkan semua kandidat, atau berkas yatim di storage. Filter memakai fungsi yang sama dengan halaman
 (`src/db/candidate-list.ts`). CI menjalankannya setelah seed. Catatan: filter "JLPT N5" berarti "N5 atau lebih tinggi", jadi
 memang mengembalikan semua kandidat (cukup tidak kosong).
@@ -242,6 +245,23 @@ Keputusan TSK tidak mengubah status LPK, dan tiap TSK hanya melihat keputusannya
 | **Admin LPK** | Semua data kandidat LPK-nya, termasuk data sensitif (`candidate_private`), keluarga, dokumen, **keputusan semua TSK mitra**, dan catatan TSK yang **dibagikan** | Semua data, di semua status. Satu-satunya yang mengubah status LPK, opsi berbagi ke TSK, dan tanggal formulir, **dan satu-satunya yang boleh menghapus kandidat permanen** (lihat di bawah) |
 | **Sensei** | Profil dasar saja (daftar, pendidikan, kerja, sertifikat) + keputusan TSK. Tanpa data sensitif, keluarga, dokumen | Tidak ada |
 | **Admin / staf TSK** (mitra aktif) | Semua kandidat LPK mitra di **semua status** (termasuk Belajar dan Mundur) beserta data sensitif dan dokumen, **hanya jika kandidat dibagikan ke TSK** (`shared_with_tsk`) | (1) Keputusan + catatan (`Hanya TSK` atau `Bagikan ke LPK`) **milik organisasinya sendiri**, tanpa mengubah status LPK. (2) Edit isi data (kandidat, data sensitif, dokumen/keluarga/pendidikan/kerja/sertifikat: tambah & ubah) **hanya jika keputusannya** `PASSED_CLIENT_INTERVIEW`, `DOCUMENT_PROCESS`, atau `DEPARTED` **dan** LPK belum menandai kandidat *Mundur*. Menghapus: hanya **dokumen**, dan hanya bila boleh mengedit (baris data lain tidak pernah) |
+
+**Klien, job order, dan penempatan** (langkah 5; semuanya milik organisasi TSK, kolom `org_id`):
+
+| Data | Admin TSK | Staf TSK | LPK (semua peran), super admin (jalur aplikasi), TSK lain |
+| --- | --- | --- | --- |
+| Perusahaan `client_companies`, lokasi `client_sites`, PIC `client_site_contacts`, bidang diterima `client_site_fields` | baca, tambah, ubah, nonaktifkan, **hapus permanen** (bila tanpa job order/penempatan) | baca, tambah, ubah, nonaktifkan | **tidak melihat sama sekali** (halaman 404) |
+| Job order `job_orders` | baca, tambah, ubah, buka/tutup, hapus (bila belum dirujuk seleksi/penempatan) | baca, tambah, ubah, buka/tutup | tidak melihat |
+| Penempatan `placements` | baca, ubah tanggal/status/catatan | sama | tidak melihat; tidak ada yang bisa menghapus |
+| Seleksi `candidate_selections` | keputusan umum atau per job order | sama | LPK hanya melihat keputusan paling maju per TSK (view `candidate_headline_decision`), **tanpa job order** |
+
+Model data ringkas: `skill_fields` (master bidang kerja, dipakai kandidat, lokasi, dan job order) → `client_companies` 1:N `client_sites` (N:M
+`skill_fields` lewat `client_site_fields`; 1:N `client_site_contacts`) → `job_orders` (lokasi + bidang yang diterima lokasi) → `candidate_selections`
+(satu baris per kandidat × TSK × job order, ditambah satu baris umum tanpa job order) → `placements` (otomatis saat keputusan **Berangkat**; satu
+kandidat hanya satu penempatan *ACTIVE*). Aturan database: keputusan *Lulus interview client*, *Proses dokumen*, dan *Berangkat* **wajib** punya
+job order (CHECK); job order harus milik TSK yang sama dan bidangnya diterima lokasi (trigger); job order *Terbuka* menjadi *Terisi* otomatis saat
+jumlah kandidat terpilih (tiga keputusan itu) mencapai jumlah posisi, dan dibuka lagi secara manual. Audit klien/job order/penempatan hanya memuat
+jenis aksi, id, dan nama kolom (tanpa nama/telepon PIC, catatan, atau judul).
 
 **Hapus kandidat permanen** (v0.3): hanya **Admin LPK pemilik** (UI, server action, RLS `DELETE`, semuanya). Berbeda dari *Nonaktifkan*
 (status Mundur, riwayat tetap tersimpan), hapus permanen dipakai untuk data salah input atau database yang tidak dipakai lagi. Tombol

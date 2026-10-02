@@ -3,6 +3,7 @@
 // Pemakaian: npm run test:i18n
 import { readFileSync } from "node:fs";
 import { documentType } from "../src/db/schema";
+import { JOB_ORDER_FORMS } from "../src/features/job-orders/fields";
 import { CLIENT_SECTIONS } from "../src/features/clients/fields";
 import { ASSESSMENT_FIELDS } from "../src/features/assessments/fields";
 import { LIST_SECTIONS, SINGLE_SECTIONS } from "../src/features/candidates/sections";
@@ -39,6 +40,13 @@ for (const [section, defs] of Object.entries(CLIENT_SECTIONS)) {
   for (const f of defs) {
     const key = `clients.forms.${section}.fields.${f.name}`;
     for (const [lang, dict] of [["id", id], ["ja", ja]] as const) if (!(key in dict)) problems.push(`label hilang (${lang}): ${key}`);
+  }
+}
+
+for (const [section, defs] of Object.entries(JOB_ORDER_FORMS)) {
+  for (const f of defs) {
+    const need = [`jobOrders.forms.${section}.fields.${f.name}`, ...(f.kind === "select" ? (f.options ?? []).map((o) => `jobOrders.forms.${section}.options.${f.name}.${o}`) : [])];
+    for (const key of need) for (const [lang, dict] of [["id", id], ["ja", ja]] as const) if (!(key in dict)) problems.push(`label hilang (${lang}): ${key}`);
   }
 }
 

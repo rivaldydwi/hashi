@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { FormAlert, SubmitButton } from "@/components/FormBits";
 import { btnDanger, btnSecondary, inputClass, labelClass } from "@/components/styles";
@@ -24,6 +24,7 @@ export function FieldInputs({
   dateMax = {},
   hintNames = [],
   labelNs,
+  skillFieldIds,
 }: {
   section: string;
   fields: FieldDef[];
@@ -42,6 +43,8 @@ export function FieldInputs({
   hintNames?: string[];
   /** Namespace label (bawaan: detail.sections.<bagian>); form di luar halaman kandidat memakai namespace sendiri. */
   labelNs?: string;
+  /** Batasi pilihan bidang kerja ke id ini (mis. bidang yang diterima lokasi). Nilai yang sedang dipakai tetap ditampilkan. */
+  skillFieldIds?: string[];
 }) {
   const t = useTranslations(labelNs ?? `detail.sections.${section}`);
   const tf = useTranslations("candidates.form");
@@ -71,7 +74,7 @@ export function FieldInputs({
                   <select id={id} name={inputName} required={f.required} defaultValue={String(values[f.name] ?? "")} className={cls} aria-invalid={bad || undefined}>
                     <option value="">—</option>
                     {skillOptions
-                      .filter((o) => o.active || o.id === values[f.name]) // bidang nonaktif hanya tampil bila sedang dipakai
+                      .filter((o) => (o.active || o.id === values[f.name]) && (!skillFieldIds || skillFieldIds.includes(o.id) || o.id === values[f.name])) // nonaktif hanya bila sedang dipakai
                       .map((o) => (
                         <option key={o.id} value={o.id}>{o.label}{o.active ? "" : " (nonaktif)"}</option>
                       ))}
@@ -244,12 +247,36 @@ export function StageForm({ candidateId, stage }: { candidateId: string; stage: 
   );
 }
 
-export function DecisionForm({ candidateId, decision }: { candidateId: string; decision: SelectionDecision }) {
+export type JobOrderOption = { id: string; title: string; status: "OPEN" | "FILLED" | "CLOSED"; siteName: string; companyName: string };
+
+/**
+ * Keputusan TSK. Lingkup: "umum" atau satu job order (sebidang dengan kandidat). Keputusan Lulus interview client dan sesudahnya
+ * WAJIB memilih job order (server menolak bila tidak; CHECK di database).
+ */
+export function DecisionForm({ candidateId, decision, jobOrderOptions }: { candidateId: string; decision: SelectionDecision; jobOrderOptions: JobOrderOption[] }) {
   const [state, action] = useActionState<FormState, FormData>(setDecision, idle);
   const t = useTranslations();
   return (
-    <form action={action} className="flex flex-wrap items-end gap-2" data-testid="form-decision">
+    // onSubmit manual: pilihan TIDAK kembali ke bawaan saat server menolak (mis. job order wajib untuk keputusan tertentu)
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        startTransition(() => action(data));
+      }}
+      className="flex flex-wrap items-end gap-2"
+      data-testid="form-decision"
+    >
       <input type="hidden" name="candidateId" value={candidateId} />
+      <div className="space-y-1.5">
+        <label htmlFor="decision-job-order" className={labelClass}>{t("detail.decisionScope")}</label>
+        <select id="decision-job-order" name="jobOrderId" defaultValue="" className={inputClass} data-testid="decision-scope">
+          <option value="">{t("detail.decisionScopeGeneral")}</option>
+          {jobOrderOptions.map((o) => (
+            <option key={o.id} value={o.id}>{o.title} — {o.companyName} / {o.siteName} [{t(`jobOrders.status.${o.status}`)}]</option>
+          ))}
+        </select>
+      </div>
       <div className="space-y-1.5">
         <label htmlFor="decision" className={labelClass}>{t("detail.decisionLabel")}</label>
         <select id="decision" name="decision" defaultValue={decision} className={inputClass}>

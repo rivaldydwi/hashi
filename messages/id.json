@@ -25,7 +25,8 @@
     "candidates": "Kandidat",
     "assessments": "Penilaian",
     "skillFields": "Bidang kerja",
-    "clients": "Klien"
+    "clients": "Klien",
+    "jobOrders": "Job order"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -316,7 +317,11 @@
     },
     "errors": {
       "notFound": "Data tidak ditemukan.",
-      "readOnly": "Anda tidak bisa mengubah data ini."
+      "readOnly": "Anda tidak bisa mengubah data ini.",
+      "jobOrderRequired": "Keputusan ini wajib memilih job order.",
+      "jobOrderInvalid": "Job order tidak ditemukan.",
+      "jobOrderFieldMismatch": "Bidang job order berbeda dari bidang kandidat.",
+      "alreadyPlaced": "Kandidat sudah punya penempatan aktif."
     },
     "sections": {
       "basic": {
@@ -567,7 +572,10 @@
       "dateLabel": "Tanggal tanda tangan formulir persetujuan (opsional)",
       "save": "Simpan tanggal",
       "saved": "Tanggal disimpan."
-    }
+    },
+    "decisionScope": "Untuk job order",
+    "decisionScopeGeneral": "Umum (tanpa job order)",
+    "decisionJobOrderHint": "Keputusan Lulus interview client, Proses dokumen, dan Berangkat wajib memilih job order (yang sebidang dengan kandidat)."
   },
   "roles": {
     "SUPER_ADMIN": "Super admin",
@@ -652,7 +660,8 @@
       "assessmentsLpk": "Penilaian bulanan LPK",
       "assessmentsTsk": "Penilaian TSK (kunjungan dan interview)",
       "notes": "Catatan TSK",
-      "selections": "Keputusan TSK"
+      "selections": "Keputusan TSK",
+      "placements": "Penempatan (配属)"
     },
     "alsoPersonal": "Termasuk data pribadi, kontak, identitas, keluarga, pendidikan, riwayat kerja, dan sertifikat. Riwayat audit tetap tersimpan (tanpa nama dan isi data).",
     "tskWarning": "Kandidat ini sedang dibagikan ke TSK dan punya data milik TSK. Keputusan, catatan, dan penilaian milik TSK ikut hilang dan TSK tidak bisa lagi melihatnya.",
@@ -768,5 +777,139 @@
         }
       }
     }
+  },
+  "jobOrders": {
+    "title": "Job order",
+    "intro": "Lowongan (求人) dari klien Anda. Ajukan kandidat yang cocok, lalu pantau sampai berangkat. Tidak terlihat oleh LPK.",
+    "add": "Tambah job order",
+    "newTitle": "Job order baru",
+    "chooseSite": "Pilih lokasi",
+    "chooseSiteIntro": "Pilih lokasi kerja untuk job order ini.",
+    "useSite": "Pakai lokasi ini",
+    "noSites": "Belum ada lokasi klien yang aktif.",
+    "goClients": "Tambah klien dan lokasi",
+    "siteHasNoFields": "Lokasi ini belum punya bidang kerja yang diterima. Atur dulu di halaman lokasi.",
+    "search": "Cari",
+    "searchPlaceholder": "Judul, perusahaan, atau lokasi",
+    "filterStatus": "Status",
+    "all": "Semua",
+    "apply": "Terapkan",
+    "reset": "Reset",
+    "empty": "Belum ada job order.",
+    "noMatch": "Tidak ada job order yang cocok.",
+    "deleted": "Job order dihapus.",
+    "colTitle": "Job order",
+    "colSite": "Klien / lokasi",
+    "colField": "Bidang",
+    "colSelected": "Terpilih / posisi",
+    "colStatus": "Status",
+    "deadline": "Batas pengajuan",
+    "status": {
+      "OPEN": "Terbuka",
+      "FILLED": "Terisi",
+      "CLOSED": "Ditutup"
+    },
+    "tabDetail": "Detail",
+    "tabMatch": "Kandidat cocok",
+    "details": "Data job order",
+    "statusTitle": "Status",
+    "statusHint": "Job order menjadi Terisi otomatis saat jumlah kandidat terpilih (lulus interview client atau sesudahnya) mencapai jumlah posisi. Anda bisa menutup atau membukanya lagi.",
+    "close": "Tutup job order",
+    "reopen": "Buka lagi",
+    "markFilled": "Tandai terisi",
+    "deletePermanent": "Hapus permanen",
+    "deleteConfirm": "Ya, hapus permanen",
+    "deleteWarning": "Job order dihapus dan tidak bisa dikembalikan. Tidak bisa dilakukan bila sudah ada kandidat yang diajukan atau ditempatkan. Kalau hanya tidak dipakai lagi, pakai Tutup.",
+    "create": "Buat job order",
+    "save": "Simpan",
+    "matchIntro": "Kandidat yang dibagikan LPK dan sebidang dengan job order ini (tanpa yang Mundur), diurutkan menurut rata-rata nilai bulanan terbaru. Hijau = memenuhi syarat, merah = belum.",
+    "matchEmpty": "Belum ada kandidat yang cocok untuk bidang ini.",
+    "colCandidate": "Kandidat",
+    "colRequirements": "Syarat",
+    "colAvg": "Nilai terakhir",
+    "colDecision": "Keputusan",
+    "reqJlpt": "JLPT {level}+",
+    "reqJft": "JFT-Basic lulus",
+    "reqGender": {
+      "MALE": "Laki-laki",
+      "FEMALE": "Perempuan"
+    },
+    "noRequirements": "Tanpa syarat khusus",
+    "propose": "Ajukan",
+    "proposed": "Sudah diajukan",
+    "notOpen": "Job order tidak terbuka",
+    "alreadyPlaced": "Sudah ditempatkan",
+    "statusSaved": "Status job order disimpan.",
+    "placementTitle": "Penempatan (配属)",
+    "placementIntro": "Dibuat otomatis saat keputusan menjadi Berangkat. Isi atau ubah tanggal mulai kerja (就労開始日) di sini.",
+    "placementStatus": {
+      "ACTIVE": "Aktif",
+      "ENDED": "Selesai"
+    },
+    "errors": {
+      "invalid": "Isian tidak valid. Periksa judul, bidang, dan jumlah posisi.",
+      "notFound": "Data tidak ditemukan.",
+      "siteInvalid": "Lokasi tidak valid atau tidak aktif.",
+      "fieldNotAccepted": "Bidang itu belum diterima lokasi ini. Atur bidang yang diterima di halaman lokasi.",
+      "notOpen": "Hanya job order yang terbuka yang bisa menerima pengajuan.",
+      "withdrawn": "Kandidat berstatus Mundur tidak bisa diajukan.",
+      "inUse": "Tidak bisa dihapus karena sudah ada kandidat yang diajukan atau ditempatkan. Tutup saja.",
+      "placementInvalid": "Isian penempatan tidak valid (tanggal selesai tidak boleh sebelum tanggal mulai).",
+      "endDateRequired": "Isi tanggal selesai untuk penempatan yang berstatus Selesai."
+    },
+    "forms": {
+      "jobOrder": {
+        "fields": {
+          "title": "Judul job order (求人名)",
+          "fieldId": "Bidang kerja",
+          "program": "Jenis program",
+          "positions": "Jumlah posisi",
+          "description": "Uraian pekerjaan",
+          "salaryNote": "Gaji dan kondisi kerja",
+          "monthlySalary": "Gaji bulanan (yen, opsional)",
+          "workPlace": "Tempat kerja",
+          "minJlpt": "Level JLPT minimum",
+          "jftRequired": "Wajib JFT-Basic lulus (skor 200+)",
+          "genderRequirement": "Syarat jenis kelamin",
+          "targetStartDate": "Target mulai kerja",
+          "applicationDeadline": "Batas pengajuan",
+          "note": "Catatan"
+        },
+        "options": {
+          "program": {
+            "SSW": "SSW (特定技能)",
+            "TITP": "Magang / Ikusei (技能実習・育成就労)",
+            "OTHER": "Lainnya"
+          },
+          "minJlpt": {
+            "N5": "N5",
+            "N4": "N4",
+            "N3": "N3",
+            "N2": "N2",
+            "N1": "N1"
+          },
+          "genderRequirement": {
+            "MALE": "Laki-laki",
+            "FEMALE": "Perempuan"
+          }
+        }
+      },
+      "placement": {
+        "fields": {
+          "startDate": "Tanggal mulai kerja (就労開始日)",
+          "endDate": "Tanggal selesai",
+          "status": "Status",
+          "note": "Catatan"
+        },
+        "options": {
+          "status": {
+            "ACTIVE": "Aktif",
+            "ENDED": "Selesai"
+          }
+        }
+      }
+    },
+    "proposedMsg": "Kandidat diajukan.",
+    "saved": "Tersimpan."
   }
 }

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { todayInTskTz } from "../../src/db/time";
-import { createScratchCandidate, deleteScratchCandidate, login, ownerQuery, unique } from "./helpers";
+import { createScratchCandidate, createScratchJobOrder, deleteScratchCandidate, deleteScratchJobOrder, login, ownerQuery, unique } from "./helpers";
 
 // Penilaian TSK (langkah 4, bagian C). Kandidat uji SENDIRI (LPK Bandung, dibagikan ke TSK, belum ada keputusan
 // TSK dan belum pernah dinilai), dihapus di akhir; audit tidak bisa dihapus, jadi dibatasi created_at.
@@ -18,12 +18,14 @@ const tomorrow = new Date(new Date(`${today}T00:00:00Z`).getTime() + 86_400_000)
 let cid = "";
 let url = "";
 let tskOrg = "";
+let jo: Awaited<ReturnType<typeof createScratchJobOrder>>;
 
 test.beforeAll(async () => {
   cid = (await createScratchCandidate({ name: `Uji TSK ${run}` })).id;
   url = `/candidates/${cid}`;
   const [o] = await ownerQuery<{ id: string }>("select o.id from users u join organizations o on o.id = u.organization_id where u.email = 'tsk.staff@hashi.test'");
   tskOrg = o.id;
+  jo = await createScratchJobOrder({ tag: `nilai${run}` });
   await ownerQuery(
     // trigger mengisi penilai dari app.user_id: set di CTE yang dirujuk insert supaya berjalan lebih dulu
     "with s as (select set_config('app.user_id', u.id::text, true) from users u where u.email = 'lpk1.admin@hashi.test') insert into candidate_assessments (candidate_id, org_id, kind, assessed_on, score_japanese, note) select c.id, c.organization_id, 'LPK_MONTHLY', current_date - 40, 3, 'catatan LPK bulanan' from candidates c, s where c.id = $1",
@@ -33,7 +35,15 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await deleteScratchCandidate(cid);
+  await deleteScratchJobOrder(jo);
 });
+
+/** Ganti keputusan TSK atas kandidat uji: satu baris saja; job order dilampirkan bila keputusan mewajibkannya. */
+async function setDecisionSql(decision: string) {
+  await ownerQuery("delete from candidate_selections where candidate_id = $1", [cid]);
+  const needs = ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"].includes(decision);
+  await ownerQuery("insert into candidate_selections (candidate_id, tsk_org_id, decision, job_order_id) values ($1, $2, $3, $4)", [cid, tskOrg, decision, needs ? jo.id : null]);
+}
 
 async function fill(page: Page, prefix: string, v: { date?: string; scores?: string[]; note?: string; visibility?: "TSK_ONLY" | "SHARED_WITH_LPK" }) {
   const form = page.locator(`[data-testid=form-${prefix}]`);
@@ -153,25 +163,25 @@ test("hak ubah: staf tidak bisa mengubah penilaian TSK_ADMIN; TSK_ADMIN bisa men
 });
 
 test("interview: terbuka setelah keputusan yang sesuai; server menolak bila keputusan berubah; kembali terkunci", async ({ page }) => {
-  await ownerQuery("insert into candidate_selections (candidate_id, tsk_org_id, decision) values ($1, $2, 'SHORTLISTED')", [cid, tskOrg]);
+  await setDecisionSql("SHORTLISTED");
   await login(page, "tsk.staff@hashi.test");
   await page.goto(url);
   await expect(page.getByTestId("tsk-interview-locked")).toBeVisible(); // SHORTLISTED belum cukup
 
-  await ownerQuery("update candidate_selections set decision = 'PASSED_TSK_INTERVIEW' where candidate_id = $1", [cid]);
+  await setDecisionSql("PASSED_TSK_INTERVIEW");
   await page.goto(url);
   await expect(page.getByTestId("tsk-interview-locked")).toHaveCount(0);
   await page.getByTestId("tsk-interview-toggle").click();
   const form = await fill(page, "tsk-interview", { scores: ["5", "4", "4", "5"], note: INTERVIEW_NOTE, visibility: "SHARED_WITH_LPK" });
 
   // Keputusan dicabut SETELAH halaman dimuat: server (dan RLS) tetap menolak
-  await ownerQuery("update candidate_selections set decision = 'SHORTLISTED' where candidate_id = $1", [cid]);
+  await setDecisionSql("SHORTLISTED");
   await form.getByTestId("assessment-submit").click();
   await expect(form.getByRole("alert")).toContainText("Interview hanya bisa dicatat");
   expect(await ownerQuery("select 1 from candidate_assessments where candidate_id = $1 and kind = 'TSK_INTERVIEW'", [cid])).toHaveLength(0);
 
   // Dipulihkan: berhasil, tampil sebagai interview dan dibagikan
-  await ownerQuery("update candidate_selections set decision = 'DOCUMENT_PROCESS' where candidate_id = $1", [cid]);
+  await setDecisionSql("DOCUMENT_PROCESS");
   await form.getByTestId("assessment-submit").click();
   const item = page.locator("[data-testid=tsk-assessment][data-kind=TSK_INTERVIEW]");
   await expect(item).toHaveCount(1);
@@ -179,7 +189,7 @@ test("interview: terbuka setelah keputusan yang sesuai; server menolak bila kepu
   await expect(item).toContainText("4.5");
 
   // Keputusan turun lagi: interview yang sudah ada tetap tampil, form baru terkunci
-  await ownerQuery("update candidate_selections set decision = 'REJECTED' where candidate_id = $1", [cid]);
+  await setDecisionSql("REJECTED");
   await page.goto(url);
   await expect(page.getByTestId("tsk-interview-locked")).toBeVisible();
   await expect(page.locator("[data-testid=tsk-assessment][data-kind=TSK_INTERVIEW]")).toHaveCount(1);

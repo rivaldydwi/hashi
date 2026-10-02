@@ -26,6 +26,11 @@ import {
   candidatePrivate,
   candidateSelections,
   candidateWorkHistories,
+  clientCompanies,
+  clientSiteContacts,
+  clientSiteFields,
+  clientSites,
+  jobOrders,
   organizations,
   partnerships,
   skillFields,
@@ -76,11 +81,49 @@ const STAGES: CandidateStage[] = ["STUDYING", "STUDYING", "STUDYING", "STUDYING"
 // yang DIBAGIKAN ke TSK (lihat NOT_SHARED) dan keputusan lanjut hanya untuk kandidat berstatus Siap seleksi:
 // SHORTLISTED 3, PASSED_TSK_INTERVIEW 2, SUBMITTED_TO_CLIENT 2, PASSED_CLIENT_INTERVIEW 2, DOCUMENT_PROCESS 2, DEPARTED 2,
 // REJECTED 2, dan 6 kandidat terlihat belum diputuskan. LPK Medan (bukan mitra) tidak punya keputusan.
-const DECISIONS: Record<number, Record<number, SelectionDecision>> = {
-  0: { 1: "REJECTED", 3: "SHORTLISTED", 5: "DOCUMENT_PROCESS", 7: "DEPARTED", 8: "PASSED_TSK_INTERVIEW", 9: "SUBMITTED_TO_CLIENT", 10: "PASSED_CLIENT_INTERVIEW" },
-  1: { 1: "REJECTED", 3: "SHORTLISTED", 4: "SHORTLISTED", 6: "DOCUMENT_PROCESS", 7: "DEPARTED", 8: "PASSED_TSK_INTERVIEW", 9: "SUBMITTED_TO_CLIENT", 10: "PASSED_CLIENT_INTERVIEW" },
+// Format: indeks -> keputusan, atau [keputusan, kode job order]. Keputusan PASSED_CLIENT_INTERVIEW / DOCUMENT_PROCESS / DEPARTED
+// WAJIB punya job order (CHECK database); sisanya boleh umum atau dikaitkan ke job order sebidang (lihat DEMO_JOB_ORDERS).
+type DecisionSpec = SelectionDecision | [SelectionDecision, string];
+const DECISIONS: Record<number, Record<number, DecisionSpec>> = {
+  0: { 1: "REJECTED", 3: "SHORTLISTED", 5: ["DOCUMENT_PROCESS", "agri"], 7: ["DEPARTED", "restaurant"], 8: "PASSED_TSK_INTERVIEW", 9: ["SUBMITTED_TO_CLIENT", "manufacture"], 10: ["PASSED_CLIENT_INTERVIEW", "construction"] },
+  1: { 1: "REJECTED", 3: "SHORTLISTED", 4: "SHORTLISTED", 6: ["DOCUMENT_PROCESS", "agri"], 7: ["DEPARTED", "food"], 8: "PASSED_TSK_INTERVIEW", 9: ["SUBMITTED_TO_CLIENT", "kaigo"], 10: ["PASSED_CLIENT_INTERVIEW", "manufacture"] },
   2: {},
 };
+
+// Klien TSK demo (semua fiktif: telepon 00-xxxx-xxxx, alamat dummy). 3 perusahaan, 5 lokasi, bidang yang diterima beragam.
+const DEMO_CLIENTS = [
+  {
+    name: "株式会社ひまわり介護", nameAlt: "Himawari Kaigo Co., Ltd.", corporateNumber: "0000000000001", hqAddress: "愛知県ダミー市中区ダミー町1-1-1", phone: "00-0000-0001", note: "ダミーデータ（デモ用）",
+    sites: [
+      { key: "S1", name: "特別養護老人ホーム ひまわり苑", address: "愛知県ダミー市北区ダミー2-2-2", phone: "00-0000-1001", fields: ["kaigo"], contacts: [["施設長", "ダミー 太郎", "00-0000-1101"], ["管理者", "ダミー 花子", "00-0000-1102"]] },
+      { key: "S2", name: "ひまわりデイサービスセンター", address: "愛知県ダミー市南区ダミー3-3-3", phone: "00-0000-1002", fields: ["kaigo"], contacts: [["管理者", "ダミー 次郎", "00-0000-1103"]] },
+    ],
+  },
+  {
+    name: "さくらフーズ株式会社", nameAlt: "Sakura Foods Co., Ltd.", corporateNumber: "0000000000002", hqAddress: "静岡県ダミー市ダミー町4-4-4", phone: "00-0000-0002", note: "ダミーデータ（デモ用）",
+    sites: [
+      { key: "S3", name: "さくらフーズ 本社工場", address: "静岡県ダミー市工業団地5-5-5", phone: "00-0000-1004", fields: ["food", "manufacture"], contacts: [["工場長", "ダミー 三郎", "00-0000-1104"], ["人事担当", "ダミー 美咲", "00-0000-1105"]] },
+      { key: "S4", name: "さくら食堂 外食事業部", address: "静岡県ダミー市中央6-6-6", phone: "00-0000-1005", fields: ["restaurant", "food"], contacts: [["店長", "ダミー 四郎", "00-0000-1106"]] },
+    ],
+  },
+  {
+    name: "北斗総合産業株式会社", nameAlt: "Hokuto Sogo Sangyo K.K.", corporateNumber: "0000000000003", hqAddress: "岐阜県ダミー市ダミー町7-7-7", phone: "00-0000-0003", note: "ダミーデータ（デモ用）",
+    sites: [
+      { key: "S5", name: "北斗総合産業 名古屋事業所", address: "愛知県ダミー市西区ダミー8-8-8", phone: "00-0000-1007", fields: ["construction", "agri"], contacts: [["現場監督", "ダミー 五郎", "00-0000-1107"], ["総務", "ダミー 彩", "00-0000-1108"]] },
+    ],
+  },
+] as const;
+
+// Job order demo: status awal OPEN (FILLED otomatis oleh trigger bila terpilih >= posisi), kecuali yang sengaja CLOSED.
+// Kunci = kode bidang dipakai juga sebagai kunci DecisionSpec di atas.
+const DEMO_JOB_ORDERS = [
+  { key: "kaigo", site: "S1", title: "介護職員（特別養護老人ホーム）", positions: 3, program: "SSW", status: "OPEN", minJlpt: "N4", jft: false, gender: null, salary: 210000, start: "+120", deadline: "+60", description: "入居者の身体介護・生活支援。夜勤は月4回程度。", salaryNote: "月給21万円（夜勤手当別）、寮完備" },
+  { key: "food", site: "S3", title: "食品工場 製造スタッフ", positions: 2, program: "SSW", status: "OPEN", minJlpt: "N5", jft: false, gender: null, salary: 195000, start: "-60", deadline: "-90", description: "惣菜の製造ラインでの調理補助・盛り付け・衛生管理。", salaryNote: "月給19.5万円、社宅あり" },
+  { key: "restaurant", site: "S4", title: "ホール・キッチンスタッフ", positions: 2, program: "SSW", status: "OPEN", minJlpt: "N4", jft: false, gender: null, salary: 200000, start: "-45", deadline: "-80", description: "接客、配膳、簡単な調理。", salaryNote: "月給20万円、まかないあり" },
+  { key: "manufacture", site: "S3", title: "金属プレス加工オペレーター", positions: 1, program: "SSW", status: "OPEN", minJlpt: "N4", jft: true, gender: "MALE", salary: 220000, start: "+30", deadline: "-10", description: "プレス機の操作・検査・簡単な保全。", salaryNote: "月給22万円、残業手当別" },
+  { key: "construction", site: "S5", title: "型枠大工（見習い）", positions: 2, program: "SSW", status: "CLOSED", minJlpt: "N4", jft: false, gender: "MALE", salary: 230000, start: "+90", deadline: "-20", description: "型枠の加工・組立補助。", salaryNote: "月給23万円、現場手当あり" },
+  { key: "agri", site: "S5", title: "施設園芸スタッフ", positions: 3, program: "SSW", status: "OPEN", minJlpt: "N4", jft: true, gender: null, salary: 190000, start: "+75", deadline: "+45", description: "ハウス栽培の播種・収穫・出荷作業。", salaryNote: "月給19万円、寮費補助あり" },
+] as const;
 
 // Berbagi ke TSK (candidates.shared_with_tsk) per LPK, berdasarkan indeks kandidat.
 // TSK demo hanya melihat yang dibagikan: LPK Bandung menahan 2 kandidat READY, LPK Surabaya 1 READY,
@@ -271,7 +314,48 @@ async function main() {
     const tskUser = (who: "admin" | "staff") => (who === "admin" ? tskAdminId : tskStaffId);
     const byKey = new Map(seeded.map((c) => [`${c.orgIndex}.${c.i}`, c]));
     const decided = seeded.filter((c) => c.decision);
-    await tx.insert(candidateSelections).values(decided.map((c) => ({ candidateId: c.row.id, tskOrgId: tsk.id, decision: c.decision!, decidedBy: tskAdminId })));
+    const decisionOf = (spec: DecisionSpec | undefined): SelectionDecision | undefined => (Array.isArray(spec) ? spec[0] : spec);
+
+    // ---- Klien TSK: perusahaan, lokasi (+ bidang yang diterima), PIC; lalu job order
+    const orgIdTsk = tsk.id;
+    const siteIds = new Map<string, string>();
+    const siteAddress = new Map<string, string>();
+    let companyCount = 0;
+    let siteCount = 0;
+    for (const [ci, co] of DEMO_CLIENTS.entries()) {
+      const companyId = uuidFor(`client:company:${ci}`);
+      await tx.insert(clientCompanies).values({ id: companyId, orgId: orgIdTsk, name: co.name, nameAlt: co.nameAlt, corporateNumber: co.corporateNumber, hqAddress: co.hqAddress, phone: co.phone, note: co.note });
+      companyCount++;
+      for (const site of co.sites) {
+        const siteId = uuidFor(`client:site:${site.key}`);
+        siteIds.set(site.key, siteId);
+        siteAddress.set(site.key, site.address);
+        await tx.insert(clientSites).values({ id: siteId, orgId: orgIdTsk, companyId, name: site.name, address: site.address, phone: site.phone, note: "ダミーデータ（デモ用）" });
+        await tx.insert(clientSiteFields).values(site.fields.map((code) => ({ siteId, fieldId: fieldIds[code], orgId: orgIdTsk })));
+        await tx.insert(clientSiteContacts).values(site.contacts.map(([roleTitle, name, phone]) => ({ orgId: orgIdTsk, siteId, roleTitle, name, phone })));
+        siteCount++;
+      }
+    }
+    const shiftDays = (offset: string) => addDays(today, Number(offset));
+    const jobOrderIds = new Map<string, string>();
+    for (const jo of DEMO_JOB_ORDERS) {
+      const id = uuidFor(`client:job-order:${jo.key}`);
+      jobOrderIds.set(jo.key, id);
+      await tx.insert(jobOrders).values({
+        id, orgId: orgIdTsk, siteId: siteIds.get(jo.site)!, fieldId: fieldIds[jo.key], title: jo.title, positions: jo.positions, program: jo.program, status: jo.status,
+        description: jo.description, salaryNote: jo.salaryNote, monthlySalary: jo.salary, workPlace: siteAddress.get(jo.site)!,
+        minJlpt: jo.minJlpt, jftRequired: jo.jft, genderRequirement: jo.gender, targetStartDate: shiftDays(jo.start), applicationDeadline: shiftDays(jo.deadline), note: "ダミーデータ（デモ用）",
+      });
+    }
+
+    // ---- Keputusan TSK (hanya LPK mitra); yang punya kode job order dikaitkan ke job order sebidang
+    await tx.insert(candidateSelections).values(
+      decided.map((c) => {
+        const spec = c.decision as DecisionSpec;
+        const jobKey = Array.isArray(spec) ? spec[1] : null;
+        return { candidateId: c.row.id, tskOrgId: tsk.id, decision: decisionOf(spec)!, jobOrderId: jobKey ? jobOrderIds.get(jobKey)! : null, decidedBy: tskAdminId };
+      }),
+    );
 
     await tx.insert(candidateNotes).values(
       TSK_NOTES.map(([o, i, visibility, who, body]) => ({ candidateId: byKey.get(`${o}.${i}`)!.row.id, tskOrgId: tsk.id, authorId: tskUser(who), body, visibility })),
@@ -297,7 +381,7 @@ async function main() {
     const interviewOk = new Set<SelectionDecision>(["PASSED_TSK_INTERVIEW", "SUBMITTED_TO_CLIENT", "PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"]);
     const tskRows = TSK_ASSESSMENTS.map(([o, i, kind, daysAgo, visibility, who, [sj, sa, sf, sm], note]) => {
       const c = byKey.get(`${o}.${i}`)!;
-      if (kind === "TSK_INTERVIEW" && !(c.decision && interviewOk.has(c.decision))) throw new Error(`interview TSK tidak sesuai keputusan untuk ${o}.${i}`);
+      if (kind === "TSK_INTERVIEW" && !(c.decision && interviewOk.has(decisionOf(c.decision as DecisionSpec)!))) throw new Error(`interview TSK tidak sesuai keputusan untuk ${o}.${i}`);
       return {
         candidateId: c.row.id,
         orgId: tsk.id,
@@ -316,7 +400,7 @@ async function main() {
     });
     await tx.insert(candidateAssessments).values(tskRows);
 
-    summary = `✓ Seed selesai: 5 organisasi, 7 pengguna, ${seeded.length} kandidat demo lengkap (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, ${TSK_NOTES.length} catatan TSK, ${lpkRows.length} penilaian bulanan LPK + ${tskRows.length} penilaian TSK, ${docRows.length} dokumen dummy`;
+    summary = `✓ Seed selesai: 5 organisasi, 7 pengguna, ${seeded.length} kandidat demo lengkap (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, ${companyCount} perusahaan klien dengan ${siteCount} lokasi dan ${DEMO_JOB_ORDERS.length} job order, ${TSK_NOTES.length} catatan TSK, ${lpkRows.length} penilaian bulanan LPK + ${tskRows.length} penilaian TSK, ${docRows.length} dokumen dummy`;
   }, db);
 
   if (files.length > 0) {

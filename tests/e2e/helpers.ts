@@ -87,12 +87,12 @@ export async function ownerQuery<T extends Record<string, unknown>>(sql: string,
  * menambah/menghapus data kandidat TIDAK menyentuh data seed (seed lengkap dan dijaga `npm run verify:seed`).
  * Kandidat baru: tanpa keputusan TSK, tanpa penilaian, tanpa dokumen, dan tanpa data sensitif.
  */
-export async function createScratchCandidate(opts: { name: string; org?: string; stage?: "STUDYING" | "READY" | "WITHDRAWN"; shared?: boolean }) {
+export async function createScratchCandidate(opts: { name: string; org?: string; stage?: "STUDYING" | "READY" | "WITHDRAWN"; shared?: boolean; field?: string; gender?: "MALE" | "FEMALE" }) {
   const [row] = await ownerQuery<{ id: string; organization_id: string }>(
     `insert into candidates (organization_id, full_name, gender, birth_date, field_id, stage, shared_with_tsk)
-     select o.id, $1, 'MALE', '2000-05-15', (select id from skill_fields where code = 'food'), $3, $4 from organizations o where o.name = $2
+     select o.id, $1, $5::gender, '2000-05-15', (select id from skill_fields where code = $6), $3, $4 from organizations o where o.name = $2
      returning id, organization_id`,
-    [opts.name, opts.org ?? "LPK Demo Bandung", opts.stage ?? "STUDYING", opts.shared ?? true],
+    [opts.name, opts.org ?? "LPK Demo Bandung", opts.stage ?? "STUDYING", opts.shared ?? true, opts.gender ?? "MALE", opts.field ?? "food"],
   );
   return { id: row.id, orgId: row.organization_id, name: opts.name };
 }
@@ -100,4 +100,29 @@ export async function createScratchCandidate(opts: { name: string; org?: string;
 /** Hapus kandidat uji (turunannya ikut terhapus lewat FK cascade). Log audit tidak ikut terhapus. */
 export async function deleteScratchCandidate(id: string) {
   await ownerQuery("delete from candidates where id = $1", [id]);
+}
+
+/**
+ * Job order uji milik TSK demo (perusahaan + lokasi yang menerima bidang `field` + job order), dibuat lewat database. Hapus dengan
+ * `deleteScratchJobOrder` SETELAH kandidat ujinya dihapus (seleksi/penempatan merujuk job order dengan FK RESTRICT).
+ */
+export async function createScratchJobOrder(opts: { tag: string; field?: string; positions?: number; status?: "OPEN" | "FILLED" | "CLOSED"; minJlpt?: string | null; gender?: "MALE" | "FEMALE" | null }) {
+  const field = opts.field ?? "food";
+  const [org] = await ownerQuery<{ id: string }>("select id from organizations where name = 'TSK Demo Tokyo'");
+  const [co] = await ownerQuery<{ id: string }>("insert into client_companies (org_id, name) values ($1, $2) returning id", [org.id, `株式会社Uji${opts.tag}`]);
+  const [site] = await ownerQuery<{ id: string }>("insert into client_sites (org_id, company_id, name) values ($1, $2, $3) returning id", [org.id, co.id, `Lokasi Uji ${opts.tag}`]);
+  await ownerQuery("insert into client_site_fields (site_id, field_id, org_id) select $1, id, $3 from skill_fields where code = $2", [site.id, field, org.id]);
+  const title = `Job order Uji ${opts.tag}`;
+  const [jo] = await ownerQuery<{ id: string }>(
+    `insert into job_orders (org_id, site_id, field_id, title, positions, status, min_jlpt, gender_requirement)
+     select $1, $2, id, $3, $4, $5, $6, $7 from skill_fields where code = $8 returning id`,
+    [org.id, site.id, title, opts.positions ?? 5, opts.status ?? "OPEN", opts.minJlpt ?? null, opts.gender ?? null, field],
+  );
+  return { id: jo.id, title, companyId: co.id, siteId: site.id, orgId: org.id };
+}
+
+/** Hapus job order uji beserta lokasi dan perusahaannya (kandidat ujinya harus sudah dihapus). */
+export async function deleteScratchJobOrder(j: { id: string; companyId: string }) {
+  await ownerQuery("delete from job_orders where id = $1", [j.id]);
+  await ownerQuery("delete from client_companies where id = $1", [j.companyId]);
 }

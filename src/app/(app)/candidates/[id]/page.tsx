@@ -7,7 +7,7 @@ import { cardClass } from "@/components/styles";
 import { ConsentDateForm, SharingForm, StageForm } from "@/features/candidates/DetailForms";
 import { latestAllowedDate } from "@/features/candidates/validation";
 import { getFormatter } from "next-intl/server";
-import { DecisionPanel, ListSectionCard, NotesPanel, SectionCard } from "@/features/candidates/DetailSections";
+import { DecisionPanel, ListSectionCard, NotesPanel, PlacementPanel, SectionCard } from "@/features/candidates/DetailSections";
 import { loadDetail } from "@/features/candidates/detail-queries";
 import { canSeeLevel, contentAccess, isTskRole, TSK_INTERVIEW_DECISIONS } from "@/features/candidates/permissions";
 import { AssessmentsSection } from "@/features/assessments/AssessmentsSection";
@@ -16,6 +16,7 @@ import { listMonthly, listTsk } from "@/features/assessments/queries";
 import { DeleteCandidate } from "@/features/candidates/DeleteCandidate";
 import { loadDeleteSummary } from "@/features/candidates/delete-actions";
 import { candidateCode } from "@/features/candidates/delete-shared";
+import { jobOrderOptionsForField } from "@/features/job-orders/queries";
 import { DocumentsSection } from "@/features/documents/DocumentsSection";
 import { LIST_SECTIONS, SINGLE_SECTIONS } from "@/features/candidates/sections";
 import { requireUser, tenantQuery } from "@/lib/session";
@@ -47,6 +48,8 @@ export default async function CandidateDetailPage({
   const monthly = lpkSide || tskSide ? await tenantQuery((tx) => listMonthly(tx, id)) : [];
   // Ringkasan data yang ikut terhapus (hanya Admin LPK pemilik; fungsi DB sempit)
   const deleteSummary = me.role === "LPK_ADMIN" ? await tenantQuery((tx) => loadDeleteSummary(tx, id)) : null;
+  // Pilihan job order untuk form keputusan (hanya TSK; job order TSK ini yang sebidang dengan kandidat)
+  const jobOrderOptions = tskSide ? await tenantQuery((tx) => jobOrderOptionsForField(tx, detail.candidate.fieldId)) : [];
   const tskAssessments = tskSide || me.role === "LPK_ADMIN" ? await tenantQuery((tx) => listTsk(tx, id)) : [];
 
   const t = await getTranslations("detail");
@@ -116,7 +119,8 @@ export default async function CandidateDetailPage({
           </p>
         )}
 
-        {tsk && full && <DecisionPanel me={me} detail={{ ...full, candidateId: candidate.id }} />}
+        {tsk && full && <DecisionPanel me={me} detail={{ ...full, candidateId: candidate.id }} jobOrderOptions={jobOrderOptions} />}
+        {tsk && full && <PlacementPanel candidateId={candidate.id} placements={full.placements} />}
 
         {SINGLE_SECTIONS.filter((s) => canSeeLevel(me.role, s.level)).map((s) => (
           <SectionCard

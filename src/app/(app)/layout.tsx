@@ -19,7 +19,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const nav: NavItem[] = [{ href: "/", label: t("nav.dashboard") }];
   if (user.role !== "SUPER_ADMIN") nav.push({ href: "/candidates", label: t("nav.candidates") });
   if (user.role === "LPK_ADMIN" || user.role === "LPK_SENSEI") nav.push({ href: "/assessments/pending", label: t("nav.assessments") });
-  if (user.role === "TSK_ADMIN" || user.role === "TSK_STAFF") nav.push({ href: "/clients", label: t("nav.clients") });
+  if (user.role === "TSK_ADMIN" || user.role === "TSK_STAFF") {
+    nav.push({ href: "/clients", label: t("nav.clients") });
+    nav.push({ href: "/job-orders", label: t("nav.jobOrders") });
+  }
   if (user.role === "LPK_ADMIN" || user.role === "TSK_ADMIN") {
     nav.push({ href: "/users", label: t("nav.users") });
   }

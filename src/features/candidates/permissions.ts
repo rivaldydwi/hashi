@@ -34,3 +34,6 @@ export function canSeeLevel(role: Role, level: Level) {
 
 /** Keputusan TSK yang membuka penilaian interview TSK (sama dengan tsk_interview_decision di database). Daftar eksplisit, bukan `>=`. */
 export const TSK_INTERVIEW_DECISIONS: readonly SelectionDecision[] = ["PASSED_TSK_INTERVIEW", "SUBMITTED_TO_CLIENT", "PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"];
+
+/** Keputusan yang WAJIB punya job order (sama dengan CHECK candidate_selections_job_order_required). Daftar eksplisit, bukan `>=`. */
+export const JOB_ORDER_REQUIRED_DECISIONS: readonly SelectionDecision[] = ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"];

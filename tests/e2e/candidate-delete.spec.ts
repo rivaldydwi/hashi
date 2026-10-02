@@ -1,7 +1,7 @@
 import { access } from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { createScratchCandidate, deleteScratchCandidate, login, ownerQuery, unique } from "./helpers";
+import { createScratchCandidate, createScratchJobOrder, deleteScratchCandidate, deleteScratchJobOrder, login, ownerQuery, unique } from "./helpers";
 
 // Hapus kandidat permanen (v0.3, bagian C). HANYA menghapus kandidat yang dibuat tes ini sendiri; kandidat seed dicoba hapus
 // (diblokir) tetapi harus tetap ada. Berkas dokumen diunggah lewat UI ke storage e2e dan harus hilang setelah hapus.
@@ -19,16 +19,19 @@ let cid = "";
 let orgId = "";
 let url = "";
 let docId = "";
+let jo: Awaited<ReturnType<typeof createScratchJobOrder>>;
 
 test.beforeAll(async () => {
   const c = await createScratchCandidate({ name: NAME });
   cid = c.id;
   orgId = c.orgId;
   url = `/candidates/${cid}`;
+  jo = await createScratchJobOrder({ tag: `hapus${run}` });
 });
 
 test.afterAll(async () => {
   await deleteScratchCandidate(cid); // bila tes gagal sebelum terhapus; bila sudah terhapus tidak berbuat apa-apa
+  await deleteScratchJobOrder(jo);
 });
 
 const openDialog = async (page: Page) => {
@@ -47,7 +50,7 @@ test("siapkan: dokumen diunggah lewat UI, serta data milik TSK dan penilaian LPK
   [{ id: docId }] = await ownerQuery<{ id: string }>("select id from candidate_documents where candidate_id = $1", [cid]);
   expect(await exists(path.join(ROOT, orgId, cid, `${docId}.pdf`))).toBe(true);
 
-  await ownerQuery("insert into candidate_selections (candidate_id, tsk_org_id, decision) select $1, o.id, 'PASSED_CLIENT_INTERVIEW' from organizations o where o.name = 'TSK Demo Tokyo'", [cid]);
+  await ownerQuery("insert into candidate_selections (candidate_id, tsk_org_id, decision, job_order_id) select $1, o.id, 'PASSED_CLIENT_INTERVIEW', $2 from organizations o where o.name = 'TSK Demo Tokyo'", [cid, jo.id]);
   await ownerQuery("insert into candidate_notes (candidate_id, tsk_org_id, body, visibility) select $1, o.id, $2, 'TSK_ONLY' from organizations o where o.name = 'TSK Demo Tokyo'", [cid, `catatan-tsk-${run}`]);
   await ownerQuery(
     "with s as (select set_config('app.user_id', u.id::text, true) from users u where u.email = 'tsk.admin@hashi.test') insert into candidate_assessments (candidate_id, org_id, kind, assessed_on, score_japanese) select $1, u.organization_id, 'TSK_VISIT', current_date - 3, 4 from users u, s where u.email = 'tsk.admin@hashi.test'",

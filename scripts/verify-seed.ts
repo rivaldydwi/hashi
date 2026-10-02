@@ -10,6 +10,7 @@ import path from "node:path";
 import { eq, getTableColumns, sql } from "drizzle-orm";
 import { createDb, withSystem, withTenant } from "../src/db";
 import { listCandidatesFiltered, parseFilters } from "../src/db/candidate-list";
+import { matchCandidates } from "../src/db/job-matching";
 import { currentPeriod } from "../src/db/time";
 import { storageRootFor } from "../src/db/demo-files";
 import {
@@ -21,7 +22,13 @@ import {
   candidateSelections,
   candidateWorkHistories,
   candidates,
+  clientCompanies,
+  clientSiteContacts,
+  clientSiteFields,
+  clientSites,
+  jobOrders,
   organizations,
+  placements,
   selectionDecision,
   skillFields,
   users,
@@ -146,6 +153,38 @@ async function main() {
       and not exists (select 1 from candidate_assessments a where a.candidate_id = c.id and a.kind = 'LPK_MONTHLY' and a.period = ${period})`)).rows[0] as { n: number }, ownerDb.db);
   const active = data.cands.filter((c) => c.stage !== "WITHDRAWN").length;
   check('Daftar "Belum dinilai bulan ini" berisi sebagian kandidat (bukan kosong, bukan semua)', pending.n > 0 && pending.n < active, `${pending.n} dari ${active}`);
+
+  // ---------- 1b. Klien, job order, dan penempatan ----------
+  const cli = await withSystem(async (tx) => ({
+    companies: await tx.select().from(clientCompanies),
+    sites: await tx.select().from(clientSites),
+    contacts: await tx.select().from(clientSiteContacts),
+    siteFields: await tx.select().from(clientSiteFields),
+    jos: await tx.select().from(jobOrders),
+    sels: await tx.select().from(candidateSelections),
+    pls: await tx.select().from(placements),
+  }), ownerDb.db);
+  const distinctFields = new Set(cli.siteFields.map((f) => f.fieldId));
+  check("Klien demo: >= 3 perusahaan, >= 5 lokasi di >= 3 bidang kerja berbeda", cli.companies.length >= 3 && cli.sites.length >= 5 && distinctFields.size >= 3, `${cli.companies.length} perusahaan, ${cli.sites.length} lokasi, ${distinctFields.size} bidang`);
+  const noContact = cli.sites.filter((x) => !cli.contacts.some((c) => c.siteId === x.id)).map((x) => x.id);
+  check("Setiap lokasi klien punya minimal satu PIC", noContact.length === 0, String(noContact.length));
+  check("Job order demo: >= 6 dengan status campuran (OPEN, FILLED, CLOSED)", cli.jos.length >= 6 && ["OPEN", "FILLED", "CLOSED"].every((st) => cli.jos.some((j) => j.status === st)), cli.jos.map((j) => j.status).join(","));
+  const badField = cli.jos.filter((j) => !cli.siteFields.some((f) => f.siteId === j.siteId && f.fieldId === j.fieldId)).map((j) => j.id);
+  check("Bidang tiap job order termasuk bidang yang diterima lokasinya", badField.length === 0, String(badField.length));
+  const REQUIRES_JO = ["PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"]; // eksplisit
+  const noJo = cli.sels.filter((x) => REQUIRES_JO.includes(x.decision) && !x.jobOrderId).length;
+  check("Tidak ada keputusan PASSED_CLIENT_INTERVIEW atau sesudahnya tanpa job order", noJo === 0, String(noJo));
+  const departed = cli.sels.filter((x) => x.decision === "DEPARTED");
+  const activeBy = new Map<string, number>();
+  for (const p of cli.pls.filter((x) => x.status === "ACTIVE")) activeBy.set(p.candidateId, (activeBy.get(p.candidateId) ?? 0) + 1);
+  check("Kandidat DEPARTED punya penempatan aktif, dan tidak ada kandidat dengan lebih dari satu penempatan aktif", departed.length > 0 && departed.every((x) => activeBy.get(x.candidateId) === 1) && [...activeBy.values()].every((n) => n === 1), `${departed.length} berangkat, ${activeBy.size} aktif`);
+  const tskOrg = data.orgs.find((o) => o.type === "TSK")!;
+  const lacking: string[] = [];
+  for (const jo of cli.jos.filter((j) => j.status === "OPEN")) {
+    const rows = await withTenant({ orgId: tskOrg.id, role: "TSK_ADMIN" as Role }, (tx) => matchCandidates(tx, jo, tskOrg.id), appDb.db);
+    if (rows.length === 0) lacking.push(jo.title);
+  }
+  check("Setiap job order OPEN punya minimal satu kandidat cocok (halaman Kandidat cocok tidak kosong)", lacking.length === 0, lacking.join(", ") || `${cli.jos.filter((j) => j.status === "OPEN").length} job order OPEN`);
 
   // ---------- 2. Filter di /candidates (fungsi yang sama dengan halaman) ----------
   const lpks = data.orgs.filter((o) => o.type === "LPK");

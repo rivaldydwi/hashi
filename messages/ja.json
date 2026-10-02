@@ -25,7 +25,8 @@
     "candidates": "候補者",
     "assessments": "評価",
     "skillFields": "職種分野",
-    "clients": "配属先"
+    "clients": "配属先",
+    "jobOrders": "求人"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -316,7 +317,11 @@
     },
     "errors": {
       "notFound": "データが見つかりません。",
-      "readOnly": "このデータは編集できません。"
+      "readOnly": "このデータは編集できません。",
+      "jobOrderRequired": "この判断には求人の選択が必須です。",
+      "jobOrderInvalid": "求人が見つかりません。",
+      "jobOrderFieldMismatch": "求人の分野が候補者の分野と異なります。",
+      "alreadyPlaced": "この候補者にはすでに配属中の配属先があります。"
     },
     "sections": {
       "basic": {
@@ -567,7 +572,10 @@
       "dateLabel": "同意書の署名日（任意）",
       "save": "日付を保存",
       "saved": "日付を保存しました。"
-    }
+    },
+    "decisionScope": "対象の求人",
+    "decisionScopeGeneral": "全般（求人なし）",
+    "decisionJobOrderHint": "「クライアント面接合格」「書類手続き」「渡航済み」の判断には、求人（候補者と同じ分野）の選択が必須です。"
   },
   "roles": {
     "SUPER_ADMIN": "システム管理者",
@@ -652,7 +660,8 @@
       "assessmentsLpk": "LPKの月次評価",
       "assessmentsTsk": "TSKの評価（訪問・面談）",
       "notes": "TSKのメモ",
-      "selections": "TSKの判断"
+      "selections": "TSKの判断",
+      "placements": "配属"
     },
     "alsoPersonal": "個人情報、連絡先、身分情報、家族、学歴、職歴、資格も含まれます。監査履歴は（氏名とデータ内容なしで）残ります。",
     "tskWarning": "この候補者はTSKに共有されており、TSKが保有するデータがあります。TSKの判断・メモ・評価も削除され、TSKは閲覧できなくなります。",
@@ -765,6 +774,140 @@
           "roleTitle": "役職・役割（例：管理者、施設長）",
           "name": "担当者名",
           "phone": "担当者電話番号"
+        }
+      }
+    }
+  },
+  "jobOrders": {
+    "title": "求人",
+    "intro": "配属先の求人です。適した候補者を推薦し、渡航まで進捗を管理します。LPKからは見えません。",
+    "add": "求人を追加",
+    "newTitle": "新しい求人",
+    "chooseSite": "事業所を選択",
+    "chooseSiteIntro": "この求人の勤務先事業所を選んでください。",
+    "useSite": "この事業所を使う",
+    "noSites": "有効な配属先の事業所がまだありません。",
+    "goClients": "配属先と事業所を追加",
+    "siteHasNoFields": "この事業所には受け入れ可能な分野がありません。事業所ページで設定してください。",
+    "search": "検索",
+    "searchPlaceholder": "求人名、法人名、事業所名",
+    "filterStatus": "状態",
+    "all": "すべて",
+    "apply": "絞り込む",
+    "reset": "リセット",
+    "empty": "求人がまだありません。",
+    "noMatch": "該当する求人がありません。",
+    "deleted": "求人を削除しました。",
+    "colTitle": "求人",
+    "colSite": "配属先／事業所",
+    "colField": "分野",
+    "colSelected": "決定／募集人数",
+    "colStatus": "状態",
+    "deadline": "推薦期限",
+    "status": {
+      "OPEN": "募集中",
+      "FILLED": "充足",
+      "CLOSED": "終了"
+    },
+    "tabDetail": "詳細",
+    "tabMatch": "適合候補者",
+    "details": "求人情報",
+    "statusTitle": "状態",
+    "statusHint": "クライアント面接合格以降の候補者数が募集人数に達すると、自動的に「充足」になります。終了や再開は手動でできます。",
+    "close": "求人を終了",
+    "reopen": "再開",
+    "markFilled": "充足にする",
+    "deletePermanent": "完全に削除",
+    "deleteConfirm": "はい、完全に削除します",
+    "deleteWarning": "求人を削除します。元に戻せません。推薦済みまたは配属済みの候補者がいる場合は削除できません。使わなくなっただけなら「終了」を使ってください。",
+    "create": "求人を作成",
+    "save": "保存",
+    "matchIntro": "LPKが共有した、この求人と同じ分野の候補者（辞退を除く）を、直近の月次評価の平均が高い順に表示します。緑＝条件を満たす、赤＝未達。",
+    "matchEmpty": "この分野に適合する候補者はまだいません。",
+    "colCandidate": "候補者",
+    "colRequirements": "条件",
+    "colAvg": "最新の評価",
+    "colDecision": "判断",
+    "reqJlpt": "JLPT {level}以上",
+    "reqJft": "JFT-Basic合格",
+    "reqGender": {
+      "MALE": "男性",
+      "FEMALE": "女性"
+    },
+    "noRequirements": "特別な条件なし",
+    "propose": "推薦する",
+    "proposed": "推薦済み",
+    "notOpen": "募集中ではありません",
+    "alreadyPlaced": "配属済み",
+    "saved": "保存しました。",
+    "statusSaved": "求人の状態を保存しました。",
+    "proposedMsg": "候補者を推薦しました。",
+    "placementTitle": "配属",
+    "placementIntro": "判断が「渡航済み」になると自動で作成されます。就労開始日はここで入力・変更します。",
+    "placementStatus": {
+      "ACTIVE": "配属中",
+      "ENDED": "終了"
+    },
+    "errors": {
+      "invalid": "入力が正しくありません。求人名・分野・募集人数を確認してください。",
+      "notFound": "データが見つかりません。",
+      "siteInvalid": "事業所が無効、または有効ではありません。",
+      "fieldNotAccepted": "この事業所はその分野を受け入れていません。事業所ページで受け入れ分野を設定してください。",
+      "notOpen": "募集中の求人のみ推薦できます。",
+      "withdrawn": "辞退した候補者は推薦できません。",
+      "inUse": "推薦済みまたは配属済みの候補者がいるため削除できません。終了してください。",
+      "placementInvalid": "配属の入力が正しくありません（終了日は開始日以降にしてください）。",
+      "endDateRequired": "状態が「終了」の配属には終了日を入力してください。"
+    },
+    "forms": {
+      "jobOrder": {
+        "fields": {
+          "title": "求人名",
+          "fieldId": "職種分野",
+          "program": "制度",
+          "positions": "募集人数",
+          "description": "仕事内容",
+          "salaryNote": "給与・待遇",
+          "monthlySalary": "月給（円・任意）",
+          "workPlace": "勤務地",
+          "minJlpt": "JLPTの最低レベル",
+          "jftRequired": "JFT-Basic合格が必須（200点以上）",
+          "genderRequirement": "性別の条件",
+          "targetStartDate": "就労開始予定日",
+          "applicationDeadline": "推薦期限",
+          "note": "備考"
+        },
+        "options": {
+          "program": {
+            "SSW": "特定技能",
+            "TITP": "技能実習・育成就労",
+            "OTHER": "その他"
+          },
+          "minJlpt": {
+            "N5": "N5",
+            "N4": "N4",
+            "N3": "N3",
+            "N2": "N2",
+            "N1": "N1"
+          },
+          "genderRequirement": {
+            "MALE": "男性",
+            "FEMALE": "女性"
+          }
+        }
+      },
+      "placement": {
+        "fields": {
+          "startDate": "就労開始日",
+          "endDate": "終了日",
+          "status": "状態",
+          "note": "備考"
+        },
+        "options": {
+          "status": {
+            "ACTIVE": "配属中",
+            "ENDED": "終了"
+          }
         }
       }
     }

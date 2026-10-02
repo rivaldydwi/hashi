@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createScratchCandidate, deleteScratchCandidate, login, ownerQuery, unique } from "./helpers";
+import { createScratchCandidate, createScratchJobOrder, deleteScratchCandidate, deleteScratchJobOrder, login, ownerQuery, unique } from "./helpers";
 
 // Halaman detail kandidat (langkah 3, bagian 2). Memakai kandidat uji SENDIRI (LPK Bandung, Belajar, dibagikan ke TSK,
 // belum ada keputusan) yang dihapus di akhir, supaya data seed (lengkap, dijaga verify:seed) tidak tersentuh.
@@ -15,16 +15,19 @@ const SHARED_NOTE = `catatan-dibagikan-${run}`;
 const startedAt = new Date(); // audit log tidak bisa dihapus: hanya periksa baris yang dibuat run ini
 let cid = "";
 let url = "";
+let jo: Awaited<ReturnType<typeof createScratchJobOrder>>;
 
 const NAME = `Uji Detail ${run}`;
 
 test.beforeAll(async () => {
   cid = (await createScratchCandidate({ name: NAME })).id;
   url = `/candidates/${cid}`;
+  jo = await createScratchJobOrder({ tag: `detail${run}` }); // keputusan PASSED_CLIENT_INTERVIEW wajib punya job order
 });
 
 test.afterAll(async () => {
   await deleteScratchCandidate(cid);
+  await deleteScratchJobOrder(jo);
 });
 
 async function openEdit(page: Page, section: string) {
@@ -152,10 +155,16 @@ test("TSK melihat kandidat yang masih belajar dan mengambil keputusan; data isi 
 test("TSK bisa mengedit isi data setelah PASSED_CLIENT_INTERVIEW, dan kembali baca-saja bila keputusan diubah", async ({ page }) => {
   await login(page, "tsk.admin@hashi.test");
   await page.goto(url);
+  // Tanpa job order ditolak (server), dengan pesan yang jelas; dengan job order sebidang diterima
   await page.locator("#decision").selectOption("PASSED_CLIENT_INTERVIEW");
+  await page.locator("[data-testid=form-decision] button[type=submit]").click();
+  await expect(page.locator("[data-testid=form-decision] p[role=alert]")).toContainText("求人の選択が必須です");
+  expect(await ownerQuery("select 1 from candidate_selections where candidate_id = $1 and decision = 'PASSED_CLIENT_INTERVIEW'", [cid])).toHaveLength(0);
+  await page.locator("#decision-job-order").selectOption(jo.id);
   await submitAndExpectSaved(page, "form-decision", "決定を保存しました。");
   await page.reload();
   await expect(page.getByTestId("readonly-note")).toHaveCount(0);
+  await expect(page.locator("[data-testid=selection-row][data-scope=job-order]")).toHaveAttribute("data-decision", "PASSED_CLIENT_INTERVIEW");
 
   await openEdit(page, "about");
   await page.locator("#about-hobby").fill(`Hobi-TSK-${run}`);
@@ -168,6 +177,8 @@ test("TSK bisa mengedit isi data setelah PASSED_CLIENT_INTERVIEW, dan kembali ba
   );
   expect(audit.after.fields).toEqual(["hobby"]);
 
+  // Hak edit mengikuti keputusan paling maju: turunkan keputusan di job order itu
+  await page.locator("#decision-job-order").selectOption(jo.id);
   await page.locator("#decision").selectOption("SHORTLISTED");
   await submitAndExpectSaved(page, "form-decision", "決定を保存しました。");
   await page.reload();

@@ -7,6 +7,7 @@
 // Setelah mengubah file ini: `npm run db:generate` untuk membuat migration baru.
 
 import {
+  type AnyPgColumn,
   bigserial,
   boolean,
   char,
@@ -17,6 +18,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  pgView,
   primaryKey,
   smallint,
   text,
@@ -63,6 +65,11 @@ export const selectionDecision = pgEnum("selection_decision", [
   "DEPARTED", // Berangkat
   "REJECTED", // Ditolak
 ]);
+
+// Jenis program penempatan. SSW = 特定技能; TITP = 技能実習 / 育成就労; OTHER = lainnya.
+export const jobProgram = pgEnum("job_program", ["SSW", "TITP", "OTHER"]);
+export const jobOrderStatus = pgEnum("job_order_status", ["OPEN", "FILLED", "CLOSED"]);
+export const placementStatus = pgEnum("placement_status", ["ACTIVE", "ENDED"]);
 
 export const maritalStatus = pgEnum("marital_status", ["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]);
 
@@ -367,12 +374,17 @@ export const candidateSelections = pgTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     decision: selectionDecision("decision").notNull().default("NONE"),
+    // Job order yang dituju. NULL = keputusan umum atas kandidat (satu baris per kandidat × TSK). Keputusan
+    // PASSED_CLIENT_INTERVIEW, DOCUMENT_PROCESS, DEPARTED WAJIB punya job order (CHECK di migration 0017).
+    jobOrderId: uuid("job_order_id").references((): AnyPgColumn => jobOrders.id, { onDelete: "restrict" }),
     decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
     decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("candidate_selections_candidate_tsk_key").on(t.candidateId, t.tskOrgId),
+    // Satu baris per (kandidat, TSK, job order); NULL dianggap sama (NULLS NOT DISTINCT, ditulis di migration 0017)
+    uniqueIndex("candidate_selections_candidate_tsk_jo_key").on(t.candidateId, t.tskOrgId, t.jobOrderId),
     index("candidate_selections_tsk_idx").on(t.tskOrgId),
+    index("candidate_selections_job_order_idx").on(t.jobOrderId),
   ],
 );
 
@@ -522,6 +534,86 @@ export const clientSiteFields = pgTable(
   (t) => [primaryKey({ columns: [t.siteId, t.fieldId] }), index("client_site_fields_field_idx").on(t.fieldId)],
 );
 
+// ---------------------------------------------------------------------------------------------
+// Job order (求人) dan penempatan (配属). Milik TSK (org_id); LPK tidak melihatnya. Lihat drizzle/0017_job_orders.sql.
+// ---------------------------------------------------------------------------------------------
+export const jobOrders = pgTable(
+  "job_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    siteId: uuid("site_id") // lokasi kerja; tidak bisa diganti setelah dibuat
+      .notNull()
+      .references(() => clientSites.id, { onDelete: "restrict" }),
+    fieldId: uuid("field_id") // harus termasuk bidang yang diterima lokasi (trigger)
+      .notNull()
+      .references(() => skillFields.id, { onDelete: "restrict" }),
+    title: text("title").notNull(),
+    positions: smallint("positions").notNull().default(1),
+    program: jobProgram("program").notNull().default("SSW"),
+    description: text("description"),
+    salaryNote: text("salary_note"), // gaji / kondisi (teks bebas)
+    monthlySalary: integer("monthly_salary"), // gaji bulanan (yen), opsional
+    workPlace: text("work_place"),
+    minJlpt: text("min_jlpt"), // N5..N1, opsional (N4 = N4 atau lebih tinggi)
+    jftRequired: boolean("jft_required").notNull().default(false), // wajib JFT-Basic lulus (skor >= 200)
+    genderRequirement: gender("gender_requirement"),
+    targetStartDate: date("target_start_date"),
+    applicationDeadline: date("application_deadline"),
+    status: jobOrderStatus("status").notNull().default("OPEN"),
+    note: text("note"),
+    ...timestamps,
+  },
+  (t) => [
+    index("job_orders_org_status_idx").on(t.orgId, t.status),
+    index("job_orders_site_idx").on(t.siteId),
+    index("job_orders_field_idx").on(t.fieldId),
+    check("job_orders_positions_check", sql`${t.positions} between 1 and 1000`),
+    check("job_orders_salary_check", sql`${t.monthlySalary} is null or ${t.monthlySalary} >= 0`),
+    check("job_orders_min_jlpt_check", sql`${t.minJlpt} is null or ${t.minJlpt} in ('N5', 'N4', 'N3', 'N2', 'N1')`),
+  ],
+);
+
+// Penempatan aktif pekerja (dibuat otomatis saat keputusan menjadi DEPARTED). Satu kandidat hanya satu ACTIVE.
+export const placements = pgTable(
+  "placements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => clientSites.id, { onDelete: "restrict" }),
+    jobOrderId: uuid("job_order_id").references(() => jobOrders.id, { onDelete: "restrict" }),
+    startDate: date("start_date").notNull(), // 就労開始日
+    endDate: date("end_date"),
+    status: placementStatus("status").notNull().default("ACTIVE"),
+    note: text("note"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("placements_one_active_key").on(t.candidateId).where(sql`${t.status} = 'ACTIVE'`),
+    index("placements_org_idx").on(t.orgId),
+    index("placements_site_idx").on(t.siteId),
+    check("placements_dates_check", sql`${t.endDate} is null or ${t.endDate} >= ${t.startDate}`),
+    check("placements_ended_check", sql`${t.status} = 'ACTIVE' or ${t.endDate} is not null`),
+  ],
+);
+
+// Keputusan paling maju per (kandidat, TSK): dipakai daftar kandidat dan sisi LPK (LPK tidak melihat job order). VIEW security_invoker.
+export const candidateHeadlineDecision = pgView("candidate_headline_decision", {
+  candidateId: uuid("candidate_id").notNull(),
+  tskOrgId: uuid("tsk_org_id").notNull(),
+  decision: selectionDecision("decision").notNull(),
+  decidedAt: timestamp("decided_at", { withTimezone: true }).notNull(),
+}).existing();
+
 // Log perubahan data: siapa, kapan, apa (sebelum/sesudah).
 export const auditLogs = pgTable(
   "audit_logs",
@@ -599,4 +691,6 @@ export type CandidateStage = (typeof candidateStage.enumValues)[number];
 export type Role = (typeof role.enumValues)[number];
 export type Locale = (typeof locale.enumValues)[number];
 export type Language = (typeof language.enumValues)[number];
+export type JobOrderStatus = (typeof jobOrderStatus.enumValues)[number];
+export type PlacementStatus = (typeof placementStatus.enumValues)[number];
 export type OrgType = (typeof orgType.enumValues)[number];
