@@ -24,6 +24,7 @@ export async function audit(tx: Tx, entry: AuditEntry): Promise<void> {
     .innerJoin(organizations, eq(organizations.id, users.organizationId))
     .where(eq(users.id, entry.actorUserId))
     .limit(1);
+  const kind = entry.after?.kind ?? entry.before?.kind; // jenis penilaian menentukan boleh-tidaknya skor tercatat
   await tx.insert(auditLogs).values({
     organizationId: entry.organizationId,
     actorOrgId,
@@ -35,7 +36,7 @@ export async function audit(tx: Tx, entry: AuditEntry): Promise<void> {
     action: entry.action,
     entity: entry.entity,
     entityId: entry.entityId,
-    before: sanitizeAuditPayload(entry.entity, entry.before),
-    after: sanitizeAuditPayload(entry.entity, entry.after),
+    before: sanitizeAuditPayload(entry.entity, entry.before, kind),
+    after: sanitizeAuditPayload(entry.entity, entry.after, kind),
   });
 }

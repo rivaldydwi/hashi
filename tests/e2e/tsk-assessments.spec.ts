@@ -227,4 +227,6 @@ test("audit penilaian TSK memuat jenis, kolom, dan visibility; tidak pernah isi 
   for (const secret of [SECRET, INTERVIEW_NOTE, ADMIN_NOTE]) expect(text).not.toContain(secret);
   expect(text).toContain("TSK_VISIT");
   expect(text).toContain("SHARED_WITH_LPK");
+  // skor penilaian TSK (bisa TSK_ONLY) tidak boleh masuk log yang dibaca LPK
+  expect(text).not.toMatch(/\"score[A-Za-z]+\":/); // nama kolom di `fields` boleh, nilai skor tidak
 });

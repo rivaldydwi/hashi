@@ -105,7 +105,11 @@ test("form tanpa centang ditolak (tambah dan ubah); ubah languages lewat form ub
   );
   expect(audit.length).toBeGreaterThanOrEqual(1);
   expect(audit.some((a) => a.after.changed?.includes("languages"))).toBe(true);
-  expect(JSON.stringify(audit)).not.toContain('"ja"'); // isi languages tidak dicatat, hanya nama kolom
+  // languages ada di AUDIT_VALUE_FIELDS.user: nilai sebelum/sesudah tercatat; nama/email pengguna tidak
+  const last = audit.find((a) => a.after.changed?.includes("languages")) as unknown as { before: { languages: string[] }; after: { languages: string[] } };
+  expect([...last.after.languages].sort()).toEqual(["en", "id", "ja"]);
+  expect(last.before.languages).not.toContain("en");
+  expect(JSON.stringify(audit)).not.toContain(emailBoth);
 });
 
 test("super admin melihat chip bahasa di kelola organisasi, dan halaman Akun menampilkannya", async ({ page }) => {

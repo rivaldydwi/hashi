@@ -204,7 +204,7 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   localStorage/sessionStorage/IndexedDB (dijaga `tests/unit/no-draft-storage.test.ts`), nilai awal otomatis ditandai lewat `autoFilled` ("Diisi otomatis, periksa"). Umpan balik: `SubmitButton`
   (spinner + `aria-busy`), `ToastProvider`/`useToast` (aria-live), `(app)/loading.tsx` (skeleton), `(app)/error.tsx` (batas galat; tanpa isi galat teknis), aksi berbahaya = `btnDanger`.
 - **Riwayat aktivitas** (migration 0019; `src/db/audit-*.ts`, `src/features/audit/`, `/activity`): satu jalan tulis, `audit()` (`src/lib/audit.ts`): menyaring `before/after` lewat
-  `sanitizeAuditPayload` (`AUDIT_VALUE_FIELDS` per entitas = satu-satunya nilai yang boleh tercatat: pilihan/status/kode, tidak pernah nama orang, email, isi catatan, nama kandidat; kunci
+  `sanitizeAuditPayload` (`AUDIT_VALUE_FIELDS` per entitas = satu-satunya nilai yang boleh tercatat: pilihan/status/kode/bahasa dan empat skor penilaian 1-5 HANYA untuk LPK_MONTHLY (skor TSK_ONLY tidak boleh bocor ke LPK; note/follow_up tidak pernah), tidak pernah nama orang, email, isi catatan, nama kandidat; kunci
   struktural `fields/section/rows/...` selalu boleh) dan menyimpan POTRET pelaku (`actor_name/role/org_name`; nama orang KOSONG untuk entri lintas organisasi, jadi LPK hanya melihat nama
   organisasi TSK). Entri IMMUTABLE (trigger `audit_logs_immutable` menolak UPDATE/DELETE, termasuk OWNER; TRUNCATE untuk `--reset` tidak dipicu). Baca: hanya LPK_ADMIN/TSK_ADMIN
   (`COALESCE` pada peran), cakupan = log tersimpan di organisasi sesi ATAU pelakunya organisasi sesi. Aksi baru = tambah ke `ACTIONS` (`audit-describe.ts`, kalimat id + ja, dites) dan
@@ -222,7 +222,7 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   `NOT` melewati IF) memberi angka untuk dialog, null selain LPK_ADMIN pemilik. E2E hanya boleh menghapus kandidat buatannya sendiri.
 - **Bahasa pengguna**: `users.languages` (enum `language` id/ja/en, array, CHECK `language_array_ok`: >=1, tanpa NULL/duplikat) = bahasa yang DIKUASAI;
   `users.locale` (id/ja) = bahasa TAMPILAN, hanya diubah tombol bahasa (`setLocale`) dan TIDAK ditampilkan di daftar/form pengguna.
-  Pengguna baru: `locale` awal dari `languages` (id jika ada, lalu ja, lalu id). Audit hanya mencatat nama kolom `languages`.
+  Pengguna baru: `locale` awal dari `languages` (id jika ada, lalu ja, lalu id). Audit user: `languages` (id/ja/en) tercatat sebagai nilai dari/ke (ada di `AUDIT_VALUE_FIELDS.user`, bersama role/active); nama dan email tidak.
 - **Audit log**: `audit(tx, {organizationId, actorOrgId, candidateId, …})`. Perubahan kandidat disimpan di
   `organizationId` = LPK PEMILIK kandidat (supaya LPK ikut melihat aksi TSK), `actorOrgId` = organisasi pelaku,
   `candidateId` wajib diisi (policy insert memeriksanya). Untuk log biasa `actorOrgId` otomatis = `organizationId`.

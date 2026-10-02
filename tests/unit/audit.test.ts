@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ACTIONS, actorLabel, AUDIT_ACTION_NAMES, categoryOf, describeAudit, type AuditView } from "../../src/db/audit-describe";
 import { AUDIT_VALUE_FIELDS, sanitizeAuditPayload } from "../../src/db/audit-values";
+import { assessmentAuditEntry } from "../../src/db/audit-entries";
 import { parseAuditFilters } from "../../src/db/audit-history";
 
 const CJK = /[぀-ヿ㐀-鿿]/;
@@ -50,7 +51,7 @@ test("pelaku: nama bila ada; lintas organisasi (tanpa nama) hanya nama organisas
 });
 
 test("sanitize: nilai di luar daftar dibuang; kunci struktural dan nilai pilihan dipertahankan", () => {
-  assert.deepEqual(sanitizeAuditPayload("user", { name: "Budi", email: "b@x.id", role: "LPK_SENSEI", languages: ["id"], active: true }), { role: "LPK_SENSEI", active: true });
+  assert.deepEqual(sanitizeAuditPayload("user", { name: "Budi", email: "b@x.id", role: "LPK_SENSEI", languages: ["id"], active: true }), { role: "LPK_SENSEI", languages: ["id"], active: true });
   assert.deepEqual(sanitizeAuditPayload("candidate", { fullName: "Siti", stage: "READY", code: "abcdef12", section: "basic", fields: ["a"] }), { stage: "READY", code: "abcdef12", section: "basic", fields: ["a"] });
   assert.equal(sanitizeAuditPayload("candidate_note", { body: "rahasia" }), undefined);
   assert.deepEqual(sanitizeAuditPayload("candidate_note", { body: "rahasia", visibility: "TSK_ONLY", bodyChanged: true }), { visibility: "TSK_ONLY", bodyChanged: true });
@@ -60,7 +61,7 @@ test("sanitize: nilai di luar daftar dibuang; kunci struktural dan nilai pilihan
 });
 
 test("AUDIT_VALUE_FIELDS tidak memuat kolom pribadi", () => {
-  const banned = /name$|email|phone|address|note|body|passport|nationalId|password|languages/i;
+  const banned = /name$|email|phone|address|note|body|passport|nationalId|password/i;
   for (const [entity, fields] of Object.entries(AUDIT_VALUE_FIELDS)) {
     for (const f of fields) {
       if (entity === "organization" && f === "name") continue; // nama ORGANISASI (bukan orang): satu-satunya pengecualian, disengaja
@@ -77,4 +78,24 @@ test("parseAuditFilters: nilai asing diabaikan", () => {
 
 test("ACTIONS konsisten dengan nama aksi", () => {
   assert.equal(Object.keys(ACTIONS).length, AUDIT_ACTION_NAMES.length);
+});
+
+test("user: role, active, dan languages tercatat sebagai nilai; nama dan email tidak", () => {
+  assert.deepEqual(sanitizeAuditPayload("user", { name: "Budi", email: "b@x.id", role: "LPK_SENSEI", active: true, languages: ["id", "ja"], changed: ["name", "languages"] }), { role: "LPK_SENSEI", active: true, languages: ["id", "ja"], changed: ["name", "languages"] });
+});
+
+test("penilaian: skor 1-5 tercatat untuk LPK_MONTHLY saja; note/tindak lanjut tidak pernah", () => {
+  const a = { id: "a1", candidateId: "c1", period: "2026-10-01" };
+  const base = { action: "assessment.update" as const, lpkOrgId: "l", actorOrgId: "l", actorUserId: "u", changed: ["scoreJapanese", "note"] };
+  const lpk = assessmentAuditEntry({ ...base, assessment: { ...a, kind: "LPK_MONTHLY" }, scores: { before: { scoreJapanese: 3 }, after: { scoreJapanese: 4, note: "rahasia" as never } } });
+  const sa = sanitizeAuditPayload("candidate_assessment", lpk.after);
+  assert.equal(sa?.scoreJapanese, 4);
+  assert.equal(sanitizeAuditPayload("candidate_assessment", lpk.before, "LPK_MONTHLY")?.scoreJapanese, 3);
+  assert.ok(!JSON.stringify(lpk).includes("rahasia"));
+  // jenis TSK: skor TIDAK ikut (penilaian TSK_ONLY tidak boleh sampai ke LPK), lewat pembangun entri maupun lewat sanitize
+  for (const kind of ["TSK_VISIT", "TSK_INTERVIEW"] as const) {
+    const t = assessmentAuditEntry({ ...base, assessment: { ...a, kind }, scores: { after: { scoreJapanese: 5 } } });
+    assert.ok(!("scoreJapanese" in (t.after ?? {})));
+    assert.equal(sanitizeAuditPayload("candidate_assessment", { kind, scoreJapanese: 5, fields: ["scoreJapanese"] })?.scoreJapanese, undefined);
+  }
 });

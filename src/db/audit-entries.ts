@@ -3,6 +3,8 @@
 // dan hanya `import type` (dihapus saat dijalankan) ke modul lain.
 import type { CandidateAssessment, CandidateNote, NoteVisibility } from "./schema";
 
+const SCORE_KEYS = ["scoreJapanese", "scoreAttitude", "scoreFitness", "scoreMotivation"];
+
 export type AuditEntry = {
   /** Organisasi tempat log disimpan. Untuk perubahan kandidat: LPK pemilik kandidat. */
   organizationId: string | null;
@@ -66,7 +68,14 @@ export function assessmentAuditEntry(p: {
   /** Nama kolom yang diisi (create) atau berubah (update). */
   changed: string[];
   visibility?: { from?: NoteVisibility; to: NoteVisibility };
+  /**
+   * Skor 1-5 (HANYA empat skor; tidak pernah note/follow_up) yang berubah. Dicatat HANYA untuk LPK_MONTHLY: penilaian TSK berstatus TSK_ONLY tidak boleh
+   * sampai ke LPK, padahal log kandidat disimpan di LPK pemilik. Untuk jenis TSK, parameter ini diabaikan.
+   */
+  scores?: { before?: Record<string, number | null>; after: Record<string, number | null> };
 }): AuditEntry {
+  const keepScores = p.assessment.kind === "LPK_MONTHLY" && p.scores;
+  const pick = (o?: Record<string, number | null>) => Object.fromEntries(Object.entries(o ?? {}).filter(([k]) => SCORE_KEYS.includes(k)));
   return {
     organizationId: p.lpkOrgId,
     actorOrgId: p.actorOrgId,
@@ -75,12 +84,13 @@ export function assessmentAuditEntry(p: {
     action: p.action,
     entity: "candidate_assessment",
     entityId: p.assessment.id,
-    before: p.visibility?.from ? { visibility: p.visibility.from } : undefined,
+    before: p.visibility?.from || keepScores ? { ...(p.visibility?.from ? { visibility: p.visibility.from } : {}), ...(keepScores ? pick(p.scores!.before) : {}) } : undefined,
     after: {
       kind: p.assessment.kind,
       period: p.assessment.period,
       fields: [...p.changed].sort(),
       ...(p.visibility ? { visibility: p.visibility.to } : {}),
+      ...(keepScores ? pick(p.scores!.after) : {}),
     },
   };
 }

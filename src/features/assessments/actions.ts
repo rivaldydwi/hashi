@@ -22,6 +22,13 @@ const norm = (v: unknown) => (v === undefined || v === null || v === "" ? null :
  * dipakai trigger database, jadi tanggal hari ini menurut Jakarta tidak pernah ditolak oleh database.
  * Penilai, periode, dan hak ubah (penilainya atau LPK_ADMIN) dijaga database (trigger + RLS).
  */
+/** Skor yang berubah (sebelum/sesudah) untuk audit; hanya empat skor 1-5. */
+function scoresOf(before: Record<string, unknown> | undefined, after: Record<string, unknown>, changed: string[]) {
+  const n = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
+  const names = changed.filter((c) => (SCORE_NAMES as readonly string[]).includes(c));
+  return { ...(before ? { before: Object.fromEntries(names.map((k) => [k, n(before[k])])) } : {}), after: Object.fromEntries(names.map((k) => [k, n(after[k])])) };
+}
+
 export async function saveAssessment(_prev: FormState, formData: FormData): Promise<FormState> {
   return run(async (me) => {
     if ((me.role !== "LPK_ADMIN" && me.role !== "LPK_SENSEI") || !uuid.safeParse(formData.get("candidateId")).success) {
@@ -73,7 +80,7 @@ export async function saveAssessment(_prev: FormState, formData: FormData): Prom
           if (done.length !== 1) throw new ActionError("assessments.errors.notAllowed"); // RLS: bukan penilainya / bukan LPK_ADMIN
           const changed = ASSESSMENT_FIELDS.filter((f) => norm((before as Record<string, unknown>)[f.name]) !== norm((values as Record<string, unknown>)[f.name])).map((f) => f.name);
           if (changed.length) {
-            await audit(tx, assessmentAuditEntry({ action: "assessment.update", assessment: { id: before.id, candidateId, kind: "LPK_MONTHLY", period: done[0].period }, lpkOrgId: cand.organizationId, actorOrgId: me.organizationId, actorUserId: me.id, changed }));
+            await audit(tx, assessmentAuditEntry({ action: "assessment.update", assessment: { id: before.id, candidateId, kind: "LPK_MONTHLY", period: done[0].period }, lpkOrgId: cand.organizationId, actorOrgId: me.organizationId, actorUserId: me.id, changed, scores: scoresOf(before as Record<string, unknown>, values as Record<string, unknown>, changed) }));
           }
         } else {
           const [row] = await tx
@@ -81,7 +88,7 @@ export async function saveAssessment(_prev: FormState, formData: FormData): Prom
             .values({ candidateId, orgId: me.organizationId, kind: "LPK_MONTHLY", ...values })
             .returning({ id: candidateAssessments.id, period: candidateAssessments.period });
           const changed = ASSESSMENT_FIELDS.filter((f) => norm((values as Record<string, unknown>)[f.name]) !== null).map((f) => f.name);
-          await audit(tx, assessmentAuditEntry({ action: "assessment.create", assessment: { id: row.id, candidateId, kind: "LPK_MONTHLY", period: row.period }, lpkOrgId: cand.organizationId, actorOrgId: me.organizationId, actorUserId: me.id, changed }));
+          await audit(tx, assessmentAuditEntry({ action: "assessment.create", assessment: { id: row.id, candidateId, kind: "LPK_MONTHLY", period: row.period }, lpkOrgId: cand.organizationId, actorOrgId: me.organizationId, actorUserId: me.id, changed, scores: scoresOf(undefined, values as Record<string, unknown>, changed) }));
         }
       });
     } catch (err) {

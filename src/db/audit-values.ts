@@ -9,18 +9,22 @@ export const AUDIT_STRUCTURAL_KEYS = ["fields", "section", "rows", "changed", "d
 /**
  * Nilai per entitas yang boleh dicatat (pilihan/status/tanggal formulir/kode). Keputusan setiap entri ada alasannya:
  *  - organization: nama ORGANISASI (bukan orang), jenis, negara, bahasa bawaan, zona waktu
- *  - user: peran dan status aktif (BUKAN nama, email, atau bahasa yang dikuasai; itu data pribadi)
+ *  - user: peran, status aktif, dan bahasa yang dikuasai (id/ja/en; bukan data pribadi) (BUKAN nama atau email)
  *  - candidate: tahap LPK, keputusan, status berbagi, tanggal formulir persetujuan, kode 8 karakter (BUKAN nama kandidat)
- *  - candidate_note / candidate_assessment: visibility, jenis, periode (BUKAN isi catatan/nilai)
+ *  - candidate_note: visibility. candidate_assessment: visibility, jenis, periode, empat skor 1-5 HANYA untuk LPK_MONTHLY (skor TSK berstatus TSK_ONLY
+ *    tidak boleh sampai ke LPK; BUKAN note/follow_up)
  *  - partnership: status aktif; skill_field: kode; job_order: status
  */
+/** Empat skor penilaian (1-5). Hanya untuk LPK_MONTHLY; sanitize membuangnya untuk jenis lain. Catatan dan tindak lanjut TIDAK pernah. */
+export const AUDIT_SCORE_FIELDS = ["scoreJapanese", "scoreAttitude", "scoreFitness", "scoreMotivation"] as const;
+
 export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
   organization: ["name", "type", "country", "defaultLocale", "timezone"],
-  user: ["role", "active"],
+  user: ["role", "active", "languages"],
   candidate: ["stage", "decision", "sharedWithTsk", "dataConsentDate", "code"],
   candidate_selection: ["decision"],
   candidate_note: ["visibility"],
-  candidate_assessment: ["kind", "period", "visibility"],
+  candidate_assessment: ["kind", "period", "visibility", ...AUDIT_SCORE_FIELDS],
   candidate_document: ["type"],
   partnership: ["active"],
   skill_field: ["code"],
@@ -32,10 +36,16 @@ export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
 const isPlain = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Buang kunci yang bukan struktural dan bukan nilai yang diizinkan untuk entitas ini. */
-export function sanitizeAuditPayload(entity: string, payload: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+export function sanitizeAuditPayload(entity: string, payload: Record<string, unknown> | undefined, kind?: unknown): Record<string, unknown> | undefined {
   if (!isPlain(payload)) return undefined;
   const allowed = new Set<string>([...AUDIT_STRUCTURAL_KEYS, ...(AUDIT_VALUE_FIELDS[entity] ?? [])]);
   const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(payload)) if (allowed.has(k)) out[k] = v;
+  // Skor hanya untuk penilaian bulanan LPK (kind di payload); jenis lain: skor dibuang walau kuncinya ada di daftar
+  const scoresOk = entity !== "candidate_assessment" || (kind ?? payload.kind) === "LPK_MONTHLY";
+  for (const [k, v] of Object.entries(payload)) {
+    if (!allowed.has(k)) continue;
+    if (!scoresOk && (AUDIT_SCORE_FIELDS as readonly string[]).includes(k)) continue;
+    out[k] = v;
+  }
   return Object.keys(out).length > 0 ? out : undefined;
 }

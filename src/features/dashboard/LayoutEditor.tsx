@@ -77,7 +77,7 @@ export function LayoutEditor({ role, initial, slots, labels }: { role: Role; ini
 
   const controls = (x: ResolvedItem) => (
     <div className="flex flex-wrap items-center gap-2 rounded-t-2xl border border-b-0 border-dashed border-accent bg-accent-soft px-3 py-2" data-testid={`edit-bar-${x.id}`}>
-      <span className="mr-auto text-[13px] font-semibold text-accent-text">{labels[x.id]}</span>
+      <span className="w-full text-[13px] font-semibold text-accent-text">{labels[x.id]}</span>
       {x.kind === "widget" && (
         <div role="group" aria-label={t("sizeOf", { name: labels[x.id] })} className="flex gap-1">
           {(["half", "full"] as const).map((s) => (

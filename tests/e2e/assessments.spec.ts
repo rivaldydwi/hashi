@@ -190,6 +190,11 @@ test("audit penilaian hanya mencatat nama kolom, bukan isi catatan", async () =>
   );
   expect(rows.length).toBeGreaterThanOrEqual(2);
   expect(JSON.stringify(rows)).not.toContain(SECRET_NOTE);
+  // skor 1-5 penilaian bulanan LPK tercatat sebagai angka (AUDIT_VALUE_FIELDS), terpisah dari catatan
+  const created = rows.find((r) => r.action === "assessment.create")!.after as Record<string, unknown>;
+  expect(Object.keys(created).some((k) => /^score/.test(k))).toBe(true);
+  for (const k of Object.keys(created).filter((k) => /^score/.test(k))) expect([1, 2, 3, 4, 5]).toContain(created[k]);
+  expect(Object.keys(created)).not.toContain("note");
 });
 
 test("tampilan ponsel: penilaian tampil sebagai kartu", async ({ browser }) => {

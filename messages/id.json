@@ -277,8 +277,8 @@
     "NONE": "Belum diputuskan",
     "SHORTLISTED": "Masuk shortlist",
     "PASSED_TSK_INTERVIEW": "Lulus wawancara TSK",
-    "SUBMITTED_TO_CLIENT": "Diajukan ke client",
-    "PASSED_CLIENT_INTERVIEW": "Lulus interview client",
+    "SUBMITTED_TO_CLIENT": "Diajukan ke klien",
+    "PASSED_CLIENT_INTERVIEW": "Lulus interview klien",
     "DOCUMENT_PROCESS": "Proses dokumen",
     "DEPARTED": "Berangkat",
     "REJECTED": "Ditolak"
@@ -423,7 +423,7 @@
     "noDecisions": "Belum ada keputusan dari TSK.",
     "decidedAt": "Diputuskan {date}",
     "readOnly": {
-      "needsDecision": "Data kandidat ini baca-saja untuk Anda. Isi data baru bisa diubah setelah keputusan Anda mencapai \"Lulus interview client\" atau sesudahnya.",
+      "needsDecision": "Data kandidat ini baca-saja untuk Anda. Isi data baru bisa diubah setelah keputusan Anda mencapai \"Lulus interview klien\" atau sesudahnya.",
       "withdrawn": "Kandidat ini sudah mundur dari LPK, jadi datanya baca-saja."
     },
     "errors": {
@@ -686,7 +686,7 @@
     },
     "decisionScope": "Untuk job order",
     "decisionScopeGeneral": "Umum (tanpa job order)",
-    "decisionJobOrderHint": "Keputusan Lulus interview client, Proses dokumen, dan Berangkat wajib memilih job order (yang sebidang dengan kandidat)."
+    "decisionJobOrderHint": "Keputusan Lulus interview klien, Proses dokumen, dan Berangkat wajib memilih job order (yang sebidang dengan kandidat)."
   },
   "roles": {
     "SUPER_ADMIN": "Super admin",
@@ -742,7 +742,7 @@
       "readOnlyIntro": "Riwayat penilaian bulanan dari LPK. Hanya baca: TSK tidak bisa mengubahnya.",
       "addVisit": "Tambah kunjungan",
       "addInterview": "Tambah interview TSK",
-      "interviewLocked": "Interview TSK baru bisa dicatat setelah keputusan Anda untuk kandidat ini mencapai Lulus wawancara TSK atau sesudahnya (diajukan ke client, lulus wawancara client, proses dokumen, berangkat).",
+      "interviewLocked": "Interview TSK baru bisa dicatat setelah keputusan Anda untuk kandidat ini mencapai Lulus wawancara TSK atau sesudahnya (diajukan ke klien, lulus wawancara klien, proses dokumen, berangkat).",
       "kinds": {
         "TSK_VISIT": "Kunjungan",
         "TSK_INTERVIEW": "Interview TSK (mendan)"
@@ -924,7 +924,7 @@
     "tabMatch": "Kandidat cocok",
     "details": "Data job order",
     "statusTitle": "Status",
-    "statusHint": "Job order menjadi Terisi otomatis saat jumlah kandidat terpilih (lulus interview client atau sesudahnya) mencapai jumlah posisi. Anda bisa menutup atau membukanya lagi.",
+    "statusHint": "Job order menjadi Terisi otomatis saat jumlah kandidat terpilih (lulus interview klien atau sesudahnya) mencapai jumlah posisi. Anda bisa menutup atau membukanya lagi.",
     "close": "Tutup job order",
     "reopen": "Buka lagi",
     "markFilled": "Tandai terisi",
