@@ -10,6 +10,7 @@ import { ActionError, PG_CHECK_VIOLATION, PG_UNIQUE_VIOLATION, pgErrorCode } fro
 import type { FormState } from "@/lib/form-state";
 import { generateTempPassword, hashPassword } from "@/lib/passwords";
 import { ADMIN_ROLE_BY_ORG_TYPE } from "@/lib/permissions";
+import { ORG_TIMEZONES } from "@/lib/org-time";
 import { requireRole } from "@/lib/session";
 
 const orgFields = {
@@ -25,7 +26,7 @@ const createOrgSchema = z.object({
   adminEmail: z.email().max(254).transform((v) => v.trim().toLowerCase()),
 });
 
-const updateOrgSchema = z.object({ ...orgFields, id: z.uuid() });
+const updateOrgSchema = z.object({ ...orgFields, id: z.uuid(), timezone: z.enum(ORG_TIMEZONES) });
 
 /** Buat organisasi baru sekaligus admin pertamanya (dengan kata sandi sementara). */
 export async function createOrganization(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -99,7 +100,7 @@ export async function updateOrganization(_prev: FormState, formData: FormData): 
       if (!before) throw new ActionError("common.notFound");
       await tx
         .update(organizations)
-        .set({ name: input.name, country: input.country, defaultLocale: input.defaultLocale })
+        .set({ name: input.name, country: input.country, defaultLocale: input.defaultLocale, timezone: input.timezone })
         .where(eq(organizations.id, input.id));
       await audit(tx, {
         organizationId: input.id,
@@ -107,8 +108,8 @@ export async function updateOrganization(_prev: FormState, formData: FormData): 
         action: "organization.update",
         entity: "organization",
         entityId: input.id,
-        before: { name: before.name, country: before.country, defaultLocale: before.defaultLocale },
-        after: { name: input.name, country: input.country, defaultLocale: input.defaultLocale },
+        before: { name: before.name, country: before.country, defaultLocale: before.defaultLocale, timezone: before.timezone },
+        after: { name: input.name, country: input.country, defaultLocale: input.defaultLocale, timezone: input.timezone },
       });
     });
   } catch (err) {

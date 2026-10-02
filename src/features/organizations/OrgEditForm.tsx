@@ -1,5 +1,6 @@
 "use client";
 
+import { ORG_TIMEZONES } from "@/lib/org-time";
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 import { FormAlert, SubmitButton } from "@/components/FormBits";
@@ -7,7 +8,7 @@ import { cardClass, inputClass, labelClass } from "@/components/styles";
 import { idle, type FormState } from "@/lib/form-state";
 import { updateOrganization } from "./actions";
 
-type Org = { id: string; name: string; type: "PLATFORM" | "LPK" | "TSK"; country: string; defaultLocale: "id" | "ja" };
+type Org = { id: string; name: string; type: "PLATFORM" | "LPK" | "TSK"; country: string; defaultLocale: "id" | "ja"; timezone: string };
 
 export function OrgEditForm({ org }: { org: Org }) {
   const t = useTranslations();
@@ -39,6 +40,12 @@ export function OrgEditForm({ org }: { org: Org }) {
           <select id="defaultLocale" name="defaultLocale" defaultValue={org.defaultLocale} className={inputClass}>
             <option value="id">{t("languages.id")}</option>
             <option value="ja">{t("languages.ja")}</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="timezone" className={labelClass}>{t("orgs.fieldTimezone")}</label>
+          <select id="timezone" name="timezone" defaultValue={org.timezone} className={inputClass}>
+            {ORG_TIMEZONES.map((z) => <option key={z} value={z}>{t(`orgs.timezones.${z}`)}</option>)}
           </select>
         </div>
       </div>

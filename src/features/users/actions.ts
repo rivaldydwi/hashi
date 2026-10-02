@@ -133,9 +133,16 @@ export async function updateUser(_prev: FormState, formData: FormData): Promise<
         action: "user.update",
         entity: "user",
         entityId: target.id,
-        before: { name: target.name, role: target.role },
-        // `languages` hanya dicatat NAMA kolomnya (bila berubah), seperti kolom lain yang tidak memuat isi
-        after: { name: input.name, role: input.role, ...(sameLanguages(target.languages, languages) ? {} : { changed: ["languages"] }) },
+        before: { role: target.role },
+        // Hanya NAMA kolom yang berubah (name/role/languages); nama dan bahasa tidak pernah dicatat sebagai nilai (data pribadi, lihat AUDIT_VALUE_FIELDS)
+        after: {
+          role: input.role,
+          changed: [
+            ...(target.name !== input.name ? ["name"] : []),
+            ...(target.role !== input.role ? ["role"] : []),
+            ...(sameLanguages(target.languages, languages) ? [] : ["languages"]),
+          ],
+        },
       });
     });
 

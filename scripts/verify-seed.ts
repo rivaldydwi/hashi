@@ -13,6 +13,8 @@ import { listCandidatesFiltered, parseFilters } from "../src/db/candidate-list";
 import { matchCandidates } from "../src/db/job-matching";
 import { currentPeriod } from "../src/db/time";
 import { storageRootFor } from "../src/db/demo-files";
+import { AUDIT_PAGE_SIZE, listAudit, parseAuditFilters } from "../src/db/audit-history";
+import { ACTIONS } from "../src/db/audit-describe";
 import { INCOMPLETE_CANDIDATE_COLUMNS, INTENTIONALLY_INCOMPLETE } from "../src/db/demo-data";
 import { uuidFor } from "../src/db/demo-rng";
 import { FILTER_VIEWS_LPK, FILTER_VIEWS_TSK, viewCandidateIds, type FilterView } from "../src/db/dashboard-queries";
@@ -245,6 +247,27 @@ async function main() {
   }
   check("Filter kartu KPI (view) bermakna: tidak kosong dan bukan semua kandidat", viewProblems.length === 0, viewProblems.join("; "));
   console.log(`  Ringkasan view -> ${viewReport.join(", ")}`);
+
+  // ---------- 2c. Riwayat aktivitas: tiap admin melihat >= 25 entri (halaman + filter jenis), entri dikenal, tanpa nama kandidat, lintas organisasi tanpa nama orang ----------
+  const auditProblems: string[] = [];
+  const auditReport: string[] = [];
+  for (const ctx of contexts) {
+    if (ctx.name.includes("Medan")) continue; // non-mitra: hanya log sendiri, cukup tidak error
+    const res = await withTenant({ orgId: ctx.orgId, role: ctx.role }, (tx) => listAudit(tx, parseAuditFilters({}), "Asia/Jakarta"), appDb.db);
+    const cat = await withTenant({ orgId: ctx.orgId, role: ctx.role }, (tx) => listAudit(tx, parseAuditFilters({ category: "candidate" }), "Asia/Jakarta"), appDb.db);
+    auditReport.push(`${ctx.name}=${res.total}`);
+    if (res.total < 25) auditProblems.push(`${ctx.name}: hanya ${res.total} entri`);
+    if (res.rows.length === 0 || res.rows.length > AUDIT_PAGE_SIZE) auditProblems.push(`${ctx.name}: halaman pertama ${res.rows.length}`);
+    if (ctx.role === "LPK_ADMIN" && (cat.total === 0 || cat.total >= res.total)) auditProblems.push(`${ctx.name}: filter jenis tidak bermakna (${cat.total}/${res.total})`);
+  }
+  const allAudit = await withSystem((tx) => tx.execute(sql`select action, actor_org_id::text, organization_id::text, actor_name, actor_role, before::text as b, after::text as a, entity_id from audit_logs`), ownerDb.db);
+  const aRows = allAudit.rows as Array<{ action: string; actor_org_id: string; organization_id: string; actor_name: string | null; actor_role: string | null; b: string | null; a: string | null; entity_id: string | null }>;
+  const unknownActions = [...new Set(aRows.map((r) => r.action).filter((a) => !(a in ACTIONS)))];
+  const leakedNames = data.cands.filter((c) => aRows.some((r) => `${r.b ?? ""}${r.a ?? ""}`.includes(c.fullName))).length;
+  const crossNamed = aRows.filter((r) => r.actor_org_id !== r.organization_id && r.actor_name !== null).length;
+  const noSnapshot = aRows.filter((r) => !r.actor_role).length;
+  check("Riwayat aktivitas: tiap admin LPK/TSK demo melihat >= 25 entri, halaman dan filter jenis bermakna", auditProblems.length === 0, auditProblems.join("; ") || auditReport.join(", "));
+  check("Riwayat aktivitas: semua aksi dikenal describeAudit; tanpa nama kandidat; entri lintas organisasi tanpa nama orang; semua punya potret pelaku", unknownActions.length === 0 && leakedNames === 0 && crossNamed === 0 && noSnapshot === 0, `tak dikenal ${unknownActions.join(",") || 0}, nama bocor ${leakedNames}, lintas bernama ${crossNamed}, tanpa potret ${noSnapshot}`);
 
   // ---------- 3. Berkas dokumen vs baris database ----------
   if (process.env.VERIFY_SKIP_FILES === "1") {

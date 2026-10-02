@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { cardClass } from "@/components/styles";
 import { DecisionBadge } from "@/components/DecisionBadge";
 import { selectionDecision, candidateStage } from "@/db/schema";
+import { AuditList } from "@/features/audit/AuditList";
 import type { DashboardData } from "./data";
 import { widgetById } from "./catalog";
 
@@ -88,8 +89,7 @@ function Bar({ label, n, max, href }: { label: React.ReactNode; n: number; max: 
   return href ? <Link href={href} className="block rounded-xl hover:bg-hover">{inner}</Link> : inner;
 }
 
-export async function Widget({ id, data, userName }: { id: string; data: DashboardData; userName?: string }) {
-  void userName;
+export async function Widget({ id, data, timezone }: { id: string; data: DashboardData; timezone?: string }) {
   const t = await getTranslations("dashboard");
   const tDec = await getTranslations("decisions");
   const tStage = await getTranslations("stages");
@@ -237,6 +237,12 @@ export async function Widget({ id, data, userName }: { id: string; data: Dashboa
             <li className="flex min-h-11 items-center justify-between"><span>{t("soonResidence")}</span><span className="rounded-full bg-hover px-2.5 py-0.5 text-xs text-ink-2">{t("soonBadge")}</span></li>
             <li className="flex min-h-11 items-center justify-between"><span>{t("soonPeriodic")}</span><span className="rounded-full bg-hover px-2.5 py-0.5 text-xs text-ink-2">{t("soonBadge")}</span></li>
           </ul>
+        </Card>
+      );
+    case "activity":
+      return (
+        <Card testid="w-activity" title={t("wActivity")} href="/activity" linkLabel={t("viewAll")}>
+          <AuditList rows={data.activity ?? []} timezone={timezone ?? "Asia/Jakarta"} emptyText={t("emptyActivity")} testId="w-activity-list" />
         </Card>
       );
     case "org-list":

@@ -8,7 +8,7 @@ import { viewCandidateIds } from "@/db/dashboard-queries";
 import { ToastProvider } from "@/components/Toast";
 import { SkillFieldsProvider } from "@/features/skill-fields/SkillFieldsProvider";
 import { getSkillFieldOptions } from "@/features/skill-fields/server";
-import { longDate, tzForOrgType } from "@/lib/org-time";
+import { longDate, safeTimezone } from "@/lib/org-time";
 import { requireUser, tenantQuery } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -41,7 +41,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       items.push({ href: "/clients", label: t("nav.clients"), icon: "clients" });
       items.push({ href: "/job-orders", label: t("nav.jobOrders"), icon: "jobOrders" });
     }
-    if (user.role === "LPK_ADMIN" || user.role === "TSK_ADMIN") items.push({ href: "/users", label: t("nav.users"), icon: "users" });
+    if (user.role === "LPK_ADMIN" || user.role === "TSK_ADMIN") {
+      items.push({ href: "/users", label: t("nav.users"), icon: "users" });
+      items.push({ href: "/activity", label: t("nav.activity"), icon: "history" });
+    }
   }
   const soon: SoonItem[] = isTsk
     ? [
@@ -66,7 +69,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         sidebar={<Sidebar items={items} soon={soon} org={{ name: user.organizationName, roleLabel: t(`roles.${user.role}`) }} user={{ name: user.name, email: user.email }} />}
         topbar={
           <Suspense fallback={<div className="h-[61px] border-b border-line bg-card" />}>
-            <Topbar titles={titles} dateLabel={longDate(new Date(), locale, tzForOrgType(user.organizationType))} showSearch={user.role !== "SUPER_ADMIN"} action={action} customizable={true} />
+            <Topbar titles={titles} dateLabel={longDate(new Date(), locale, safeTimezone(user.organizationTimezone, user.organizationType))} showSearch={user.role !== "SUPER_ADMIN"} action={action} customizable={true} />
           </Suspense>
         }
       >

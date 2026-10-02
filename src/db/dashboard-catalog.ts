@@ -49,6 +49,7 @@ export const WIDGETS: readonly WidgetDef[] = [
   { id: "open-jobs", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wJobs" },
   { id: "new-candidates", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wNewCands" },
   { id: "coming-soon", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wSoon" },
+  { id: "activity", kind: "widget", roles: ["LPK_ADMIN", "TSK_ADMIN"], sizes: HALF_FULL, defaultSize: "full", label: "wActivity" },
   { id: "org-list", kind: "widget", roles: SUPER, sizes: HALF_FULL, defaultSize: "full", label: "wOrgs" },
 ];
 

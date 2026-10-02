@@ -17,6 +17,8 @@ export type CurrentUser = {
   organizationId: string;
   organizationType: "PLATFORM" | "LPK" | "TSK";
   organizationName: string;
+  /** Zona waktu IANA organisasi (organizations.timezone). */
+  organizationTimezone: string;
 };
 
 type LookupResult =
@@ -65,6 +67,7 @@ export const getCurrentUser = cache(async (): Promise<LookupResult> => {
       organizationId: row.org.id,
       organizationType: row.org.type,
       organizationName: row.org.name,
+      organizationTimezone: row.org.timezone,
     },
   };
 });

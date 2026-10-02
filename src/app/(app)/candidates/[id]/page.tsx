@@ -13,6 +13,7 @@ import { canSeeLevel, contentAccess, isTskRole, TSK_INTERVIEW_DECISIONS } from "
 import { AssessmentsSection } from "@/features/assessments/AssessmentsSection";
 import { TskAssessmentsSection } from "@/features/assessments/TskAssessmentsSection";
 import { listMonthly, listTsk } from "@/features/assessments/queries";
+import { CandidateActivity } from "@/features/audit/CandidateActivity";
 import { DeleteCandidate } from "@/features/candidates/DeleteCandidate";
 import { loadDeleteSummary } from "@/features/candidates/delete-actions";
 import { candidateCode } from "@/features/candidates/delete-shared";
@@ -152,6 +153,8 @@ export default async function CandidateDetailPage({
 
         {ownerLpk && full && <DecisionPanel me={me} detail={{ ...full, candidateId: candidate.id }} />}
         {full && <NotesPanel me={me} candidateId={candidate.id} notes={full.notes} />}
+
+        {(me.role === "LPK_ADMIN" || me.role === "TSK_ADMIN") && <CandidateActivity candidateId={candidate.id} me={me} />}
 
         {ownerLpk && deleteSummary && (
           <DeleteCandidate candidateId={candidate.id} name={candidate.fullName} code={candidateCode(candidate.id)} summary={deleteSummary} shared={candidate.sharedWithTsk} />

@@ -45,6 +45,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:i18n
       - run: npm run test:unit
+      - name: Cakupan audit (server action yang menulis harus tercatat)
+        run: npm run verify:audit-coverage
       - name: Pasang browser untuk tes e2e
         run: npx playwright install --with-deps chromium
       - name: Tes e2e (browser)

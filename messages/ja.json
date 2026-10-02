@@ -29,7 +29,8 @@
     "clients": "配属先",
     "jobOrders": "求人",
     "residenceCard": "在留カード",
-    "periodicInterview": "定期面談"
+    "periodicInterview": "定期面談",
+    "activity": "アクティビティ履歴"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -139,7 +140,9 @@
       "hiddenTitle": "非表示のウィジェット",
       "hiddenEmpty": "非表示のウィジェットはありません。"
     },
-    "allHidden": "すべてのウィジェットが非表示です。「ダッシュボードの設定」から再表示できます。"
+    "allHidden": "すべてのウィジェットが非表示です。「ダッシュボードの設定」から再表示できます。",
+    "wActivity": "最近のアクティビティ",
+    "emptyActivity": "まだ操作の記録がありません。"
   },
   "users": {
     "title": "ユーザー管理",
@@ -213,7 +216,14 @@
     "addUser": "ユーザーを追加",
     "openOrg": "組織を開く",
     "partnersTitle": "提携",
-    "noPartners": "提携はまだありません。"
+    "noPartners": "提携はまだありません。",
+    "fieldTimezone": "タイムゾーン",
+    "timezones": {
+      "Asia/Jakarta": "WIB（ジャカルタ）",
+      "Asia/Makassar": "WITA（マカッサル）",
+      "Asia/Jayapura": "WIT（ジャヤプラ）",
+      "Asia/Tokyo": "JST（東京）"
+    }
   },
   "partnerships": {
     "title": "LPK・登録支援機関の提携",
@@ -1050,5 +1060,41 @@
     "body": "このページを読み込めませんでした。データは変更されていません。もう一度お試しください。解決しない場合は、下のコードを管理者へお伝えください。",
     "code": "コード",
     "retry": "再試行"
+  },
+  "activity": {
+    "title": "アクティビティ履歴",
+    "intro": "組織内で誰が何をしたかの記録です。時刻は{tz}で表示されます。履歴は変更・削除できません。",
+    "export": "CSVで書き出し",
+    "filterCategory": "操作の種類",
+    "all": "すべて",
+    "from": "開始日",
+    "to": "終了日",
+    "apply": "適用",
+    "reset": "フィルターを解除",
+    "totalSuffix": "件",
+    "by": "実行者",
+    "prev": "前へ",
+    "next": "次へ",
+    "pageOf": "{page} / {pages} ページ",
+    "emptyTitle": "まだ操作の記録がありません",
+    "emptyBody": "候補者の追加、状況の変更、書類のダウンロードなどの操作がここに記録されます。",
+    "noMatchTitle": "条件に合う記録がありません",
+    "noMatchBody": "期間や操作の種類を変更してみてください。",
+    "widgetTitle": "最近のアクティビティ",
+    "viewAll": "すべて見る",
+    "candidateTitle": "候補者のアクティビティ履歴",
+    "candidateEmpty": "この候補者の操作記録はまだありません。",
+    "categories": {
+      "auth": "ログイン",
+      "user": "ユーザー",
+      "organization": "組織と提携",
+      "candidate": "候補者情報",
+      "document": "書類",
+      "note": "TSKメモ",
+      "assessment": "評価",
+      "decision": "選考判断",
+      "tsk": "配属先と求人",
+      "system": "システム"
+    }
   }
 }

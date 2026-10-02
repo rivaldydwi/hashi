@@ -18,7 +18,8 @@
     "test:unit": "tsx --test tests/unit/*.test.ts",
     "verify:seed": "tsx scripts/verify-seed.ts",
     "db:generate": "drizzle-kit generate",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "verify:audit-coverage": "tsx scripts/verify-audit-coverage.ts"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",

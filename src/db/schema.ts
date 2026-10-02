@@ -149,6 +149,8 @@ export const organizations = pgTable("organizations", {
   type: orgType("type").notNull(),
   country: char("country", { length: 2 }).notNull(), // ISO 3166-1: ID / JP
   defaultLocale: locale("default_locale").notNull().default("id"),
+  // Zona waktu IANA organisasi: dipakai menampilkan waktu riwayat aktivitas dan tanggal di bilah atas (LPK Indonesia: Asia/Jakarta, TSK: Asia/Tokyo).
+  timezone: text("timezone").notNull().default("Asia/Jakarta"),
   ...timestamps,
 });
 
@@ -626,6 +628,11 @@ export const auditLogs = pgTable(
     // Organisasi si pelaku (LPK atau TSK). Null hanya untuk log lama sebelum kolom ini ada.
     actorOrgId: uuid("actor_org_id"),
     candidateId: uuid("candidate_id"), // diisi untuk log yang menyangkut kandidat
+    // Potret pelaku saat kejadian (tidak berubah walau pengguna kemudian diganti nama/dihapus). actor_name KOSONG untuk entri lintas organisasi
+    // (TSK mengubah kandidat LPK): LPK hanya melihat NAMA ORGANISASI pelaku, bukan nama stafnya.
+    actorName: text("actor_name"),
+    actorRole: text("actor_role"),
+    actorOrgName: text("actor_org_name"),
     action: text("action").notNull(), // mis. "auth.login", "candidate.update"
     entity: text("entity").notNull(),
     entityId: text("entity_id"),

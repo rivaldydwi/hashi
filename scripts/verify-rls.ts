@@ -2346,6 +2346,90 @@ async function main() {
     JSON.stringify([String(dl.moveOwner).slice(0, 50), String(dl.moveOrg).slice(0, 50), String(dl.notObject).slice(0, 60), String(dl.tooBig).slice(0, 60), dl.cascade]),
   );
 
+  // --- R. Riwayat aktivitas (audit_logs): hanya LPK_ADMIN/TSK_ADMIN membaca; cakupan per organisasi; append-only (UPDATE/DELETE ditolak, termasuk OWNER) ---
+  const au: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const uAdmin = allUsers.find((u) => u.role === "LPK_ADMIN" && u.organizationId === lpk1.id)!;
+    const uSensei = allUsers.find((u) => u.role === "LPK_SENSEI" && u.organizationId === lpk1.id)!;
+    const uAdmin2 = allUsers.find((u) => u.role === "LPK_ADMIN" && u.organizationId === lpk2.id)!;
+    const uTskAdmin = allUsers.find((u) => u.role === "TSK_ADMIN")!;
+    const uTskStaff = allUsers.find((u) => u.role === "TSK_STAFF")!;
+    const cnt = async (orgId: string, role: string | null, userId: string | null) => {
+      await actAs(tx, orgId, role, userId);
+      return Number((await tx.execute(sql`select count(*)::int as n from audit_logs`)).rows[0].n);
+    };
+    await actAsSystem(tx);
+    const expectOf = async (orgId: string) => Number((await tx.execute(sql`select count(*)::int as n from audit_logs where organization_id = ${orgId}::uuid or actor_org_id = ${orgId}::uuid`)).rows[0].n);
+    au.expLpk1 = await expectOf(lpk1.id);
+    au.expLpk2 = await expectOf(lpk2.id);
+    au.expTsk = await expectOf(tsk.id);
+    au.totalAll = Number((await tx.execute(sql`select count(*)::int as n from audit_logs`)).rows[0].n);
+    au.lpk1Admin = await cnt(lpk1.id, "LPK_ADMIN", uAdmin.id);
+    au.lpk2Admin = await cnt(lpk2.id, "LPK_ADMIN", uAdmin2.id);
+    au.tskAdmin = await cnt(tsk.id, "TSK_ADMIN", uTskAdmin.id);
+    au.sensei = await cnt(lpk1.id, "LPK_SENSEI", uSensei.id);
+    au.tskStaff = await cnt(tsk.id, "TSK_STAFF", uTskStaff.id);
+    au.roleNull = await cnt(lpk1.id, null, uAdmin.id);
+    au.superAdmin = await cnt(lpk1.id, "SUPER_ADMIN", null);
+    au.noContext = Number((await (async () => {
+      await tx.execute(sql`select set_config('app.org_id', '', true), set_config('app.role', '', true), set_config('app.user_id', '', true), set_config('app.bypass_rls', 'off', true)`);
+      return tx.execute(sql`select count(*)::int as n from audit_logs`);
+    })()).rows[0].n);
+    // LPK_ADMIN melihat aksi TSK pada kandidatnya (lintas organisasi) tetapi bukan log internal TSK; TSK_ADMIN melihat aksinya, bukan log internal LPK
+    await actAs(tx, lpk1.id, "LPK_ADMIN", uAdmin.id);
+    au.lpkSeesTskActions = Number((await tx.execute(sql`select count(*)::int as n from audit_logs where actor_org_id = ${tsk.id}::uuid`)).rows[0].n);
+    au.lpkSeesTskInternal = Number((await tx.execute(sql`select count(*)::int as n from audit_logs where organization_id = ${tsk.id}::uuid`)).rows[0].n);
+    au.lpkSeesOtherLpk = Number((await tx.execute(sql`select count(*)::int as n from audit_logs where organization_id = ${lpk2.id}::uuid and actor_org_id = ${lpk2.id}::uuid`)).rows[0].n);
+    await actAs(tx, tsk.id, "TSK_ADMIN", uTskAdmin.id);
+    au.tskSeesLpkInternal = Number((await tx.execute(sql`select count(*)::int as n from audit_logs where actor_org_id = ${lpk1.id}::uuid`)).rows[0].n);
+    au.tskSeesOwn = Number((await tx.execute(sql`select count(*)::int as n from audit_logs where actor_org_id = ${tsk.id}::uuid`)).rows[0].n);
+    // menulis audit tetap boleh untuk peran yang tidak boleh membaca (sensei menulis penilaian)
+    await actAs(tx, lpk1.id, "LPK_SENSEI", uSensei.id);
+    au.senseiInsert = await attempt(tx, (t) => t.execute(sql`insert into audit_logs (organization_id, actor_org_id, actor_user_id, actor_name, actor_role, actor_org_name, action, entity) values (${lpk1.id}::uuid, ${lpk1.id}::uuid, ${uSensei.id}::uuid, 'x', 'LPK_SENSEI', 'x', 'auth.login', 'user')`));
+    // append-only: UPDATE/DELETE ditolak untuk semua jalur
+    au.updateApp = await attempt(tx, (t) => t.execute(sql`update audit_logs set action = 'x.y'`));
+    au.deleteApp = await attempt(tx, (t) => t.execute(sql`delete from audit_logs`));
+    await actAsSystem(tx);
+    au.updateSystem = await attempt(tx, (t) => t.execute(sql`update audit_logs set actor_name = 'palsu'`));
+    au.deleteSystem = await attempt(tx, (t) => t.execute(sql`delete from audit_logs`));
+  });
+  const ownerAttempt = async (q: ReturnType<typeof sql>) => {
+    try {
+      await ownerDb.execute(q);
+      return null;
+    } catch (err) {
+      const e = err as { cause?: { message?: string }; message?: string };
+      return e.cause?.message ?? e.message ?? String(err);
+    }
+  };
+  au.updateOwner = await ownerAttempt(sql`update audit_logs set actor_name = 'palsu' where id = (select min(id) from audit_logs)`);
+  au.deleteOwner = await ownerAttempt(sql`delete from audit_logs where id = (select min(id) from audit_logs)`);
+  check(
+    "Riwayat aktivitas: LPK_ADMIN dan TSK_ADMIN membaca tepat log organisasinya (tersimpan di sana atau pelakunya organisasinya); organisasi lain tidak ikut",
+    au.lpk1Admin === au.expLpk1 && au.lpk2Admin === au.expLpk2 && au.tskAdmin === au.expTsk && (au.lpk1Admin as number) > 0 && (au.tskAdmin as number) > 0 && (au.lpk1Admin as number) < (au.totalAll as number),
+    JSON.stringify([au.lpk1Admin, au.expLpk1, au.lpk2Admin, au.expLpk2, au.tskAdmin, au.expTsk, au.totalAll]),
+  );
+  check(
+    "Riwayat aktivitas: sensei, staf TSK, peran NULL, super admin (jalur aplikasi), dan tanpa konteks membaca 0 baris",
+    au.sensei === 0 && au.tskStaff === 0 && au.roleNull === 0 && au.superAdmin === 0 && au.noContext === 0,
+    JSON.stringify([au.sensei, au.tskStaff, au.roleNull, au.superAdmin, au.noContext]),
+  );
+  check(
+    "Riwayat aktivitas: LPK_ADMIN melihat aksi TSK pada kandidatnya tetapi bukan log internal TSK maupun LPK lain; TSK_ADMIN melihat aksinya sendiri tetapi bukan log internal LPK",
+    (au.lpkSeesTskActions as number) > 0 && au.lpkSeesTskInternal === 0 && au.lpkSeesOtherLpk === 0 && au.tskSeesLpkInternal === 0 && (au.tskSeesOwn as number) > 0,
+    JSON.stringify([au.lpkSeesTskActions, au.lpkSeesTskInternal, au.lpkSeesOtherLpk, au.tskSeesLpkInternal, au.tskSeesOwn]),
+  );
+  check(
+    "Riwayat aktivitas: peran yang tidak boleh membaca (sensei) tetap boleh MENULIS audit",
+    au.senseiInsert === null,
+    String(au.senseiInsert),
+  );
+  check(
+    "Riwayat aktivitas append-only: UPDATE dan DELETE ditolak untuk aplikasi, jalur sistem, dan OWNER",
+    [au.updateApp, au.deleteApp, au.updateSystem, au.deleteSystem, au.updateOwner, au.deleteOwner].every((e) => e !== null && /append-only|permission denied/i.test(String(e))),
+    JSON.stringify([au.updateApp, au.deleteApp, au.updateSystem, au.deleteSystem, au.updateOwner, au.deleteOwner].map((e) => String(e).slice(0, 50))),
+  );
+
   await pool.end();
   await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);

@@ -12,11 +12,13 @@ import { eq, sql } from "drizzle-orm";
 import { createDb, withSystem } from "../src/db";
 import { assertTestDatabase } from "./db-guard";
 import { periodMonthsAgo, currentPeriod, todayInAppTz } from "../src/db/time";
+import { buildDemoAudit } from "../src/db/demo-audit";
 import { buildAssessments, buildProfile, FIELD_JA, FIELD_KEYS, FIELDS, isIntentionallyIncomplete, sharedDaysAgo, type DemoProfile } from "../src/db/demo-data";
 import { addDays, addMonths, uuidFor } from "../src/db/demo-rng";
 import { clearDocumentStorage, demoDocumentPath, dummyPdf, dummyPng, storageRootFor, writeDemoFile } from "../src/db/demo-files";
 import {
   candidates,
+  auditLogs,
   candidateAssessments,
   candidateCertificates,
   candidateDocuments,
@@ -242,7 +244,7 @@ async function main() {
       .insert(organizations)
       .values([
         { id: orgId("Hashi Platform"), name: "Hashi Platform", type: "PLATFORM", country: "JP", defaultLocale: "id" },
-        { id: orgId("TSK Demo Tokyo"), name: "TSK Demo Tokyo", type: "TSK", country: "JP", defaultLocale: "ja" },
+        { id: orgId("TSK Demo Tokyo"), name: "TSK Demo Tokyo", type: "TSK", country: "JP", defaultLocale: "ja", timezone: "Asia/Tokyo" },
         { id: orgId(ORG_NAMES[0]), name: ORG_NAMES[0], type: "LPK", country: "ID", defaultLocale: "id" },
         { id: orgId(ORG_NAMES[1]), name: ORG_NAMES[1], type: "LPK", country: "ID", defaultLocale: "id" },
         { id: orgId(ORG_NAMES[2]), name: ORG_NAMES[2], type: "LPK", country: "ID", defaultLocale: "id" },
@@ -405,7 +407,24 @@ async function main() {
     });
     await tx.insert(candidateAssessments).values(tskRows);
 
-    summary = `✓ Seed selesai: 5 organisasi, 7 pengguna, ${seeded.length} kandidat demo lengkap (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, ${companyCount} perusahaan klien dengan ${siteCount} lokasi dan ${DEMO_JOB_ORDERS.length} job order, ${TSK_NOTES.length} catatan TSK, ${lpkRows.length} penilaian bulanan LPK + ${tskRows.length} penilaian TSK, ${docRows.length} dokumen dummy`;
+    // ---- Riwayat aktivitas demo (~30 entri per organisasi; entri lintas organisasi tanpa nama orang)
+    const auditRows = buildDemoAudit({
+      now: new Date(),
+      lpks: [lpk1, lpk2, lpk3].map((o) => ({ id: o.id, name: o.name })),
+      tsk: { id: tsk.id, name: tsk.name },
+      users: [
+        { id: U("tsk.admin@hashi.test"), name: "田中 一郎", role: "TSK_ADMIN", orgId: tsk.id },
+        { id: U("tsk.staff@hashi.test"), name: "Rina Staf TSK", role: "TSK_STAFF", orgId: tsk.id },
+        { id: U("lpk1.admin@hashi.test"), name: "Admin LPK Bandung", role: "LPK_ADMIN", orgId: lpk1.id },
+        { id: U("lpk1.sensei@hashi.test"), name: "Sensei Bandung", role: "LPK_SENSEI", orgId: lpk1.id },
+        { id: U("lpk2.admin@hashi.test"), name: "Admin LPK Surabaya", role: "LPK_ADMIN", orgId: lpk2.id },
+        { id: U("lpk3.admin@hashi.test"), name: "Admin LPK Medan", role: "LPK_ADMIN", orgId: lpk3.id },
+      ],
+      cands: seeded.map((c) => ({ id: c.row.id, orgIndex: c.orgIndex, i: c.i, stage: c.row.stage })),
+    });
+    await tx.insert(auditLogs).values(auditRows);
+
+    summary = `✓ Seed selesai: 5 organisasi, 7 pengguna, ${seeded.length} kandidat demo lengkap (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, ${companyCount} perusahaan klien dengan ${siteCount} lokasi dan ${DEMO_JOB_ORDERS.length} job order, ${TSK_NOTES.length} catatan TSK, ${lpkRows.length} penilaian bulanan LPK + ${tskRows.length} penilaian TSK, ${docRows.length} dokumen dummy, ${auditRows.length} entri riwayat aktivitas`;
   }, db);
 
   if (files.length > 0) {

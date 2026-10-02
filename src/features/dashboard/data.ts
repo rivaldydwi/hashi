@@ -5,6 +5,8 @@ import {
   attentionList, decisionBars, lpkKpis, myAssessments, newCandidatesTop, openJobs, pipelineCounts, scoreTrend, stageCounts, tskKpis, unratedTop,
 } from "@/db/dashboard-queries";
 import { sql } from "drizzle-orm";
+import { recentAudit } from "@/db/audit-history";
+import type { AuditView } from "@/db/audit-describe";
 import type { CurrentUser } from "@/lib/session";
 
 export type DashboardData = {
@@ -19,6 +21,7 @@ export type DashboardData = {
   pipeline?: Map<string, number>;
   jobs?: Awaited<ReturnType<typeof openJobs>>;
   newCands?: Awaited<ReturnType<typeof newCandidatesTop>>;
+  activity?: AuditView[];
   total?: number;
   platform?: Awaited<ReturnType<typeof platformOverview>>;
   platformCounts?: { orgs: number; users: number; fields: number };
@@ -56,6 +59,7 @@ export async function loadDashboard(user: CurrentUser, ids: Set<string>): Promis
       if (has("open-jobs")) d.jobs = await openJobs(tx, 5);
       if (has("new-candidates")) d.newCands = await newCandidatesTop(tx, 3);
     }
+    if (has("activity")) d.activity = await recentAudit(tx, 6);
     return d;
   });
 }

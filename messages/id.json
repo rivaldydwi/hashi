@@ -29,7 +29,8 @@
     "clients": "Klien",
     "jobOrders": "Job order",
     "residenceCard": "Residence Card (Zairyū Kādo)",
-    "periodicInterview": "Wawancara berkala (Teiki Mendan)"
+    "periodicInterview": "Wawancara berkala (Teiki Mendan)",
+    "activity": "Riwayat aktivitas"
   },
   "languages": {
     "id": "Bahasa Indonesia",
@@ -139,7 +140,9 @@
       "hiddenTitle": "Widget tersembunyi",
       "hiddenEmpty": "Tidak ada widget yang disembunyikan."
     },
-    "allHidden": "Semua widget disembunyikan. Pilih \"Atur dashboard\" untuk menampilkannya lagi."
+    "allHidden": "Semua widget disembunyikan. Pilih \"Atur dashboard\" untuk menampilkannya lagi.",
+    "wActivity": "Aktivitas terbaru",
+    "emptyActivity": "Belum ada aktivitas."
   },
   "users": {
     "title": "Pengguna",
@@ -213,7 +216,14 @@
     "addUser": "Tambah pengguna",
     "openOrg": "Buka organisasi",
     "partnersTitle": "Kemitraan",
-    "noPartners": "Belum ada kemitraan."
+    "noPartners": "Belum ada kemitraan.",
+    "fieldTimezone": "Zona waktu",
+    "timezones": {
+      "Asia/Jakarta": "WIB (Jakarta)",
+      "Asia/Makassar": "WITA (Makassar)",
+      "Asia/Jayapura": "WIT (Jayapura)",
+      "Asia/Tokyo": "JST (Tokyo)"
+    }
   },
   "partnerships": {
     "title": "Kemitraan LPK–TSK",
@@ -1050,5 +1060,41 @@
     "body": "Halaman ini tidak bisa dimuat. Data Anda tidak berubah. Coba lagi; bila masih gagal, hubungi admin dan sebutkan kode di bawah.",
     "code": "Kode",
     "retry": "Coba lagi"
+  },
+  "activity": {
+    "title": "Riwayat aktivitas",
+    "intro": "Catatan siapa melakukan apa di organisasi Anda. Waktu ditampilkan dalam zona waktu {tz}. Riwayat tidak bisa diubah atau dihapus.",
+    "export": "Ekspor CSV",
+    "filterCategory": "Jenis aktivitas",
+    "all": "Semua",
+    "from": "Dari tanggal",
+    "to": "Sampai tanggal",
+    "apply": "Terapkan",
+    "reset": "Hapus filter",
+    "totalSuffix": "entri",
+    "by": "Oleh",
+    "prev": "Sebelumnya",
+    "next": "Berikutnya",
+    "pageOf": "Halaman {page} dari {pages}",
+    "emptyTitle": "Belum ada aktivitas",
+    "emptyBody": "Aktivitas seperti menambah kandidat, mengubah status, atau mengunduh dokumen akan tercatat di sini.",
+    "noMatchTitle": "Tidak ada aktivitas yang cocok",
+    "noMatchBody": "Coba ubah rentang tanggal atau jenis aktivitas.",
+    "widgetTitle": "Aktivitas terbaru",
+    "viewAll": "Lihat semua",
+    "candidateTitle": "Riwayat aktivitas kandidat",
+    "candidateEmpty": "Belum ada aktivitas untuk kandidat ini.",
+    "categories": {
+      "auth": "Masuk",
+      "user": "Pengguna",
+      "organization": "Organisasi dan kemitraan",
+      "candidate": "Data kandidat",
+      "document": "Dokumen",
+      "note": "Catatan TSK",
+      "assessment": "Penilaian",
+      "decision": "Keputusan seleksi",
+      "tsk": "Klien dan job order",
+      "system": "Sistem"
+    }
   }
 }

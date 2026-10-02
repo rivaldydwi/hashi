@@ -203,6 +203,14 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   (CSS `data-label`, tanpa menggandakan DOM). Form panjang: nav bagian menempel, kelengkapan langsung (`candidateCompleteness` di klien), `beforeunload` saat ada perubahan, DILARANG draf di
   localStorage/sessionStorage/IndexedDB (dijaga `tests/unit/no-draft-storage.test.ts`), nilai awal otomatis ditandai lewat `autoFilled` ("Diisi otomatis, periksa"). Umpan balik: `SubmitButton`
   (spinner + `aria-busy`), `ToastProvider`/`useToast` (aria-live), `(app)/loading.tsx` (skeleton), `(app)/error.tsx` (batas galat; tanpa isi galat teknis), aksi berbahaya = `btnDanger`.
+- **Riwayat aktivitas** (migration 0019; `src/db/audit-*.ts`, `src/features/audit/`, `/activity`): satu jalan tulis, `audit()` (`src/lib/audit.ts`): menyaring `before/after` lewat
+  `sanitizeAuditPayload` (`AUDIT_VALUE_FIELDS` per entitas = satu-satunya nilai yang boleh tercatat: pilihan/status/kode, tidak pernah nama orang, email, isi catatan, nama kandidat; kunci
+  struktural `fields/section/rows/...` selalu boleh) dan menyimpan POTRET pelaku (`actor_name/role/org_name`; nama orang KOSONG untuk entri lintas organisasi, jadi LPK hanya melihat nama
+  organisasi TSK). Entri IMMUTABLE (trigger `audit_logs_immutable` menolak UPDATE/DELETE, termasuk OWNER; TRUNCATE untuk `--reset` tidak dipicu). Baca: hanya LPK_ADMIN/TSK_ADMIN
+  (`COALESCE` pada peran), cakupan = log tersimpan di organisasi sesi ATAU pelakunya organisasi sesi. Aksi baru = tambah ke `ACTIONS` (`audit-describe.ts`, kalimat id + ja, dites) dan
+  jalankan `npm run verify:audit-coverage` (statis: server action yang menulis tanpa audit gagal kecuali ada di `EXEMPT` dengan alasan). `describeAudit(entry, locale, labels)` dipakai halaman,
+  bagian riwayat di detail kandidat, widget `activity`, dan ekspor CSV (`/activity/export`, BOM + anti-rumus, mencatat `audit.export`; tanpa nama kandidat, hanya kode 8 karakter). Zona waktu
+  tampilan = `organizations.timezone` (`safeTimezone`); batas filter tanggal juga menurut zona itu. Seed: `src/db/demo-audit.ts` (~30 entri per organisasi; `verify:seed` memeriksa).
 - **Hapus kandidat permanen** (`candidates/delete-actions.ts`, `DeleteCandidate.tsx`, migration 0013): HANYA LPK_ADMIN pemilik, ditegakkan
   di UI (komponen tidak dirender untuk peran lain), server action (peran + organisasi + ketik nama/kode persis), RLS (`candidates_lpk_admin_delete`),
   dan trigger `candidates_block_delete` (BEFORE DELETE: menolak bila ada keputusan TSK DOCUMENT_PROCESS atau DEPARTED dari TSK mana pun, daftar
