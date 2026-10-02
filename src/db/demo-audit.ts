@@ -24,7 +24,7 @@ export type DemoAuditRow = {
   createdAt: Date;
 };
 
-const SECTIONS: Array<[string, string[]]> = [["basic", ["heightCm", "birthPlace"]], ["contact", ["phone", "address"]], ["about", ["motivation", "hobby"]], ["physical", ["visionNote"]], ["japan", ["everInJapan"]]];
+const SECTIONS: Array<[string, string[]]> = [["basic", ["heightCm", "birthPlace"]], ["contact", ["phone", "address"]], ["about", ["motivation", "hobby"]], ["health", ["visionNote"]], ["japan", ["everInJapan"]]];
 const DOC_TYPES = ["PASSPORT", "DIPLOMA", "PHOTO", "MEDICAL_CHECKUP"];
 const DECISIONS = ["SHORTLISTED", "PASSED_TSK_INTERVIEW", "SUBMITTED_TO_CLIENT", "PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"];
 
