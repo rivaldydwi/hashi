@@ -37,7 +37,7 @@ test("admin LPK menambah kandidat: muncul di daftar dan tercatat di audit log", 
   await expect(page.getByTestId("candidate-empty")).toBeVisible(); // LPK baru, belum ada kandidat
   await expectTotal(page, 0);
 
-  await page.getByRole("link", { name: "+ Tambah kandidat" }).first().click();
+  await page.getByTestId("primary-action").click();
   await fillCandidate(page, { name: nameA, gender: "FEMALE", birth: "2001-04-12", field: "Perawatan lansia (kaigo)", consent: "2026-08-01" });
   await page.locator("main form button[type=submit]").click();
 
@@ -169,7 +169,7 @@ test("sensei melihat daftar kandidat tetapi tidak bisa menambah", async ({ page 
   await login(page, "lpk1.sensei@hashi.test");
   await page.goto("/candidates");
   await expectTotal(page, 12);
-  await expect(page.getByRole("link", { name: "+ Tambah kandidat" })).toHaveCount(0);
+  await expect(page.getByTestId("primary-action")).toHaveCount(0);
   await expect(page.getByRole("columnheader", { name: "LPK", exact: true })).toHaveCount(0);
   await page.goto("/candidates/new");
   await expect(page).toHaveURL(/\/$/); // diarahkan ke beranda
@@ -177,7 +177,7 @@ test("sensei melihat daftar kandidat tetapi tidak bisa menambah", async ({ page 
 
 test("TSK melihat 21 kandidat di semua status; filter status & keputusan; tidak bisa menambah", async ({ page }) => {
   await login(page, "tsk.admin@hashi.test");
-  await page.getByRole("link", { name: "候補者", exact: true }).click(); // TSK demo berbahasa Jepang
+  await page.locator('[data-testid=sidebar] a[href="/candidates"]').click(); // TSK demo berbahasa Jepang
   await expect(page).toHaveURL(/\/candidates$/);
   await expectTotal(page, 21); // yang belum dibagikan dan kandidat LPK baru (tanpa kemitraan) tidak ikut terlihat
   await expect(page.getByRole("link", { name: "+ 候補者を追加" })).toHaveCount(0);

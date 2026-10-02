@@ -23,7 +23,7 @@ const idsFromUrl = (url: string) => url.match(/clients\/([0-9a-f-]{36})(?:\/site
 
 test("staf TSK menambah perusahaan, lokasi dengan bidang, dan dua PIC; nomor badan hukum divalidasi", async ({ page }) => {
   await login(page, "tsk.staff@hashi.test");
-  await page.getByRole("link", { name: "Klien" }).click();
+  await page.locator('[data-testid=sidebar] a[href="/clients"]').click();
   await expect(page).toHaveURL(/\/clients$/);
   await page.getByTestId("company-add").click();
 

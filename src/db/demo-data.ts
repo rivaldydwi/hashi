@@ -103,6 +103,15 @@ const NOTE_BY_ASPECT = {
 };
 const FOLLOW_UP = ["Tambah sesi latihan percakapan 2x per minggu.", "Ulang materi kanji bab 5-6 dan tes kecil minggu depan.", "Jadwalkan konseling singkat dengan sensei.", "Siapkan simulasi wawancara TSK bulan depan.", "Pantau kehadiran; hubungi keluarga bila absen lagi.", "Latihan soal choukai (mendengar) setiap hari 20 menit."];
 
+// Kandidat yang SENGAJA tidak lengkap (hobi dan keahlian khusus kosong) supaya filter "Profil belum lengkap" di dashboard bermakna:
+// bukan kosong, bukan semua. Dipakai seed dan dikecualikan oleh verify:seed.
+export const INTENTIONALLY_INCOMPLETE: Record<number, number[]> = { 0: [2, 6, 9], 1: [4, 10], 2: [3] };
+export const INCOMPLETE_CANDIDATE_COLUMNS = ["hobby", "specialSkill"] as const;
+export const isIntentionallyIncomplete = (orgIndex: number, i: number) => (INTENTIONALLY_INCOMPLETE[orgIndex] ?? []).includes(i);
+
+/** Hari yang lalu kandidat dibagikan ke TSK: sebagian dalam 7 hari terakhir (filter "Baru dibagikan"), sisanya lebih lama. */
+export const sharedDaysAgo = (orgIndex: number, i: number) => (i % 4 === 0 ? 2 + (orgIndex % 3) : 12 + ((i * 5 + orgIndex) % 30));
+
 export type DemoCandidateInput = {
   orgIndex: number; // 0 Bandung, 1 Surabaya, 2 Medan
   i: number; // indeks pipeline 0..11

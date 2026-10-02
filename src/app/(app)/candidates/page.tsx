@@ -27,10 +27,10 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
   const fields = (await getSkillFieldOptions()).filter((f) => f.active || f.code === filters.field);
 
   const pages = Math.max(1, Math.ceil(list.total / LIST_PAGE_SIZE));
-  const active = filters.q || filters.stage || filters.field || filters.decision || filters.avg || filters.attendance || filters.jlpt;
+  const active = filters.q || filters.stage || filters.field || filters.decision || filters.avg || filters.attendance || filters.jlpt || filters.view;
   const pageHref = (page: number) => {
     const params = new URLSearchParams();
-    for (const [k, v] of Object.entries({ q: filters.q, stage: filters.stage, field: filters.field, decision: filters.decision, avg: filters.avg, attendance: filters.attendance, jlpt: filters.jlpt })) {
+    for (const [k, v] of Object.entries({ q: filters.q, stage: filters.stage, field: filters.field, decision: filters.decision, avg: filters.avg, attendance: filters.attendance, jlpt: filters.jlpt, view: filters.view })) {
       if (v) params.set(k, v);
     }
     if (page > 1) params.set("page", String(page));
@@ -43,13 +43,6 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
       <PageHeader
         title={t("title")}
         intro={isTsk ? t("introTsk") : t("introLpk", { org: me.organizationName })}
-        action={
-          me.role === "LPK_ADMIN" ? (
-            <Link href="/candidates/new" className={btnPrimary}>
-              + {t("add")}
-            </Link>
-          ) : undefined
-        }
       />
 
       {sp.deleted && (
@@ -61,6 +54,15 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
       {sp.added && (
         <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid="candidate-added">
           {t("added")}
+        </p>
+      )}
+
+      {filters.view && (
+        <p className="mb-3 flex flex-wrap items-center gap-2 text-sm" data-testid="view-chip">
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-accent-soft px-4 font-medium text-accent-text">
+            {t(`viewLabel.${filters.view}`)}
+          </span>
+          <Link href="/candidates" className="inline-flex min-h-11 items-center text-ink-2 underline hover:text-ink">{t("viewClear")}</Link>
         </p>
       )}
 

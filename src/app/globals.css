@@ -1,17 +1,58 @@
 @import "tailwindcss";
 
+/* Token desain Hashi (tema Tailwind 4). Warna dipakai lewat nama token (bg-card, text-ink-2, ...), bukan ditulis berulang. */
 @theme {
-  /* Aksen vermilion, terinspirasi jembatan (橋) tradisional Jepang */
-  --color-brand-50: #fff5f0;
-  --color-brand-100: #ffe6da;
-  --color-brand-500: #e0572a;
-  --color-brand-600: #c8461c;
-  --color-brand-700: #a53817;
+  --color-page: #faf8f5;
+  --color-card: #ffffff;
+  --color-line: #e8e3dc;
+  --color-line-btn: #d8d1c7;
+  --color-hover: #f1ece5;
+  --color-ink: #1f1b16;
+  --color-ink-2: #6b645b;
+  --color-ink-menu: #4a433b;
+  --color-accent: #c2410c;
+  --color-accent-soft: #fdebdd;
+  --color-accent-text: #9a3412;
+  --color-accent-dark: #7c2d12;
+  --color-blue: #2f5d8a;
+  --color-role-bg: #e6eef5;
+  --color-role-text: #1f4a73;
+  --color-data-1: #8c8378;
+  --color-data-2: #a39b90;
 
-  --font-sans: ui-sans-serif, system-ui, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-    "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+  /* Skala "brand" lama dipetakan ke aksen baru supaya tombol/tautan yang sudah ada ikut berganti gaya */
+  --color-brand-50: #fdebdd;
+  --color-brand-100: #fdebdd;
+  --color-brand-500: #c2410c;
+  --color-brand-600: #c2410c;
+  --color-brand-700: #9a3412;
+
+  --font-sans: var(--font-dm-sans), var(--font-noto-jp), ui-sans-serif, system-ui, "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
+
+  --radius-card: 16px;
+  --radius-ctl: 12px;
+}
+
+html {
+  font-size: 14px; /* ukuran dasar 14 px */
 }
 
 body {
-  @apply bg-stone-50 text-stone-900 antialiased;
+  background: var(--color-page);
+  color: var(--color-ink);
+  @apply antialiased;
+}
+
+/* Fokus keyboard selalu terlihat */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Hormati preferensi gerak berkurang */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

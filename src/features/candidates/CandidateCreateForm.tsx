@@ -161,7 +161,7 @@ export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
       </section>
 
       {/* Bilah simpan menempel di bawah layar supaya tombolnya selalu terjangkau di form yang panjang (terutama ponsel) */}
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur" data-testid="save-bar">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-card/95 px-4 py-3 backdrop-blur min-[900px]:left-[248px]" data-testid="save-bar">
         <div className="mx-auto flex max-w-6xl items-center gap-2">
           <button type="submit" disabled={pending} className={`${btnPrimary} flex-1 sm:flex-none`} data-testid="save-candidate">
             {pending ? tc("saving") : tf("save")}

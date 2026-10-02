@@ -12,7 +12,7 @@ import { eq, sql } from "drizzle-orm";
 import { createDb, withSystem } from "../src/db";
 import { assertTestDatabase } from "./db-guard";
 import { periodMonthsAgo, currentPeriod, todayInAppTz } from "../src/db/time";
-import { buildAssessments, buildProfile, FIELD_JA, FIELD_KEYS, FIELDS, type DemoProfile } from "../src/db/demo-data";
+import { buildAssessments, buildProfile, FIELD_JA, FIELD_KEYS, FIELDS, isIntentionallyIncomplete, sharedDaysAgo, type DemoProfile } from "../src/db/demo-data";
 import { addDays, addMonths, uuidFor } from "../src/db/demo-rng";
 import { clearDocumentStorage, demoDocumentPath, dummyPdf, dummyPng, storageRootFor, writeDemoFile } from "../src/db/demo-files";
 import {
@@ -165,6 +165,7 @@ function candidateRows(orgId: string, orgIndex: number, today: string, fieldIds:
         dataConsentDate: NO_CONSENT_DATE[orgIndex].includes(i) ? null : `2026-${String(((i + offset) % 6) + 1).padStart(2, "0")}-10`,
         sharedWithTsk: !NOT_SHARED[orgIndex].includes(i),
         ...profile.candidatePatch,
+        ...(isIntentionallyIncomplete(orgIndex, i) ? { hobby: null, specialSkill: null } : {}),
       },
     };
   });
@@ -274,6 +275,10 @@ async function main() {
     const fieldIds = Object.fromEntries((await tx.select({ id: skillFields.id, code: skillFields.code }).from(skillFields)).map((r) => [r.code, r.id]));
     const seeded = orgs.flatMap((o, orgIndex) => candidateRows(o.id, orgIndex, today, fieldIds));
     await tx.insert(candidates).values(seeded.map((c) => c.row));
+    // Waktu berbagi bervariasi (trigger hanya mengisinya saat UPDATE OF shared_with_tsk, jadi di sini boleh diubah langsung)
+    for (const c of seeded.filter((x) => x.row.sharedWithTsk)) {
+      await tx.update(candidates).set({ sharedWithTskAt: new Date(Date.now() - sharedDaysAgo(c.orgIndex, c.i) * 86_400_000) }).where(eq(candidates.id, c.row.id));
+    }
 
     // ---- Data sensitif, keluarga, pendidikan, kerja, sertifikat
     await tx.insert(candidatePrivate).values(seeded.map((c) => ({ candidateId: c.row.id, ...c.profile.private })));

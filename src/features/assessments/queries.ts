@@ -30,19 +30,7 @@ export function listMonthly(tx: Tx, candidateId: string) {
 }
 export type MonthlyRow = Awaited<ReturnType<typeof listMonthly>>[number];
 
-/** Kandidat berstatus Belajar / Siap seleksi yang BELUM punya LPK_MONTHLY pada `period` (awal bulan berjalan). */
-export function pendingCandidates(tx: Tx, period: string) {
-  return tx
-    .select({ id: candidates.id, fullName: candidates.fullName, nameKatakana: candidates.nameKatakana, fieldNameId: skillFields.nameId, fieldNameJa: skillFields.nameJa, stage: candidates.stage })
-    .from(candidates)
-    .leftJoin(skillFields, eq(skillFields.id, candidates.fieldId))
-    .leftJoin(
-      candidateAssessments,
-      and(eq(candidateAssessments.candidateId, candidates.id), eq(candidateAssessments.kind, "LPK_MONTHLY"), eq(candidateAssessments.period, period)),
-    )
-    .where(and(inArray(candidates.stage, ["STUDYING", "READY"]), isNull(candidateAssessments.id)))
-    .orderBy(asc(candidates.fullName), asc(candidates.id));
-}
+export { pendingCandidates } from "@/db/candidate-list";
 
 /**
  * Penilaian TSK (kunjungan / interview) satu kandidat, terbaru dulu. RLS yang menentukan isinya: TSK hanya melihat milik

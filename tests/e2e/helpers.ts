@@ -24,7 +24,10 @@ export async function expectLoginRejected(page: Page, email: string, password: s
 }
 
 export async function logout(page: Page) {
-  await page.getByRole("button", { name: /^(Keluar|ログアウト)$/ }).click();
+  const account = page.getByTestId("account-menu");
+  if (!(await account.isVisible())) await page.getByTestId("menu-button").click(); // ponsel: menu ada di laci
+  await account.locator("summary").click();
+  await account.getByRole("button", { name: /^(Keluar|ログアウト)$/ }).click();
   await page.waitForURL(/\/login/);
 }
 

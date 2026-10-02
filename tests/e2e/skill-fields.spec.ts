@@ -18,7 +18,7 @@ const row = (page: import("@playwright/test").Page, code: string) => page.locato
 
 test("super admin menambah bidang; label mengikuti bahasa; bidang yang sudah dipakai tidak bisa dihapus", async ({ page }) => {
   await login(page, "admin@hashi.test");
-  await page.getByRole("link", { name: "Bidang kerja" }).click();
+  await page.getByRole("link", { name: "Bidang kerja", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/skill-fields/);
   await expect(row(page, "kaigo").locator("input[name=nameId]")).toHaveValue("Perawatan lansia (kaigo)");
 

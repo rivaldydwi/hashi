@@ -46,7 +46,7 @@ async function fillAndSave(page: Page, v: { date: string; scores: [string, strin
 test("daftar belum dinilai: kandidat uji muncul, hitungan di beranda sama; TSK dan super admin tidak punya halamannya", async ({ page, browser }) => {
   await login(page, "lpk1.sensei@hashi.test");
   await page.goto("/");
-  const dash = Number(await page.getByTestId("pending-count").textContent());
+  const dash = Number(await page.getByTestId("kpi-unrated-value").textContent());
   await page.goto("/assessments/pending");
   const total = Number(await page.getByTestId("pending-total").textContent());
   expect(total).toBe(dash);
@@ -116,7 +116,7 @@ test("kandidat uji hilang dari daftar belum dinilai dan hitungan beranda turun",
   await expect(page.getByTestId("pending-row").filter({ hasText: NAME })).toHaveCount(0);
   const total = Number(await page.getByTestId("pending-total").textContent());
   await page.goto("/");
-  expect(Number(await page.getByTestId("pending-count").textContent())).toBe(total);
+  expect(Number(await page.getByTestId("kpi-unrated-value").textContent())).toBe(total);
   const [{ n }] = await ownerQuery<{ n: string }>(
     `select count(*)::text as n from candidates c join organizations o on o.id = c.organization_id
      where o.name = 'LPK Demo Bandung' and c.stage in ('STUDYING','READY')

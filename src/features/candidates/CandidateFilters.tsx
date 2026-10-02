@@ -21,12 +21,13 @@ export async function CandidateFilters({
     // key = nilai filter: navigasi sisi klien (mis. tombol Reset) tidak me-remount form, dan kolom
     // ber-defaultValue tidak ikut berubah. Dengan key, form dibuat ulang setiap filter di URL berubah.
     <form
-      key={`${filters.q}|${filters.stage}|${filters.field}|${filters.decision}|${filters.avg}|${filters.attendance}|${filters.jlpt}`}
+      key={`${filters.q}|${filters.stage}|${filters.field}|${filters.decision}|${filters.avg}|${filters.attendance}|${filters.jlpt}|${filters.view}`}
       method="get"
       action="/candidates"
       className={`${cardClass} mb-4 p-4`}
       data-testid="candidate-filters"
     >
+      {filters.view && <input type="hidden" name="view" value={filters.view} />}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-1.5">
           <label htmlFor="q" className={labelClass}>{t("candidates.filterSearch")}</label>

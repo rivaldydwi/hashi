@@ -13,6 +13,9 @@ import { listCandidatesFiltered, parseFilters } from "../src/db/candidate-list";
 import { matchCandidates } from "../src/db/job-matching";
 import { currentPeriod } from "../src/db/time";
 import { storageRootFor } from "../src/db/demo-files";
+import { INCOMPLETE_CANDIDATE_COLUMNS, INTENTIONALLY_INCOMPLETE } from "../src/db/demo-data";
+import { uuidFor } from "../src/db/demo-rng";
+import { FILTER_VIEWS_LPK, FILTER_VIEWS_TSK, viewCandidateIds, type FilterView } from "../src/db/dashboard-queries";
 import {
   candidateCertificates,
   candidateDocuments,
@@ -106,8 +109,12 @@ async function main() {
   const privBy = new Map(data.privs.map((p) => [p.candidateId, p]));
   const assessBy = new Map(data.assess.filter((a) => a.kind === "LPK_MONTHLY").map((a) => [a.candidate_id, a.n]));
 
+  const incompleteIds = new Set(Object.entries(INTENTIONALLY_INCOMPLETE).flatMap(([o, is]) => is.map((i) => uuidFor(`candidate:${o}:${i}`))));
   const bad = {
-    cols: emptyColumns(candidates, data.cands as never, OPTIONAL_CANDIDATE_COLUMNS),
+    cols: emptyColumns(candidates, data.cands as never, OPTIONAL_CANDIDATE_COLUMNS).filter((x) => {
+      const [idx, col] = x.slice(1).split(".");
+      return !(INCOMPLETE_CANDIDATE_COLUMNS as readonly string[]).includes(col) || !incompleteIds.has(data.cands[Number(idx)].id);
+    }),
     japanNote: data.cands.filter((c) => (c.everInJapan || c.visaRejectedBefore) && !c.japanHistoryNote).map((c) => c.id),
     consent: data.cands.filter((c) => c.dataConsentDate === null).length,
     noPriv: data.cands.filter((c) => !privBy.has(c.id)).map((c) => c.id),
@@ -221,6 +228,23 @@ async function main() {
     report.push(`${ctx.name}: ${all} kandidat; ${counts.join(", ")}`);
   }
   console.log(`  Ringkasan filter -> ${report.join(" | ")}`);
+
+  // ---------- 2b. Filter kartu KPI dashboard (?view=...): tidak kosong dan bukan semua kandidat ----------
+  const viewProblems: string[] = [];
+  const viewReport: string[] = [];
+  for (const ctx of contexts) {
+    const views: readonly FilterView[] = ctx.isTsk ? FILTER_VIEWS_TSK : FILTER_VIEWS_LPK;
+    const all = await withTenant({ orgId: ctx.orgId, role: ctx.role }, async (tx) => (await tx.select({ id: candidates.id }).from(candidates)).length, appDb.db);
+    for (const v of views) {
+      const n = await withTenant({ orgId: ctx.orgId, role: ctx.role }, async (tx) => (await viewCandidateIds(tx, v)).length, appDb.db);
+      viewReport.push(`${ctx.name}/${v}=${n}`);
+      // Hanya Bandung (LPK mitra utama) dan TSK demo dituntut bermakna; Medan non-mitra cukup tidak error
+      if (ctx.name.includes("Medan")) continue;
+      if (n === 0 || n >= all) viewProblems.push(`${ctx.name}/${v} -> ${n}/${all}`);
+    }
+  }
+  check("Filter kartu KPI (view) bermakna: tidak kosong dan bukan semua kandidat", viewProblems.length === 0, viewProblems.join("; "));
+  console.log(`  Ringkasan view -> ${viewReport.join(", ")}`);
 
   // ---------- 3. Berkas dokumen vs baris database ----------
   if (process.env.VERIFY_SKIP_FILES === "1") {

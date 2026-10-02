@@ -15,6 +15,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "test:rls": "tsx scripts/verify-rls.ts",
     "test:i18n": "tsx scripts/verify-i18n.ts",
+    "test:unit": "tsx --test tests/unit/*.test.ts",
     "verify:seed": "tsx scripts/verify-seed.ts",
     "db:generate": "drizzle-kit generate",
     "test:e2e": "playwright test"

@@ -60,7 +60,7 @@ test("admin baru wajib ganti kata sandi sementara saat login pertama", async ({ 
   await page.locator("form button[type=submit]").first().click();
 
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByTestId("visible-count")).toHaveText("0");
+  await expect(page.getByTestId("onboarding")).toBeVisible(); // LPK baru tanpa kandidat: panduan 3 langkah
 });
 
 test("kata sandi sementara tidak berlaku lagi setelah diganti", async ({ page }) => {
@@ -70,7 +70,7 @@ test("kata sandi sementara tidak berlaku lagi setelah diganti", async ({ page })
 test("admin LPK menambah sensei, lalu menonaktifkannya", async ({ browser }) => {
   const page = await newPage(browser);
   await login(page, adminEmail, adminPassword);
-  await page.getByRole("link", { name: "Pengguna" }).click();
+  await page.getByRole("link", { name: "Pengguna", exact: true }).click();
   await page.getByRole("link", { name: /Tambah pengguna/ }).click();
 
   // Hanya peran LPK yang tersedia
@@ -132,7 +132,7 @@ test("admin terakhir tidak bisa diturunkan perannya atau dinonaktifkan", async (
 test("reset kata sandi oleh super admin langsung mengeluarkan admin dari sesinya", async ({ browser }) => {
   const adminPage = await newPage(browser);
   await login(adminPage, adminEmail, adminPassword);
-  await expect(adminPage.getByTestId("visible-count")).toBeVisible();
+  await expect(adminPage.getByTestId("topbar-title")).toBeVisible();
 
   const superPage = await newPage(browser);
   await login(superPage, "admin@hashi.test");

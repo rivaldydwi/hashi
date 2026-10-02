@@ -17,7 +17,7 @@ export function LanguageSwitcher() {
   const [pending, startTransition] = useTransition();
 
   return (
-    <div role="group" aria-label={t("language")} className="inline-flex rounded-lg border border-stone-300 bg-white p-0.5 text-sm">
+    <div role="group" aria-label={t("language")} className="flex rounded-xl border border-line-btn bg-card p-0.5 text-sm">
       {OPTIONS.map((opt) => {
         const active = opt.value === current;
         return (
@@ -32,8 +32,8 @@ export function LanguageSwitcher() {
                 router.refresh();
               })
             }
-            className={`rounded-md px-3 py-1 transition ${
-              active ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-100"
+            className={`min-h-11 flex-1 rounded-[10px] px-3 font-medium transition ${
+              active ? "bg-accent-soft text-accent-text" : "text-ink-menu hover:bg-hover"
             } disabled:cursor-default`}
           >
             {opt.label}

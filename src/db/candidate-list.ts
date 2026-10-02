@@ -2,6 +2,7 @@
 // memakai fungsi YANG SAMA dengan halaman /candidates; aturannya tidak ditulis ulang di tempat lain.
 import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Tx } from "./index";
+import { isFilterView, viewCandidateIds, type FilterView } from "./dashboard-queries";
 import {
   candidateAssessments,
   candidateCertificates,
@@ -30,6 +31,8 @@ export type CandidateFilters = {
   attendance: string;
   /** Level JLPT tertinggi minimal, mis. "N4" = N4 atau lebih tinggi. */
   jlpt: string;
+  /** Filter kartu dashboard (lihat dashboard-queries.ts); "" = tidak ada. Menyempit ke himpunan id yang sama dengan angka di kartu. */
+  view: string;
   page: number;
 };
 
@@ -59,6 +62,7 @@ export function parseFilters(sp: Params, isTsk: boolean): CandidateFilters {
     avg: numberParam(sp.avg, 1, 5),
     attendance: numberParam(sp.attendance, 0, 100),
     jlpt: /^N[1-5]$/.test(one(sp.jlpt)) ? one(sp.jlpt) : "",
+    view: isFilterView(one(sp.view), isTsk) ? one(sp.view) : "",
     page: Number.isFinite(page) && page > 0 ? page : 1,
   };
 }
@@ -226,5 +230,26 @@ export async function listCandidatesFiltered(tx: Tx, filters: CandidateFilters, 
     filters.avg || filters.attendance || filters.jlpt
       ? matchAssessmentFilters(filters, stats, await jlptBest(tx), (await tx.select({ id: candidates.id }).from(candidates)).map((r) => r.id))
       : null;
-  return { list: await listCandidates(tx, filters, tskOrgId, onlyIds), stats };
+  // Filter kartu dashboard: irisan dengan filter nilai/JLPT bila ada
+  let ids = onlyIds;
+  if (filters.view) {
+    const viewIds = await viewCandidateIds(tx, filters.view as FilterView);
+    ids = ids === null ? viewIds : ids.filter((id) => viewIds.includes(id));
+  }
+  return { list: await listCandidates(tx, filters, tskOrgId, ids), stats };
 }
+
+/** Kandidat berstatus Belajar / Siap seleksi yang BELUM punya LPK_MONTHLY pada `period` (awal bulan berjalan). */
+export function pendingCandidates(tx: Tx, period: string) {
+  return tx
+    .select({ id: candidates.id, fullName: candidates.fullName, nameKatakana: candidates.nameKatakana, fieldNameId: skillFields.nameId, fieldNameJa: skillFields.nameJa, stage: candidates.stage })
+    .from(candidates)
+    .leftJoin(skillFields, eq(skillFields.id, candidates.fieldId))
+    .leftJoin(
+      candidateAssessments,
+      and(eq(candidateAssessments.candidateId, candidates.id), eq(candidateAssessments.kind, "LPK_MONTHLY"), eq(candidateAssessments.period, period)),
+    )
+    .where(and(inArray(candidates.stage, ["STUDYING", "READY"]), isNull(candidateAssessments.id)))
+    .orderBy(asc(candidates.fullName), asc(candidates.id));
+}
+

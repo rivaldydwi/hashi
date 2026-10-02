@@ -1,12 +1,14 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
-import { BrandMark } from "@/components/BrandMark";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { Nav, type NavItem } from "@/components/Nav";
-import { logout } from "@/lib/actions";
+import { getLocale, getTranslations } from "next-intl/server";
+import { Sidebar, type SidebarItem, type SoonItem } from "@/components/shell/Sidebar";
+import { ShellFrame } from "@/components/shell/ShellFrame";
+import { Topbar } from "@/components/shell/Topbar";
+import { viewCandidateIds } from "@/db/dashboard-queries";
 import { SkillFieldsProvider } from "@/features/skill-fields/SkillFieldsProvider";
 import { getSkillFieldOptions } from "@/features/skill-fields/server";
-import { requireUser } from "@/lib/session";
+import { longDate, tzForOrgType } from "@/lib/org-time";
+import { requireUser, tenantQuery } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -14,62 +16,60 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (user.mustChangePassword) redirect("/change-password");
 
   const t = await getTranslations();
+  const locale = await getLocale();
   const skillOptions = await getSkillFieldOptions();
+  const isLpk = user.role === "LPK_ADMIN" || user.role === "LPK_SENSEI";
+  const isTsk = user.role === "TSK_ADMIN" || user.role === "TSK_STAFF";
 
-  const nav: NavItem[] = [{ href: "/", label: t("nav.dashboard") }];
-  if (user.role !== "SUPER_ADMIN") nav.push({ href: "/candidates", label: t("nav.candidates") });
-  if (user.role === "LPK_ADMIN" || user.role === "LPK_SENSEI") nav.push({ href: "/assessments/pending", label: t("nav.assessments") });
-  if (user.role === "TSK_ADMIN" || user.role === "TSK_STAFF") {
-    nav.push({ href: "/clients", label: t("nav.clients") });
-    nav.push({ href: "/job-orders", label: t("nav.jobOrders") });
-  }
-  if (user.role === "LPK_ADMIN" || user.role === "TSK_ADMIN") {
-    nav.push({ href: "/users", label: t("nav.users") });
-  }
+  // Lencana angka di menu: angka yang SAMA dengan daftar yang dibuka lewat menu (fungsi filter yang sama dengan dashboard)
+  const badge = isLpk
+    ? (await tenantQuery((tx) => viewCandidateIds(tx, "unrated"))).length
+    : isTsk
+      ? (await tenantQuery((tx) => viewCandidateIds(tx, "new-shared"))).length
+      : 0;
+
+  const items: SidebarItem[] = [{ href: "/", label: t("nav.dashboard"), icon: "dashboard" }];
   if (user.role === "SUPER_ADMIN") {
-    nav.push({ href: "/admin/organizations", label: t("nav.organizations") });
-    nav.push({ href: "/admin/partnerships", label: t("nav.partnerships") });
-    nav.push({ href: "/admin/skill-fields", label: t("nav.skillFields") });
+    items.push({ href: "/admin/organizations", label: t("nav.organizations"), icon: "organizations" });
+    items.push({ href: "/admin/skill-fields", label: t("nav.skillFields"), icon: "skillFields" });
+    items.push({ href: "/admin/partnerships", label: t("nav.partnerships"), icon: "partnerships" });
+  } else {
+    items.push({ href: "/candidates", label: t("nav.candidates"), icon: "candidates", ...(isTsk ? { badge, badgeLabel: t("shell.badgeNewShared", { n: badge }) } : {}) });
+    if (isLpk) items.push({ href: "/assessments/pending", label: t("nav.assessments"), icon: "assessments", badge, badgeLabel: t("shell.badgeUnrated", { n: badge }) });
+    if (isTsk) {
+      items.push({ href: "/clients", label: t("nav.clients"), icon: "clients" });
+      items.push({ href: "/job-orders", label: t("nav.jobOrders"), icon: "jobOrders" });
+    }
+    if (user.role === "LPK_ADMIN" || user.role === "TSK_ADMIN") items.push({ href: "/users", label: t("nav.users"), icon: "users" });
   }
-  nav.push({ href: "/account", label: t("nav.account") });
+  const soon: SoonItem[] = isTsk
+    ? [
+        { key: "residence", label: t("nav.residenceCard"), icon: "residence" },
+        { key: "periodic", label: t("nav.periodicInterview"), icon: "periodic" },
+      ]
+    : [];
+
+  const action =
+    user.role === "LPK_ADMIN"
+      ? { href: "/candidates/new", label: t("shell.addCandidate") }
+      : isTsk
+        ? { href: "/job-orders/new", label: t("shell.createJobOrder") }
+        : null;
+  // Judul halaman di bilah atas: dari menu, ditambah halaman yang tidak ada di menu
+  const titles = [...items.map((i) => ({ href: i.href, label: i.label })), { href: "/account", label: t("nav.account") }, { href: "/admin/organizations", label: t("nav.organizations") }];
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 pt-3">
-          <div className="flex items-center gap-3">
-            <BrandMark />
-            <span className="text-lg font-semibold tracking-tight">{t("common.appName")}</span>
-            <span className="hidden text-stone-300 sm:inline">/</span>
-            <span className="hidden text-sm text-stone-700 sm:inline">{user.organizationName}</span>
-            <span className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
-              {t(`orgTypes.${user.organizationType}`)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher />
-            <div className="hidden text-right text-sm leading-tight md:block">
-              <div className="font-medium">{user.name}</div>
-              <div className="text-xs text-stone-500">{t(`roles.${user.role}`)}</div>
-            </div>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-700 transition hover:bg-stone-100"
-              >
-                {t("common.logout")}
-              </button>
-            </form>
-          </div>
-        </div>
-        <div className="mx-auto max-w-6xl px-4 pt-2">
-          <Nav items={nav} />
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <SkillFieldsProvider options={skillOptions}>{children}</SkillFieldsProvider>
-      </main>
-      <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-stone-400">{t("common.version")}</footer>
-    </div>
+    <SkillFieldsProvider options={skillOptions}>
+      <ShellFrame
+        sidebar={<Sidebar items={items} soon={soon} org={{ name: user.organizationName, roleLabel: t(`roles.${user.role}`) }} user={{ name: user.name, email: user.email }} />}
+        topbar={
+          <Suspense fallback={<div className="h-[61px] border-b border-line bg-card" />}>
+            <Topbar titles={titles} dateLabel={longDate(new Date(), locale, tzForOrgType(user.organizationType))} showSearch={user.role !== "SUPER_ADMIN"} action={action} customizable={false} />
+          </Suspense>
+        }
+      >
+        {children}
+      </ShellFrame>
+    </SkillFieldsProvider>
   );
 }

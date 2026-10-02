@@ -64,8 +64,8 @@ test("staf TSK menambah perusahaan, lokasi dengan PIC dan bidang, lalu job order
   await page.getByTestId("form-contact-add").getByTestId("client-submit").click();
   await expect(page.getByTestId("contact")).toHaveCount(1);
 
-  await page.getByRole("link", { name: "Job order", exact: true }).click();
-  await page.getByTestId("job-order-add").click();
+  await page.locator('[data-testid=sidebar] a[href="/job-orders"]').click();
+  await page.getByTestId("primary-action").click();
   await page.locator(`[data-testid=site-option]:has-text("${SITE}") [data-testid=site-choose]`).click();
   // Bidang hanya yang diterima lokasi (food)
   await expect(page.locator("#jo-fieldId option:not([value=''])")).toHaveCount(1);
