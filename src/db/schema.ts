@@ -694,3 +694,19 @@ export type Language = (typeof language.enumValues)[number];
 export type JobOrderStatus = (typeof jobOrderStatus.enumValues)[number];
 export type PlacementStatus = (typeof placementStatus.enumValues)[number];
 export type OrgType = (typeof orgType.enumValues)[number];
+
+// ---------------------------------------------------------------------------------------------
+// Tata letak dashboard per pengguna (urutan, ukuran, sembunyikan widget). Milik sendiri: hanya baris user itu yang terlihat
+// (RLS, drizzle/0018_dashboard_layouts.sql). Bukan data kandidat dan sengaja TIDAK diaudit (preferensi tampilan).
+// Bentuk `layout` divalidasi aplikasi (src/db/dashboard-layout.ts) dan dibatasi ukurannya oleh CHECK.
+// ---------------------------------------------------------------------------------------------
+export const userDashboardLayouts = pgTable("user_dashboard_layouts", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  orgId: uuid("org_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  layout: jsonb("layout").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

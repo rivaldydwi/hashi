@@ -2285,6 +2285,67 @@ async function main() {
   );
   check("View candidate_headline_decision: keputusan paling maju menang atas baris umum dan REJECTED", JSON.stringify(vw.headline) === JSON.stringify(["PASSED_CLIENT_INTERVIEW"]), JSON.stringify(vw.headline));
 
+  // --- Q. Tata letak dashboard (user_dashboard_layouts): milik sendiri, tanpa akses lintas pengguna/organisasi ---
+  const dl: Record<string, unknown> = {};
+  const layoutOk = JSON.stringify({ v: 1, items: [{ id: "stage-bar", size: "full" }] });
+  await sandbox(async (tx) => {
+    const uA = allUsers.find((u) => u.role === "LPK_ADMIN" && u.organizationId === lpk1.id)!;
+    const uS = allUsers.find((u) => u.role === "LPK_SENSEI" && u.organizationId === lpk1.id)!;
+    const uB = allUsers.find((u) => u.role === "LPK_ADMIN" && u.organizationId === lpk2.id)!;
+    const ins = (userId: string, orgId: string, layout: string) => tx.execute(sql`insert into user_dashboard_layouts (user_id, org_id, layout) values (${userId}::uuid, ${orgId}::uuid, ${layout}::jsonb)`);
+    await actAs(tx, lpk1.id, "LPK_ADMIN", uA.id);
+    dl.insertOwn = await attempt(tx, () => ins(uA.id, lpk1.id, layoutOk));
+    dl.insertOtherUser = await attempt(tx, () => ins(uS.id, lpk1.id, layoutOk)); // atas nama pengguna lain
+    dl.insertOtherOrg = await attempt(tx, () => ins(uA.id, lpk2.id, layoutOk)); // organisasi bukan miliknya (sudah ada baris: konflik atau policy)
+    dl.readOwn = (await tx.execute(sql`select user_id from user_dashboard_layouts`)).rows.length;
+    // sensei yang satu organisasi (bahkan admin tak boleh melihat milik orang lain): SELECT / UPDATE / DELETE TANPA WHERE
+    await actAs(tx, lpk1.id, "LPK_SENSEI", uS.id);
+    dl.senseiSees = (await tx.execute(sql`select user_id from user_dashboard_layouts`)).rows.length;
+    dl.senseiUpdate = (await tx.execute(sql`update user_dashboard_layouts set layout = '{"v":1,"items":[]}'::jsonb returning user_id`)).rows.length;
+    dl.senseiDelete = (await tx.execute(sql`delete from user_dashboard_layouts returning user_id`)).rows.length;
+    dl.senseiInsertOwn = await attempt(tx, () => ins(uS.id, lpk1.id, layoutOk));
+    // organisasi lain, tanpa konteks pengguna, peran null, super admin (jalur aplikasi: org platform)
+    await actAs(tx, lpk2.id, "LPK_ADMIN", uB.id);
+    dl.otherOrgSees = (await tx.execute(sql`select user_id from user_dashboard_layouts`)).rows.length;
+    await actAs(tx, lpk1.id, "LPK_ADMIN", null);
+    dl.noUserSees = (await tx.execute(sql`select user_id from user_dashboard_layouts`)).rows.length; // org benar, user_id kosong
+    dl.noUserInsert = await attempt(tx, () => ins(uA.id, lpk1.id, layoutOk));
+    await actAs(tx, lpk1.id, null, uA.id);
+    dl.roleNullOwn = (await tx.execute(sql`select user_id from user_dashboard_layouts where user_id = ${uA.id}::uuid`)).rows.length; // peran tak dipakai: milik sendiri tetap terbaca
+    await tx.execute(sql`select set_config('app.org_id', '', true), set_config('app.role', '', true), set_config('app.user_id', '', true), set_config('app.bypass_rls', 'off', true)`);
+    dl.noContextSees = (await tx.execute(sql`select user_id from user_dashboard_layouts`)).rows.length;
+    // pemilik: ubah isi boleh, ganti pemilik/organisasi tidak
+    await actAs(tx, lpk1.id, "LPK_ADMIN", uA.id);
+    dl.updateOwn = await attempt(tx, () => tx.execute(sql`update user_dashboard_layouts set layout = '{"v":1,"items":[]}'::jsonb`));
+    dl.moveOwner = await attempt(tx, () => tx.execute(sql`update user_dashboard_layouts set user_id = ${uS.id}::uuid`));
+    dl.moveOrg = await attempt(tx, () => tx.execute(sql`update user_dashboard_layouts set org_id = ${lpk2.id}::uuid`));
+    // batasan isi
+    await actAs(tx, lpk1.id, "LPK_SENSEI", uS.id);
+    dl.notObject = await attempt(tx, () => ins(uS.id, lpk1.id, "[1,2]"));
+    dl.tooBig = await attempt(tx, () => ins(uS.id, lpk1.id, JSON.stringify({ v: 1, pad: "x".repeat(4100) })));
+    // pemilik menghapus miliknya; hapus pengguna menghapus barisnya (cascade)
+    await actAs(tx, lpk1.id, "LPK_ADMIN", uA.id);
+    dl.deleteOwn = (await tx.execute(sql`delete from user_dashboard_layouts returning user_id`)).rows.length;
+    await actAsSystem(tx); // baris sensei sudah ada dari senseiInsertOwn
+    await tx.execute(sql`delete from users where id = ${uS.id}::uuid`);
+    dl.cascade = (await tx.execute(sql`select user_id from user_dashboard_layouts where user_id = ${uS.id}::uuid`)).rows.length;
+  });
+  check(
+    "Tata letak dashboard: pemilik menyimpan/membaca/mengubah/menghapus miliknya; atas nama pengguna lain atau organisasi lain ditolak",
+    dl.insertOwn === null && dl.insertOtherUser !== null && dl.insertOtherOrg !== null && dl.readOwn === 1 && dl.updateOwn === null && dl.deleteOwn === 1 && dl.roleNullOwn === 1,
+    JSON.stringify([dl.insertOwn, String(dl.insertOtherUser).slice(0, 50), String(dl.insertOtherOrg).slice(0, 50), dl.readOwn, dl.updateOwn, dl.deleteOwn, dl.roleNullOwn]),
+  );
+  check(
+    "Tata letak dashboard: pengguna lain di organisasi yang sama (sensei), organisasi lain, tanpa pengguna, dan tanpa konteks tidak melihat/mengubah/menghapus baris orang lain (SELECT/UPDATE/DELETE tanpa WHERE = 0 baris)",
+    dl.senseiSees === 0 && dl.senseiUpdate === 0 && dl.senseiDelete === 0 && dl.senseiInsertOwn === null && dl.otherOrgSees === 0 && dl.noUserSees === 0 && dl.noUserInsert !== null && dl.noContextSees === 0,
+    JSON.stringify([dl.senseiSees, dl.senseiUpdate, dl.senseiDelete, dl.senseiInsertOwn, dl.otherOrgSees, dl.noUserSees, String(dl.noUserInsert).slice(0, 40), dl.noContextSees]),
+  );
+  check(
+    "Tata letak dashboard: pemilik/organisasi tidak bisa dipindah; isi harus objek dan <= 4000 karakter; hapus pengguna menghapus barisnya",
+    dl.moveOwner !== null && dl.moveOrg !== null && /user_dashboard_layouts_layout_check/.test(String(dl.notObject)) && /user_dashboard_layouts_layout_check/.test(String(dl.tooBig)) && dl.cascade === 0,
+    JSON.stringify([String(dl.moveOwner).slice(0, 50), String(dl.moveOrg).slice(0, 50), String(dl.notObject).slice(0, 60), String(dl.tooBig).slice(0, 60), dl.cascade]),
+  );
+
   await pool.end();
   await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);

@@ -118,7 +118,27 @@
       "s3Title": "Bagikan ke TSK mitra",
       "s3Body": "Setelah siswa setuju, aktifkan berbagi dari halaman detail kandidat.",
       "s3Cta": "Lihat daftar kandidat"
-    }
+    },
+    "edit": {
+      "title": "Atur dashboard",
+      "hint": "Atur urutan, ukuran, dan widget yang ditampilkan. Perubahan tersimpan otomatis dan hanya berlaku untuk akun Anda.",
+      "saving": "Menyimpan…",
+      "saved": "Tersimpan",
+      "failed": "Gagal menyimpan. Coba lagi.",
+      "reset": "Kembalikan ke bawaan",
+      "sizeFull": "Penuh",
+      "sizeHalf": "Setengah",
+      "sizeOf": "Ukuran {name}",
+      "moveUp": "Pindah {name} ke atas",
+      "moveDown": "Pindah {name} ke bawah",
+      "hide": "Sembunyikan",
+      "hideNamed": "Sembunyikan {name}",
+      "show": "Tampilkan",
+      "showNamed": "Tampilkan {name}",
+      "hiddenTitle": "Widget tersembunyi",
+      "hiddenEmpty": "Tidak ada widget yang disembunyikan."
+    },
+    "allHidden": "Semua widget disembunyikan. Pilih \"Atur dashboard\" untuk menampilkannya lagi."
   },
   "users": {
     "title": "Pengguna",

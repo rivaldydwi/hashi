@@ -64,7 +64,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         sidebar={<Sidebar items={items} soon={soon} org={{ name: user.organizationName, roleLabel: t(`roles.${user.role}`) }} user={{ name: user.name, email: user.email }} />}
         topbar={
           <Suspense fallback={<div className="h-[61px] border-b border-line bg-card" />}>
-            <Topbar titles={titles} dateLabel={longDate(new Date(), locale, tzForOrgType(user.organizationType))} showSearch={user.role !== "SUPER_ADMIN"} action={action} customizable={false} />
+            <Topbar titles={titles} dateLabel={longDate(new Date(), locale, tzForOrgType(user.organizationType))} showSearch={user.role !== "SUPER_ADMIN"} action={action} customizable={true} />
           </Suspense>
         }
       >

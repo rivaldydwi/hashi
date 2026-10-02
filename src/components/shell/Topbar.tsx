@@ -40,7 +40,7 @@ export function Topbar({ titles, dateLabel, showSearch, action, customizable }: 
             <input id="global-q" name="q" type="search" maxLength={100} placeholder={t("searchPlaceholder")} className="block h-11 w-full rounded-xl border border-line-btn bg-card pl-9 pr-3 text-[14px] outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft" />
           </form>
         )}
-        {customizable && (
+        {customizable && pathname === "/" && (
           <Link
             href={editing ? "/" : "/?atur=1"}
             data-testid="customize-toggle"

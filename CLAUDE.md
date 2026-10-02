@@ -186,6 +186,17 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   menjadi FILLED otomatis saat terpilih >= posisi (`job_order_sync_status`; hanya arah itu, dibuka manual tidak dibalik sampai seleksi berubah). "Ajukan" (`proposeCandidate`) =
   SUBMITTED_TO_CLIENT untuk job order itu (tidak menurunkan yang lebih maju; hanya job order OPEN; kandidat Mundur / sudah ditempatkan ditolak). Tes: `verify-rls` bagian M-O
   (`sandbox()` + helper `decide()`/`newJobOrder()`), e2e `clients`, `job-orders`, `skill-fields`; tes yang butuh keputusan lanjut memakai `createScratchJobOrder`.
+- **UI v1: shell + dashboard** (`src/components/shell/`, `src/features/dashboard/`, `src/db/dashboard-*.ts`): token desain di `globals.css` (`@theme`; akar 16px, teks dasar 14px di body,
+  supaya `h-11` = 44px untuk target sentuh). Menu per peran disusun di `(app)/layout.tsx` (menu yang tak boleh TIDAK ada di DOM). Angka kartu KPI = jumlah id dari
+  `viewCandidateIds` (`src/db/dashboard-queries.ts`) dan daftar `/candidates?view=…` memakai fungsi yang SAMA (`parseFilters` + `onlyIds`), jadi angka dan daftar tidak pernah
+  berbeda; filter baru = tambah ke `FILTER_VIEWS_*` + `viewCandidateIds` + `candidates.viewLabel.*` + pemeriksaan di `verify-seed` (tidak boleh kosong/semua). Kelengkapan profil:
+  `candidateCompleteness` (`src/db/completeness.ts`, turunan `candidate-sections.ts`). Seed sengaja punya kandidat tak lengkap (`INTENTIONALLY_INCOMPLETE` di `demo-data.ts`).
+- **Dashboard yang bisa diatur** (migration 0018, `user_dashboard_layouts`): katalog widget TUNGGAL di `src/db/dashboard-catalog.ts` (id, jenis kpi/widget, peran, ukuran);
+  validator/penyelesai murni di `src/db/dashboard-layout.ts` (`resolveLayout` tidak pernah gagal: id asing/duplikat dibuang, widget baru ditambahkan di akhir; `parseLayoutInput`
+  ketat untuk simpan). Tersimpan jsonb `{v:1, items:[{id,size?,hidden?}]}`, RLS MILIK SENDIRI (`user_id = app_current_user() AND org_id = app_current_org()`; tak ada akses
+  lintas pengguna, bahkan admin) + CHECK objek <= 4000 karakter. Preferensi tampilan: SENGAJA tidak diaudit. Widget tersembunyi tidak di-query (`loadDashboard(user, ids)`).
+  Mode atur = `/?atur=1` (`LayoutEditor`, simpan otomatis lewat `saveDashboardLayout`/`resetDashboardLayout`; tombol biasa, bukan seret-lepas). Widget baru = 1 entri katalog +
+  1 `case` di `Widgets.tsx` + loader di `data.ts` + label di `dashboard.*` (id dan ja).
 - **Hapus kandidat permanen** (`candidates/delete-actions.ts`, `DeleteCandidate.tsx`, migration 0013): HANYA LPK_ADMIN pemilik, ditegakkan
   di UI (komponen tidak dirender untuk peran lain), server action (peran + organisasi + ketik nama/kode persis), RLS (`candidates_lpk_admin_delete`),
   dan trigger `candidates_block_delete` (BEFORE DELETE: menolak bila ada keputusan TSK DOCUMENT_PROCESS atau DEPARTED dari TSK mana pun, daftar
