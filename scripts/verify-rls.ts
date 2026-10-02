@@ -2219,6 +2219,72 @@ async function main() {
     `${JSON.stringify(jx.viewCols)} A=${jr[JA].readView} B=${jr[JB].readView} LPK=${jr.lpkAdmin.readView}`,
   );
 
+  // --- P. Semua VIEW di schema public harus security_invoker; SELECT langsung ke view keputusan paling maju per peran ---
+  const vw: Record<string, unknown> = {};
+  const RANK: Record<string, number> = { NONE: 0, REJECTED: 1, SHORTLISTED: 2, PASSED_TSK_INTERVIEW: 3, SUBMITTED_TO_CLIENT: 4, PASSED_CLIENT_INTERVIEW: 5, DOCUMENT_PROCESS: 6, DEPARTED: 7 }; // salinan eksplisit selection_decision_rank
+  await sandbox(async (tx) => {
+    // Semua view/materialized view: wajib security_invoker=true (view tanpa itu berjalan sebagai owner dan melewati RLS)
+    const views = await tx.execute(sql`select c.relname, c.relkind, coalesce(c.reloptions::text, '{}') as opts from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('v', 'm') order by 1`);
+    vw.views = views.rows.map((r) => `${r.relname}:${r.relkind}:${r.opts}`);
+    vw.insecure = views.rows.filter((r) => r.relkind === "m" || !/security_invoker=(true|on)/.test(String(r.opts))).map((r) => String(r.relname));
+
+    const tskB = await makeTskB(tx); // mitra LPK Bandung, hanya punya keputusan di kandidat uji ini
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    await decide(tx, studying1.id, tsk.id, "SHORTLISTED");
+    await decide(tx, studying1.id, tskB, "SHORTLISTED");
+    await decide(tx, ready1.id, tsk.id, "PASSED_CLIENT_INTERVIEW"); // dengan job order: headline mengalahkan baris umum
+    await tx.insert(candidateSelections).values({ candidateId: ready1.id, tskOrgId: tsk.id, decision: "REJECTED" });
+    await actAsSystem(tx);
+
+    // Harapan dihitung dari tabel dasar (sebagai sistem) dengan aturan terlihat per peran, bukan dari view
+    const base = await tx.select().from(candidateSelections);
+    const candOrg = new Map((await tx.select({ id: candidates.id, o: candidates.organizationId, sh: candidates.sharedWithTsk }).from(candidates)).map((c) => [c.id, c]));
+    const best = new Map<string, { cand: string; tsk: string; decision: string }>();
+    for (const r of base) {
+      const k = `${r.candidateId}|${r.tskOrgId}`;
+      if (!best.has(k) || RANK[r.decision] > RANK[best.get(k)!.decision]) best.set(k, { cand: r.candidateId, tsk: r.tskOrgId, decision: r.decision });
+    }
+    const partners = new Set((await tx.select().from(partnerships)).filter((p) => p.active).map((p) => `${p.lpkId}|${p.tskId}`));
+    const want = (pred: (b: { cand: string; tsk: string }) => boolean) => [...best.values()].filter(pred).map((b) => `${b.cand}|${b.tsk}|${b.decision}`).sort();
+    const lpkRows = (org: string) => want((b) => candOrg.get(b.cand)?.o === org);
+    const tskRows = (org: string) => want((b) => b.tsk === org && !!candOrg.get(b.cand)?.sh && partners.has(`${candOrg.get(b.cand)!.o}|${org}`));
+    const read = async (org: string, role: string | null, uid: string | null) => {
+      await actAs(tx, org, role, uid);
+      return (await tx.select().from(candidateHeadlineDecision)).map((r) => `${r.candidateId}|${r.tskOrgId}|${r.decision}`).sort();
+    };
+    const same = (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b);
+    vw.lpkAdmin = same(await read(lpk1.id, "LPK_ADMIN", lpkAdminUser.id), lpkRows(lpk1.id));
+    vw.lpkAdminN = lpkRows(lpk1.id).length;
+    vw.sensei = same(await read(lpk1.id, "LPK_SENSEI", lpkAdminUser.id), lpkRows(lpk1.id)); // sensei boleh membaca keputusan (bukan catatan)
+    vw.lpk2 = same(await read(lpk2.id, "LPK_ADMIN", null), lpkRows(lpk2.id));
+    vw.lpk3 = same(await read(lpk3.id, "LPK_ADMIN", null), lpkRows(lpk3.id)) && (await read(lpk3.id, "LPK_ADMIN", null)).length === 0 === (lpkRows(lpk3.id).length === 0);
+    vw.tskA = same(await read(tsk.id, "TSK_ADMIN", tskAdminUser.id), tskRows(tsk.id));
+    vw.tskB = same(await read(tskB, "TSK_ADMIN", adminB), tskRows(tskB));
+    vw.tskBN = tskRows(tskB).length;
+    const bRows = await read(tskB, "TSK_ADMIN", adminB);
+    vw.tskBOnlyOwn = bRows.length > 0 && bRows.every((r) => !r.includes(`|${tsk.id}|`));
+    vw.roleNull = (await read(tsk.id, null, null)).length;
+    vw.superAdmin = (await read(platformOrg.id, "SUPER_ADMIN", null)).length;
+    await actAs(tx, "00000000-0000-0000-0000-000000000000", null);
+    await tx.execute(sql`select set_config('app.org_id', '', true)`);
+    vw.noContext = (await tx.select().from(candidateHeadlineDecision)).length;
+    // Headline = keputusan paling maju: ready1 punya baris REJECTED (umum) + PASSED_CLIENT_INTERVIEW (job order) -> PASSED_CLIENT_INTERVIEW
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    vw.headline = (await tx.select().from(candidateHeadlineDecision).where(eq(candidateHeadlineDecision.candidateId, ready1.id))).map((r) => r.decision);
+  });
+  check(
+    "View: semua view/materialized view di schema public memakai security_invoker=true (RLS tabel dasar berlaku bagi pemanggil)",
+    (vw.insecure as string[]).length === 0 && (vw.views as string[]).length >= 1,
+    (vw.views as string[]).join(", "),
+  );
+  check(
+    "View candidate_headline_decision (SELECT langsung): LPK_ADMIN dan sensei hanya keputusan kandidat LPK-nya; LPK lain hanya miliknya; TSK lain hanya baris TSK-nya sendiri; tanpa konteks/peran null/super admin 0 baris",
+    vw.lpkAdmin === true && vw.sensei === true && vw.lpk2 === true && vw.lpk3 === true && vw.tskA === true && vw.tskB === true && vw.tskBOnlyOwn === true &&
+      (vw.lpkAdminN as number) > 0 && (vw.tskBN as number) > 0 && vw.noContext === 0 && vw.roleNull === 0 && vw.superAdmin === 0,
+    JSON.stringify(vw),
+  );
+  check("View candidate_headline_decision: keputusan paling maju menang atas baris umum dan REJECTED", JSON.stringify(vw.headline) === JSON.stringify(["PASSED_CLIENT_INTERVIEW"]), JSON.stringify(vw.headline));
+
   await pool.end();
   await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);
