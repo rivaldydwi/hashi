@@ -211,6 +211,7 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   jalankan `npm run verify:audit-coverage` (statis: server action yang menulis tanpa audit gagal kecuali ada di `EXEMPT` dengan alasan). `describeAudit(entry, locale, labels)` dipakai halaman,
   bagian riwayat di detail kandidat, widget `activity`, dan ekspor CSV (`/activity/export`, BOM + anti-rumus, mencatat `audit.export`; tanpa nama kandidat, hanya kode 8 karakter). Zona waktu
   tampilan = `organizations.timezone` (`safeTimezone`); batas filter tanggal juga menurut zona itu. Seed: `src/db/demo-audit.ts` (~30 entri per organisasi; `verify:seed` memeriksa).
+- **Merek & login**: aset, varian, dan aturan pakai di `docs/brand.md` (`BrandLogo`, `npm run build:brand`). Login: `src/app/login/page.tsx` + `LoginForm` (dua kolom desktop; `callbackUrl` hanya jalur relatif lewat `safeCallbackPath`; error seragam; bahasa lewat cookie sebelum login). Widget "Aktivitas terbaru" tidak memuat `auth.login` (disaring di query `recentAudit`).
 - **Hapus kandidat permanen** (`candidates/delete-actions.ts`, `DeleteCandidate.tsx`, migration 0013): HANYA LPK_ADMIN pemilik, ditegakkan
   di UI (komponen tidak dirender untuk peran lain), server action (peran + organisasi + ketik nama/kode persis), RLS (`candidates_lpk_admin_delete`),
   dan trigger `candidates_block_delete` (BEFORE DELETE: menolak bila ada keputusan TSK DOCUMENT_PROCESS atau DEPARTED dari TSK mana pun, daftar

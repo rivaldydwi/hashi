@@ -19,7 +19,8 @@
     "verify:seed": "tsx scripts/verify-seed.ts",
     "db:generate": "drizzle-kit generate",
     "test:e2e": "playwright test",
-    "verify:audit-coverage": "tsx scripts/verify-audit-coverage.ts"
+    "verify:audit-coverage": "tsx scripts/verify-audit-coverage.ts",
+    "build:brand": "tsx scripts/build-brand.ts"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",
@@ -41,6 +42,7 @@
     "@types/react-dom": "19.3.0",
     "dotenv": "18.0.4",
     "drizzle-kit": "0.31.11",
+    "sharp": "^0.35.5",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "5.9.3"

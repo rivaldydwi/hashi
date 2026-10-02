@@ -1,6 +1,6 @@
 // Query riwayat aktivitas (audit_logs). Semua berjalan di dalam withTenant: RLS membatasi baris (hanya LPK_ADMIN/TSK_ADMIN; log organisasi sendiri
 // atau yang pelakunya organisasi sendiri). Dipakai halaman Riwayat, tab di detail kandidat, widget dashboard, dan ekspor CSV.
-import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql, type SQL } from "drizzle-orm";
 import type { Tx } from "./index";
 import { auditLogs } from "./schema";
 import { ACTIONS, AUDIT_CATEGORIES, type AuditCategory, type AuditView } from "./audit-describe";
@@ -61,9 +61,12 @@ export async function listAudit(tx: Tx, f: AuditFilters, tz: string): Promise<{ 
   return { rows: rows.map(asView), total: n };
 }
 
-/** Entri terbaru (widget dashboard). */
+/**
+ * Entri terbaru untuk widget dashboard: TANPA login (auth.login). Login tetap tercatat dan tampil di /activity; di widget ia menenggelamkan peristiwa lain
+ * (satu entri per login). Disaring di query supaya widget penuh dengan peristiwa bermakna, bukan disaring setelah mengambil n baris.
+ */
 export async function recentAudit(tx: Tx, n = 6): Promise<AuditView[]> {
-  return (await tx.select(cols).from(auditLogs).orderBy(desc(auditLogs.createdAt), desc(auditLogs.id)).limit(n)).map(asView);
+  return (await tx.select(cols).from(auditLogs).where(ne(auditLogs.action, "auth.login")).orderBy(desc(auditLogs.createdAt), desc(auditLogs.id)).limit(n)).map(asView);
 }
 
 /** Untuk ekspor CSV: semua baris yang cocok (dibatasi AUDIT_EXPORT_MAX). */

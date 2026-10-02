@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -32,8 +33,7 @@ export function Sidebar({
   return (
     <div className="flex min-h-full flex-1 flex-col px-3 pb-3 pt-4">
       <div className="flex items-center gap-2.5 px-2 pb-4">
-        <span aria-hidden="true" className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] bg-accent text-lg font-bold text-white">橋</span>
-        <span className="text-[17px] font-bold tracking-tight">{tc("appName")}</span>
+        <BrandLogo variant="full" tone="light" height={32} />
       </div>
 
       <div className="mb-4 rounded-xl border border-line bg-page px-3 py-2.5" data-testid="org-card">

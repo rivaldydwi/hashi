@@ -167,3 +167,18 @@ test.describe("ponsel", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   });
 });
+
+test("widget Aktivitas terbaru tidak menampilkan login (walau login paling baru), sedangkan /activity tetap menampilkannya", async ({ page }) => {
+  await login(page, "lpk1.admin@hashi.test"); // login ini sendiri menjadi entri terbaru
+  await page.goto("/");
+  const widget = page.getByTestId("w-activity");
+  await expect(widget).toBeVisible();
+  const actions = await widget.getByTestId("audit-row").evaluateAll((els) => els.map((e) => e.getAttribute("data-action")));
+  expect(actions.length).toBeGreaterThan(0);
+  expect(actions).not.toContain("auth.login");
+  await page.goto("/activity");
+  expect(await page.getByTestId("audit-row").first().getAttribute("data-action")).toBe("auth.login");
+  await page.locator("#category").selectOption("auth");
+  await page.locator("[data-testid=audit-filters] button[type=submit]").click();
+  expect(await page.getByTestId("audit-row").count()).toBeGreaterThan(0);
+});

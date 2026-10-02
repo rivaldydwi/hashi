@@ -31,6 +31,10 @@ minimal satu admin aktif, reset kata sandi langsung mengeluarkan pengguna dari s
 nonaktif langsung tidak bisa masuk (dicek setiap request, tidak menunggu sesi habis). Semua perubahan
 tercatat di audit log.
 
+## Merek
+
+Logo, ikon, dan aturan pakainya ada di [docs/brand.md](docs/brand.md). Aset turunan dibangun dengan `npm run build:brand` dari `design/brand-source/`.
+
 ## Stack
 
 | Bagian | Teknologi |

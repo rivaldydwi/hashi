@@ -20,6 +20,13 @@
   --color-data-1: #8c8378;
   --color-data-2: #a39b90;
 
+  /* Warna merek (sampling dari design/brand-source). HANYA untuk logo dan panel merek halaman login; aksen aplikasi tetap --color-accent. */
+  --color-brand-navy: #0f1424;
+  --color-brand-navy-icon: #1b2547;
+  --color-brand-blue: #5b7cfa;
+  --color-brand-periwinkle: #c9d3ff;
+  --color-brand-coral: #ff6b5e;
+
   /* Skala "brand" lama dipetakan ke aksen baru supaya tombol/tautan yang sudah ada ikut berganti gaya */
   --color-brand-50: #fdebdd;
   --color-brand-100: #fdebdd;

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Noto_Sans_JP } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "Hashi — LPK & TSK",
   robots: { index: false, follow: false },
 };
+
+export const viewport: Viewport = { themeColor: "#0F1424" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();

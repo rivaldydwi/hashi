@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { BrandMark } from "@/components/BrandMark";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { cardClass } from "@/components/styles";
 import { ChangePasswordForm } from "@/features/account/ChangePasswordForm";
 import { logout } from "@/lib/actions";
@@ -19,7 +19,7 @@ export default async function ForcedChangePasswordPage() {
     <main className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <BrandMark size="lg" />
+          <BrandLogo variant="full" tone="light" height={40} priority />
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">{t("account.forcedTitle")}</h1>
           <p className="mt-1 text-sm text-stone-500">{t("account.forcedNote")}</p>
           <p className="mt-2 text-sm font-medium text-stone-700">{me.email}</p>
