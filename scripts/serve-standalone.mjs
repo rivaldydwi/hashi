@@ -10,6 +10,7 @@ if (!existsSync(`${out}/server.js`)) {
 }
 cpSync(".next/static", `${out}/.next/static`, { recursive: true });
 cpSync("public", `${out}/public`, { recursive: true });
+cpSync("assets", `${out}/assets`, { recursive: true }); // font Jepang untuk PDF (sama seperti image produksi)
 
 const child = spawn(process.execPath, ["server.js"], {
   cwd: out,

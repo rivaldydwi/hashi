@@ -91,7 +91,14 @@ Service `migrate` memasang volume `docs-data` + `STORAGE_DIR` supaya seed menuli
 Tes yang mengubah data kandidat WAJIB memakai kandidat uji sendiri (`createScratchCandidate` di `tests/e2e/helpers.ts`), bukan kandidat seed.
 `verify-rls.ts`: `sandbox()` berjalan lewat koneksi OWNER untuk mengosongkan turunan kandidat lalu `SET LOCAL ROLE hashi_app`.
 
-## Keputusan untuk langkah 7 (catatan kebutuhan, BELUM diimplementasikan)
+## Langkah 7: yang SUDAH terbangun dan yang tersisa
+
+- ✅ **7A Catatan kegiatan** (業務記録, 議事録・面談記録, 時系列, 定期面談, tugas tindak lanjut, laporan harian, foto, PDF): lihat `docs/catatan-kegiatan.md` dan butir "Catatan kegiatan" di aturan arsitektur.
+- ⏭ Tersisa: pelacak 在留カード dan pengingatnya, checklist keberangkatan/kedatangan, bagian "管理・報告" lembar 定期面談 (dokumen, permohonan, tanggal pengajuan 入管), profil pekerja lengkap,
+  status visa/tanggal tiba untuk LPK, notifikasi email/LINE, lembar klien PDF (langkah 6; `src/lib/pdf/` sudah siap dipakai ulang).
+- **Cadangan di luar server WAJIB berjalan sebelum data nyata masuk** (catatan disimpan 5 tahun dan tidak bisa dihapus lewat aplikasi).
+
+## Keputusan untuk langkah 7 (catatan kebutuhan; 7A sudah diimplementasikan, sisanya BELUM)
 
 Fondasi datanya sudah ada (`placements`, klien/lokasi, job order). Kebutuhan dari staf TSK untuk modul pekerja aktif:
 
@@ -212,6 +219,13 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   bagian riwayat di detail kandidat, widget `activity`, dan ekspor CSV (`/activity/export`, BOM + anti-rumus, mencatat `audit.export`; tanpa nama kandidat, hanya kode 8 karakter). Zona waktu
   tampilan = `organizations.timezone` (`safeTimezone`); batas filter tanggal juga menurut zona itu. Seed: `src/db/demo-audit.ts` (~30 entri per organisasi; `verify:seed` memeriksa).
 - **Merek & login**: aset, varian, dan aturan pakai di `docs/brand.md` (`BrandLogo`, `npm run build:brand`). Login: `src/app/login/page.tsx` + `LoginForm` (dua kolom desktop; `callbackUrl` hanya jalur relatif lewat `safeCallbackPath`; error seragam; bahasa lewat cookie sebelum login). Widget "Aktivitas terbaru" tidak memuat `auth.login` (disaring di query `recentAudit`).
+- **Catatan kegiatan TSK** (migration 0020; `src/features/records/`, `src/db/records-*.ts`, `src/lib/pdf/`; rute `/records/*`): HANYA TSK_ADMIN/TSK_STAFF (`activity_member()` di RLS; LPK/sensei/super admin: menu tidak ada, rute 404). Semua staf TSK membaca SEMUA catatan;
+  tanda baca dan laporan harian hanya atas nama sendiri; mengubah catatan/kasus/kronologi: penulis atau TSK_ADMIN; wawancara berkala: semua staf. TIDAK ADA hapus (tanpa GRANT DELETE): salah = `void` + alasan, final; lampiran = `removed_at`.
+  Edit menaikkan `version_no` dan menulis `activity_revisions` lewat TRIGGER (append-only, juga untuk OWNER); aplikasi mengubah baris induk DULU baru himpunan terkait (pekerja/hadirin) supaya snapshot memuat himpunan lama. FK ke `candidates` RESTRICT
+  (hapus kandidat ditolak trigger `candidates_block_delete` + `candidate_delete_summary().blocked`). "Belum dibaca" punya SATU definisi (`unreadRecordIds`/`unreadReportIds`) untuk KPI, lencana, dan daftar; sel wawancara berkala dihitung `cellState` + `pendingInterviewCells`.
+  Audit di log org TSK saja (`activity_*`, `periodic_interview.*`, `activity_export`): jenis/status/kategori/bulan, TIDAK PERNAH isi, nama pekerja, atau nama berkas; tanda baca tidak diaudit. Action yang mengalihkan halaman dari `ActionForm redirectTo` TIDAK boleh memanggil `revalidatePath`
+  (form terlepas sebelum pengalihan). PDF: `src/lib/pdf` (pdfkit di-BUNDLE, bukan external: nft kehilangan `@noble/*` di image), label di `labels.ja.ts`, versi klien tanpa nama staf/kode kasus dan wajib `confirm=1`. Foto: `sharp` (rotasi EXIF lalu buang semua metadata), HEIC ditolak. Fitur baru
+  = tabel + RLS + bagian S di `verify-rls` + `ACTIONS` audit + `verify:audit-coverage` + `seed:records`/`verify:seed`.
 - **Hapus kandidat permanen** (`candidates/delete-actions.ts`, `DeleteCandidate.tsx`, migration 0013): HANYA LPK_ADMIN pemilik, ditegakkan
   di UI (komponen tidak dirender untuk peran lain), server action (peran + organisasi + ketik nama/kode persis), RLS (`candidates_lpk_admin_delete`),
   dan trigger `candidates_block_delete` (BEFORE DELETE: menolak bila ada keputusan TSK DOCUMENT_PROCESS atau DEPARTED dari TSK mana pun, daftar

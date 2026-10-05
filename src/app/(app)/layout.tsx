@@ -5,6 +5,7 @@ import { Sidebar, type SidebarItem, type SoonItem } from "@/components/shell/Sid
 import { ShellFrame } from "@/components/shell/ShellFrame";
 import { Topbar } from "@/components/shell/Topbar";
 import { viewCandidateIds } from "@/db/dashboard-queries";
+import { unreadRecordIds, unreadReportIds } from "@/db/records-queries";
 import { ToastProvider } from "@/components/Toast";
 import { SkillFieldsProvider } from "@/features/skill-fields/SkillFieldsProvider";
 import { getSkillFieldOptions } from "@/features/skill-fields/server";
@@ -29,6 +30,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ? (await tenantQuery((tx) => viewCandidateIds(tx, "new-shared"))).length
       : 0;
 
+  // Catatan kegiatan (khusus TSK): lencana = catatan belum kubaca + laporan harian staf belum kubaca (angka yang sama dengan KPI dashboard)
+  const recordsBadge = isTsk ? await tenantQuery(async (tx) => (await unreadRecordIds(tx, user.id)).length + (await unreadReportIds(tx, user.id)).length) : 0;
+
   const items: SidebarItem[] = [{ href: "/", label: t("nav.dashboard"), icon: "dashboard" }];
   if (user.role === "SUPER_ADMIN") {
     items.push({ href: "/admin/organizations", label: t("nav.organizations"), icon: "organizations" });
@@ -40,6 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (isTsk) {
       items.push({ href: "/clients", label: t("nav.clients"), icon: "clients" });
       items.push({ href: "/job-orders", label: t("nav.jobOrders"), icon: "jobOrders" });
+      items.push({ href: "/records", label: t("nav.records"), icon: "records", badge: recordsBadge, badgeLabel: t("shell.badgeRecords", { n: recordsBadge }) });
     }
     if (user.role === "LPK_ADMIN" || user.role === "TSK_ADMIN") {
       items.push({ href: "/users", label: t("nav.users"), icon: "users" });
@@ -49,7 +54,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const soon: SoonItem[] = isTsk
     ? [
         { key: "residence", label: t("nav.residenceCard"), icon: "residence" },
-        { key: "periodic", label: t("nav.periodicInterview"), icon: "periodic" },
       ]
     : [];
 

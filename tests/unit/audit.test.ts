@@ -21,7 +21,7 @@ test("setiap aksi punya kalimat Indonesia (tanpa huruf Jepang) dan Jepang (denga
     assert.ok(id.text.length > 5 && !CJK.test(id.text), `${action} (id): ${id.text}`);
     assert.ok(CJK.test(ja.text), `${action} (ja): ${ja.text}`);
     assert.equal(id.known, true);
-    assert.ok(["auth", "user", "organization", "candidate", "document", "note", "assessment", "decision", "tsk", "system"].includes(categoryOf(action)));
+    assert.ok(["auth", "user", "organization", "candidate", "document", "note", "assessment", "decision", "tsk", "records", "system"].includes(categoryOf(action)));
   }
 });
 

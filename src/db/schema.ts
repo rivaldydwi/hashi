@@ -717,3 +717,314 @@ export const userDashboardLayouts = pgTable("user_dashboard_layouts", {
   layout: jsonb("layout").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// =====================================================================================================================
+// Catatan kegiatan TSK (langkah 7A): 業務記録 (daily_work), 議事録・面談記録 (meeting), 時系列 (kasus), 定期面談 (periodic_interviews).
+// Khusus TSK_ADMIN/TSK_STAFF organisasi pemilik (RLS, drizzle/0020_activity_records.sql). Semua staf TSK membaca semua catatan.
+// TIDAK ADA penghapusan: salah = status 'void' + alasan. Kunci asing ke candidates RESTRICT. Riwayat edit di activity_revisions
+// (append-only, ditulis TRIGGER). Enum dibuat sebagai text + CHECK supaya mudah diperluas.
+// =====================================================================================================================
+const actBase = {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+};
+
+export const activityCases = pgTable(
+  "activity_cases",
+  {
+    ...actBase,
+    code: text("code").notNull(), // K-2026-0001, diisi trigger (berurutan per organisasi per tahun)
+    title: text("title").notNull(),
+    category: text("category").notNull(),
+    status: text("status").notNull().default("open"),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedBy: uuid("closed_by").references(() => users.id),
+    versionNo: integer("version_no").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => users.id),
+  },
+  (t) => [
+    uniqueIndex("activity_cases_code_key").on(t.organizationId, t.code),
+    index("activity_cases_org_status_idx").on(t.organizationId, t.status),
+    check("activity_cases_category_check", sql`${t.category} in ('trouble','resignation','workplace_change','hospital','residence','life_consultation','other')`),
+    check("activity_cases_status_check", sql`${t.status} in ('open','closed')`),
+  ],
+);
+
+export const activityCaseSubjects = pgTable(
+  "activity_case_subjects",
+  {
+    caseId: uuid("case_id").notNull().references(() => activityCases.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidates.id, { onDelete: "restrict" }),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.caseId, t.candidateId] }), index("activity_case_subjects_candidate_idx").on(t.candidateId)],
+);
+
+export const activityRecords = pgTable(
+  "activity_records",
+  {
+    ...actBase,
+    kind: text("kind").notNull(), // daily_work (①) | meeting (②)
+    recordDate: date("record_date").notNull(),
+    authorId: uuid("author_id").notNull().references(() => users.id),
+    caseId: uuid("case_id").references(() => activityCases.id),
+    clientSiteId: uuid("client_site_id").references(() => clientSites.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("active"),
+    voidReason: text("void_reason"),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedBy: uuid("voided_by").references(() => users.id),
+    versionNo: integer("version_no").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => users.id),
+    // ① 業務記録
+    workType: text("work_type"),
+    workTypeOther: text("work_type_other"),
+    actionTaken: text("action_taken"),
+    result: text("result"),
+    pending: text("pending"),
+    nextAction: text("next_action"),
+    reportToText: text("report_to_text"),
+    note: text("note"),
+    // ② 議事録・面談記録
+    subject: text("subject"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    method: text("method"),
+    counterparty: text("counterparty"),
+    clientCompanyId: uuid("client_company_id").references(() => clientCompanies.id, { onDelete: "restrict" }),
+    sections: jsonb("sections"),
+  },
+  (t) => [
+    index("activity_records_org_date_idx").on(t.organizationId, t.recordDate),
+    index("activity_records_author_date_idx").on(t.authorId, t.recordDate),
+    index("activity_records_case_idx").on(t.caseId),
+    check("activity_records_kind_check", sql`${t.kind} in ('daily_work','meeting')`),
+    check("activity_records_status_check", sql`${t.status} in ('active','void')`),
+    check("activity_records_void_check", sql`${t.status} = 'active' or (${t.voidReason} is not null and length(btrim(${t.voidReason})) > 0)`),
+    check("activity_records_work_type_check", sql`${t.workType} is null or ${t.workType} in ('interview','consultation','residence_card','hospital_visit','other')`),
+    check("activity_records_method_check", sql`${t.method} is null or ${t.method} in ('phone','online','visit','in_person')`),
+    check("activity_records_counterparty_check", sql`${t.counterparty} is null or ${t.counterparty} in ('client','worker','other')`),
+    // kolom khusus ① hanya untuk daily_work, kolom khusus ② hanya untuk meeting
+    check(
+      "activity_records_daily_only_check",
+      sql`${t.kind} = 'daily_work' or (${t.workType} is null and ${t.workTypeOther} is null and ${t.actionTaken} is null and ${t.result} is null and ${t.pending} is null and ${t.nextAction} is null and ${t.reportToText} is null and ${t.note} is null)`,
+    ),
+    check(
+      "activity_records_meeting_only_check",
+      sql`${t.kind} = 'meeting' or (${t.subject} is null and ${t.startedAt} is null and ${t.endedAt} is null and ${t.method} is null and ${t.counterparty} is null and ${t.clientCompanyId} is null and ${t.sections} is null)`,
+    ),
+    check("activity_records_meeting_required_check", sql`${t.kind} <> 'meeting' or (${t.subject} is not null and ${t.startedAt} is not null)`),
+    check("activity_records_times_check", sql`${t.endedAt} is null or ${t.startedAt} is null or ${t.endedAt} >= ${t.startedAt}`),
+  ],
+);
+
+export const activityRecordSubjects = pgTable(
+  "activity_record_subjects",
+  {
+    recordId: uuid("record_id").notNull().references(() => activityRecords.id),
+    candidateId: uuid("candidate_id").notNull().references(() => candidates.id, { onDelete: "restrict" }),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.recordId, t.candidateId] }), index("activity_record_subjects_candidate_idx").on(t.candidateId)],
+);
+
+export const activityRecordHandlers = pgTable(
+  "activity_record_handlers",
+  {
+    recordId: uuid("record_id").notNull().references(() => activityRecords.id),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.recordId, t.userId] })],
+);
+
+export const activityRecordRecipients = pgTable(
+  "activity_record_recipients",
+  {
+    recordId: uuid("record_id").notNull().references(() => activityRecords.id),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.recordId, t.userId] }), index("activity_record_recipients_user_idx").on(t.userId)],
+);
+
+// Tanda "sudah dibaca" (data fitur, TIDAK diaudit). Satu baris per user per catatan; hanya user itu yang menulisnya.
+export const activityRecordReads = pgTable(
+  "activity_record_reads",
+  {
+    recordId: uuid("record_id").notNull().references(() => activityRecords.id),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+    versionNoRead: integer("version_no_read").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.recordId, t.userId] })],
+);
+
+export const activityDailyReports = pgTable(
+  "activity_daily_reports",
+  {
+    ...actBase,
+    authorId: uuid("author_id").notNull().references(() => users.id),
+    reportDate: date("report_date").notNull(),
+    sharedAt: timestamp("shared_at", { withTimezone: true }),
+    sharedBy: uuid("shared_by").references(() => users.id),
+  },
+  (t) => [uniqueIndex("activity_daily_reports_author_date_key").on(t.authorId, t.reportDate), index("activity_daily_reports_org_date_idx").on(t.organizationId, t.reportDate)],
+);
+
+export const activityDailyReportRecipients = pgTable(
+  "activity_daily_report_recipients",
+  {
+    reportId: uuid("report_id").notNull().references(() => activityDailyReports.id),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    readSharedAt: timestamp("read_shared_at", { withTimezone: true }), // shared_at laporan saat dibaca (untuk penanda "diperbarui sejak kamu baca")
+  },
+  (t) => [primaryKey({ columns: [t.reportId, t.userId] }), index("activity_daily_report_recipients_user_idx").on(t.userId)],
+);
+
+export const periodicInterviews = pgTable(
+  "periodic_interviews",
+  {
+    ...actBase,
+    candidateId: uuid("candidate_id").notNull().references(() => candidates.id, { onDelete: "restrict" }),
+    periodMonth: date("period_month").notNull(), // hari pertama bulan
+    applicable: boolean("applicable").notNull().default(true), // false = 対象外
+    interviewDate: date("interview_date"),
+    resultStatus: text("result_status"),
+    reason: text("reason"),
+    content: text("content"),
+    staffId: uuid("staff_id").references(() => users.id),
+    note: text("note"),
+    status: text("status").notNull().default("active"),
+    voidReason: text("void_reason"),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedBy: uuid("voided_by").references(() => users.id),
+    versionNo: integer("version_no").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => users.id),
+  },
+  (t) => [
+    uniqueIndex("periodic_interviews_candidate_month_key").on(t.candidateId, t.periodMonth),
+    index("periodic_interviews_org_month_idx").on(t.organizationId, t.periodMonth),
+    check("periodic_interviews_result_check", sql`${t.resultStatus} is null or ${t.resultStatus} in ('no_issue','follow_up','issue','not_done')`),
+    check("periodic_interviews_reason_check", sql`${t.reason} is null or ${t.reason} in ('agency','support','worker')`),
+    check("periodic_interviews_status_check", sql`${t.status} in ('active','void')`),
+    check("periodic_interviews_void_check", sql`${t.status} = 'active' or (${t.voidReason} is not null and length(btrim(${t.voidReason})) > 0)`),
+    check("periodic_interviews_month_check", sql`extract(day from ${t.periodMonth}) = 1`),
+  ],
+);
+
+export const periodicInterviewQuarterNotes = pgTable(
+  "periodic_interview_quarter_notes",
+  {
+    ...actBase,
+    candidateId: uuid("candidate_id").notNull().references(() => candidates.id, { onDelete: "restrict" }),
+    fiscalYear: integer("fiscal_year").notNull(), // tahun mulai (April tahun ini - Maret tahun depan)
+    quarter: smallint("quarter").notNull(),
+    note: text("note"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("periodic_quarter_notes_key").on(t.candidateId, t.fiscalYear, t.quarter), check("periodic_quarter_check", sql`${t.quarter} between 1 and 4`)],
+);
+
+export const caseTimelineEvents = pgTable(
+  "case_timeline_events",
+  {
+    ...actBase,
+    caseId: uuid("case_id").notNull().references(() => activityCases.id),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    timeKnown: boolean("time_known").notNull().default(false), // jam opsional: false = hanya tanggal
+    event: text("event").notNull(),
+    subjectStatement: text("subject_statement"),
+    companyResponse: text("company_response"),
+    note: text("note"),
+    sourceRecordId: uuid("source_record_id").references(() => activityRecords.id),
+    includeInClientExport: boolean("include_in_client_export").notNull().default(true),
+    status: text("status").notNull().default("active"),
+    voidReason: text("void_reason"),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedBy: uuid("voided_by").references(() => users.id),
+    versionNo: integer("version_no").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => users.id),
+  },
+  (t) => [
+    index("case_timeline_events_case_idx").on(t.caseId, t.occurredAt),
+    check("case_timeline_events_status_check", sql`${t.status} in ('active','void')`),
+    check("case_timeline_events_void_check", sql`${t.status} = 'active' or (${t.voidReason} is not null and length(btrim(${t.voidReason})) > 0)`),
+  ],
+);
+
+export const activityAttachments = pgTable(
+  "activity_attachments",
+  {
+    ...actBase,
+    recordId: uuid("record_id").references(() => activityRecords.id),
+    interviewId: uuid("interview_id").references(() => periodicInterviews.id),
+    mime: text("mime").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    originalName: text("original_name").notNull(),
+    caption: text("caption"),
+    includeInPdf: boolean("include_in_pdf").notNull().default(false),
+    removedAt: timestamp("removed_at", { withTimezone: true }),
+    removedBy: uuid("removed_by").references(() => users.id),
+  },
+  (t) => [
+    index("activity_attachments_record_idx").on(t.recordId),
+    index("activity_attachments_interview_idx").on(t.interviewId),
+    check("activity_attachments_parent_check", sql`num_nonnulls(${t.recordId}, ${t.interviewId}) = 1`),
+    check("activity_attachments_mime_check", sql`${t.mime} in ('image/jpeg','image/png','image/webp')`),
+    check("activity_attachments_size_check", sql`${t.sizeBytes} > 0 and ${t.sizeBytes} <= 10485760`),
+  ],
+);
+
+export const activityFollowups = pgTable(
+  "activity_followups",
+  {
+    ...actBase,
+    recordId: uuid("record_id").references(() => activityRecords.id),
+    caseId: uuid("case_id").references(() => activityCases.id),
+    interviewId: uuid("interview_id").references(() => periodicInterviews.id),
+    description: text("description").notNull(),
+    assigneeId: uuid("assignee_id").notNull().references(() => users.id),
+    dueDate: date("due_date"),
+    status: text("status").notNull().default("open"),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    doneBy: uuid("done_by").references(() => users.id),
+  },
+  (t) => [
+    index("activity_followups_assignee_idx").on(t.assigneeId, t.status),
+    index("activity_followups_org_status_idx").on(t.organizationId, t.status),
+    check("activity_followups_status_check", sql`${t.status} in ('open','done','cancelled')`),
+    check("activity_followups_parent_check", sql`num_nonnulls(${t.recordId}, ${t.caseId}, ${t.interviewId}) >= 1`),
+    check("activity_followups_desc_check", sql`length(btrim(${t.description})) > 0`),
+  ],
+);
+
+// Riwayat edit (append-only; hanya TRIGGER yang menulis, hashi_app tanpa INSERT/UPDATE/DELETE). snapshot = nilai SEBELUM perubahan.
+export const activityRevisions = pgTable(
+  "activity_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    entityType: text("entity_type").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    versionNo: integer("version_no").notNull(), // versi yang DIGANTIKAN
+    snapshot: jsonb("snapshot").notNull(),
+    editedBy: uuid("edited_by").references(() => users.id),
+    editedAt: timestamp("edited_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("activity_revisions_entity_idx").on(t.entityType, t.entityId, t.versionNo),
+    check("activity_revisions_type_check", sql`${t.entityType} in ('record','timeline_event','case','periodic_interview')`),
+  ],
+);

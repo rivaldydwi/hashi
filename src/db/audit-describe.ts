@@ -27,7 +27,7 @@ export type AuditLabels = {
   field?: (section: string, name: string) => string | undefined;
 };
 
-export const AUDIT_CATEGORIES = ["auth", "user", "organization", "candidate", "document", "note", "assessment", "decision", "tsk", "system"] as const;
+export const AUDIT_CATEGORIES = ["auth", "user", "organization", "candidate", "document", "note", "assessment", "decision", "tsk", "records", "system"] as const;
 export type AuditCategory = (typeof AUDIT_CATEGORIES)[number];
 
 type Vars = { who: string; code: string; from: string; to: string; fields: string; section: string; role: string; value: string };
@@ -95,6 +95,28 @@ export const ACTIONS: Record<string, Def> = {
   "job_order.status": d("tsk", () => "Mengubah status job order", () => "求人の状況を変更しました"),
   "job_order.delete": d("tsk", () => "Menghapus job order", () => "求人を削除しました"),
   "placement.update": d("tsk", (v) => `Mengubah data penempatan kandidat ${v.code}`, (v) => `候補者 ${v.code} の配属情報を変更しました`),
+  // ---- Catatan kegiatan TSK (langkah 7A). Tanpa isi teks, nama pekerja, atau nama berkas.
+  "activity_record.create": d("records", (v) => `Membuat catatan kegiatan (${v.value})`, (v) => `活動記録を作成しました（${v.value}）`),
+  "activity_record.update": d("records", () => "Mengubah catatan kegiatan", () => "活動記録を変更しました"),
+  "activity_record.void": d("records", () => "Membatalkan catatan kegiatan", () => "活動記録を取り消しました"),
+  "activity_case.create": d("records", () => "Membuat kasus", () => "ケースを作成しました"),
+  "activity_case.update": d("records", () => "Mengubah kasus", () => "ケースを変更しました"),
+  "activity_case.close": d("records", () => "Menutup kasus", () => "ケースを終了しました"),
+  "activity_case.reopen": d("records", () => "Membuka kembali kasus", () => "ケースを再開しました"),
+  "case_timeline_event.create": d("records", () => "Menambah baris kronologi kasus", () => "時系列に行を追加しました"),
+  "case_timeline_event.update": d("records", () => "Mengubah baris kronologi kasus", () => "時系列の行を変更しました"),
+  "case_timeline_event.void": d("records", () => "Membatalkan baris kronologi kasus", () => "時系列の行を取り消しました"),
+  "activity_followup.create": d("records", () => "Menambah tugas tindak lanjut", () => "フォローアップ課題を追加しました"),
+  "activity_followup.status_change": d("records", (v) => `Mengubah status tugas tindak lanjut: ${v.to}`, (v) => `フォローアップ課題の状況を変更しました：${v.to}`),
+  "activity_attachment.add": d("records", () => "Menambah lampiran foto pada catatan kegiatan", () => "活動記録に写真を添付しました"),
+  "activity_attachment.update": d("records", () => "Mengubah keterangan lampiran foto", () => "写真の説明を変更しました"),
+  "activity_attachment.remove": d("records", () => "Menyembunyikan lampiran foto pada catatan kegiatan", () => "活動記録の写真を非表示にしました"),
+  "activity_attachment.download": d("records", () => "Mengunduh lampiran foto catatan kegiatan", () => "活動記録の写真をダウンロードしました"),
+  "activity_daily_report.share": d("records", () => "Mengirim laporan harian ke leader", () => "日報を責任者に送信しました"),
+  "periodic_interview.create": d("records", (v) => `Mengisi wawancara berkala (${v.value})`, (v) => `定期面談を記録しました（${v.value}）`),
+  "periodic_interview.update": d("records", (v) => `Mengubah wawancara berkala (${v.value})`, (v) => `定期面談を変更しました（${v.value}）`),
+  "periodic_interview.void": d("records", () => "Membatalkan wawancara berkala", () => "定期面談を取り消しました"),
+  "activity_export": d("records", (v) => `Mengekspor catatan kegiatan ke PDF (${v.value})`, (v) => `活動記録をPDFに書き出しました（${v.value}）`),
   "audit.export": d("system", (v) => `Mengekspor riwayat aktivitas ke CSV (${v.value})`, (v) => `アクティビティ履歴をCSVに書き出しました（${v.value}）`),
 };
 
@@ -108,6 +130,7 @@ const VALUES: Record<AuditLocale, Record<string, string>> = {
     NONE: "Belum diputuskan", SHORTLISTED: "Masuk shortlist", PASSED_TSK_INTERVIEW: "Lulus wawancara TSK", SUBMITTED_TO_CLIENT: "Diajukan ke klien",
     PASSED_CLIENT_INTERVIEW: "Lulus interview klien", DOCUMENT_PROCESS: "Proses dokumen", DEPARTED: "Berangkat", REJECTED: "Ditolak",
     TSK_ONLY: "hanya TSK", SHARED_WITH_LPK: "dibagikan ke LPK",
+    daily_work: "catatan kerja harian", meeting: "notulen/pertemuan", open: "terbuka", done: "selesai", cancelled: "dibatalkan", closed: "ditutup", void: "dibatalkan", active: "aktif",
     LPK_ADMIN: "Admin LPK", LPK_SENSEI: "Sensei", TSK_ADMIN: "Admin TSK", TSK_STAFF: "Staf TSK", SUPER_ADMIN: "Super admin",
     LPK_MONTHLY: "bulanan LPK", TSK_INTERVIEW: "wawancara TSK", TSK_VISIT: "kunjungan TSK",
   },
@@ -116,6 +139,7 @@ const VALUES: Record<AuditLocale, Record<string, string>> = {
     NONE: "未判断", SHORTLISTED: "候補リスト入り", PASSED_TSK_INTERVIEW: "支援機関面接合格", SUBMITTED_TO_CLIENT: "企業へ推薦済み",
     PASSED_CLIENT_INTERVIEW: "企業面接合格", DOCUMENT_PROCESS: "書類手続き中", DEPARTED: "渡航済み", REJECTED: "見送り",
     TSK_ONLY: "TSK内のみ", SHARED_WITH_LPK: "LPKに共有",
+    daily_work: "業務記録", meeting: "議事録・面談記録", open: "未完了", done: "完了", cancelled: "取消", closed: "終了", void: "取消", active: "有効",
     LPK_ADMIN: "LPK管理者", LPK_SENSEI: "講師", TSK_ADMIN: "TSK管理者", TSK_STAFF: "TSKスタッフ", SUPER_ADMIN: "スーパー管理者",
     LPK_MONTHLY: "LPK月次", TSK_INTERVIEW: "TSK面談", TSK_VISIT: "TSK訪問",
   },
@@ -148,7 +172,7 @@ export function describeAudit(e: AuditView, locale: AuditLocale, labels: AuditLa
     fields: rawFields.map((f) => labels.field?.(section, f) ?? f).join(", "),
     section: labels.section?.(section) ?? section ?? "",
     role: auditValueLabel(locale, after.role),
-    value: [after.kind ? auditValueLabel(locale, after.kind) : "", typeof after.period === "string" ? after.period.slice(0, 7) : "", typeof after.rows === "number" ? `${after.rows}` : ""].filter(Boolean).join(" ") || "—",
+    value: [after.kind ? auditValueLabel(locale, after.kind) : "", after.exportKind ? String(after.exportKind) : "", after.clientVersion === true ? (locale === "ja" ? "企業向け" : "versi klien") : "", typeof after.period === "string" ? after.period.slice(0, 7) : "", typeof after.rows === "number" ? `${after.rows}` : ""].filter(Boolean).join(" ") || "—",
   };
   const text = def ? def[locale](vars) : e.action; // aksi tak dikenal: tampilkan kodenya (tidak pernah crash)
   return { text, actor: vars.who, category: def?.category ?? "system", known: Boolean(def) };

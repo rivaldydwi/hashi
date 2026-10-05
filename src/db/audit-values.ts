@@ -31,6 +31,15 @@ export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
   job_order: ["status"],
   placement: ["status"],
   audit_export: ["rows", "from", "to"],
+  // Catatan kegiatan TSK: hanya jenis/status/kategori; TIDAK PERNAH isi teks, nama pekerja, atau nama berkas
+  activity_record: ["kind", "status", "workType"],
+  activity_case: ["category", "status"],
+  case_timeline_event: ["status"],
+  activity_followup: ["status"],
+  activity_attachment: [],
+  activity_daily_report: [],
+  periodic_interview: ["resultStatus", "reason", "period", "status"],
+  activity_export: ["exportKind", "rows", "clientVersion"],
 };
 
 const isPlain = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);

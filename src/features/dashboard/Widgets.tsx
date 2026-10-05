@@ -230,12 +230,37 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
           )), t("emptyNewCands"))}
         </Card>
       );
+    case "kpi-records-unread": return <Kpi testid="kpi-records-unread" href="/records?view=unread" label={t("kpiRecordsUnread")} value={data.rec!.records + data.rec!.reports} hint={t("kpiRecordsUnreadHint", { r: data.rec!.records, l: data.rec!.reports })} />;
+    case "kpi-interviews-pending": return <Kpi testid="kpi-interviews-pending" href="/records/interviews?view=pending" label={t("kpiInterviewsPending")} value={data.rec!.interviews} hint={t("kpiInterviewsPendingHint")} />;
+    case "kpi-followups-open": return <Kpi testid="kpi-followups-open" href={`/records/tasks?scope=${data.rec!.followupsScope}&status=open`} label={t("kpiFollowupsOpen")} value={data.rec!.followups} hint={t(data.rec!.followupsScope === "all" ? "kpiFollowupsOpenAll" : "kpiFollowupsOpenMine")} />;
+    case "my-followups":
+      return (
+        <Card testid="w-my-followups" title={t("wMyFollowups")} href="/records/tasks?scope=mine&status=open" linkLabel={t("viewAll")}>
+          {list(data.myTasks!.map((f) => (
+            <li key={f.id}>
+              <Link href={f.recordId ? `/records/${f.recordId}` : f.caseId ? `/records/cases/${f.caseId}` : "/records/tasks"} className="flex min-h-11 items-center justify-between gap-3 py-2 hover:bg-hover">
+                <span lang="ja" className="line-clamp-2 text-sm">{f.description}</span>
+                <span className={`shrink-0 text-xs ${f.dueDate && f.dueDate < (data.today ?? "") ? "font-semibold text-rose-800" : "text-ink-2"}`}>{f.dueDate ? `${f.dueDate < (data.today ?? "") ? "⚠ " : ""}${f.dueDate}` : ""}</span>
+              </Link>
+            </li>
+          )), t("emptyMyFollowups"))}
+        </Card>
+      );
+    case "open-cases":
+      return (
+        <Card testid="w-open-cases" title={t("wOpenCases")} href="/records/cases?status=open" linkLabel={t("viewAll")}>
+          {list(data.casesOpen!.map((c) => (
+            <li key={c.id}>
+              <Link href={`/records/cases/${c.id}`} className="flex min-h-11 items-center gap-3 py-2 hover:bg-hover"><span className="font-mono text-xs text-ink-2">{c.code}</span><span lang="ja" className="text-sm font-medium">{c.title}</span></Link>
+            </li>
+          )), t("emptyOpenCases"))}
+        </Card>
+      );
     case "coming-soon":
       return (
         <Card testid="w-coming-soon" title={t("wSoon")}>
           <ul className="space-y-2 text-sm text-ink-menu">
             <li className="flex min-h-11 items-center justify-between"><span>{t("soonResidence")}</span><span className="rounded-full bg-hover px-2.5 py-0.5 text-xs text-ink-2">{t("soonBadge")}</span></li>
-            <li className="flex min-h-11 items-center justify-between"><span>{t("soonPeriodic")}</span><span className="rounded-full bg-hover px-2.5 py-0.5 text-xs text-ink-2">{t("soonBadge")}</span></li>
           </ul>
         </Card>
       );

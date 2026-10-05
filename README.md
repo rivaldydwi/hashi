@@ -35,6 +35,11 @@ tercatat di audit log.
 
 Logo, ikon, dan aturan pakainya ada di [docs/brand.md](docs/brand.md). Aset turunan dibangun dengan `npm run build:brand` dari `design/brand-source/`.
 
+## Catatan kegiatan (langkah 7A)
+
+Fitur khusus staf TSK: catatan kerja harian, notulen pertemuan, kronologi kasus (PDF untuk klien), wawancara berkala, tugas tindak lanjut, laporan harian ke leader, foto. Dokumentasi: [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md).
+Data demo tanpa reseed: `npm run seed:records`. **Catatan disimpan 5 tahun dan tidak bisa dihapus lewat aplikasi: cadangan di luar server wajib sebelum data nyata masuk.**
+
 ## Stack
 
 | Bagian | Teknologi |

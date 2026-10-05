@@ -35,6 +35,9 @@ export const WIDGETS: readonly WidgetDef[] = [
   { id: "kpi-awaiting", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiAwaiting" },
   { id: "kpi-open-jobs", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiOpenJobs" },
   { id: "kpi-placed", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiPlaced" },
+  { id: "kpi-records-unread", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiRecordsUnread" },
+  { id: "kpi-interviews-pending", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiInterviewsPending" },
+  { id: "kpi-followups-open", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiFollowupsOpen" },
   { id: "kpi-orgs", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiOrgs" },
   { id: "kpi-users", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiUsers" },
   { id: "kpi-fields", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiFields" },
@@ -50,6 +53,8 @@ export const WIDGETS: readonly WidgetDef[] = [
   { id: "new-candidates", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wNewCands" },
   { id: "coming-soon", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wSoon" },
   { id: "activity", kind: "widget", roles: ["LPK_ADMIN", "TSK_ADMIN"], sizes: HALF_FULL, defaultSize: "full", label: "wActivity" },
+  { id: "my-followups", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wMyFollowups" },
+  { id: "open-cases", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wOpenCases" },
   { id: "org-list", kind: "widget", roles: SUPER, sizes: HALF_FULL, defaultSize: "full", label: "wOrgs" },
 ];
 

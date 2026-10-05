@@ -13,6 +13,7 @@ import { canSeeLevel, contentAccess, isTskRole, TSK_INTERVIEW_DECISIONS } from "
 import { AssessmentsSection } from "@/features/assessments/AssessmentsSection";
 import { TskAssessmentsSection } from "@/features/assessments/TskAssessmentsSection";
 import { listMonthly, listTsk } from "@/features/assessments/queries";
+import { WorkerRecordsSection } from "@/features/records/ui/WorkerRecordsSection";
 import { CandidateActivity } from "@/features/audit/CandidateActivity";
 import { DeleteCandidate } from "@/features/candidates/DeleteCandidate";
 import { loadDeleteSummary } from "@/features/candidates/delete-actions";
@@ -122,6 +123,7 @@ export default async function CandidateDetailPage({
 
         {tsk && full && <DecisionPanel me={me} detail={{ ...full, candidateId: candidate.id }} jobOrderOptions={jobOrderOptions} />}
         {tsk && full && <PlacementPanel candidateId={candidate.id} placements={full.placements} />}
+        {tsk && full && full.placements.some((p) => p.status === "ACTIVE") && <WorkerRecordsSection candidateId={candidate.id} me={me} />}
 
         {SINGLE_SECTIONS.filter((s) => canSeeLevel(me.role, s.level)).map((s) => (
           <SectionCard

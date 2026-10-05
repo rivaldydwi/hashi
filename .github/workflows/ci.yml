@@ -95,5 +95,12 @@ jobs:
         run: docker run --rm --network host -v ci-docs:/app/docs-data -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci npm run db:seed
       - name: verify:seed (dari image tools)
         run: docker run --rm --network host -v ci-docs:/app/docs-data -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci npm run verify:seed
+      - name: Image produksi memuat font Jepang untuk PDF dan sharp berfungsi (rotasi EXIF, tanpa metadata)
+        run: |
+          docker run --rm hashi-app:ci sh -c 'test -s /app/assets/fonts/NotoSansJP-Regular.ttf && test -s /app/assets/fonts/NotoSansJP-Bold.ttf && node -e "
+          const sharp = require(\"sharp\");
+          sharp({ create: { width: 50, height: 30, channels: 3, background: \"#c2410c\" } }).withMetadata({ orientation: 6 }).jpeg().toBuffer()
+            .then((b) => sharp(b).rotate().toBuffer()).then((o) => sharp(o).metadata())
+            .then((m) => { if (m.width !== 30 || m.height !== 50 || m.exif) process.exit(1); console.log(\"sharp ok\"); })"'
       - name: test:rls (dari image tools)
         run: docker run --rm --network host -e MIGRATE_DATABASE_URL -e DATABASE_URL hashi-tools:ci npm run test:rls

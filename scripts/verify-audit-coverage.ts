@@ -12,6 +12,8 @@ const EXEMPT: Record<string, string> = {
   saveDashboardLayout: "preferensi tampilan pengguna (tata letak dashboard), bukan data organisasi/kandidat",
   resetDashboardLayout: "preferensi tampilan pengguna (tata letak dashboard), bukan data organisasi/kandidat",
   logout: "mengakhiri sesi; tidak mengubah data",
+  markRecordRead: "tanda \"sudah dibaca\" adalah data fitur, bukan perubahan data (keputusan TSK, langkah 7A)",
+  markReportRead: "tanda \"sudah dibaca\" adalah data fitur, bukan perubahan data (keputusan TSK, langkah 7A)",
 };
 
 const WRITE = /\.(insert|update|delete)\(|\btx\.execute\(\s*sql`\s*(insert|update|delete)\b|\bwriteFile\(|\bunlink\(|\brm\(/i;

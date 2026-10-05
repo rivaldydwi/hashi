@@ -141,6 +141,13 @@
       "when": 1790921148146,
       "tag": "0019_audit_history",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791163426800,
+      "tag": "0020_activity_records",
+      "breakpoints": true
     }
   ]
 }

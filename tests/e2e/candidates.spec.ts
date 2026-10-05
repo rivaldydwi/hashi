@@ -191,10 +191,10 @@ test("TSK melihat 21 kandidat di semua status; filter status & keputusan; tidak 
   await filter("stage=WITHDRAWN", 2);
   await filter("decision=SHORTLISTED", 3);
   await filter("decision=PASSED_TSK_INTERVIEW", 2);
-  await filter("decision=SUBMITTED_TO_CLIENT", 2);
+  await filter("decision=SUBMITTED_TO_CLIENT", 1); // seed 7A memajukan 1 kandidat ke DEPARTED (pekerja aktif minimal 3)
   await filter("decision=PASSED_CLIENT_INTERVIEW", 2);
   await filter("decision=DOCUMENT_PROCESS", 2);
-  await filter("decision=DEPARTED", 2);
+  await filter("decision=DEPARTED", 3);
   await filter("decision=REJECTED", 2);
   await filter("decision=NONE", 6); // belum ada baris keputusan
   await filter("stage=STUDYING&decision=SHORTLISTED", 2); // shortlist walau LPK-nya masih Belajar

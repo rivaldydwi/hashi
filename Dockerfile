@@ -36,6 +36,8 @@ ENV NODE_ENV=production \
     PORT=3100 \
     HOSTNAME=0.0.0.0
 COPY --from=builder --chown=node:node /app/public ./public
+# Font Noto Sans JP (OFL) untuk ekspor PDF Catatan kegiatan: dibaca dari ./assets/fonts (process.cwd() = /app)
+COPY --from=builder --chown=node:node /app/assets ./assets
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 # Folder dokumen (volume docs-data dipasang di sini). Dibuat dan di-chown SEBELUM `USER node`,

@@ -16,6 +16,12 @@ export function demoDocumentPath(root: string, orgId: string, candidateId: strin
   return path.join(root, orgId, candidateId, `${documentId}.${ext}`);
 }
 
+/** Lampiran catatan kegiatan: <STORAGE_DIR>/activity/<org_id>/<attachment_id>.<ext> (sama dengan src/features/records/images.ts). */
+export function demoAttachmentPath(root: string, orgId: string, attachmentId: string, ext: "png" | "jpg" | "webp"): string {
+  if (![orgId, attachmentId].every((v) => UUID.test(v))) throw new Error("id lampiran tidak valid");
+  return path.join(root, "activity", orgId, `${attachmentId}.${ext}`);
+}
+
 export async function writeDemoFile(file: string, data: Uint8Array) {
   await mkdir(path.dirname(file), { recursive: true, mode: 0o750 });
   await writeFile(file, data, { mode: 0o640 });
@@ -35,7 +41,7 @@ export async function clearDocumentStorage(root: string): Promise<number> {
     throw err;
   }
   for (const e of entries) {
-    if (e.isDirectory() && UUID.test(e.name)) {
+    if (e.isDirectory() && (UUID.test(e.name) || e.name === "activity")) {
       await rm(path.join(root, e.name), { recursive: true, force: true });
       removed++;
     }

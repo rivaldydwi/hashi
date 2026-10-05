@@ -1311,7 +1311,7 @@ async function main() {
     J(sh.leftoverPolicies) === "[]" && J(sh.leftoverFns) === J(["enforce_tsk_cannot_change_lpk_fields"]),
     `${J(sh.leftoverPolicies)} ${J(sh.leftoverFns)}`,
   );
-  const covered = ["audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories", "placements"];
+  const covered = ["activity_case_subjects", "activity_record_subjects", "audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories", "periodic_interview_quarter_notes", "periodic_interviews", "placements"];
   check(
     "Tuntas: setiap tabel ber-candidate_id sudah tercakup tes berbagi (tabel baru ber-candidate_id harus ditambahkan ke bagian I)",
     J(sh.candidateTables) === J(covered),
@@ -2428,6 +2428,305 @@ async function main() {
     "Riwayat aktivitas append-only: UPDATE dan DELETE ditolak untuk aplikasi, jalur sistem, dan OWNER",
     [au.updateApp, au.deleteApp, au.updateSystem, au.deleteSystem, au.updateOwner, au.deleteOwner].every((e) => e !== null && /append-only|permission denied/i.test(String(e))),
     JSON.stringify([au.updateApp, au.deleteApp, au.updateSystem, au.deleteSystem, au.updateOwner, au.deleteOwner].map((e) => String(e).slice(0, 50))),
+  );
+
+  // --- S. Catatan kegiatan TSK (langkah 7A): hanya staf TSK organisasi pemilik; semua staf membaca semua; tanda baca/laporan hanya atas nama sendiri;
+  //        riwayat edit append-only; tidak ada DELETE lewat aplikasi; kunci asing ke kandidat RESTRICT ---
+  const ACT_TABLES = ["activity_cases", "activity_case_subjects", "activity_records", "activity_record_subjects", "activity_record_handlers", "activity_record_recipients", "activity_record_reads", "activity_daily_reports", "activity_daily_report_recipients", "periodic_interviews", "periodic_interview_quarter_notes", "case_timeline_events", "activity_attachments", "activity_followups", "activity_revisions"];
+  const sr: Record<string, unknown> = {};
+  const staff2 = allUsers.find((u) => u.email === "tsk.staff2@hashi.test");
+  if (!staff2) throw new Error("Bagian S butuh pengguna tsk.staff2@hashi.test (dibuat db:seed / seed:records)");
+  const lpk2AdminUser = allUsers.find((u) => u.role === "LPK_ADMIN" && u.organizationId === lpk2.id)!;
+  const countAll = async (tx: Tx, org: string, role: string | null, uid: string | null) => {
+    await actAs(tx, org, role, uid);
+    let n = 0;
+    for (const t of ACT_TABLES) n += Number((await tx.execute(sql.raw(`select count(*)::int as n from ${t}`))).rows[0].n);
+    return n;
+  };
+  const num = async (tx: Tx, q: string) => Number((await tx.execute(sql.raw(q))).rows[0].n);
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    const ins = (uid: string, org: string, author = uid, creator = uid) =>
+      sql.raw(`insert into activity_records (organization_id, created_by, author_id, kind, record_date, work_type, action_taken) values ('${org}', '${creator}', '${author}', 'daily_work', current_date, 'interview', 'isi awal') returning id::text as id`);
+
+    // ---- isolasi: seed memberi data di TSK A; peran/organisasi lain melihat 0 baris di SEMUA tabel fitur, termasuk lampiran dan riwayat
+    sr.adminAll = await countAll(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    sr.staffAll = await countAll(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    sr.staff2All = await countAll(tx, tsk.id, "TSK_STAFF", staff2.id);
+    sr.others = {
+      lpkAdmin: await countAll(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id),
+      lpk2Admin: await countAll(tx, lpk2.id, "LPK_ADMIN", lpk2AdminUser.id),
+      sensei: await countAll(tx, lpk1.id, "LPK_SENSEI", senseiUser.id),
+      tskB: await countAll(tx, tskB, "TSK_ADMIN", adminB),
+      superAdmin: await countAll(tx, platformOrg.id, "SUPER_ADMIN", null),
+      roleNull: await countAll(tx, tsk.id, null, tskAdminUser.id),
+      tskOrgLpkRole: await countAll(tx, tsk.id, "LPK_ADMIN", lpkAdminUser.id),
+    };
+    await tx.execute(sql`select set_config('app.org_id', '', true), set_config('app.role', '', true), set_config('app.user_id', '', true), set_config('app.bypass_rls', 'off', true)`);
+    let none = 0;
+    for (const t of ACT_TABLES) none += Number((await tx.execute(sql.raw(`select count(*)::int as n from ${t}`))).rows[0].n);
+    (sr.others as Record<string, number>).noContext = none;
+
+    // ---- penulisan: hanya staf TSK organisasi sendiri, atas nama sendiri
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    sr.lpkInsert = await attempt(tx, (t) => t.execute(ins(lpkAdminUser.id, tsk.id)));
+    await actAs(tx, tskB, "TSK_ADMIN", adminB);
+    sr.tskBInsertIntoA = await attempt(tx, (t) => t.execute(ins(adminB, tsk.id)));
+    sr.senseiInsert = await attempt(tx, async (t) => { await actAs(t, lpk1.id, "LPK_SENSEI", senseiUser.id); await t.execute(ins(senseiUser.id, tsk.id)); });
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    sr.staffForOther = await attempt(tx, (t) => t.execute(ins(staffUser.id, tsk.id, tskAdminUser.id)));
+    sr.staffCreatorOther = await attempt(tx, (t) => t.execute(ins(staffUser.id, tsk.id, staffUser.id, tskAdminUser.id)));
+    const recS = ((await tx.execute(ins(staffUser.id, tsk.id))).rows[0] as { id: string }).id; // catatan staf
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const recA = ((await tx.execute(ins(tskAdminUser.id, tsk.id))).rows[0] as { id: string }).id; // catatan admin
+    for (const [label, uid, role] of [["admin", tskAdminUser.id, "TSK_ADMIN"], ["staff2", staff2.id, "TSK_STAFF"]] as const) {
+      await actAs(tx, tsk.id, role, uid);
+      sr[`reads/${label}`] = await num(tx, `select count(*)::int as n from activity_records where id in ('${recS}', '${recA}')`);
+    }
+
+    // ---- hak edit
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2.id);
+    const upd2 = (await tx.execute(sql`update activity_records set note = ${"diubah staf2"} where kind = 'daily_work' returning author_id::text as a, created_by::text as c`)).rows as Array<{ a: string; c: string }>;
+    sr.staff2OnlyOwn = upd2.every((r) => r.a === staff2.id || r.c === staff2.id);
+    sr.staff2Touched = upd2.length;
+    sr.staff2CannotEditStaff = (await tx.execute(sql.raw(`update activity_records set note = 'x' where id = '${recS}' returning id`))).rows.length;
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const activeDaily = await num(tx, `select count(*)::int as n from activity_records where kind = 'daily_work' and status = 'active'`);
+    sr.adminTouched = (await tx.execute(sql`update activity_records set note = ${"diubah admin"} where kind = 'daily_work' and status = 'active' returning id`)).rows.length;
+    sr.activeDaily = activeDaily;
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    sr.staffChangesAuthor = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set author_id = '${tskAdminUser.id}' where id = '${recS}'`)));
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    sr.adminChangesAuthor = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set author_id = '${staff2.id}' where id = '${recS}'`)));
+    sr.authorNotStaff = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set author_id = '${lpkAdminUser.id}' where id = '${recS}'`)));
+    sr.changeKind = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set kind = 'meeting' where id = '${recS}'`)));
+    sr.changeOrg = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set organization_id = '${tskB}' where id = '${recS}'`)));
+    sr.changeCreatedBy = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set created_by = '${staff2.id}' where id = '${recS}'`)));
+    // kolom khusus ① dan ② tidak boleh tercampur; ② wajib perihal dan waktu mulai
+    sr.dailyFieldsOnMeeting = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_records (organization_id, created_by, author_id, kind, record_date, subject, started_at, work_type) values ('${tsk.id}', '${tskAdminUser.id}', '${tskAdminUser.id}', 'meeting', current_date, 's', now(), 'interview')`)));
+    sr.meetingNoSubject = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_records (organization_id, created_by, author_id, kind, record_date) values ('${tsk.id}', '${tskAdminUser.id}', '${tskAdminUser.id}', 'meeting', current_date)`)));
+    sr.meetingFieldsOnDaily = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set subject = 'x' where id = '${recS}'`)));
+
+    // ---- riwayat edit otomatis (nilai SEBELUM), versi naik; aplikasi tidak bisa menulis/mengubah/menghapus riwayat
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2.id); // penulis sekarang staf2 (diganti admin di atas)
+    await tx.execute(sql.raw(`update activity_records set action_taken = 'versi dua' where id = '${recS}'`));
+    await tx.execute(sql.raw(`update activity_records set action_taken = 'versi tiga' where id = '${recS}'`));
+    sr.revisions = (await tx.execute(sql.raw(`select version_no, snapshot->>'action_taken' as a, edited_by::text as e from activity_revisions where entity_type = 'record' and entity_id = '${recS}' order by version_no`))).rows;
+    sr.versionNo = await num(tx, `select version_no as n from activity_records where id = '${recS}'`);
+    sr.revInsert = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_revisions (organization_id, entity_type, entity_id, version_no, snapshot) values ('${tsk.id}', 'record', '${recS}', 99, '{}')`)));
+    sr.revUpdate = await attempt(tx, (t) => t.execute(sql`update activity_revisions set version_no = version_no`));
+    sr.revDelete = await attempt(tx, (t) => t.execute(sql`delete from activity_revisions`));
+    // pembatalan: alasan wajib, final, tetap terbaca
+    sr.voidNoReason = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set status = 'void' where id = '${recS}'`)));
+    await tx.execute(sql.raw(`update activity_records set status = 'void', void_reason = 'salah input' where id = '${recS}'`));
+    sr.editAfterVoid = (await tx.execute(sql.raw(`update activity_records set note = 'lagi' where id = '${recS}' returning id`))).rows.length;
+    sr.voidedReadable = await num(tx, `select count(*)::int as n from activity_records where id = '${recS}' and status = 'void' and voided_by is not null and voided_at is not null`);
+    // tidak ada DELETE lewat aplikasi untuk tabel utama
+    sr.noDelete = await Promise.all(["activity_records", "activity_cases", "case_timeline_events", "activity_followups", "activity_attachments", "periodic_interviews", "activity_daily_reports", "activity_record_reads"].map((t) => attempt(tx, (x) => x.execute(sql.raw(`delete from ${t}`)))));
+
+    // ---- tanda baca dan laporan harian hanya atas nama sendiri
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    sr.readOwn = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_record_reads (record_id, user_id, organization_id, version_no_read) values ('${recA}', '${staffUser.id}', '${tsk.id}', 1)`)));
+    sr.readForged = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_record_reads (record_id, user_id, organization_id, version_no_read) values ('${recA}', '${tskAdminUser.id}', '${tsk.id}', 1)`)));
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await tx.execute(sql.raw(`insert into activity_record_reads (record_id, user_id, organization_id, version_no_read) values ('${recA}', '${tskAdminUser.id}', '${tsk.id}', 1)`));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    sr.readUpdateOthers = (await tx.execute(sql`update activity_record_reads set version_no_read = 99 returning user_id`)).rows.every((r) => r.user_id === staffUser.id);
+    sr.readMine = await num(tx, `select count(*)::int as n from activity_record_reads where record_id = '${recA}' and user_id = '${tskAdminUser.id}' and version_no_read = 1`);
+    // laporan harian: bukan penulis tidak bisa membuat/mengirim atas nama orang lain
+    sr.reportForged = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_daily_reports (organization_id, created_by, author_id, report_date) values ('${tsk.id}', '${staffUser.id}', '${tskAdminUser.id}', current_date + 30)`)));
+    const rpt = ((await tx.execute(sql.raw(`insert into activity_daily_reports (organization_id, created_by, author_id, report_date) values ('${tsk.id}', '${staffUser.id}', '${staffUser.id}', current_date + 31) returning id::text as id`))).rows[0] as { id: string }).id;
+    await tx.execute(sql.raw(`update activity_daily_reports set shared_at = now() where id = '${rpt}'`));
+    sr.sharedBy = await num(tx, `select count(*)::int as n from activity_daily_reports where id = '${rpt}' and shared_by = '${staffUser.id}' and shared_at is not null`);
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2.id);
+    const hijack = (await tx.execute(sql`update activity_daily_reports set shared_at = now() returning author_id::text as a`)).rows as Array<{ a: string }>;
+    sr.reportHijack = hijack.every((r) => r.a === staff2.id); // tanpa WHERE: hanya laporan milik sendiri
+    sr.reportRecipientsForged = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_daily_report_recipients (report_id, user_id, organization_id) values ('${rpt}', '${staff2.id}', '${tsk.id}')`)));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    await tx.execute(sql.raw(`insert into activity_daily_report_recipients (report_id, user_id, organization_id) values ('${rpt}', '${tskAdminUser.id}', '${tsk.id}'), ('${rpt}', '${staff2.id}', '${tsk.id}')`));
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const mark = (await tx.execute(sql`update activity_daily_report_recipients set read_at = now() returning user_id::text as u`)).rows as Array<{ u: string }>;
+    sr.recipientMarkOnlyOwn = mark.length > 0 && mark.every((r) => r.u === tskAdminUser.id);
+    sr.recipientRead = await num(tx, `select count(*)::int as n from activity_daily_report_recipients where report_id = '${rpt}' and user_id = '${staff2.id}' and read_at is not null`);
+    sr.recipientColumns = await attempt(tx, (t) => t.execute(sql`update activity_daily_report_recipients set user_id = user_id`)); // no-op boleh; mengganti user ditolak di bawah
+    sr.recipientChangeUser = await attempt(tx, (t) => t.execute(sql.raw(`update activity_daily_report_recipients set user_id = '${staffUser.id}' where report_id = '${rpt}' and user_id = '${tskAdminUser.id}'`)));
+
+    // ---- tugas tindak lanjut: status hanya penanggung jawab, pembuat, atau TSK_ADMIN; hanya status yang bisa diubah
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    const fid = ((await tx.execute(sql.raw(`insert into activity_followups (organization_id, created_by, record_id, description, assignee_id) values ('${tsk.id}', '${staffUser.id}', '${recA}', 'uji', '${staff2.id}') returning id::text as id`))).rows[0] as { id: string }).id;
+    sr.fuAssigneeNotStaff = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_followups (organization_id, created_by, record_id, description, assignee_id) values ('${tsk.id}', '${staffUser.id}', '${recA}', 'uji', '${lpkAdminUser.id}')`)));
+    sr.fuNoParent = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_followups (organization_id, created_by, description, assignee_id) values ('${tsk.id}', '${staffUser.id}', 'uji', '${staffUser.id}')`)));
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2.id);
+    sr.fuEditText = await attempt(tx, (t) => t.execute(sql.raw(`update activity_followups set description = 'ubah' where id = '${fid}'`)));
+    // staf ketiga tidak berhak: buat staf lain
+    const staffC = await makeUser(tx, tsk.id, "TSK_STAFF");
+    await actAs(tx, tsk.id, "TSK_STAFF", staffC);
+    sr.fuOtherStaff = (await tx.execute(sql.raw(`update activity_followups set status = 'done' where id = '${fid}' returning id`))).rows.length;
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2.id);
+    sr.fuAssignee = (await tx.execute(sql.raw(`update activity_followups set status = 'done' where id = '${fid}' returning id`))).rows.length;
+    sr.fuDoneStamped = await num(tx, `select count(*)::int as n from activity_followups where id = '${fid}' and done_by = '${staff2.id}' and done_at is not null`);
+    sr.fuReopen = await attempt(tx, (t) => t.execute(sql.raw(`update activity_followups set status = 'open' where id = '${fid}'`)));
+
+    // ---- kasus: kode berurutan per organisasi per tahun; TSK lain mulai dari 0001 sendiri
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const c1 = ((await tx.execute(sql.raw(`insert into activity_cases (organization_id, created_by, code, title, category) values ('${tsk.id}', '${tskAdminUser.id}', '', 'a', 'trouble') returning code`))).rows[0] as { code: string }).code;
+    const c2 = ((await tx.execute(sql.raw(`insert into activity_cases (organization_id, created_by, code, title, category) values ('${tsk.id}', '${tskAdminUser.id}', '', 'b', 'other') returning code`))).rows[0] as { code: string }).code;
+    await actAs(tx, tskB, "TSK_ADMIN", adminB);
+    const b1 = ((await tx.execute(sql.raw(`insert into activity_cases (organization_id, created_by, code, title, category) values ('${tskB}', '${adminB}', '', 'b1', 'other') returning code`))).rows[0] as { code: string }).code;
+    sr.caseCodes = [c1, c2, b1];
+    sr.caseBadCategory = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_cases (organization_id, created_by, code, title, category) values ('${tskB}', '${adminB}', '', 'x', 'bukan-kategori')`)));
+    sr.caseCodeImmutable = await attempt(tx, (t) => t.execute(sql.raw(`update activity_cases set code = 'K-1999-0001' where title = 'b1'`)));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    sr.staffEditsAdminCase = (await tx.execute(sql.raw(`update activity_cases set title = 'diubah' where title = 'a' returning id`))).rows.length;
+
+    // ---- lampiran: hanya keterangan, sertakan-di-PDF, dan penandaan sembunyi yang bisa diubah; tipe dan ukuran dibatasi
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const aid = ((await tx.execute(sql.raw(`insert into activity_attachments (organization_id, created_by, record_id, mime, size_bytes, original_name) values ('${tsk.id}', '${tskAdminUser.id}', '${recA}', 'image/png', 100, 'a.png') returning id::text as id`))).rows[0] as { id: string }).id;
+    sr.attBadMime = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_attachments (organization_id, created_by, record_id, mime, size_bytes, original_name) values ('${tsk.id}', '${tskAdminUser.id}', '${recA}', 'application/pdf', 100, 'a.pdf')`)));
+    sr.attTooBig = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_attachments (organization_id, created_by, record_id, mime, size_bytes, original_name) values ('${tsk.id}', '${tskAdminUser.id}', '${recA}', 'image/png', 10485761, 'a.png')`)));
+    sr.attNoParent = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_attachments (organization_id, created_by, mime, size_bytes, original_name) values ('${tsk.id}', '${tskAdminUser.id}', 'image/png', 100, 'a.png')`)));
+    sr.attChangeMime = await attempt(tx, (t) => t.execute(sql.raw(`update activity_attachments set mime = 'image/jpeg' where id = '${aid}'`)));
+    sr.attCaption = await attempt(tx, (t) => t.execute(sql.raw(`update activity_attachments set caption = 'ok', include_in_pdf = true where id = '${aid}'`)));
+    await tx.execute(sql.raw(`update activity_attachments set removed_at = now() where id = '${aid}'`));
+    sr.attRemovedBy = await num(tx, `select count(*)::int as n from activity_attachments where id = '${aid}' and removed_by = '${tskAdminUser.id}'`);
+    sr.attRestore = await attempt(tx, (t) => t.execute(sql.raw(`update activity_attachments set removed_at = null where id = '${aid}'`)));
+
+    // ---- subjek harus kandidat yang terlihat TSK (LPK non-mitra tidak terlihat); wawancara berkala: unik per bulan aktif, tanggal 1
+    const [hidden] = (await tx.execute(sql`select c.id::text as id from candidates c where c.organization_id = ${lpk3.id}::uuid limit 1`)).rows as Array<{ id: string }>;
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    sr.subjectInvisible = hidden ? await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_record_subjects (record_id, candidate_id, organization_id) values ('${recA}', '${hidden.id}', '${tsk.id}')`))) : "(tidak ada kandidat uji)";
+    sr.interviewInvisible = hidden ? await attempt(tx, (t) => t.execute(sql.raw(`insert into periodic_interviews (organization_id, created_by, candidate_id, period_month, result_status) values ('${tsk.id}', '${tskAdminUser.id}', '${hidden.id}', '2020-01-01', 'no_issue')`))) : "(tidak ada kandidat uji)";
+    const [vis] = (await tx.execute(sql`select p.candidate_id::text as id from placements p where p.status = 'ACTIVE' limit 1`)).rows as Array<{ id: string }>;
+    sr.piBadMonth = await attempt(tx, (t) => t.execute(sql.raw(`insert into periodic_interviews (organization_id, created_by, candidate_id, period_month, result_status) values ('${tsk.id}', '${tskAdminUser.id}', '${vis.id}', '2020-01-15', 'no_issue')`)));
+    sr.piBadStatus = await attempt(tx, (t) => t.execute(sql.raw(`insert into periodic_interviews (organization_id, created_by, candidate_id, period_month, result_status) values ('${tsk.id}', '${tskAdminUser.id}', '${vis.id}', '2020-01-01', 'bagus')`)));
+    await tx.execute(sql.raw(`insert into periodic_interviews (organization_id, created_by, candidate_id, period_month, result_status, reason) values ('${tsk.id}', '${tskAdminUser.id}', '${vis.id}', '2020-01-01', 'no_issue', 'agency')`));
+    sr.piDuplicate = await attempt(tx, (t) => t.execute(sql.raw(`insert into periodic_interviews (organization_id, created_by, candidate_id, period_month, result_status) values ('${tsk.id}', '${tskAdminUser.id}', '${vis.id}', '2020-01-01', 'issue')`)));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id); // semua staf boleh mengubah wawancara berkala; riwayat otomatis
+    await tx.execute(sql.raw(`update periodic_interviews set result_status = 'follow_up', content = 'ubah' where candidate_id = '${vis.id}' and period_month = '2020-01-01'`));
+    sr.piRevision = await num(tx, `select count(*)::int as n from activity_revisions where entity_type = 'periodic_interview' and snapshot->>'result_status' = 'no_issue' and edited_by = '${staffUser.id}'`);
+    sr.piVoidNoReason = await attempt(tx, (t) => t.execute(sql.raw(`update periodic_interviews set status = 'void' where candidate_id = '${vis.id}' and period_month = '2020-01-01'`)));
+    await tx.execute(sql.raw(`update periodic_interviews set status = 'void', void_reason = 'salah bulan' where candidate_id = '${vis.id}' and period_month = '2020-01-01'`));
+    await tx.execute(sql.raw(`insert into periodic_interviews (organization_id, created_by, candidate_id, period_month, result_status, reason) values ('${tsk.id}', '${staffUser.id}', '${vis.id}', '2020-01-01', 'no_issue', 'agency')`)); // yang dibatalkan tidak menghalangi isian ulang
+    sr.piRefilled = true;
+
+    // ---- kronologi: hanya pembuat/TSK_ADMIN mengubah; dibatalkan final
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    const cid = ((await tx.execute(sql.raw(`insert into activity_cases (organization_id, created_by, code, title, category) values ('${tsk.id}', '${staffUser.id}', '', 'kasus staf', 'other') returning id::text as id`))).rows[0] as { id: string }).id;
+    const eid = ((await tx.execute(sql.raw(`insert into case_timeline_events (organization_id, created_by, case_id, occurred_at, event) values ('${tsk.id}', '${staffUser.id}', '${cid}', now(), 'kejadian') returning id::text as id`))).rows[0] as { id: string }).id;
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2.id);
+    sr.eventOtherStaffEdit = (await tx.execute(sql.raw(`update case_timeline_events set event = 'ubah' where id = '${eid}' returning id`))).rows.length;
+    sr.eventAddByOther = await attempt(tx, (t) => t.execute(sql.raw(`insert into case_timeline_events (organization_id, created_by, case_id, occurred_at, event) values ('${tsk.id}', '${staff2.id}', '${cid}', now(), 'tambah oleh staf lain')`)));
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    sr.eventAdminEdit = (await tx.execute(sql.raw(`update case_timeline_events set event = 'diubah admin' where id = '${eid}' returning id`))).rows.length;
+    sr.eventRevisions = await num(tx, `select count(*)::int as n from activity_revisions where entity_type = 'timeline_event' and entity_id = '${eid}'`);
+    sr.eventVoidNoReason = await attempt(tx, (t) => t.execute(sql.raw(`update case_timeline_events set status = 'void' where id = '${eid}'`)));
+    await tx.execute(sql.raw(`update case_timeline_events set status = 'void', void_reason = 'duplikat' where id = '${eid}'`));
+    sr.eventEditAfterVoid = (await tx.execute(sql.raw(`update case_timeline_events set event = 'lagi' where id = '${eid}' returning id`))).rows.length;
+    // tutup/buka kasus: dicatat waktu dan pelaku, riwayat otomatis
+    await tx.execute(sql.raw(`update activity_cases set status = 'closed' where id = '${cid}'`));
+    sr.caseClosed = await num(tx, `select count(*)::int as n from activity_cases where id = '${cid}' and closed_by = '${tskAdminUser.id}' and closed_at is not null`);
+    await tx.execute(sql.raw(`update activity_cases set status = 'open' where id = '${cid}'`));
+    sr.caseReopened = await num(tx, `select count(*)::int as n from activity_cases where id = '${cid}' and closed_by is null and closed_at is null`);
+    sr.caseRevisions = await num(tx, `select count(*)::int as n from activity_revisions where entity_type = 'case' and entity_id = '${cid}'`);
+
+    // ---- hapus kandidat oleh LPK_ADMIN pemilik: ditolak bila ada catatan kegiatan, dan ringkasan melaporkan blocked
+    await actAsSystem(tx);
+    const [lp] = (await tx.execute(sql`insert into candidates (organization_id, full_name, gender, birth_date, stage, shared_with_tsk) values (${lpk1.id}::uuid, 'Uji Catatan', 'MALE', '2000-01-01', 'READY', true) returning id::text as id`)).rows as Array<{ id: string }>;
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await tx.execute(sql.raw(`insert into periodic_interview_quarter_notes (organization_id, created_by, candidate_id, fiscal_year, quarter, note) values ('${tsk.id}', '${tskAdminUser.id}', '${lp.id}', 2026, 1, 'catatan')`));
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    sr.lpkDelete = await attempt(tx, (t) => t.execute(sql.raw(`delete from candidates where id = '${lp.id}'`)));
+    sr.lpkSummaryBlocked = ((await tx.execute(sql.raw(`select candidate_delete_summary('${lp.id}'::uuid) as s`))).rows[0] as { s: { blocked: boolean } }).s.blocked;
+    sr.workerDelete = await attempt(tx, (t) => t.execute(sql.raw(`delete from candidates where id = '${vis.id}'`)));
+  });
+  // Di luar sandbox, lewat OWNER: riwayat di seed tidak bisa diubah/dihapus siapa pun, dan kunci asing ke kandidat RESTRICT
+  sr.ownerRevUpdate = await ownerAttempt(sql`update activity_revisions set version_no = version_no where id = (select min(id) from activity_revisions)`);
+  sr.ownerRevDelete = await ownerAttempt(sql`delete from activity_revisions where id = (select min(id) from activity_revisions)`);
+  sr.fkRestrict = ((await ownerDb.execute(sql`select c.conrelid::regclass::text as t, c.confdeltype as d from pg_constraint c where c.contype = 'f' and c.confrelid = 'candidates'::regclass and c.conrelid::regclass::text in ('activity_case_subjects', 'activity_record_subjects', 'periodic_interviews', 'periodic_interview_quarter_notes') order by 1`)).rows as Array<{ t: string; d: string }>).map((r) => `${r.t}:${r.d}`);
+  sr.seedRows = {
+    records: Number(((await ownerDb.execute(sql`select count(*)::int as n from activity_records`)).rows[0] as { n: number }).n),
+    revisions: Number(((await ownerDb.execute(sql`select count(*)::int as n from activity_revisions`)).rows[0] as { n: number }).n),
+  };
+  const others = sr.others as Record<string, number>;
+  const E = (v: unknown) => typeof v === "string" && v.length > 0; // error ada
+  check(
+    "Catatan kegiatan: semua staf TSK (admin dan staf) membaca semua catatan; LPK_ADMIN, sensei, LPK lain, TSK lain, super admin, peran null, peran LPK di organisasi TSK, dan tanpa konteks melihat 0 baris di SEMUA tabel fitur (termasuk lampiran dan riwayat)",
+    (sr.adminAll as number) > 20 && sr.adminAll === sr.staffAll && sr.adminAll === sr.staff2All && Object.values(others).every((n) => n === 0) && sr["reads/admin"] === 2 && sr["reads/staff2"] === 2,
+    JSON.stringify([sr.adminAll, sr.staffAll, sr.staff2All, others]),
+  );
+  check(
+    "Catatan kegiatan: menulis hanya staf TSK organisasi sendiri atas nama sendiri (LPK, TSK lain, sensei, dan menulis atas nama/pembuat orang lain ditolak)",
+    E(sr.lpkInsert) && E(sr.tskBInsertIntoA) && E(sr.senseiInsert) && E(sr.staffForOther) && E(sr.staffCreatorOther),
+    JSON.stringify([sr.lpkInsert, sr.tskBInsertIntoA, sr.senseiInsert, sr.staffForOther, sr.staffCreatorOther].map((e) => String(e).slice(0, 50))),
+  );
+  check(
+    "Catatan kegiatan: UPDATE tanpa WHERE: staf hanya mengenai catatan miliknya, TSK_ADMIN semua yang aktif; ganti penulis hanya TSK_ADMIN dan harus staf TSK; kind/organisasi/pembuat tidak bisa diganti",
+    sr.staff2OnlyOwn === true && sr.staff2CannotEditStaff === 0 && sr.adminTouched === sr.activeDaily && E(sr.staffChangesAuthor) && sr.adminChangesAuthor === null && E(sr.authorNotStaff) && E(sr.changeKind) && E(sr.changeOrg) && E(sr.changeCreatedBy),
+    JSON.stringify([sr.staff2OnlyOwn, sr.staff2Touched, sr.staff2CannotEditStaff, sr.adminTouched, sr.activeDaily, String(sr.staffChangesAuthor).slice(0, 40), sr.adminChangesAuthor]),
+  );
+  check(
+    "Catatan kegiatan: kolom khusus ① tidak boleh di ② dan sebaliknya; ② wajib perihal dan waktu mulai (CHECK)",
+    E(sr.dailyFieldsOnMeeting) && E(sr.meetingNoSubject) && E(sr.meetingFieldsOnDaily),
+    JSON.stringify([sr.dailyFieldsOnMeeting, sr.meetingNoSubject, sr.meetingFieldsOnDaily].map((e) => String(e).slice(0, 60))),
+  );
+  const revs = sr.revisions as Array<{ version_no: number; a: string; e: string | null }>;
+  check(
+    "Riwayat edit otomatis (trigger): tiap edit menaikkan versi dan menyimpan nilai SEBELUM beserta pengedit; aplikasi tidak bisa menulis, mengubah, atau menghapus riwayat; TSK lain tidak melihatnya",
+    revs.length >= 2 && sr.versionNo === revs.length + 1 && revs.every((r, i) => r.version_no === i + 1 && r.e !== null) && revs.at(-2)!.a === "isi awal" && revs.at(-1)!.a === "versi dua" && revs.at(-2)!.e === staff2.id && revs.at(-1)!.e === staff2.id && revs[0].e === tskAdminUser.id && E(sr.revInsert) && E(sr.revUpdate) && E(sr.revDelete),
+    JSON.stringify([sr.versionNo, revs, String(sr.revInsert).slice(0, 40), String(sr.revUpdate).slice(0, 40), String(sr.revDelete).slice(0, 40)]),
+  );
+  check(
+    "Riwayat edit append-only juga untuk OWNER (trigger), dan baris riwayat dari seed ada",
+    /append-only/.test(String(sr.ownerRevUpdate)) && /append-only/.test(String(sr.ownerRevDelete)) && (sr.seedRows as { revisions: number }).revisions > 0,
+    JSON.stringify([String(sr.ownerRevUpdate).slice(0, 50), String(sr.ownerRevDelete).slice(0, 50), sr.seedRows]),
+  );
+  check(
+    "Catatan kegiatan: pembatalan butuh alasan, final (tidak bisa diubah lagi), tetap terbaca dengan pelaku dan waktu; TIDAK ada DELETE lewat aplikasi di tabel utama",
+    E(sr.voidNoReason) && sr.editAfterVoid === 0 && sr.voidedReadable === 1 && (sr.noDelete as unknown[]).every(E),
+    JSON.stringify([String(sr.voidNoReason).slice(0, 40), sr.editAfterVoid, sr.voidedReadable, (sr.noDelete as unknown[]).map((e) => String(e).slice(0, 25))]),
+  );
+  check(
+    "Tanda baca: hanya atas nama sendiri (atas nama orang lain ditolak, UPDATE tanpa WHERE hanya milik sendiri)",
+    sr.readOwn === null && E(sr.readForged) && sr.readUpdateOthers === true && sr.readMine === 1,
+    JSON.stringify([sr.readOwn, String(sr.readForged).slice(0, 40), sr.readUpdateOthers, sr.readMine]),
+  );
+  check(
+    "Laporan harian: membuat dan mengirim hanya atas nama sendiri; UPDATE tanpa WHERE hanya laporan sendiri; penerima hanya menandai baca miliknya dan tidak bisa mengganti penerima",
+    E(sr.reportForged) && sr.sharedBy === 1 && sr.reportHijack === true && E(sr.reportRecipientsForged) && sr.recipientMarkOnlyOwn === true && sr.recipientRead === 0 && E(sr.recipientChangeUser),
+    JSON.stringify([String(sr.reportForged).slice(0, 40), sr.sharedBy, sr.reportHijack, String(sr.reportRecipientsForged).slice(0, 40), sr.recipientMarkOnlyOwn, sr.recipientRead, String(sr.recipientChangeUser).slice(0, 40)]),
+  );
+  check(
+    "Tugas tindak lanjut: status diubah penanggung jawab/pembuat/TSK_ADMIN (staf lain 0 baris); hanya status yang bisa diubah; selesai final dan tercatat pelakunya; penanggung jawab harus staf TSK; wajib punya induk",
+    E(sr.fuAssigneeNotStaff) && E(sr.fuNoParent) && E(sr.fuEditText) && sr.fuOtherStaff === 0 && sr.fuAssignee === 1 && sr.fuDoneStamped === 1 && E(sr.fuReopen),
+    JSON.stringify([String(sr.fuAssigneeNotStaff).slice(0, 30), String(sr.fuNoParent).slice(0, 30), String(sr.fuEditText).slice(0, 30), sr.fuOtherStaff, sr.fuAssignee, sr.fuDoneStamped, String(sr.fuReopen).slice(0, 30)]),
+  );
+  const codes = sr.caseCodes as string[];
+  const yr = codes[0].slice(2, 6);
+  check(
+    "Kode kasus berurutan per organisasi per tahun (TSK lain mulai dari nomor 1 sendiri); kode tidak bisa diganti; kategori dibatasi; staf bukan pembuat tidak bisa mengubah kasus",
+    /^K-\d{4}-\d{4}$/.test(codes[0]) && Number(codes[1].slice(-4)) === Number(codes[0].slice(-4)) + 1 && codes[1].slice(2, 6) === yr && codes[2] === `K-${yr}-0001` && E(sr.caseBadCategory) && E(sr.caseCodeImmutable) && sr.staffEditsAdminCase === 0,
+    JSON.stringify([codes, String(sr.caseBadCategory).slice(0, 40), String(sr.caseCodeImmutable).slice(0, 40), sr.staffEditsAdminCase]),
+  );
+  check(
+    "Lampiran: tipe dibatasi gambar, ukuran <= 10 MB, wajib satu induk; hanya keterangan/sertakan-PDF/penandaan sembunyi yang bisa diubah; yang disembunyikan tidak bisa dipulihkan lewat aplikasi",
+    E(sr.attBadMime) && E(sr.attTooBig) && E(sr.attNoParent) && E(sr.attChangeMime) && sr.attCaption === null && sr.attRemovedBy === 1 && E(sr.attRestore),
+    JSON.stringify([String(sr.attBadMime).slice(0, 30), String(sr.attTooBig).slice(0, 30), String(sr.attNoParent).slice(0, 30), String(sr.attChangeMime).slice(0, 30), sr.attCaption, sr.attRemovedBy, String(sr.attRestore).slice(0, 30)]),
+  );
+  check(
+    "Subjek dan wawancara berkala: hanya kandidat yang terlihat TSK; tanggal bulan harus tanggal 1; status dibatasi; unik per bulan aktif (yang dibatalkan boleh diisi ulang); edit semua staf dengan riwayat otomatis; pembatalan butuh alasan",
+    E(sr.subjectInvisible) && E(sr.interviewInvisible) && E(sr.piBadMonth) && E(sr.piBadStatus) && E(sr.piDuplicate) && sr.piRevision === 1 && E(sr.piVoidNoReason) && sr.piRefilled === true,
+    JSON.stringify([String(sr.subjectInvisible).slice(0, 30), String(sr.interviewInvisible).slice(0, 30), String(sr.piBadMonth).slice(0, 30), String(sr.piBadStatus).slice(0, 30), String(sr.piDuplicate).slice(0, 30), sr.piRevision]),
+  );
+  check(
+    "Kronologi dan kasus: hanya pembuat/TSK_ADMIN mengubah baris (staf lain 0 baris, tetapi boleh menambah baris); riwayat otomatis; batal butuh alasan dan final; tutup/buka kasus tercatat pelaku dan waktu",
+    sr.eventOtherStaffEdit === 0 && sr.eventAddByOther === null && sr.eventAdminEdit === 1 && sr.eventRevisions === 1 && E(sr.eventVoidNoReason) && sr.eventEditAfterVoid === 0 && sr.caseClosed === 1 && sr.caseReopened === 1 && (sr.caseRevisions as number) === 2,
+    JSON.stringify([sr.eventOtherStaffEdit, sr.eventAddByOther, sr.eventAdminEdit, sr.eventRevisions, String(sr.eventVoidNoReason).slice(0, 30), sr.eventEditAfterVoid, sr.caseClosed, sr.caseReopened, sr.caseRevisions]),
+  );
+  check(
+    "Hapus kandidat: kunci asing ke kandidat RESTRICT di 4 tabel fitur; LPK_ADMIN pemilik ditolak menghapus kandidat yang punya catatan kegiatan (ringkasan blocked=true), juga pekerja yang punya catatan",
+    J(sr.fkRestrict) === J(["activity_case_subjects:r", "activity_record_subjects:r", "periodic_interview_quarter_notes:r", "periodic_interviews:r"]) && /tidak bisa dihapus/.test(String(sr.lpkDelete)) && sr.lpkSummaryBlocked === true && /tidak bisa dihapus/.test(String(sr.workerDelete)),
+    JSON.stringify([sr.fkRestrict, String(sr.lpkDelete).slice(0, 60), sr.lpkSummaryBlocked, String(sr.workerDelete).slice(0, 60)]),
   );
 
   await pool.end();

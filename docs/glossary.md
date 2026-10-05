@@ -22,7 +22,24 @@ Teks Jepang (`messages/ja.json`) memakai istilah Jepang aslinya. Istilah baru: t
 | 技能実習・育成就労 | Ginō Jisshū / Ikusei Shūrō | Magang / Ikusei | Program magang dan penggantinya |
 | 管理者 / 施設長 | kanrisha / shisetsuchō | Manajer / kepala fasilitas | Contoh jabatan PIC klien |
 | 在留カード | Zairyū Kādo | Residence Card | Kartu izin tinggal (fitur langkah 7) |
-| 定期面談 | Teiki Mendan | Wawancara berkala | Fitur langkah 7 |
+| 業務記録 | Gyōmu Kiroku | Catatan kerja harian | Laporan pekerjaan yang dikerjakan hari itu (Catatan kegiatan, tab 1) |
+| 議事録・面談記録 | Gijiroku / Mendan Kiroku | Notulen dan catatan pertemuan | Laporan rapat/pertemuan, terutama dengan klien (tab 2) |
+| 時系列 | Jikeiretsu | Kronologi kasus | Urutan kejadian satu kasus; bisa dikirim ke klien (tab 3) |
+| 担当者 | Tantōsha | Penanggung jawab | Staf yang mengisi/menangani |
+| 対象者 | Taishōsha | Pekerja yang terlibat | Subjek catatan: pekerja yang sedang bekerja di Jepang |
+| 対応者 | Taiōsha | Staf yang hadir | Peserta pertemuan dari sisi TSK |
+| 対応内容 | Taiō naiyō | Tindakan yang dilakukan | Isi penanganan |
+| 結果・状況 | Kekka / jōkyō | Hasil dan keadaan | |
+| 未対応・継続事項 | Mi-taiō / keizoku jikō | Yang belum selesai / berlanjut | Menjadi tugas tindak lanjut |
+| 今後の対応 | Kongo no taiō | Rencana berikutnya | |
+| 共有・報告先 | Kyōyū / hōkoku-saki | Dibagikan / dilaporkan ke | |
+| 備考 | Bikō | Catatan tambahan | |
+| 件名 | Kenmei | Perihal | |
+| 日時 | Nichiji | Tanggal dan jam | |
+| 所属先 | Shozoku-saki | Lokasi klien | Perusahaan/lokasi penempatan |
+| 対象外 | Taishōgai | Tidak berlaku | Bulan yang tidak perlu wawancara berkala |
+| 問題なし / 要フォロー / 問題あり / 未実施 | Mondai nashi / yō fōrō / mondai ari / mijisshi | Tidak ada masalah / perlu tindak lanjut / ada masalah / belum dilaksanakan | Status wawancara berkala |
+| 定期面談 | Teiki Mendan | Wawancara berkala | Wawancara berkala pekerja (Catatan kegiatan, tab 4; langkah 7A) |
 | 入管 | Nyūkan | Imigrasi | |
 | 行政書士 | Gyōsei Shoshi | Pengurus administrasi hukum (Gyōsei Shoshi) | Dipakai di catatan internal saja |
 

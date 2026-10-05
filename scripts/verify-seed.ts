@@ -15,6 +15,10 @@ import { currentPeriod } from "../src/db/time";
 import { storageRootFor } from "../src/db/demo-files";
 import { AUDIT_PAGE_SIZE, listAudit, parseAuditFilters } from "../src/db/audit-history";
 import { ACTIONS } from "../src/db/audit-describe";
+import { activeWorkers, followupIds, pendingInterviewCells, unreadRecordIds, unreadReportIds } from "../src/db/records-queries";
+import { todayInTskTz } from "../src/db/time";
+import { demoAttachmentPath } from "../src/db/demo-files";
+import { access } from "node:fs/promises";
 import { INCOMPLETE_CANDIDATE_COLUMNS, INTENTIONALLY_INCOMPLETE } from "../src/db/demo-data";
 import { uuidFor } from "../src/db/demo-rng";
 import { FILTER_VIEWS_LPK, FILTER_VIEWS_TSK, viewCandidateIds, type FilterView } from "../src/db/dashboard-queries";
@@ -268,6 +272,53 @@ async function main() {
   const noSnapshot = aRows.filter((r) => !r.actor_role).length;
   check("Riwayat aktivitas: tiap admin LPK/TSK demo melihat >= 25 entri, halaman dan filter jenis bermakna", auditProblems.length === 0, auditProblems.join("; ") || auditReport.join(", "));
   check("Riwayat aktivitas: semua aksi dikenal describeAudit; tanpa nama kandidat; entri lintas organisasi tanpa nama orang; semua punya potret pelaku", unknownActions.length === 0 && leakedNames === 0 && crossNamed === 0 && noSnapshot === 0, `tak dikenal ${unknownActions.join(",") || 0}, nama bocor ${leakedNames}, lintas bernama ${crossNamed}, tanpa potret ${noSnapshot}`);
+
+  // ---------- 2d. Catatan kegiatan TSK (langkah 7A) ----------
+  {
+    const ownerQ = async <T extends Record<string, unknown>>(q: ReturnType<typeof sql>) => (await withSystem((tx) => tx.execute(q), ownerDb.db)).rows as T[];
+    const n = async (q: ReturnType<typeof sql>) => Number((await ownerQ<{ n: string }>(q))[0].n);
+    const today = todayInTskTz();
+    const tskUsers = await ownerQ<{ id: string; role: string; email: string }>(sql`select id::text, role::text, email from users where organization_id = ${tsk.id}::uuid and role in ('TSK_ADMIN', 'TSK_STAFF') order by email`);
+    const admin = tskUsers.find((u) => u.role === "TSK_ADMIN")!;
+    const asTsk = <T,>(u: { id: string; role: string }, fn: (tx: import("../src/db").Tx) => Promise<T>) => withTenant({ orgId: tsk.id, role: u.role as Role, userId: u.id }, fn, appDb.db);
+    const recs = await ownerQ<{ kind: string; status: string; version_no: number; author_id: string; action_taken: string | null; subject: string | null }>(sql`select kind, status, version_no, author_id::text, action_taken, subject from activity_records`);
+    const daily = recs.filter((r) => r.kind === "daily_work");
+    const meetings = recs.filter((r) => r.kind === "meeting");
+    check("Catatan kegiatan: >= 12 catatan ① (tersebar >= 4 hari, >= 3 penulis, 1 dibatalkan, 1 punya >= 2 versi) dan >= 4 notulen ②", daily.length >= 12 && new Set(daily.map((r) => r.author_id)).size >= 3 && (await n(sql`select count(distinct record_date)::int as n from activity_records where kind = 'daily_work'`)) >= 4 && daily.some((r) => r.status === "void") && recs.some((r) => r.version_no >= 2 && r.status === "active") && meetings.length >= 4, `${daily.length} harian, ${meetings.length} notulen`);
+    check("Catatan kegiatan: isi berbahasa Jepang (≥ 90% catatan ① berisi huruf Jepang)", daily.filter((r) => /[\u3040-\u30ff\u3400-\u9fff]/.test(r.action_taken ?? "")).length >= Math.ceil(daily.length * 0.9));
+    const cases = await ownerQ<{ id: string; status: string; code: string }>(sql`select id::text, status, code from activity_cases order by code`);
+    const maxEv = Math.max(0, ...(await ownerQ<{ n: number }>(sql`select count(*)::int as n from case_timeline_events group by case_id`)).map((r) => r.n));
+    check("Kasus: >= 2 (satu terbuka dengan >= 6 baris kronologi, satu selesai), kode berurutan K-tahun-nomor, kronologi punya baris dari catatan dan baris batal", cases.length >= 2 && cases.some((c) => c.status === "open") && cases.some((c) => c.status === "closed") && maxEv >= 6 && cases.every((c) => /^K-\d{4}-\d{4}$/.test(c.code)) && (await n(sql`select count(*)::int as n from case_timeline_events where source_record_id is not null`)) >= 2 && (await n(sql`select count(*)::int as n from case_timeline_events where status = 'void'`)) >= 1, `${cases.length} kasus, baris terbanyak ${maxEv}`);
+    const overdue = await n(sql`select count(*)::int as n from activity_followups where status = 'open' and due_date < ${today}::date`);
+    check("Tugas tindak lanjut: >= 6, ada yang lewat tenggat, selesai, dan dibatalkan", (await n(sql`select count(*)::int as n from activity_followups`)) >= 6 && overdue >= 1 && (await n(sql`select count(*)::int as n from activity_followups where status = 'done'`)) >= 1 && (await n(sql`select count(*)::int as n from activity_followups where status = 'cancelled'`)) >= 1, `lewat tenggat ${overdue}`);
+    const reports = await ownerQ<{ author_id: string; shared_at: string | null }>(sql`select author_id::text, shared_at::text from activity_daily_reports where shared_at is not null`);
+    const addedAfter = await n(sql`select count(*)::int as n from activity_records r join activity_daily_reports d on d.author_id = r.author_id and d.report_date = r.record_date where r.kind = 'daily_work' and d.shared_at is not null and r.created_at > d.shared_at`);
+    check("Laporan harian: 3 staf mengirim laporan; satu punya ① ditambahkan setelah dikirim; pembaca campuran (ada yang sudah, ada yang belum)", new Set(reports.map((r) => r.author_id)).size >= 3 && addedAfter >= 1 && (await n(sql`select count(*)::int as n from activity_daily_report_recipients where read_at is not null`)) >= 1 && (await n(sql`select count(*)::int as n from activity_daily_report_recipients where read_at is null`)) >= 1, `${reports.length} laporan`);
+    const unreadAdmin = await asTsk(admin, (tx) => unreadRecordIds(tx, admin.id));
+    const staleAdmin = await n(sql`select count(*)::int as n from activity_record_reads rr join activity_records r on r.id = rr.record_id where rr.user_id = ${admin.id}::uuid and rr.version_no_read < r.version_no and r.status = 'active'`);
+    const readsTotal = await n(sql`select count(*)::int as n from activity_record_reads`);
+    check("Tanda baca campuran: ada catatan belum dibaca, ada yang sudah, ada yang 'diperbarui sejak kamu baca'; KPI belum dibaca > 0", unreadAdmin.length > 0 && readsTotal >= 5 && staleAdmin >= 1, `admin belum baca ${unreadAdmin.length}, usang ${staleAdmin}`);
+    const att = await ownerQ<{ id: string; mime: string }>(sql`select id::text, mime from activity_attachments where removed_at is null`);
+    check("Lampiran: >= 2 gambar dummy, satu ikut PDF", att.length >= 2 && (await n(sql`select count(*)::int as n from activity_attachments where include_in_pdf`)) >= 1, `${att.length} lampiran`);
+    if (process.env.VERIFY_SKIP_FILES !== "1") {
+      const root = storageRootFor();
+      const lost: string[] = [];
+      for (const a of att) {
+        try { await access(demoAttachmentPath(root, tsk.id, a.id, a.mime === "image/png" ? "png" : a.mime === "image/webp" ? "webp" : "jpg")); } catch { lost.push(a.id); }
+      }
+      check("Setiap lampiran punya berkasnya di penyimpanan", lost.length === 0, `hilang ${lost.length}`);
+    }
+    const workers = await asTsk(admin, (tx) => activeWorkers(tx));
+    check("Pekerja aktif: >= 3 dari >= 2 lokasi klien", workers.length >= 3 && new Set(workers.map((w) => w.siteId)).size >= 2, `${workers.length} pekerja, ${new Set(workers.map((w) => w.siteId)).size} lokasi`);
+    const piRows = await ownerQ<{ candidate_id: string; result_status: string | null; applicable: boolean; reason: string | null }>(sql`select candidate_id::text, result_status, applicable, reason from periodic_interviews where status = 'active'`);
+    const piBy = new Set(piRows.map((r) => r.candidate_id));
+    const pending = await asTsk(admin, (tx) => pendingInterviewCells(tx, today));
+    const statusSet = new Set(piRows.map((r) => r.result_status));
+    check("Wawancara berkala: tiap pekerja aktif punya wawancara; campuran status (問題なし dominan, 要フォロー, 問題あり, 未実施), semua alasan, bulan 対象外, kuartal Q1; ada sel Belum", workers.every((w) => piBy.has(w.id)) && ["no_issue", "follow_up", "issue", "not_done"].every((s) => statusSet.has(s)) && piRows.filter((r) => r.result_status === "no_issue").length > piRows.length / 2 - 1 && ["agency", "support", "worker"].every((x) => piRows.some((r) => r.reason === x)) && piRows.some((r) => !r.applicable) && (await n(sql`select count(*)::int as n from periodic_interview_quarter_notes where quarter = 1`)) >= 1 && pending.length > 0, `${piRows.length} wawancara; sel Belum ${pending.length}`);
+    // KPI dashboard = fungsi yang sama dengan daftar: panggilan kedua menghasilkan himpunan identik (tidak bergantung urutan)
+    const kpi = await asTsk(admin, async (tx) => ({ r: (await unreadRecordIds(tx, admin.id)).length, l: (await unreadReportIds(tx, admin.id)).length, f: (await followupIds(tx, {})).length }));
+    check("KPI Catatan kegiatan bermakna: belum dibaca > 0, laporan belum dibaca >= 1, tindak lanjut terbuka > 0", kpi.r > 0 && kpi.l >= 1 && kpi.f > 0, JSON.stringify(kpi));
+  }
 
   // ---------- 3. Berkas dokumen vs baris database ----------
   if (process.env.VERIFY_SKIP_FILES === "1") {

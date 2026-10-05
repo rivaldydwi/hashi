@@ -11,11 +11,12 @@ import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
 import { createDb, withSystem } from "../src/db";
 import { assertTestDatabase } from "./db-guard";
-import { periodMonthsAgo, currentPeriod, todayInAppTz } from "../src/db/time";
+import { periodMonthsAgo, currentPeriod, todayInAppTz, todayInTskTz } from "../src/db/time";
 import { buildDemoAudit } from "../src/db/demo-audit";
 import { buildAssessments, buildProfile, FIELD_JA, FIELD_KEYS, FIELDS, isIntentionallyIncomplete, sharedDaysAgo, type DemoProfile } from "../src/db/demo-data";
 import { addDays, addMonths, uuidFor } from "../src/db/demo-rng";
-import { clearDocumentStorage, demoDocumentPath, dummyPdf, dummyPng, storageRootFor, writeDemoFile } from "../src/db/demo-files";
+import { seedRecords } from "../src/db/demo-records";
+import { clearDocumentStorage, demoAttachmentPath, demoDocumentPath, dummyPdf, dummyPng, storageRootFor, writeDemoFile } from "../src/db/demo-files";
 import {
   candidates,
   auditLogs,
@@ -424,7 +425,12 @@ async function main() {
     });
     await tx.insert(auditLogs).values(auditRows);
 
-    summary = `✓ Seed selesai: 5 organisasi, 7 pengguna, ${seeded.length} kandidat demo lengkap (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, ${companyCount} perusahaan klien dengan ${siteCount} lokasi dan ${DEMO_JOB_ORDERS.length} job order, ${TSK_NOTES.length} catatan TSK, ${lpkRows.length} penilaian bulanan LPK + ${tskRows.length} penilaian TSK, ${docRows.length} dokumen dummy, ${auditRows.length} entri riwayat aktivitas`;
+    // ---- Catatan kegiatan TSK (langkah 7A): catatan, kasus, tugas, laporan harian, wawancara berkala, lampiran
+    const recRes = await seedRecords(tx, { today: todayInTskTz(), passwordHash }, dummyPng);
+    for (const f of recRes.files) files.push({ path: demoAttachmentPath(root, f.orgId, f.id, f.ext), data: f.data });
+    for (const n of recRes.notes) console.log(`ℹ ${n}`);
+
+    summary = `✓ Seed selesai: 5 organisasi, 7 pengguna, ${seeded.length} kandidat demo lengkap (3 tidak dibagikan ke TSK, 1 dibagikan tanpa tanggal formulir), ${decided.length} keputusan TSK, ${companyCount} perusahaan klien dengan ${siteCount} lokasi dan ${DEMO_JOB_ORDERS.length} job order, ${TSK_NOTES.length} catatan TSK, ${lpkRows.length} penilaian bulanan LPK + ${tskRows.length} penilaian TSK, ${docRows.length} dokumen dummy, ${auditRows.length} entri riwayat aktivitas, catatan kegiatan (${recRes.summary["records.daily"]} harian, ${recRes.summary["records.meeting"]} notulen, ${recRes.summary.cases} kasus, ${recRes.summary.followups} tugas, ${recRes.summary.interviews} wawancara berkala)`;
   }, db);
 
   if (files.length > 0) {
