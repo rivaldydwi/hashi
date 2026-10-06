@@ -163,7 +163,6 @@ export function buildJobOrderSheet(data: JobOrderSheetData, opts: { mode: SheetM
   pushRow(basic, "company", data.companyName, lang);
   pushRow(basic, "siteName", data.site.name, lang);
   pushRow(basic, "field", data.fieldName, lang);
-  pushRow(basic, "jobTitle", j.title, lang);
   pushRow(basic, "positions", `${j.positions}名`, lang);
 
   const conditions: Rows = [];

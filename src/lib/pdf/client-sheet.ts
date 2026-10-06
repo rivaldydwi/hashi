@@ -6,17 +6,18 @@ import type { Sheet } from "./client-sheet-model";
 export type SheetPdfCtx = { orgName: string; tz: string; now: Date };
 
 export async function renderSheetPdf(ctx: SheetPdfCtx, sheet: Sheet): Promise<{ buf: Buffer; pages: number }> {
-  const b = new PdfBuilder({ orgName: ctx.orgName, headerRight: sheet.headerRight, createdAt: jaDateTime(ctx.now, ctx.tz), title: sheet.docTitle });
+  const b = new PdfBuilder({ orgName: ctx.orgName, headerRight: sheet.headerRight, createdAt: jaDateTime(ctx.now, ctx.tz), title: sheet.docTitle, compact: true });
+  const lw = sheet.lang === "jaid" ? 190 : 130; // label dua bahasa lebih panjang: kolom label lebih lebar supaya tidak membungkus
   b.para(sheet.badge, { size: 8.5, color: "#6B645B" });
   b.title(sheet.title, sheet.subtitle || undefined);
   for (const s of sheet.sections) {
     b.h2(s.heading);
-    if (s.kind === "kv") b.kv(s.rows, 130);
+    if (s.kind === "kv") b.kv(s.rows, lw);
     else if (s.kind === "text") b.para(s.text);
     else if (s.kind === "blocks") {
       for (const blk of s.blocks) {
         b.para(blk.heading, { bold: true, size: 10 });
-        if (blk.rows.length) b.kv(blk.rows, 130);
+        if (blk.rows.length) b.kv(blk.rows, lw);
       }
     } else b.table(s.cols, s.rows.map((cells) => ({ cells })));
   }

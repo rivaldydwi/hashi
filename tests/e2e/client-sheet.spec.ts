@@ -128,7 +128,7 @@ test("lembar job order dua bahasa label; gaji ¥; syarat gender hanya internal; 
   expect(internal.name).toMatch(/^lembar-job-order-\d{8}\.pdf$/);
   const ti = await pdfText(internal.bytes);
   for (const v of ["求人票", "社内用/Hanyainternal", "勤務時間/Jamkerja", "¥185,000/月(bulan)", "惣菜の製造補助", "8:00〜17:00", "週休2日", "寮あり/Asramatersedia個室", "徒歩10分", "社会保険完備", "日本語能力試験N4以上", "2026年12月1日", "2026年11月20日", "男性", PIC, PIC_PHONE, NOTE_JO]) expect(ti.text, `hilang: ${v}`).toContain(v);
-  expect(ti.pages).toBeLessThanOrEqual(2); // internal memuat PIC + catatan tambahan
+  expect(ti.pages, "lembar job order internal (dua bahasa) muat satu halaman").toBe(1);
   await page.getByTestId("mode-share").check();
   await page.getByTestId("sheet-confirm").check();
   const shared = await download(page, "sheet-download");

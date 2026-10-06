@@ -21,10 +21,17 @@ export type Col = { header: string; width: number };
 
 export class PdfBuilder {
   readonly doc: Doc;
+  private get pad() {
+    return this.meta.compact ? 3.5 : PAD;
+  }
+  private get gap() {
+    return this.meta.compact ? 0.25 : 0.5;
+  }
   private chunks: Buffer[] = [];
   private done: Promise<Buffer>;
 
-  constructor(private meta: { orgName: string; headerRight: string; createdAt: string; title: string }) {
+  /** `compact`: jarak antarbagian dan bantalan sel lebih rapat (lembar klien ingin muat satu halaman). Bawaan: tampilan 7A tidak berubah. */
+  constructor(private meta: { orgName: string; headerRight: string; createdAt: string; title: string; compact?: boolean }) {
     this.doc = new PDFDocument({ size: "A4", margins: { ...M }, bufferPages: true, font: fontPath("Regular"), info: { Title: meta.title, Creator: "Hashi", Producer: "Hashi" } });
     this.doc.registerFont("Regular", fontPath("Regular"));
     this.doc.registerFont("Bold", fontPath("Bold"));
@@ -59,16 +66,16 @@ export class PdfBuilder {
 
   h2(text: string) {
     this.ensure(40);
-    this.doc.moveDown(0.4).font("Bold").fontSize(11.5).fillColor(INK).text(text, M.left, this.doc.y, { width: this.width });
+    this.doc.moveDown(this.meta.compact ? 0.2 : 0.4).font("Bold").fontSize(11.5).fillColor(INK).text(text, M.left, this.doc.y, { width: this.width });
     this.doc.moveDown(0.25);
   }
 
   banner(text: string) {
-    const h = this.doc.font("Bold").fontSize(10).heightOfString(text, { width: this.width - 2 * PAD }) + 2 * PAD;
+    const h = this.doc.font("Bold").fontSize(10).heightOfString(text, { width: this.width - 2 * this.pad }) + 2 * this.pad;
     this.ensure(h + 6);
     const y = this.doc.y;
     this.doc.rect(M.left, y, this.width, h).fill("#FBE9E7");
-    this.doc.fillColor("#8A1C12").text(text, M.left + PAD, y + PAD, { width: this.width - 2 * PAD });
+    this.doc.fillColor("#8A1C12").text(text, M.left + this.pad, y + this.pad, { width: this.width - 2 * this.pad });
     this.doc.y = y + h + 6;
     this.doc.x = M.left;
   }
@@ -84,18 +91,18 @@ export class PdfBuilder {
     for (const [label, value] of rows) {
       const v = value || PDF.common.none;
       this.doc.font("Regular").fontSize(9.5);
-      const h = Math.max(this.doc.heightOfString(v, { width: vw - 2 * PAD }), this.doc.heightOfString(label, { width: labelWidth - 2 * PAD })) + 2 * PAD;
+      const h = Math.max(this.doc.heightOfString(v, { width: vw - 2 * this.pad }), this.doc.heightOfString(label, { width: labelWidth - 2 * this.pad })) + 2 * this.pad;
       const hh = Math.min(h, this.bottomY - M.top - 4);
       this.ensure(hh);
       const y = this.doc.y;
       this.doc.rect(M.left, y, labelWidth, hh).fillAndStroke(SHADE, LINE);
       this.doc.rect(M.left + labelWidth, y, vw, hh).stroke(LINE);
-      this.doc.fillColor(INK).font("Bold").fontSize(9.5).text(label, M.left + PAD, y + PAD, { width: labelWidth - 2 * PAD, height: hh - 2 * PAD });
-      this.doc.font("Regular").text(v, M.left + labelWidth + PAD, y + PAD, { width: vw - 2 * PAD, height: hh - 2 * PAD });
+      this.doc.fillColor(INK).font("Bold").fontSize(9.5).text(label, M.left + this.pad, y + this.pad, { width: labelWidth - 2 * this.pad, height: hh - 2 * this.pad });
+      this.doc.font("Regular").text(v, M.left + labelWidth + this.pad, y + this.pad, { width: vw - 2 * this.pad, height: hh - 2 * this.pad });
       this.doc.y = y + hh;
       this.doc.x = M.left;
     }
-    this.doc.moveDown(0.5);
+    this.doc.moveDown(this.gap);
   }
 
   /** Tabel banyak kolom dengan kepala berulang di tiap halaman. `rows[i].shade` = latar baris (mis. ringkasan kuartal). */
@@ -105,13 +112,13 @@ export class PdfBuilder {
     const widths = cols.map((c) => c.width * scale);
     const header = () => {
       this.doc.font("Bold").fontSize(9);
-      const h = Math.max(...cols.map((c, i) => this.doc.heightOfString(c.header, { width: widths[i] - 2 * PAD }))) + 2 * PAD;
+      const h = Math.max(...cols.map((c, i) => this.doc.heightOfString(c.header, { width: widths[i] - 2 * this.pad }))) + 2 * this.pad;
       this.ensure(h + 30);
       const y = this.doc.y;
       let x = M.left;
       cols.forEach((c, i) => {
         this.doc.rect(x, y, widths[i], h).fillAndStroke(SHADE, LINE);
-        this.doc.fillColor(INK).text(c.header, x + PAD, y + PAD, { width: widths[i] - 2 * PAD });
+        this.doc.fillColor(INK).text(c.header, x + this.pad, y + this.pad, { width: widths[i] - 2 * this.pad });
         x += widths[i];
       });
       this.doc.y = y + h;
@@ -121,8 +128,8 @@ export class PdfBuilder {
     for (const row of rows) {
       this.doc.font("Regular").fontSize(9);
       let h: number;
-      if (row.span) h = this.doc.heightOfString(row.cells[0], { width: this.width - 2 * PAD }) + 2 * PAD;
-      else h = Math.max(...row.cells.map((c, i) => this.doc.heightOfString(c || " ", { width: widths[i] - 2 * PAD }))) + 2 * PAD;
+      if (row.span) h = this.doc.heightOfString(row.cells[0], { width: this.width - 2 * this.pad }) + 2 * this.pad;
+      else h = Math.max(...row.cells.map((c, i) => this.doc.heightOfString(c || " ", { width: widths[i] - 2 * this.pad }))) + 2 * this.pad;
       h = Math.min(h, this.bottomY - M.top - 40);
       if (this.doc.y + h > this.bottomY) {
         this.doc.addPage();
@@ -131,19 +138,19 @@ export class PdfBuilder {
       const y = this.doc.y;
       if (row.span) {
         this.doc.rect(M.left, y, this.width, h).fillAndStroke(row.shade ? SHADE : "#FFFFFF", LINE);
-        this.doc.fillColor(row.muted ? MUTED : INK).text(row.cells[0], M.left + PAD, y + PAD, { width: this.width - 2 * PAD, height: h - 2 * PAD });
+        this.doc.fillColor(row.muted ? MUTED : INK).text(row.cells[0], M.left + this.pad, y + this.pad, { width: this.width - 2 * this.pad, height: h - 2 * this.pad });
       } else {
         let x = M.left;
         row.cells.forEach((c, i) => {
           this.doc.rect(x, y, widths[i], h).fillAndStroke(row.shade ? SHADE : "#FFFFFF", LINE);
-          this.doc.fillColor(row.muted ? MUTED : INK).text(c, x + PAD, y + PAD, { width: widths[i] - 2 * PAD, height: h - 2 * PAD });
+          this.doc.fillColor(row.muted ? MUTED : INK).text(c, x + this.pad, y + this.pad, { width: widths[i] - 2 * this.pad, height: h - 2 * this.pad });
           x += widths[i];
         });
       }
       this.doc.y = y + h;
       this.doc.x = M.left;
     }
-    this.doc.moveDown(0.5);
+    this.doc.moveDown(this.gap);
   }
 
   /** Gambar (JPEG/PNG) dengan keterangan, lebar maksimum 260pt. */

@@ -122,4 +122,6 @@ test("PDF lembar job order dua bahasa: label ganda, gaji ¥, satu halaman; versi
   for (const v of ["求人票", "提供用/Untukdibagikan", "勤務時間/Jamkerja", "給与/Gaji", "¥195,000/月(bulan)", "住居/Tempattinggal", "住宅手当/Tunjanganperumahan", "家賃補助月2万円", "日本語要件/SyaratbahasaJepang", "食品工場製造スタッフ", "最寄り駅・アクセス/Stasiunterdekat/akses"]) assert.ok(t.includes(norm(v)), `hilang: ${v}`);
   for (const bad of ["00-0000-1104", "ダミー三郎", "RAHASIA", "女性", "性別条件", "Rina"]) assert.ok(!t.includes(norm(bad)), `bocor: ${bad}`);
   assert.equal(r.n, 1, "lembar job order muat satu halaman");
+  const internal = await renderSheetPdf(ctx, buildJobOrderSheet(jobOrder(), { mode: "internal", lang: "jaid", preparedBy: "Rina Staf TSK" }));
+  assert.equal(internal.pages, 1, "versi internal dua bahasa (dengan PIC dan catatan) juga satu halaman");
 });
