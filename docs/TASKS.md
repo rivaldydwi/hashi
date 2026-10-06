@@ -83,6 +83,47 @@ Isi dokumen:
 
 ---
 
+### T-011 · Tabel lebar rapi dalam bahasa Jepang · `SIAP` (setelah T-004)
+
+Masukan Ipal (2026-10-06, tangkapan layar `/records/interviews` dalam bahasa Jepang): kolom sempit membuat teks Jepang patah **per huruf** dan
+menjadi menurun (header `特定技能分野` dan `配属先企業名` tersusun vertikal, nama perusahaan `さくらフーズ株式会社` satu huruf per baris), sehingga satu baris setinggi
+setengah layar. Teks Jepang tidak punya spasi, jadi browser bebas memotong di mana saja.
+
+Kerjakan:
+- **Grid 定期面談** (`src/app/(app)/records/interviews/page.tsx`): lebar minimum per kolom (atau `table-layout` + `<colgroup>`), header dan nilai pendek
+  (bidang, tanggal, telepon, bulan) tidak boleh patah (`whitespace-nowrap` / `break-keep`), kolom nama menempel di kiri saat digulir horizontal. Usulan yang boleh dipilih
+  engineer: gabungkan data perusahaan (企業名, 住所, 電話, 担当者) menjadi satu sel "配属先" bertingkat supaya tabel tidak terlalu lebar; jelaskan pilihannya di PR.
+- **Sisir tabel lain** yang punya masalah sama dalam bahasa Jepang (minimal: daftar kandidat, `/records/interviews/annual`, `/records/responsible`, daftar job order, klien,
+  pengguna, riwayat aktivitas). Perbaiki dengan pola yang SAMA (utilitas/kelas bersama, bukan tambalan per halaman). Tampilan kartu di ponsel tetap berfungsi.
+- Bahasa Indonesia tidak boleh jadi lebih buruk.
+
+**Kriteria selesai**
+- [ ] Di lebar 1280 px dan 1440 px, bahasa Jepang: tidak ada header atau nilai pendek yang patah per huruf; tinggi baris grid 定期面談 dengan data seed ≤ ~3 baris teks.
+- [ ] Tangkapan layar sebelum/sesudah (ja, 1280 px) untuk grid 定期面談 dan setiap tabel lain yang diubah dilampirkan di PR; satu tangkapan id dan satu ponsel (390 px).
+- [ ] Tes e2e: minimal satu cek bahwa sel header grid 定期面談 dalam ja tidak lebih tinggi dari ~2 baris (mis. `boundingBox().height`), supaya tidak mundur lagi.
+- [ ] `typecheck`, `build` (0 peringatan), `test:e2e` hijau.
+
+---
+
+### T-012 · Variasi kartu KPI di dashboard · `SIAP` (setelah T-011)
+
+Masukan Ipal (2026-10-06): kartu KPI dashboard (`Kpi` di `src/features/dashboard/Widgets.tsx`) terlihat sama semua (putih, angka besar hitam), jadi sulit dipindai.
+
+Kerjakan:
+- Tambah **nada (tone)** per KPI di katalog (`src/db/dashboard-catalog.ts`), mis. `neutral` / `info` / `attention`, dan **ikon** per KPI (gaya ikon yang sudah dipakai di app, mis. di `StatusBadge`).
+- Nada **mengikuti makna dan nilai**: KPI "perlu tindakan" (未実施の定期面談, 未完了のフォローアップ, 未読の記録, 判断待ち, beban staf merah, dsb.) memakai warna perhatian HANYA bila nilainya > 0;
+  bila 0, tampil tenang (mis. teks "beres" / ikon centang). KPI informasi (配属中, 募集中の求人, kandidat baru dibagikan) memakai aksen netral/info.
+- Warna dari token di `globals.css` (`@theme`), tambah token baru bila perlu; kontras teks minimal WCAG AA; warna tidak boleh satu-satunya pembeda (ada ikon/teks).
+- Tetap satu komponen `Kpi`; tata letak, ukuran, dan mode atur (`/?atur=1`) tidak berubah. Berlaku untuk semua peran (LPK dan TSK).
+
+**Kriteria selesai**
+- [ ] Setiap KPI di katalog punya nada + ikon (diperiksa tes unit: tidak ada KPI tanpa nada/ikon).
+- [ ] KPI tindakan bernilai 0 tampil tenang, bernilai > 0 tampil perhatian (tes e2e atau unit pada fungsi pemilih nada).
+- [ ] Tangkapan layar dashboard LPK_ADMIN dan TSK_ADMIN (ja dan id, desktop + ponsel) di PR.
+- [ ] `typecheck`, `build`, `test:e2e` hijau.
+
+---
+
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
