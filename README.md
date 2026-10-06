@@ -216,6 +216,9 @@ Batas RAM: app 768 MB, database 512 MB (container `migrate` hanya hidup beberapa
 
 ## Dokumen kandidat dan backup
 
+> **Cadangan terenkripsi (database + dokumen) dan cara memulihkan: [docs/backup.md](docs/backup.md)** (`scripts/backup.sh`, `scripts/restore.sh`).
+> Jadwal otomatis dan salinan di luar server belum dipasang (T-003). Perintah manual di bawah hanya untuk keperluan cepat.
+
 File dokumen (PDF/JPG/PNG, maks. 10 MB) disimpan di **Docker named volume `docs-data`**, dipasang di
 `/app/docs-data` pada container `app`. Tata letak: `<org_id>/<candidate_id>/<document_id>.<pdf|jpg|png>`.
 Nama file di disk selalu id dokumen (bukan nama dari user), jenis file dicek dari isinya, dan unduhan hanya lewat
