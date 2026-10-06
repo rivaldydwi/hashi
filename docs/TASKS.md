@@ -12,53 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-009 · Form 定期面談報告書 (参考様式第5-5号) + halaman tahunan per pekerja · `SIAP`
-
-**Dari staf TSK:** tiap 定期面談 dilaporkan dengan form resmi imigrasi **参考様式第5-5号「定期面談報告書（1号特定技能外国人用）」**. Form ini diisi/dicetak saat
-akan melapor; terpisah dari catatan harian pekerja. Ada juga "form khusus per pekerja" berisi semua 面談 dia selama 1 tahun fiskal.
-Form kosongnya resmi dan publik (situs 出入国在留管理庁); unduh versi terbaru sebagai acuan tata letak (jangan commit bila lisensinya tidak jelas; cukup tautan di docs).
-
-Isi form 5-5 (yang harus bisa dicatat per wawancara, di samping kolom yang sudah ada):
-1. 面談対象者: ① nama pekerja, ② nama/sebutan 特定技能所属機関 (perusahaan penerima), ③ 面談日, ④ 方式: 対面 / オンライン.
-2. 面談対応者: ① nama, ② jabatan: 支援責任者 / 支援担当者 + 役職名 (teks).
-3. 面談結果: tiap butir **問題の有無 (有/無)** + **問題の内容** (teks bila 有):
-   - ①業務内容: (1) tidak bekerja di luar isi kontrak, (2) tidak bekerja di bawah pemberi kerja lain, (3) bekerja dengan memperhatikan K3
-   - ②待遇: (1) gaji diterima setiap bulan sesuai kontrak, (2) jam kerja sesuai kontrak, (3) libur/cuti diberikan (termasuk cuti pulang sementara),
-     (4) tempat tinggal layak, (5) biaya makan/tinggal sesuai kesepakatan, (6) dukungan sesuai 支援計画 diterima
-   - ③保護: (1) tidak ada kekerasan/ancaman/pengurungan, (2) tidak ada uang jaminan/kontrak denda, (3) tidak ada pengelolaan harta tidak wajar (buku tabungan dll.),
-     (4) paspor dan 在留カード dipegang sendiri, (5) kebebasan pribadi tidak dibatasi
-   - ④生活: (1) tidak ada masalah kehidupan sehari-hari, (2) tidak ada masalah kesehatan
-   - ⑤その他: (1) tidak ada pekerja ilegal, (2) lainnya (teks bebas)
-   - ⑥基準不適合等の有無: 有 / なし; ⑦その他特筆事項 (teks)
-4. 基準不適合等への対応 (hanya bila ⑥ = 有): ① tanggal terjadi, ② isi, ③ hasil penanganan: ア ke pekerja (dirujuk ke instansi mana / tidak ada penanganan + alasan),
-   イ ke perusahaan: (ア) pemberitahuan ke penanggung jawab (sudah: tanggal + pihak / belum + alasan), (イ) arahan ke 出入国在留管理庁 (sudah / belum),
-   ウ ke instansi terkait (sudah lapor: tanggal + instansi / belum + alasan).
-- Penutup: 作成年月日, 面談実施者の氏名.
-
-Kerjakan:
-- Skema: kolom/tabel tambahan untuk isi form di atas (butir checklist sebaiknya terstruktur, mis. jsonb tervalidasi zod dengan daftar kode butir TETAP di satu berkas
-  konfigurasi, seperti `client-sheet.config.ts`), bukan teks bebas. Data lama tetap sah (form kosong = belum diisi).
-- Form isian di halaman wawancara (bahasa UI id/ja; label butir dari konfigurasi, Jepang + terjemahan Indonesia). Bagian 4 hanya muncul bila ⑥ = 有.
-- **PDF form 5-5 per wawancara** (pdfkit, tata letak mengikuti form resmi, label Jepang) + **halaman tahunan per pekerja** (FY): semua 定期面談 + daftar 面談 karena
-  kejadian (② 議事録・面談記録 yang menyebut pekerja itu, terpisah dan berlabel) + tombol PDF gabungan setahun (semua form 5-5 pekerja itu).
-- Audit `periodic_interview.*` / `activity_export`: jenis, kuartal, ada/tidaknya 基準不適合; TANPA isi teks atau nama.
-
-- Deploy T-010 lewat `scripts/deploy.sh` dan catat output-nya di STATUS T-009.
-
-**Kriteria selesai**
-- [ ] Semua butir form 5-5 bisa diisi, disimpan, diedit (riwayat versi tetap jalan), dan muncul di PDF pada posisi yang sesuai; PDF diuji unit (isi teks) dan dicek manual
-  di image produksi lokal (lampirkan tangkapan layar ke PR).
-- [ ] Halaman tahunan per pekerja + PDF gabungan; LPK/sensei 404; `verify-rls` bagian baru.
-- [ ] `docs/catatan-kegiatan.md` dan glosarium diperbarui; label id/ja lengkap.
-- [ ] typecheck, test:unit, test:rls, build, e2e, CI hijau.
-- [ ] Pertanyaan terbuka dicatat di STATUS sebagai `BUTUH IPAL` (lihat di bawah).
-
-**Jawaban staf TSK (2026-10-06):** wawancara dengan atasan/監督者 **tidak** memakai form 5-6; cukup dicatat sebagai ② 議事録 (tidak ada pekerjaan tambahan).
-支援責任者/支援担当者: kolom 対応者 diisi bawaan dari penanggung jawab pekerja (T-010), bisa diganti per wawancara (staf + pilihan jabatan + 役職名).
-
----
-
-### T-004 · Pelacak zairyū kādo (在留カード): desain · `SIAP` (setelah T-009)
+### T-004 · Pelacak zairyū kādo (在留カード): desain · `SIAP`
 
 Hanya dokumen desain `docs/zairyu-card.md`, **belum ada kode atau migrasi**. Tujuannya supaya Ipal bisa menanyakan hal yang tepat ke staf TSK
 sebelum skema dibuat. Bahan: `CLAUDE.md` bagian "Keputusan untuk langkah 7", model `placements`, catatan kegiatan (7A), dashboard.
@@ -137,6 +91,7 @@ Kerjakan:
 
 ## Selesai
 
+- **T-009** Form 定期面談報告書 参考様式第5－5号 (PR #10): kolom form55 di `periodic_interviews` (migration 0024), konfigurasi tunggal `src/db/form55.ts` (teks butir resmi, isian kurung ⑤(2)), bagian 4 hanya bila ⑥ = 有, 作成年月日 bawaan = tanggal simpan terakhir (zona TSK), PDF per wawancara + gabungan setahun, halaman tahunan per pekerja (wawancara karena kejadian dipisah). 面談実施者 = 対応者 (keputusan PM). Status DRAFT sampai dicek staf TSK; deploy produksi setelah merge.
 - **T-010** Penanggung jawab pekerja (PR #9): `responsible_assignments` (migration 0023, per perusahaan atau per penempatan, append-only, tulis hanya TSK_ADMIN),
   beban per staf `WORKLOAD` (50, kuning ≥ 45, merah > 50, berlaku 2027-04-01, tidak memblokir), `/records/responsible`, 2 KPI TSK_ADMIN. Seed ≥ 45 ditunda ke langkah 8
   (dibuktikan di e2e). Deploy T-008: produksi `5f9c613`.
