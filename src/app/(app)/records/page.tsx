@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { btnPrimary, btnSecondary } from "@/components/styles";
 import { unreadReportIds } from "@/db/records-queries";
 import { requireStaff } from "@/features/records/access";
-import { RECORD_PAGE_SIZE, activeWorkers, listCases, listRecords, listStaff, myDailyReport, parseRecordFilters, reportsForMe } from "@/features/records/queries";
+import { RECORD_PAGE_SIZE, allWorkers, listCases, listRecords, listStaff, myDailyReport, parseRecordFilters, reportsForMe } from "@/features/records/queries";
 import { DailyReportCard } from "@/features/records/ui/DailyReportCard";
 import { RecordFilters } from "@/features/records/ui/RecordFilters";
 import { RecordList } from "@/features/records/ui/RecordList";
@@ -25,7 +25,7 @@ export default async function DailyRecordsPage({ searchParams }: { searchParams:
   const data = await tenantQuery(async (tx) => ({
     list: await listRecords(tx, f, me.id),
     staff: await listStaff(tx),
-    workers: await activeWorkers(tx),
+    workers: await allWorkers(tx),
     cases: await listCases(tx, { status: "", workerId: "" }),
     report: await myDailyReport(tx, me.id, today),
     unreadReports: (await unreadReportIds(tx, me.id)).length,

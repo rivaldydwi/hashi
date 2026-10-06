@@ -2,19 +2,22 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/EmptyState";
 import { btnPrimary, btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
-import { cellState, fiscalMonths, fiscalTitle, fiscalYearOf, quarterOfMonth, type CellState } from "@/db/records-core";
+import { fiscalMonths, fiscalTitle, fiscalYearOf, monthMark, quarterOfMonth, type MonthMark, type QuarterState } from "@/db/records-core";
 import { requireStaff } from "@/features/records/access";
 import { saveQuarterNote } from "@/features/records/actions";
-import { activeWorkers, interviewRowsFull, listStaff, quarterNotes } from "@/features/records/queries";
+import { interviewRowsFull, listStaff, quarterNotes, quartersOfFiscalYear } from "@/features/records/queries";
 import { ActionForm } from "@/features/records/ui/ActionForm";
 import { safeTimezone, ymdIn } from "@/lib/org-time";
 import { tenantQuery } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ICON: Record<CellState, string> = { done: "✅", pending: "🔴", na: "➖", notDue: "" };
+const ICON: Record<MonthMark | QuarterState, string> = { done: "✅", pending: "🔴", na: "➖", notDue: "", none: "", notRequired: "" };
 
-/** Tab Wawancara berkala (定期面談 / Teiki Mendan): grid pekerja aktif x 12 bulan tahun fiskal (April-Maret) seperti lembar Excel TSK. */
+/**
+ * Tab Wawancara berkala (定期面談 / Teiki Mendan): grid pekerja x 12 bulan tahun fiskal (April-Maret) seperti lembar Excel TSK. Status UTAMA per KUARTAL (aturan staf TSK: minimal sekali per kuartal,
+ * sejak mulai bekerja); bulan tetap tampil karena wawancara boleh bulanan. Baris = semua pekerja yang bekerja minimal satu hari di tahun fiskal itu, termasuk yang sudah berhenti (T-008).
+ */
 export default async function InterviewsGridPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requireStaff();
   const t = await getTranslations("records");
@@ -33,23 +36,27 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
   const fieldF = one(sp.field).slice(0, 100);
   const viewPending = one(sp.view) === "pending";
 
-  const { workers, rows, notes, staff } = await tenantQuery(async (tx) => ({ workers: await activeWorkers(tx), rows: await interviewRowsFull(tx, fy), notes: await quarterNotes(tx, fy), staff: await listStaff(tx) }));
+  const { qdata, rows, notes, staff } = await tenantQuery(async (tx) => ({ qdata: await quartersOfFiscalYear(tx, fy, today), rows: await interviewRowsFull(tx, fy), notes: await quarterNotes(tx, fy), staff: await listStaff(tx) }));
+  const workers = qdata.map((x) => x.worker);
+  const quartersOf = new Map(qdata.map((x) => [x.worker.id, x.quarters]));
   const byKey = new Map(rows.map((r) => [`${r.candidateId}|${r.periodMonth}`, r]));
-  const stateOf = (cid: string, start: string, m: string) => cellState(m, byKey.get(`${cid}|${m}`), today, start);
+  const markOf = (w: (typeof workers)[number], m: string) => monthMark(m, byKey.get(`${w.id}|${m}`), today, w.spans);
+  const quarterStateOf = (cid: string, q: number): QuarterState => quartersOf.get(cid)?.find((c) => c.q === q)?.state ?? "notRequired";
+  const quarterCountOf = (cid: string, q: number) => quartersOf.get(cid)?.find((c) => c.q === q)?.count ?? 0;
 
   const shown = workers.filter((w) => {
     if (clientF && w.companyId !== clientF) return false;
     if (fieldF && (locale === "ja" ? w.fieldNameJa : w.fieldNameId) !== fieldF) return false;
     if (staffF && !rows.some((r) => r.candidateId === w.id && r.staffId === staffF)) return false;
-    const states = months.map((m) => stateOf(w.id, w.startDate, m));
+    const states = [1, 2, 3, 4].map((q) => quarterStateOf(w.id, q));
     if (viewPending && !states.includes("pending")) return false;
     if (status) {
-      if (month) return stateOf(w.id, w.startDate, month) === status;
+      if (month) return quarterStateOf(w.id, quarterOfMonth(month)) === status; // filter bulan: status kuartal bulan itu
       return states.includes(status);
     }
     return true;
   });
-  const pendingCells = shown.reduce((n, w) => n + months.filter((m) => stateOf(w.id, w.startDate, m) === "pending").length, 0);
+  const pendingCells = shown.reduce((n, w) => n + [1, 2, 3, 4].filter((q) => quarterStateOf(w.id, q) === "pending").length, 0);
   const fields = [...new Set(workers.map((w) => (locale === "ja" ? w.fieldNameJa : w.fieldNameId)).filter(Boolean))] as string[];
   const companies = [...new Map(workers.map((w) => [w.companyId, w.companyName])).entries()];
   const noteOf = (cid: string, q: number) => notes.find((n) => n.candidateId === cid && n.quarter === q)?.note ?? "";
@@ -105,7 +112,9 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
         <span className="font-semibold">{t("interviews.legend")}:</span>
         {(["done", "pending", "na"] as const).map((s) => <span key={s}><span aria-hidden>{ICON[s]}</span> {t(`interviews.state.${s}`)}</span>)}
         <span className="text-ink-2" data-testid="pending-cells-count">{t("interviews.pendingCells", { n: pendingCells })}</span>
+        <Link href={`/records/interviews/annual?fy=${fy}`} className="font-semibold text-accent-text hover:underline" data-testid="annual-link">{t("interviews.annualLink")}</Link>
       </div>
+      <p className="mb-3 text-xs text-ink-2" data-testid="interview-rule">{t("interviews.ruleNote")}</p>
 
       {workers.length === 0 ? (
         <EmptyState testId="interviews-empty" title={t("interviews.emptyTitle")} body={t("interviews.emptyBody")} />
@@ -126,8 +135,8 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
             </tr></thead>
             <tbody>
               {shown.map((w) => (
-                <tr key={w.id} data-testid="interview-row" data-worker={w.id}>
-                  <th scope="row" className={`${tdc} sticky left-0 z-10 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link> <Link href={`/records/workers/${w.id}`} className="ml-1 inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text" data-testid="interview-worker-history">{t("whistory.historyLink")}</Link></th>
+                <tr key={w.id} data-testid="interview-row" data-worker={w.id} data-status={w.status}>
+                  <th scope="row" className={`${tdc} sticky left-0 z-10 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>{w.status === "ENDED" && w.endDate && <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800" data-testid="worker-ended">{t("interviews.endedOn", { date: w.endDate.replace(/-/g, "/") })}</span>} <Link href={`/records/workers/${w.id}`} className="ml-1 inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text" data-testid="interview-worker-history">{t("whistory.historyLink")}</Link></th>
                   <td className={tdc}>{(locale === "ja" ? w.fieldNameJa : w.fieldNameId) ?? "—"}</td>
                   <td className={`${tdc} whitespace-nowrap`}>{w.startDate.replace(/-/g, "/")}</td>
                   <td className={tdc}>{w.companyName}<div className="text-xs text-ink-2">{w.siteName}</div></td>
@@ -135,12 +144,12 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                   <td className={`${tdc} whitespace-nowrap`}>{w.sitePhone ?? "—"}</td>
                   <td className={tdc}>{w.contacts[0] ? <>{w.contacts[0].name}<div className="text-xs text-ink-2">{w.contacts[0].phone ?? ""}</div></> : "—"}</td>
                   {months.flatMap((m, i) => {
-                    const st = stateOf(w.id, w.startDate, m);
+                    const st = markOf(w, m);
                     const cell = (
                       <td key={m} className={`${tdc} ${m === month ? "bg-accent-soft/40" : ""}`} data-state={st} data-month={m} data-testid="interview-cell">
                         {st === "notDue" ? <span className="text-ink-2">—</span> : (
                           <Link href={`/records/interviews/${w.id}/${m}`} className="inline-flex min-h-11 flex-col justify-center hover:underline" data-testid="interview-cell-link">
-                            <span><span aria-hidden>{ICON[st]}</span> {t(`interviews.state.${st}`)}</span>
+                            {st === "none" ? <span className="text-xs text-ink-2">{t("interviews.state.none")}</span> : <span><span aria-hidden>{ICON[st]}</span> {t(`interviews.state.${st}`)}</span>}
                             {st === "done" && <span className="text-xs text-ink-2">{resultLabel(w.id, m)}</span>}
                           </Link>
                         )}
@@ -148,8 +157,12 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                     );
                     if (i % 3 !== 2) return [cell];
                     const q = quarterOfMonth(m);
+                    const qs = quarterStateOf(w.id, q);
                     return [cell, (
-                      <td key={`q${i}`} className={tdc} data-testid="quarter-cell">
+                      <td key={`q${i}`} className={tdc} data-testid="quarter-cell" data-quarter={q}>
+                        <p className="mb-1 text-sm font-semibold" data-testid="quarter-state" data-state={qs}>
+                          {qs === "notRequired" || qs === "notDue" ? <span className="font-normal text-ink-2">—</span> : <><span aria-hidden>{ICON[qs]}</span> {t(`interviews.qstate.${qs}`)}{qs === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: quarterCountOf(w.id, q) })})</span>}</>}
+                        </p>
                         <p lang="ja" className="whitespace-pre-wrap break-words text-xs">{noteOf(w.id, q) || "—"}</p>
                         <details>
                           <summary className="inline-flex min-h-11 cursor-pointer items-center text-xs font-semibold text-accent-text">{t("interviews.editQuarter")}</summary>

@@ -15,7 +15,8 @@ import { currentPeriod } from "../src/db/time";
 import { storageRootFor } from "../src/db/demo-files";
 import { AUDIT_PAGE_SIZE, listAudit, parseAuditFilters } from "../src/db/audit-history";
 import { ACTIONS } from "../src/db/audit-describe";
-import { activeWorkers, followupIds, pendingInterviewCells, unreadRecordIds, unreadReportIds } from "../src/db/records-queries";
+import { activeWorkers, allWorkers, followupIds, pendingInterviewQuarters, quartersOfFiscalYear, unreadRecordIds, unreadReportIds } from "../src/db/records-queries";
+import { fiscalYearOf } from "../src/db/records-core";
 import { todayInTskTz } from "../src/db/time";
 import { demoAttachmentPath } from "../src/db/demo-files";
 import { access } from "node:fs/promises";
@@ -316,9 +317,18 @@ async function main() {
     check("Pekerja aktif: >= 3 dari >= 2 lokasi klien", workers.length >= 3 && new Set(workers.map((w) => w.siteId)).size >= 2, `${workers.length} pekerja, ${new Set(workers.map((w) => w.siteId)).size} lokasi`);
     const piRows = await ownerQ<{ candidate_id: string; result_status: string | null; applicable: boolean; reason: string | null }>(sql`select candidate_id::text, result_status, applicable, reason from periodic_interviews where status = 'active'`);
     const piBy = new Set(piRows.map((r) => r.candidate_id));
-    const pending = await asTsk(admin, (tx) => pendingInterviewCells(tx, today));
+    const pending = await asTsk(admin, (tx) => pendingInterviewQuarters(tx, today));
     const statusSet = new Set(piRows.map((r) => r.result_status));
-    check("Wawancara berkala: tiap pekerja aktif punya wawancara; campuran status (問題なし dominan, 要フォロー, 問題あり, 未実施), semua alasan, bulan 対象外, kuartal Q1; ada sel Belum", workers.every((w) => piBy.has(w.id)) && ["no_issue", "follow_up", "issue", "not_done"].every((s) => statusSet.has(s)) && piRows.filter((r) => r.result_status === "no_issue").length > piRows.length / 2 - 1 && ["agency", "support", "worker"].every((x) => piRows.some((r) => r.reason === x)) && piRows.some((r) => !r.applicable) && (await n(sql`select count(*)::int as n from periodic_interview_quarter_notes where quarter = 1`)) >= 1 && pending.length > 0, `${piRows.length} wawancara; sel Belum ${pending.length}`);
+    check("Wawancara berkala: tiap pekerja aktif punya wawancara; campuran status (問題なし dominan, 要フォロー, 問題あり, 未実施), semua alasan, bulan 対象外, kuartal Q1; ada kuartal Belum", workers.every((w) => piBy.has(w.id)) && ["no_issue", "follow_up", "issue", "not_done"].every((s) => statusSet.has(s)) && piRows.filter((r) => r.result_status === "no_issue").length > piRows.length / 2 - 1 && ["agency", "support", "worker"].every((x) => piRows.some((r) => r.reason === x)) && piRows.some((r) => !r.applicable) && (await n(sql`select count(*)::int as n from periodic_interview_quarter_notes where quarter = 1`)) >= 1 && pending.length > 0, `${piRows.length} wawancara; kuartal Belum ${pending.length}`);
+    // Aturan kuartal + pekerja berhenti (T-008): KPI = jumlah kuartal Belum pada fungsi yang sama dengan grid; pekerja ENDED di tengah FY ikut grid/laporan FY-nya, tidak FY sesudahnya
+    const curQ = await asTsk(admin, (tx) => quartersOfFiscalYear(tx, fiscalYearOf(today), today));
+    const gridPending = curQ.reduce((nn, x) => nn + x.quarters.filter((c) => c.state === "pending").length, 0);
+    check("KPI 定期面談 = jumlah kuartal Belum di grid (satu fungsi: quartersOfFiscalYear)", gridPending === pending.length && pending.length > 0, `KPI ${pending.length}, grid ${gridPending}`);
+    const endedW = (await asTsk(admin, (tx) => allWorkers(tx))).filter((w) => w.status === "ENDED");
+    const endedFy = endedW[0]?.endDate ? fiscalYearOf(endedW[0].endDate) : null;
+    const qEnded = endedFy !== null ? await asTsk(admin, (tx) => quartersOfFiscalYear(tx, endedFy, today)) : [];
+    const qAfter = endedFy !== null ? await asTsk(admin, (tx) => quartersOfFiscalYear(tx, endedFy + 1, today)) : [];
+    check("Pekerja berhenti: >= 1 penempatan ENDED; muncul di grid/laporan FY-nya dengan >= 1 kuartal Belum; TIDAK muncul di FY sesudah berhenti; bukan pekerja aktif", endedW.length >= 1 && qEnded.some((x) => x.worker.id === endedW[0].id && x.quarters.some((c) => c.state === "pending")) && !qAfter.some((x) => x.worker.id === endedW[0].id) && !workers.some((w) => w.id === endedW[0].id), `${endedW.length} berhenti; FY ${endedFy}`);
     // KPI dashboard = fungsi yang sama dengan daftar: panggilan kedua menghasilkan himpunan identik (tidak bergantung urutan)
     const kpi = await asTsk(admin, async (tx) => ({ r: (await unreadRecordIds(tx, admin.id)).length, l: (await unreadReportIds(tx, admin.id)).length, f: (await followupIds(tx, {})).length }));
     check("KPI Catatan kegiatan bermakna: belum dibaca > 0, laporan belum dibaca >= 1, tindak lanjut terbuka > 0", kpi.r > 0 && kpi.l >= 1 && kpi.f > 0, JSON.stringify(kpi));

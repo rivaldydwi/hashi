@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { inputClass } from "@/components/styles";
 
-export type PickWorker = { id: string; name: string; katakana: string | null; site: string };
+export type PickWorker = { id: string; name: string; katakana: string | null; site: string; /** tanggal berhenti bekerja (YYYY-MM-DD) bila penempatannya sudah berakhir; ditampilkan sebagai penanda */ endedOn?: string | null };
 
 /** Pilih banyak pekerja aktif (cari nama atau katakana). Mengirim `name` (bawaan "subjects") berulang. */
 export function WorkerPicker({ workers, selected, name = "subjects", id = "workers" }: { workers: PickWorker[]; selected: string[]; name?: string; id?: string }) {
@@ -26,7 +26,7 @@ export function WorkerPicker({ workers, selected, name = "subjects", id = "worke
             <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-1.5 hover:bg-hover">
               <input type="checkbox" name={name} value={w.id} checked={chosen.includes(w.id)} onChange={(e) => setChosen((c) => (e.target.checked ? [...c, w.id] : c.filter((x) => x !== w.id)))} className="h-5 w-5 rounded border-line-btn" data-testid={`worker-${w.id}`} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{w.name}</span>
+                <span className="block truncate text-sm font-medium">{w.name}{w.endedOn && <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800" data-testid={`worker-ended-${w.id}`}>{t("pickers.endedOn", { date: w.endedOn.replace(/-/g, "/") })}</span>}</span>
                 <span className="block truncate text-xs text-ink-2">{w.katakana ? `${w.katakana} · ` : ""}{w.site}</span>
               </span>
             </label>

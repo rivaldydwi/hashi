@@ -1,20 +1,28 @@
 // Query Catatan kegiatan yang dipakai lebih dari satu tempat (halaman, dashboard, lencana sidebar, verify:seed). Semua di dalam withTenant:
 // RLS membatasi ke staf TSK organisasi sesi.
-import { and, asc, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Tx } from "./index";
 import {
   activityCases, activityDailyReportRecipients, activityDailyReports, activityFollowups, activityRecordReads, activityRecords, candidates,
   clientCompanies, clientSiteContacts, clientSites, periodicInterviews, placements, skillFields,
 } from "./schema";
-import { cellState, fiscalMonths, fiscalYearOf } from "./records-core";
+import { FISCAL_QUARTERS, fiscalQuarterRange, fiscalYearOf, quarterState, workedInFiscalYear, type QuarterState, type WorkSpan } from "./records-core";
 
+export type WorkerStatus = "ACTIVE" | "ENDED";
 export type ActiveWorker = {
   id: string;
   fullName: string;
   nameKatakana: string | null;
   fieldNameId: string | null;
   fieldNameJa: string | null;
+  /** Mulai kerja pada penempatan yang ditampilkan (ACTIVE bila ada, jika tidak yang berhenti paling akhir). */
   startDate: string;
+  /** "ACTIVE" = masih bekerja; "ENDED" = penempatan terakhirnya sudah berhenti. */
+  status: WorkerStatus;
+  /** Tanggal berhenti (hanya ENDED). */
+  endDate: string | null;
+  /** SEMUA masa kerja pekerja ini (beberapa penempatan bila pernah berhenti lalu bekerja lagi): dasar aturan kuartal 定期面談. */
+  spans: WorkSpan[];
   siteId: string;
   siteName: string;
   sitePhone: string | null;
@@ -24,8 +32,11 @@ export type ActiveWorker = {
   contacts: Array<{ name: string; phone: string | null; roleTitle: string | null }>;
 };
 
-/** Pekerja aktif = placement ACTIVE (dibuat otomatis saat keputusan DEPARTED). */
-export async function activeWorkers(tx: Tx): Promise<ActiveWorker[]> {
+/**
+ * Semua pekerja yang PERNAH ditempatkan: penempatan ACTIVE dan ENDED (penempatan dibuat otomatis saat keputusan DEPARTED). Satu baris per pekerja:
+ * yang masih bekerja lebih dulu (urut nama), lalu yang sudah berhenti (berhenti terbaru dulu). Dipakai grid/laporan 定期面談 dan pemilih pekerja (T-008).
+ */
+export async function allWorkers(tx: Tx): Promise<ActiveWorker[]> {
   const rows = await tx
     .select({
       id: candidates.id,
@@ -34,6 +45,8 @@ export async function activeWorkers(tx: Tx): Promise<ActiveWorker[]> {
       fieldNameId: skillFields.nameId,
       fieldNameJa: skillFields.nameJa,
       startDate: placements.startDate,
+      endDate: placements.endDate,
+      status: placements.status,
       siteId: clientSites.id,
       siteName: clientSites.name,
       sitePhone: clientSites.phone,
@@ -46,37 +59,75 @@ export async function activeWorkers(tx: Tx): Promise<ActiveWorker[]> {
     .innerJoin(clientSites, eq(clientSites.id, placements.siteId))
     .innerJoin(clientCompanies, eq(clientCompanies.id, clientSites.companyId))
     .leftJoin(skillFields, eq(skillFields.id, candidates.fieldId))
-    .where(eq(placements.status, "ACTIVE"))
-    .orderBy(asc(candidates.fullName));
+    .where(inArray(placements.status, ["ACTIVE", "ENDED"]))
+    .orderBy(asc(candidates.fullName), desc(placements.startDate));
   const contacts = await tx.select({ siteId: clientSiteContacts.siteId, name: clientSiteContacts.name, phone: clientSiteContacts.phone, roleTitle: clientSiteContacts.roleTitle }).from(clientSiteContacts).where(eq(clientSiteContacts.active, true)).orderBy(asc(clientSiteContacts.createdAt));
-  return rows.map((r) => ({ ...r, contacts: contacts.filter((c) => c.siteId === r.siteId).map(({ name, phone, roleTitle }) => ({ name, phone, roleTitle })) }));
+  const byWorker = new Map<string, typeof rows>();
+  for (const r of rows) byWorker.set(r.id, [...(byWorker.get(r.id) ?? []), r]);
+  const out: ActiveWorker[] = [];
+  for (const list of byWorker.values()) {
+    const shown = list.find((r) => r.status === "ACTIVE") ?? list[0]; // list urut start_date menurun: yang terbaru
+    const status: WorkerStatus = list.some((r) => r.status === "ACTIVE") ? "ACTIVE" : "ENDED";
+    out.push({
+      id: shown.id, fullName: shown.fullName, nameKatakana: shown.nameKatakana, fieldNameId: shown.fieldNameId, fieldNameJa: shown.fieldNameJa,
+      startDate: shown.startDate, status, endDate: status === "ENDED" ? (shown.endDate ?? null) : null,
+      spans: list.map((r) => ({ start: r.startDate, end: r.status === "ACTIVE" ? null : (r.endDate ?? r.startDate) })),
+      siteId: shown.siteId, siteName: shown.siteName, sitePhone: shown.sitePhone, siteAddress: shown.siteAddress, companyId: shown.companyId, companyName: shown.companyName,
+      contacts: contacts.filter((c) => c.siteId === shown.siteId).map(({ name, phone, roleTitle }) => ({ name, phone, roleTitle })),
+    });
+  }
+  return out.sort((a, b) => (a.status === b.status ? (a.status === "ACTIVE" ? a.fullName.localeCompare(b.fullName) : (b.endDate ?? "").localeCompare(a.endDate ?? "") || a.fullName.localeCompare(b.fullName)) : a.status === "ACTIVE" ? -1 : 1));
 }
 
-export type IntervalRow = { candidateId: string; month: string; applicable: boolean; resultStatus: string | null; interviewDate: string | null; id: string };
+/** Pekerja aktif = penempatan ACTIVE saja. */
+export async function activeWorkers(tx: Tx): Promise<ActiveWorker[]> {
+  return (await allWorkers(tx)).filter((w) => w.status === "ACTIVE");
+}
 
+export type IntervalRow = { candidateId: string; month: string; applicable: boolean; resultStatus: string | null; interviewDate: string | null; date: string; id: string };
+
+/** Wawancara aktif yang tanggal efektifnya (tanggal wawancara, atau awal bulan periode) jatuh di tahun fiskal itu. */
 export async function interviewsOfFiscalYear(tx: Tx, fy: number): Promise<IntervalRow[]> {
-  const months = fiscalMonths(fy);
+  const first = `${fy}-04-01`;
+  const last = `${fy + 1}-03-31`;
   const rows = await tx
     .select({ id: periodicInterviews.id, candidateId: periodicInterviews.candidateId, month: periodicInterviews.periodMonth, applicable: periodicInterviews.applicable, resultStatus: periodicInterviews.resultStatus, interviewDate: periodicInterviews.interviewDate })
     .from(periodicInterviews)
-    .where(and(eq(periodicInterviews.status, "active"), sql`${periodicInterviews.periodMonth} >= ${months[0]}::date and ${periodicInterviews.periodMonth} <= ${months[11]}::date`));
-  return rows;
+    .where(and(eq(periodicInterviews.status, "active"), sql`coalesce(${periodicInterviews.interviewDate}, ${periodicInterviews.periodMonth}) between ${first}::date and ${last}::date`));
+  return rows.map((r) => ({ ...r, date: r.interviewDate ?? r.month }));
+}
+
+export type QuarterCell = { q: 1 | 2 | 3 | 4; state: QuarterState; /** wawancara selesai di kuartal ini */ count: number };
+export type WorkerQuarters = { worker: ActiveWorker; quarters: QuarterCell[] };
+
+/** Keadaan 4 kuartal untuk pekerja-pekerja pada tahun fiskal `fy` (hanya pekerja yang bekerja minimal satu hari di FY itu: ACTIVE dan ENDED). SATU sumber untuk grid, KPI, dan daftar laporan tahunan. */
+export async function quartersOfFiscalYear(tx: Tx, fy: number, today: string): Promise<WorkerQuarters[]> {
+  const [workers, rows] = await Promise.all([allWorkers(tx), interviewsOfFiscalYear(tx, fy)]);
+  const byWorker = new Map<string, IntervalRow[]>();
+  for (const r of rows) byWorker.set(r.candidateId, [...(byWorker.get(r.candidateId) ?? []), r]);
+  return workers
+    .filter((w) => workedInFiscalYear(w.spans, fy))
+    .map((worker) => {
+      const mine = (byWorker.get(worker.id) ?? []).map((r) => ({ applicable: r.applicable, resultStatus: r.resultStatus, date: r.date }));
+      return {
+        worker,
+        quarters: FISCAL_QUARTERS.map((q) => {
+          const range = fiscalQuarterRange(fy, q);
+          const count = mine.filter((i) => i.applicable && i.resultStatus && i.resultStatus !== "not_done" && i.date >= range.start && i.date <= range.end).length;
+          return { q, state: quarterState(fy, q, mine, today, worker.spans), count };
+        }),
+      };
+    });
 }
 
 /**
- * Sel "Belum" (🔴) pada tahun fiskal berjalan: per pekerja aktif, bulan sejak mulai kerja sampai bulan berjalan tanpa wawancara selesai.
- * SATU fungsi dipakai KPI dashboard dan filter grid (jumlah selalu sama).
+ * Kuartal "Belum" (🔴) pada tahun fiskal berjalan: pekerja yang bekerja di FY itu (termasuk yang sudah berhenti) x kuartal wajib yang sudah berjalan/lewat tanpa wawancara selesai.
+ * SATU fungsi dipakai KPI dashboard dan filter `?view=pending` pada grid (jumlah selalu sama).
  */
-export async function pendingInterviewCells(tx: Tx, today: string): Promise<Array<{ candidateId: string; month: string }>> {
+export async function pendingInterviewQuarters(tx: Tx, today: string): Promise<Array<{ candidateId: string; fy: number; quarter: 1 | 2 | 3 | 4 }>> {
   const fy = fiscalYearOf(today);
-  const [workers, rows] = await Promise.all([activeWorkers(tx), interviewsOfFiscalYear(tx, fy)]);
-  const byKey = new Map(rows.map((r) => [`${r.candidateId}|${r.month}`, r]));
-  const out: Array<{ candidateId: string; month: string }> = [];
-  for (const w of workers) {
-    for (const month of fiscalMonths(fy)) {
-      if (cellState(month, byKey.get(`${w.id}|${month}`), today, w.startDate) === "pending") out.push({ candidateId: w.id, month });
-    }
-  }
+  const out: Array<{ candidateId: string; fy: number; quarter: 1 | 2 | 3 | 4 }> = [];
+  for (const { worker, quarters } of await quartersOfFiscalYear(tx, fy, today)) for (const c of quarters) if (c.state === "pending") out.push({ candidateId: worker.id, fy, quarter: c.q });
   return out;
 }
 

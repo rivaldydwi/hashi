@@ -5,7 +5,7 @@ import { btnSecondary, cardClass, inputClass, labelClass } from "@/components/st
 import { CASE_CATEGORIES, INTERVIEW_REASONS, INTERVIEW_RESULTS, MAX_ATTACHMENTS_PER_RECORD } from "@/db/records-core";
 import { requireStaff } from "@/features/records/access";
 import { createCaseFromInterview, savePeriodicInterview, voidPeriodicInterview } from "@/features/records/actions";
-import { activeWorkers, interviewDetail, listStaff } from "@/features/records/queries";
+import { allWorkers, interviewDetail, listStaff } from "@/features/records/queries";
 import { ActionForm } from "@/features/records/ui/ActionForm";
 import { Attachments } from "@/features/records/ui/Attachments";
 import { AddFollowupForm, FollowupList } from "@/features/records/ui/Followups";
@@ -26,7 +26,7 @@ export default async function InterviewFormPage({ params }: { params: Promise<{ 
   const locale = await getLocale();
   const tz = safeTimezone(me.organizationTimezone, me.organizationType);
   const today = ymdIn(new Date(), tz);
-  const data = await tenantQuery(async (tx) => ({ worker: (await activeWorkers(tx)).find((w) => w.id === candidateId), detail: await interviewDetail(tx, candidateId, month), staff: await listStaff(tx) }));
+  const data = await tenantQuery(async (tx) => ({ worker: (await allWorkers(tx)).find((w) => w.id === candidateId), detail: await interviewDetail(tx, candidateId, month), staff: await listStaff(tx) }));
   if (!data.worker) notFound();
   const { worker: w, detail, staff } = data;
   const r = detail?.row;

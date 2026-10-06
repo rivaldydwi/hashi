@@ -157,7 +157,7 @@
     "kpiRecordsUnread": "Catatan belum dibaca",
     "kpiRecordsUnreadHint": "{r} catatan dan {l} laporan harian",
     "kpiInterviewsPending": "Wawancara berkala belum dilakukan",
-    "kpiInterviewsPendingHint": "Sel Belum, bulan berjalan dan sebelumnya",
+    "kpiInterviewsPendingHint": "Kuartal wajib yang sudah berjalan tanpa wawancara",
     "kpiFollowupsOpen": "Tindak lanjut terbuka",
     "kpiFollowupsOpenAll": "Seluruh organisasi",
     "kpiFollowupsOpenMine": "Tugas milikmu",
@@ -1309,7 +1309,8 @@
     "pickers": {
       "searchWorker": "Cari nama atau katakana",
       "noWorker": "Tidak ada pekerja aktif yang cocok.",
-      "chosenCount": "{n} dipilih"
+      "chosenCount": "{n} dipilih",
+      "endedOn": "berhenti {date}"
     },
     "report": {
       "title": "Laporan hari ini",
@@ -1440,11 +1441,12 @@
       "field": "Bidang SSW",
       "onlyPending": "Hanya yang ada sel Belum",
       "legend": "Keterangan",
-      "pendingCells": "{n} sel belum dilaksanakan",
+      "pendingCells": "{n} kuartal belum dilaksanakan",
       "state": {
         "done": "Selesai",
         "pending": "Belum",
-        "na": "Tidak berlaku"
+        "na": "Tidak berlaku",
+        "none": "Belum diisi"
       },
       "emptyTitle": "Belum ada pekerja aktif",
       "emptyBody": "Pekerja muncul di sini setelah keputusannya Berangkat dan penempatan aktif dibuat.",
@@ -1474,6 +1476,15 @@
         "status": "Status",
         "reason": "Alasan pelaksanaan (jisshi riyū)",
         "content": "Isi wawancara (mendan naiyō)"
+      },
+      "endedOn": "berhenti {date}",
+      "annualLink": "Daftar laporan tahunan",
+      "ruleNote": "Aturan: wawancara berkala (teiki mendan) wajib minimal sekali per kuartal tahun fiskal (Apr-Jun, Jul-Sep, Okt-Des, Jan-Mar), sejak pekerja mulai bekerja di perusahaan; boleh lebih sering. Status utama ada di kolom kuartal; bulan yang belum diisi bukan tanda merah.",
+      "countInQuarter": "{n}x",
+      "qstate": {
+        "done": "Selesai",
+        "pending": "Belum",
+        "na": "Tidak berlaku"
       }
     },
     "export": {
@@ -1596,6 +1607,20 @@
         "meeting": "Notulen / pertemuan (gijiroku)",
         "timeline": "Kronologi kasus (jikeiretsu)",
         "interview": "Wawancara berkala (teiki mendan)"
+      }
+    },
+    "annual": {
+      "title": "Persiapan laporan tahunan",
+      "intro": "Semua pekerja yang bekerja minimal satu hari di tahun fiskal ini wajib masuk laporan ke imigrasi (nyūkan), termasuk yang berhenti di tengah tahun. Kuartal yang bolong ditandai merah. Formulir laporannya belum dibuat.",
+      "summary": "{workers} pekerja wajib dilaporkan; {complete} lengkap; {gaps} kuartal bolong.",
+      "backToGrid": "Kembali ke grid",
+      "emptyTitle": "Belum ada pekerja di tahun fiskal ini",
+      "emptyBody": "Belum ada pekerja yang bekerja di tahun fiskal ini.",
+      "ongoing": "sekarang",
+      "col": {
+        "period": "Masa kerja",
+        "quarter": "Kuartal {q}",
+        "gaps": "Kuartal bolong"
       }
     }
   },
