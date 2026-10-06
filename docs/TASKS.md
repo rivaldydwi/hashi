@@ -6,33 +6,11 @@ bagian "Peran dan aturan kerja".
 **Status:** `SIAP` (boleh diambil) · `DITAHAN` (menunggu keputusan Ipal/pihak luar, jangan diambil) · `SELESAI` (PR sudah di-merge).
 Ambil tugas `SIAP` **paling atas**. Satu tugas = satu branch `eng/<ID>-<slug>` = satu PR berjudul `[<ID>] …`.
 
-Terakhir diperbarui PM: 2026-10-06.
+Terakhir diperbarui PM: 2026-10-06 (setelah review T-001).
 
 ---
 
 ## Antrean
-
-### T-001 · Laporan kondisi Mini PC (uji coba alur kerja) · `SIAP`
-
-Tujuan: menguji siklus PM ↔ engineer dari ujung ke ujung, dan memberi PM fakta yang hanya bisa dilihat dari server.
-Tidak ada perubahan kode. Jangan mengubah apa pun di server; hanya membaca.
-
-Isi entri pertama `docs/STATUS.md` dengan:
-- Commit yang sedang berjalan di produksi (`docker compose ps`, image/commit yang dipakai; cara mengetahuinya juga ditulis) dan apakah sama dengan `main`.
-- Hasil `curl -fsS http://127.0.0.1:3110/api/health` (produksi) dan port 3111 (demo), atau keterangan bila demo tidak berjalan.
-- Apakah `db-dev` berjalan, dan apakah `.env` lokal menunjuk ke `_dev` (sebut NAMA database saja, jangan URL/kata sandi).
-- Versi `node`, `npm`, `docker`, `docker compose`, dan apakah `gh auth status` berhasil (cukup ya/tidak + nama akun).
-- Apakah Playwright Chromium sudah terpasang (bisa `test:e2e` atau tidak).
-- Sisa disk (`df -h` untuk partisi Docker) dan ukuran volume `docs-data` produksi.
-- Apakah ada cadangan yang sudah berjalan sekarang (cron/timer apa pun yang terkait Hashi), dan isi `~/hashi-backups/` (nama + tanggal berkas terbaru saja).
-- Apakah Claude Code di VS Code bisa menjalankan `/loop` (lihat "Cara engineer berjalan otomatis" di bawah) — ya/tidak + pesan bila gagal.
-
-**Kriteria selesai**
-- [ ] PR `[T-001] Laporan kondisi Mini PC` hanya mengubah `docs/STATUS.md`.
-- [ ] Semua butir di atas terjawab; yang tidak bisa dicek ditulis "tidak bisa dicek: <alasan>".
-- [ ] Tidak ada secret, URL berkata sandi, atau isi `.env` di PR.
-
----
 
 ### T-002 · Cadangan di luar server: desain + skrip lokal · `SIAP`
 
@@ -49,6 +27,8 @@ Kerjakan:
   dengan kode keluar bukan 0 dan pesan jelas; menulis checksum.
 - Uji restore: cadangan produksi di-restore ke **db-dev** (database berakhiran `_dev`) + folder dokumen sementara; aplikasi dev bisa login dan
   membuka satu dokumen kandidat. Tulis langkah dan hasilnya di STATUS.
+- Membaca volume `hashi_docs-data` lewat container sementara (`docker run --rm -v hashi_docs-data:/d:ro …`, image yang sudah ada di host) BOLEH untuk
+  cadangan: baca-saja, langsung terhapus, tidak menyentuh layanan lain. Cadangan manual lama di `~/hashi-backups/` jangan dihapus; usulkan retensinya di `docs/backup.md`.
 - **Belum** memasang cron/systemd timer (itu menyentuh host; masuk T-003 setelah Ipal setuju).
 
 **Kriteria selesai**
@@ -57,6 +37,26 @@ Kerjakan:
 - [ ] Uji restore ke db-dev berhasil dan didokumentasikan (perintah + hasil).
 - [ ] README bagian backup merujuk ke `docs/backup.md`.
 - [ ] CI hijau.
+
+---
+
+### T-005 · Commit yang berjalan bisa dibaca langsung · `SIAP`
+
+Dari usulan T-001: saat ini commit produksi hanya bisa ditebak dari waktu build image.
+
+Kerjakan:
+- Build image menerima build-arg `GIT_SHA` (bawaan `unknown`) dan menulisnya ke `LABEL org.opencontainers.image.revision` serta env aplikasi.
+  `compose.yaml` meneruskannya (mis. `GIT_SHA: ${GIT_SHA:-unknown}`); perintah deploy di README/CLAUDE.md menjadi
+  `GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build` (berlaku juga untuk `dc up` demo di `scripts/demo-lib.sh`).
+- `/api/health` mengembalikan `{"status":"ok","commit":"<sha pendek>"}`. Tidak ada informasi lain (tanpa versi paket, env, atau nama host).
+- Footer UI: ganti `common.version` "Hashi v0.2" menjadi versi yang tidak basi (mis. "Hashi" + sha pendek), id dan ja.
+- Job `docker` di CI: build dengan `GIT_SHA` dan periksa label image berisi sha tersebut.
+
+**Kriteria selesai**
+- [ ] `docker image inspect` menunjukkan label revision = commit yang dibangun; `/api/health` memuat `commit`.
+- [ ] Tanpa `GIT_SHA`, build tetap berhasil (`unknown`), tidak gagal.
+- [ ] Deploy dilakukan setelah merge, dan STATUS mencatat output `/api/health` produksi beserta commit-nya.
+- [ ] typecheck, test:i18n, build, CI hijau.
 
 ---
 
@@ -85,7 +85,9 @@ diterima), tampilan dashboard, dan daftar pertanyaan untuk staf TSK. Rincian dit
 
 ## Selesai
 
-- (belum ada)
+- **T-001** Laporan kondisi Mini PC (PR #2). Hasil penting: produksi sehat dan kodenya setara `main`; **belum ada cadangan otomatis maupun cadangan
+  `docs-data`** (prioritas T-002); `/loop` jalan di VS Code. Pengukuran volume lewat container `alpine` sementara (baca-saja) diterima,
+  tapi lain kali pakai `docker exec` ke container `hashi` yang sudah ada.
 
 ---
 
