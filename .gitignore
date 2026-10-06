@@ -13,3 +13,8 @@ docs-data/
 test-results/
 playwright-report/
 hashi-backups/
+# cadangan (terenkripsi atau tidak) tidak boleh masuk repo
+*.gpg
+*.dump
+*.sha256.tmp
+hashi-restore-test/
