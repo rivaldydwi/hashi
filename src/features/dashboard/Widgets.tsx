@@ -233,6 +233,8 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
     case "kpi-records-unread": return <Kpi testid="kpi-records-unread" href="/records?view=unread" label={t("kpiRecordsUnread")} value={data.rec!.records + data.rec!.reports} hint={t("kpiRecordsUnreadHint", { r: data.rec!.records, l: data.rec!.reports })} />;
     case "kpi-interviews-pending": return <Kpi testid="kpi-interviews-pending" href="/records/interviews?view=pending" label={t("kpiInterviewsPending")} value={data.rec!.interviews} hint={t("kpiInterviewsPendingHint")} />;
     case "kpi-followups-open": return <Kpi testid="kpi-followups-open" href={`/records/tasks?scope=${data.rec!.followupsScope}&status=open`} label={t("kpiFollowupsOpen")} value={data.rec!.followups} hint={t(data.rec!.followupsScope === "all" ? "kpiFollowupsOpenAll" : "kpiFollowupsOpenMine")} />;
+    case "kpi-staff-over": return <Kpi testid="kpi-staff-over" href="/records/responsible?view=over" label={t("kpiStaffOver")} value={data.resp!.over} hint={t("kpiStaffOverHint")} />;
+    case "kpi-unassigned": return <Kpi testid="kpi-unassigned" href="/records/responsible?view=unassigned" label={t("kpiUnassigned")} value={data.resp!.unassigned} hint={t("kpiUnassignedHint")} />;
     case "my-followups":
       return (
         <Card testid="w-my-followups" title={t("wMyFollowups")} href="/records/tasks?scope=mine&status=open" linkLabel={t("viewAll")}>

@@ -10,6 +10,7 @@ import type { AuditView } from "@/db/audit-describe";
 import { and, asc, eq } from "drizzle-orm";
 import { activityFollowups } from "@/db/schema";
 import { followupIds, openCases, openInterviewQuarters, unreadRecordIds, unreadReportIds } from "@/db/records-queries";
+import { responsibilityOverview } from "@/db/responsibility-queries";
 import { safeTimezone, ymdIn } from "@/lib/org-time";
 import type { CurrentUser } from "@/lib/session";
 
@@ -26,6 +27,7 @@ export type DashboardData = {
   jobs?: Awaited<ReturnType<typeof openJobs>>;
   newCands?: Awaited<ReturnType<typeof newCandidatesTop>>;
   activity?: AuditView[];
+  resp?: { over: number; unassigned: number };
   rec?: { records: number; reports: number; interviews: number; followups: number; followupsScope: "all" | "mine" };
   myTasks?: Array<{ id: string; description: string; dueDate: string | null; recordId: string | null; caseId: string | null; interviewId: string | null }>;
   casesOpen?: Awaited<ReturnType<typeof openCases>>;
@@ -78,6 +80,11 @@ export async function loadDashboard(user: CurrentUser, ids: Set<string>): Promis
           followups: has("kpi-followups-open") ? (await followupIds(tx, scope === "mine" ? { userId: user.id } : {})).length : 0,
           followupsScope: scope,
         };
+      }
+      if (has("kpi-staff-over", "kpi-unassigned")) {
+        // sama dengan daftar di /records/responsible (satu fungsi: responsibilityOverview)
+        const ov = await responsibilityOverview(tx, today);
+        d.resp = { over: ov.overLimit.length, unassigned: ov.unassigned.length };
       }
       if (has("my-followups")) {
         d.myTasks = await tx.select({ id: activityFollowups.id, description: activityFollowups.description, dueDate: activityFollowups.dueDate, recordId: activityFollowups.recordId, caseId: activityFollowups.caseId, interviewId: activityFollowups.interviewId })

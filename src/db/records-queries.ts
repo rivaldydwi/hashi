@@ -21,6 +21,8 @@ export type ActiveWorker = {
   status: WorkerStatus;
   /** Tanggal berhenti (hanya ENDED). */
   endDate: string | null;
+  /** Id penempatan yang ditampilkan (ACTIVE bila ada, jika tidak yang terakhir): dasar penanggung jawab per pekerja (T-010). */
+  placementId: string;
   /** SEMUA masa kerja pekerja ini (beberapa penempatan bila pernah berhenti lalu bekerja lagi): dasar aturan kuartal 定期面談. */
   spans: WorkSpan[];
   siteId: string;
@@ -44,6 +46,7 @@ export async function allWorkers(tx: Tx): Promise<ActiveWorker[]> {
       nameKatakana: candidates.nameKatakana,
       fieldNameId: skillFields.nameId,
       fieldNameJa: skillFields.nameJa,
+      placementId: placements.id,
       startDate: placements.startDate,
       endDate: placements.endDate,
       status: placements.status,
@@ -70,7 +73,7 @@ export async function allWorkers(tx: Tx): Promise<ActiveWorker[]> {
     const status: WorkerStatus = list.some((r) => r.status === "ACTIVE") ? "ACTIVE" : "ENDED";
     out.push({
       id: shown.id, fullName: shown.fullName, nameKatakana: shown.nameKatakana, fieldNameId: shown.fieldNameId, fieldNameJa: shown.fieldNameJa,
-      startDate: shown.startDate, status, endDate: status === "ENDED" ? (shown.endDate ?? null) : null,
+      placementId: shown.placementId, startDate: shown.startDate, status, endDate: status === "ENDED" ? (shown.endDate ?? null) : null,
       spans: list.map((r) => ({ start: r.startDate, end: r.status === "ACTIVE" ? null : (r.endDate ?? r.startDate) })),
       siteId: shown.siteId, siteName: shown.siteName, sitePhone: shown.sitePhone, siteAddress: shown.siteAddress, companyId: shown.companyId, companyName: shown.companyName,
       contacts: contacts.filter((c) => c.siteId === shown.siteId).map(({ name, phone, roleTitle }) => ({ name, phone, roleTitle })),

@@ -7,6 +7,7 @@ import { requireStaff } from "@/features/records/access";
 import { WORKER_TIMELINE_PAGE_SIZE, openTasksOfWorker, workerBasics, workerTimeline, type TimelineItem } from "@/features/records/queries";
 import { Badge, dateLabelSync } from "@/features/records/ui/common";
 import { dateTimeIn, safeTimezone, ymdIn } from "@/lib/org-time";
+import { responsibleOfWorker } from "@/db/responsibility-queries";
 import { tenantQuery } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -31,10 +32,11 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
   const data = await tenantQuery(async (tx) => {
     const w = await workerBasics(tx, candidateId);
     if (!w) return null;
-    return { w, tasks: await openTasksOfWorker(tx, candidateId), tl: await workerTimeline(tx, candidateId, { order, page, tz }) };
+    return { w, resp: await responsibleOfWorker(tx, candidateId, ymdIn(new Date(), tz)), tasks: await openTasksOfWorker(tx, candidateId), tl: await workerTimeline(tx, candidateId, { order, page, tz }) };
   });
   if (!data) notFound();
-  const { w, tasks, tl } = data;
+  const { w, resp, tasks, tl } = data;
+  const tresp = await getTranslations("responsible");
   const pages = Math.max(1, Math.ceil(tl.total / WORKER_TIMELINE_PAGE_SIZE));
   const base = `/records/workers/${candidateId}`;
   const qs = (p: number, o = order) => {
@@ -56,6 +58,7 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
           <h2 className="text-[19px] font-semibold" data-testid="worker-history-title">{t("whistory.title", { name: w.name })}</h2>
           {w.katakana && <p lang="ja" className="text-sm text-ink-2">{w.katakana}</p>}
           <p className="mt-1 text-sm text-ink-2">{t("whistory.intro")}</p>
+          {resp && <p className="mt-1 text-sm" data-testid="worker-responsible">{tresp("form.staff")}: <span className="font-medium">{resp.name ?? tresp("none")}</span>{resp.name && <span className="text-xs text-ink-2"> ({tresp(`source.${resp.source}`)})</span>}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={`/records/new?kind=daily_work&worker=${candidateId}`} className={btnPrimary} data-testid="worker-new-daily">+ {t("whistory.newDaily")}</Link>

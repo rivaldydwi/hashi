@@ -2863,6 +2863,60 @@ async function main() {
     JSON.stringify(Object.fromEntries(Object.entries(ur).filter(([k]) => k.startsWith("read/")))),
   );
 
+  // --- V. Penanggung jawab pekerja (T-010): baca = staf TSK organisasi sama; tulis = TSK_ADMIN; append-only (tanpa UPDATE/DELETE); staf harus staf TSK organisasi sama; LPK/sensei/TSK lain tidak melihat ---
+  const vr: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    const [co] = (await tx.execute(sql`select id::text as id from client_companies where org_id = ${tsk.id}::uuid order by id limit 1`)).rows as Array<{ id: string }>;
+    const [pl] = (await tx.execute(sql`select id::text as id from placements where org_id = ${tsk.id}::uuid and status = 'ACTIVE' order by id limit 1`)).rows as Array<{ id: string }>;
+    const ins = (org: string, by: string, target: { company?: string; placement?: string }, staff: string | null) =>
+      sql.raw(`insert into responsible_assignments (organization_id, created_by, company_id, placement_id, staff_id, effective_from) values ('${org}', '${by}', ${target.company ? `'${target.company}'` : "null"}, ${target.placement ? `'${target.placement}'` : "null"}, ${staff ? `'${staff}'` : "null"}, current_date) returning id::text as id`);
+    // admin TSK menulis; staf TSK tidak
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const first = ((await tx.execute(ins(tsk.id, tskAdminUser.id, { company: co.id }, staffUser.id))).rows[0] as { id: string }).id;
+    vr.placementOk = await attempt(tx, (t) => t.execute(ins(tsk.id, tskAdminUser.id, { placement: pl.id }, staff2.id)));
+    vr.clearOk = await attempt(tx, (t) => t.execute(ins(tsk.id, tskAdminUser.id, { placement: pl.id }, null)));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    vr.staffInsert = await attempt(tx, (t) => t.execute(ins(tsk.id, staffUser.id, { company: co.id }, staffUser.id)));
+    vr.staffReads = await num(tx, `select count(*)::int as n from responsible_assignments`);
+    // append-only: tanpa UPDATE/DELETE bahkan untuk admin
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    vr.update = await attempt(tx, (t) => t.execute(sql.raw(`update responsible_assignments set staff_id = null where id = '${first}'`)));
+    vr.delete = await attempt(tx, (t) => t.execute(sql.raw(`delete from responsible_assignments where id = '${first}'`)));
+    // penjaga: staf lintas organisasi / bukan staf TSK, target organisasi lain, cakupan ganda/kosong, pembuat tidak bisa dipalsukan
+    vr.staffOtherOrg = await attempt(tx, (t) => t.execute(ins(tsk.id, tskAdminUser.id, { company: co.id }, adminB)));
+    vr.staffIsLpk = await attempt(tx, (t) => t.execute(ins(tsk.id, tskAdminUser.id, { company: co.id }, lpkAdminUser.id)));
+    vr.bothScopes = await attempt(tx, (t) => t.execute(ins(tsk.id, tskAdminUser.id, { company: co.id, placement: pl.id }, staffUser.id)));
+    vr.noScope = await attempt(tx, (t) => t.execute(ins(tsk.id, tskAdminUser.id, {}, staffUser.id)));
+    const spoof = ((await tx.execute(ins(tsk.id, staffUser.id, { company: co.id }, tskAdminUser.id))).rows[0] as { id: string }).id; // created_by dipalsukan = staf
+    vr.createdByForced = await num(tx, `select count(*)::int as n from responsible_assignments where id = '${spoof}' and created_by = '${tskAdminUser.id}'`);
+    await actAs(tx, tskB, "TSK_ADMIN", adminB);
+    vr.otherOrgTarget = await attempt(tx, (t) => t.execute(ins(tskB, adminB, { company: co.id }, adminB))); // perusahaan milik TSK A
+    vr.otherOrgIntoA = await attempt(tx, (t) => t.execute(ins(tsk.id, adminB, { company: co.id }, tskAdminUser.id)));
+    for (const [who, org, role, uid] of [["tskB", tskB, "TSK_ADMIN", adminB], ["lpkAdmin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id], ["sensei", lpk1.id, "LPK_SENSEI", senseiUser.id], ["superAdmin", platformOrg.id, "SUPER_ADMIN", null], ["roleNull", tsk.id, null, null]] as const) {
+      await actAs(tx, org, role, uid);
+      vr[`read/${who}`] = await num(tx, `select count(*)::int as n from responsible_assignments`);
+      vr[`insert/${who}`] = who === "tskB" ? "skip" : await attempt(tx, (t) => t.execute(ins(tsk.id, uid ?? tskAdminUser.id, { company: co.id }, tskAdminUser.id)));
+    }
+  });
+  const E3 = (v: unknown) => typeof v === "string" && v.length > 0 && v !== "skip";
+  check(
+    "Penanggung jawab: TSK_ADMIN menulis (perusahaan, pekerja, dan mengosongkan); TSK_STAFF membaca tetapi tidak menulis; riwayat append-only (UPDATE dan DELETE ditolak, juga untuk admin)",
+    vr.placementOk === null && vr.clearOk === null && E3(vr.staffInsert) && Number(vr.staffReads) >= 3 && E3(vr.update) && E3(vr.delete),
+    JSON.stringify([vr.placementOk, vr.clearOk, String(vr.staffInsert).slice(0, 40), vr.staffReads, String(vr.update).slice(0, 40), String(vr.delete).slice(0, 40)]),
+  );
+  check(
+    "Penanggung jawab: penjaga trigger: staf harus staf TSK organisasi yang sama (organisasi lain dan LPK ditolak), target harus milik organisasi yang sama, tepat satu cakupan, created_by selalu pengguna sesi",
+    /bukan staf TSK/.test(String(vr.staffOtherOrg)) && /bukan staf TSK/.test(String(vr.staffIsLpk)) && /scope_check/.test(String(vr.bothScopes)) && /scope_check|penempatan bukan milik/.test(String(vr.noScope)) && vr.createdByForced === 1 && E3(vr.otherOrgTarget) && E3(vr.otherOrgIntoA),
+    JSON.stringify([String(vr.staffOtherOrg).slice(0, 40), String(vr.staffIsLpk).slice(0, 40), String(vr.bothScopes).slice(0, 50), String(vr.noScope).slice(0, 50), vr.createdByForced, String(vr.otherOrgTarget).slice(0, 50), String(vr.otherOrgIntoA).slice(0, 50)]),
+  );
+  check(
+    "Penanggung jawab: TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris dan tidak bisa menulis",
+    ["tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => vr[`read/${w}`] === 0) && ["lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => E3(vr[`insert/${w}`])),
+    JSON.stringify(Object.fromEntries(Object.entries(vr).filter(([k]) => k.startsWith("read/") || k.startsWith("insert/")).map(([k, v]) => [k, typeof v === "string" ? v.slice(0, 30) : v]))),
+  );
+
   await pool.end();
   await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);

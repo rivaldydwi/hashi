@@ -21,6 +21,7 @@ export default async function RecordsLayout({ children }: { children: React.Reac
           { href: "/records/cases", label: t("tabs.cases") },
           { href: "/records/interviews", label: t("tabs.interviews") },
           { href: "/records/tasks", label: t("tabs.tasks") },
+          { href: "/records/responsible", label: t("tabs.responsible") },
         ]}
       />
       {children}

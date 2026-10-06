@@ -38,6 +38,9 @@ export const WIDGETS: readonly WidgetDef[] = [
   { id: "kpi-records-unread", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiRecordsUnread" },
   { id: "kpi-interviews-pending", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiInterviewsPending" },
   { id: "kpi-followups-open", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiFollowupsOpen" },
+  // Penanggung jawab pekerja (T-010): hanya TSK_ADMIN
+  { id: "kpi-staff-over", kind: "kpi", roles: TSK_A, sizes: [], defaultSize: "half", label: "kpiStaffOver" },
+  { id: "kpi-unassigned", kind: "kpi", roles: TSK_A, sizes: [], defaultSize: "half", label: "kpiUnassigned" },
   { id: "kpi-orgs", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiOrgs" },
   { id: "kpi-users", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiUsers" },
   { id: "kpi-fields", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiFields" },

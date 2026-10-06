@@ -164,7 +164,11 @@
     "wMyFollowups": "Tindak lanjut saya",
     "wOpenCases": "Kasus terbuka",
     "emptyMyFollowups": "Tidak ada tugas tindak lanjut yang terbuka.",
-    "emptyOpenCases": "Tidak ada kasus terbuka."
+    "emptyOpenCases": "Tidak ada kasus terbuka.",
+    "kpiStaffOver": "Staf melebihi batas pekerja",
+    "kpiStaffOverHint": "Lebih dari 50 pekerja per staf (aturan April 2027)",
+    "kpiUnassigned": "Pekerja tanpa penanggung jawab",
+    "kpiUnassignedHint": "Belum ada staf yang bertanggung jawab"
   },
   "users": {
     "title": "Pengguna",
@@ -1147,7 +1151,8 @@
       "meetings": "Notulen dan catatan pertemuan (Gijiroku / Mendan Kiroku)",
       "cases": "Kasus (Kronologi kasus, Jikeiretsu)",
       "interviews": "Wawancara berkala (Teiki Mendan)",
-      "tasks": "Tindak lanjut"
+      "tasks": "Tindak lanjut",
+      "responsible": "Penanggung jawab"
     },
     "kinds": {
       "daily_work": "Catatan kerja harian",
@@ -1458,7 +1463,8 @@
         "address": "Alamat",
         "phone": "Telepon",
         "pic": "PIC klien",
-        "actions": "Tindakan"
+        "actions": "Tindakan",
+        "responsible": "Penanggung jawab"
       },
       "quarterNote": "Catatan Q{q}",
       "editQuarter": "Ubah",
@@ -1492,7 +1498,8 @@
         "open": "Belum (kuartal berjalan)",
         "missed": "Terlewat (kuartal lewat)",
         "na": "Tidak berlaku"
-      }
+      },
+      "onlyMine": "Pekerja saya"
     },
     "export": {
       "record": "Ekspor PDF",
@@ -1675,6 +1682,80 @@
       "benefitsNote": "fasilitas",
       "targetStartDate": "rencana mulai kerja",
       "applicationDeadline": "batas pendaftaran"
+    }
+  },
+  "responsible": {
+    "title": "Penanggung jawab pekerja (tantō / sekininsha)",
+    "intro": "Tiap staf menjadi penanggung jawab untuk satu atau beberapa perusahaan klien. Penanggung jawab ditetapkan per perusahaan (bawaan semua pekerjanya) dan bisa diganti per pekerja.",
+    "rule": "Aturan: mulai {date} satu staf TSK maksimal mendukung {max} pekerja, dihitung per orang staf (total semua pekerja yang ia pegang di semua klien). Halaman ini hanya memberi peringatan: kuning mulai {warnAt}, merah di atas {max}. Penyimpanan tidak diblokir.",
+    "view": {
+      "over": "Staf melebihi batas",
+      "unassigned": "Tanpa penanggung jawab"
+    },
+    "filter": {
+      "mine": "Pekerja saya"
+    },
+    "workload": {
+      "title": "Beban kerja per staf"
+    },
+    "col": {
+      "staff": "Staf",
+      "count": "Pekerja yang didukung",
+      "level": "Status",
+      "actions": "Aksi"
+    },
+    "level": {
+      "ok": "Aman",
+      "warn": "Mendekati/mencapai batas",
+      "over": "Melebihi batas"
+    },
+    "warning": {
+      "warn": "{name} memegang {n} pekerja (batas {max} mulai {date}).",
+      "over": "{name} memegang {n} pekerja: melebihi batas {max} yang berlaku mulai {date}."
+    },
+    "viewWorkers": "Lihat pekerja",
+    "noneOver": "Tidak ada staf yang melebihi batas.",
+    "unassigned": {
+      "title": "Belum ada penanggung jawab",
+      "none": "Semua pekerja yang sedang bekerja sudah punya penanggung jawab."
+    },
+    "companies": {
+      "title": "Penanggung jawab per perusahaan",
+      "hint": "Bawaan untuk semua pekerja perusahaan itu. Hanya Admin TSK yang bisa mengubah."
+    },
+    "workers": {
+      "title": "Pekerja",
+      "emptyTitle": "Tidak ada pekerja",
+      "emptyBody": "Tidak ada pekerja yang cocok dengan penyaring ini."
+    },
+    "none": "Belum ada",
+    "followCompany": "Ikut perusahaan",
+    "source": {
+      "company": "dari perusahaan",
+      "placement": "khusus pekerja",
+      "none": "belum ada"
+    },
+    "scope": {
+      "company": "Perusahaan",
+      "placement": "Pekerja"
+    },
+    "form": {
+      "staff": "Penanggung jawab",
+      "workerStaff": "Penanggung jawab khusus pekerja",
+      "effectiveFrom": "Berlaku mulai"
+    },
+    "save": "Simpan",
+    "saved": "Penanggung jawab tersimpan.",
+    "history": {
+      "title": "Riwayat perubahan",
+      "empty": "Belum ada perubahan.",
+      "from": "berlaku mulai {date}"
+    },
+    "errors": {
+      "dateInvalid": "Tanggal berlaku tidak valid.",
+      "targetNotFound": "Perusahaan atau pekerja tidak ditemukan.",
+      "staffInvalid": "Staf tidak valid.",
+      "noChange": "Tidak ada perubahan dari penetapan yang berlaku sekarang."
     }
   }
 }

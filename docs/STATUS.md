@@ -34,6 +34,47 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-06 · T-010 · Penanggung jawab pekerja (担当/責任者) + batas 50 pekerja per staf + hasil deploy T-008
+
+**PR:** #9 (branch `eng/T-010-penanggung-jawab`)
+**Status:** siap direview (deploy T-010 ke produksi dilakukan setelah merge, lewat `scripts/deploy.sh`; migration 0023 berjalan otomatis)
+
+**Hasil deploy T-008 lewat `scripts/deploy.sh --backup`** (PR #8 di-merge `5f9c613`, setelah `PM: DISETUJUI` revisi dan CI hijau di `1f95991`)
+- Cadangan terenkripsi dulu: `hashi-20261006-184948-*` (database 634 entri, 146 berkas dokumen, 736 KB; `LAST_FAILED` tidak ada). Lalu `GIT_SHA=5f9c613 docker compose -p hashi up -d --build`. Tidak ada migrasi baru.
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: 5f9c613 (label image: 5f9c613); health: {"status":"ok","commit":"5f9c613"}`, exit 0. Demo tidak disentuh (Up, healthy).
+
+**Yang dikerjakan (T-010)**
+- **Migration 0023** `responsible_assignments`: penetapan per **perusahaan** (bawaan) atau per **penempatan** (menimpa), `staff_id` null = dikosongkan ("ikut perusahaan" untuk pekerja), `effective_from`. **Append-only** (GRANT hanya SELECT/INSERT). Trigger: staf = staf TSK organisasi yang sama (`activity_assert_staff`), target milik organisasi yang sama, `created_by` selalu pengguna sesi. CHECK tepat satu cakupan. RLS: baca = staf TSK organisasi sama; **tulis = TSK_ADMIN** (keputusan saya: beban/hukum, sejalan KPI untuk Admin TSK; staf biasa membaca saja). LPK/sensei/super admin/TSK lain: 0 baris.
+- **Fungsi murni** `src/db/responsibility.ts` + konfigurasi tunggal `src/db/workload-config.ts` (`WORKLOAD`: max 50, peringatan 45, berlaku 2027-04-01). Penanggung jawab efektif = per pekerja (bila terisi) > perusahaan > tidak ada; beban per staf = penempatan **ACTIVE** saja (ENDED tidak dihitung), dihitung per orang lintas klien (30 + 20 = 50).
+- **Halaman** `/records/responsible` (tab baru "Penanggung jawab"): beban per staf (kuning >= 45 termasuk 50 = batas tercapai, merah > 50, teks menyebut aturan April 2027 dan **tidak memblokir** penyimpanan), "belum ada penanggung jawab", form per perusahaan/per pekerja (Admin TSK), riwayat perubahan, filter `?staff=`, `?mine=1` (pekerja saya), `?view=over|unassigned`.
+  Tampil juga di detail pekerja sisi TSK, halaman riwayat pekerja (T-007), dan grid 定期面談 (kolom + filter "pekerja saya").
+- **KPI dashboard TSK_ADMIN**: "Staf melebihi batas pekerja" dan "Pekerja tanpa penanggung jawab"; satu fungsi `responsibilityOverview` dengan halaman daftar (e2e: KPI = jumlah baris `?view=over` dan item `?view=unassigned`). TSK_STAFF tidak memiliki KPI itu.
+- **Audit** `responsible.set`: hanya id baris + cakupan (`scope`); e2e memastikan tidak ada nama/email staf di log. Label id + ja; `docs/catatan-kegiatan.md` dan `CLAUDE.md` diperbarui.
+
+**Verifikasi** (perintah → hasil apa adanya)
+- `npm run typecheck`, `test:i18n` (1409 kunci), `test:unit` (tes baru `responsibility`: konstanta, penetapan berlaku/terjadwal/seri, efektif per pekerja menimpa perusahaan dan dikosongkan kembali ke perusahaan, ambang 44/45/50/51, beban ACTIVE saja dan ganti per pekerja memindahkan hitungan), `verify:audit-coverage`, `npm run build` (0 peringatan) → lulus.
+- `db:seed -- --reset` lalu `npm run test:rls` → lulus, termasuk bagian V baru (admin menulis; staf membaca tetapi tidak menulis; append-only: UPDATE/DELETE ditolak; staf lintas organisasi/LPK ditolak; target organisasi lain ditolak; cakupan ganda/kosong; `created_by` dipaksa; TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris dan tidak bisa menulis).
+- `npm run verify:seed` → lulus (cek baru: aktif 3 = beban 2 + tanpa penanggung jawab 1; ada penetapan perusahaan dan pekerja; KPI = daftar).
+- `E2E_PORT=3120 npm run test:e2e` → **176 lulus**. Baru `responsible` (5 tes, bisa diulang; data uji dan penetapan dibersihkan di `afterAll`): tetapkan per pekerja lalu kembalikan ke perusahaan (angka beban berpindah dan kembali; riwayat; audit tanpa nama), tetapkan per perusahaan (yang mewarisi pindah, hitungan tepat), batas **45 kuning / 50 kuning (batas tercapai) / 51 merah**
+  dengan 51 pekerja uji + 7 pekerja ENDED yang tidak dihitung, KPI Admin = baris `?view=over`, simpan TIDAK diblokir (52); "belum ada penanggung jawab" = KPI; staf non-admin tanpa form; "pekerja saya"; tampil di detail kandidat/grid/riwayat; LPK/sensei 404; ponsel tanpa scroll horizontal.
+
+**Kondisi server:** belum ada yang di-deploy untuk T-010 (menunggu merge). Produksi `5f9c613` healthy.
+
+**Kendala / catatan (penyimpangan dari kriteria, mohon diputuskan PM)**
+- **Seed "satu staf >= 45" TIDAK dipenuhi.** Itu butuh >= 45 pekerja aktif, sedangkan seed demo hanya punya 36 kandidat; menambah kandidat berbagi ke TSK menggeser banyak angka tetap di tes (21 terlihat, filter per tahap/keputusan, dsb.). Sebagai gantinya seed memuat penetapan per perusahaan/per pekerja dan satu pekerja tanpa penanggung jawab (diperiksa `verify:seed`),
+  dan skenario 45/50/51 dibuktikan di e2e dengan data uji sementara. Usul: seed pilot 200 siswa (langkah 8) otomatis memunculkannya; atau tugas kecil terpisah `seed:workload` (opsional, tambahan, 46 pekerja dummy) bila PM ingin demo visual.
+- Tulis hanya TSK_ADMIN (lihat atas); bila PM ingin staf biasa boleh mengganti penanggung jawab pekerja yang ia pegang, itu perubahan policy kecil.
+- "Daerah" belum dimodelkan terpisah (cukup kelompokkan lewat perusahaan, sesuai tugas); belum ada kebutuhan yang memaksanya.
+- Satu bug kecil saya sendiri: tabel beban sempat membuat halaman melebar di ponsel (elemen `sr-only` di tabel); diperbaiki dengan wadah `relative` seperti grid wawancara.
+
+**Pertanyaan**
+- Tidak ada yang butuh Ipal.
+
+**Usulan berikutnya** (bukan tugas)
+- `seed:workload` opsional (lihat atas) dan, setelah T-004, kirim pengingat 在留カード ke penanggung jawab efektif (+ salinan Admin) memakai `effectiveResponsible`.
+
+---
+
 ## 2026-10-06 · T-008 · 定期面談 per kuartal + pekerja yang sudah berhenti + hasil deploy T-007
 
 **PR:** #8 (branch `eng/T-008-mendan-kuartal`)

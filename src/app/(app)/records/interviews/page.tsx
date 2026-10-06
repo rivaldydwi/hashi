@@ -5,6 +5,7 @@ import { btnPrimary, btnSecondary, cardClass, inputClass, labelClass } from "@/c
 import { fiscalMonths, fiscalTitle, fiscalYearOf, monthMark, quarterOfMonth, type MonthMark, type QuarterState } from "@/db/records-core";
 import { requireStaff } from "@/features/records/access";
 import { saveQuarterNote } from "@/features/records/actions";
+import { listResponsibleStaff, workersWithResponsible } from "@/db/responsibility-queries";
 import { interviewRowsFull, listStaff, quarterNotes, quartersOfFiscalYear } from "@/features/records/queries";
 import { ActionForm } from "@/features/records/ui/ActionForm";
 import { safeTimezone, ymdIn } from "@/lib/org-time";
@@ -35,8 +36,11 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
   const clientF = UUID.test(one(sp.client)) ? one(sp.client) : "";
   const fieldF = one(sp.field).slice(0, 100);
   const viewPending = one(sp.view) === "pending";
+  const mine = one(sp.mine) === "1"; // filter "pekerja saya" (T-010): hanya pekerja dengan penanggung jawab efektif = saya
 
-  const { qdata, rows, notes, staff } = await tenantQuery(async (tx) => ({ qdata: await quartersOfFiscalYear(tx, fy, today), rows: await interviewRowsFull(tx, fy), notes: await quarterNotes(tx, fy), staff: await listStaff(tx) }));
+  const { qdata, rows, notes, staff, resp, respStaff } = await tenantQuery(async (tx) => ({ qdata: await quartersOfFiscalYear(tx, fy, today), rows: await interviewRowsFull(tx, fy), notes: await quarterNotes(tx, fy), staff: await listStaff(tx), resp: (await workersWithResponsible(tx, today)).workers, respStaff: await listResponsibleStaff(tx) }));
+  const respOf = new Map(resp.map((w) => [w.id, w.responsible]));
+  const respName = new Map(respStaff.map((x) => [x.id, x.name]));
   const workers = qdata.map((x) => x.worker);
   const quartersOf = new Map(qdata.map((x) => [x.worker.id, x.quarters]));
   const byKey = new Map(rows.map((r) => [`${r.candidateId}|${r.periodMonth}`, r]));
@@ -47,6 +51,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
 
   const shown = workers.filter((w) => {
     if (clientF && w.companyId !== clientF) return false;
+    if (mine && respOf.get(w.id)?.staffId !== me.id) return false;
     if (fieldF && (locale === "ja" ? w.fieldNameJa : w.fieldNameId) !== fieldF) return false;
     if (staffF && !rows.some((r) => r.candidateId === w.id && r.staffId === staffF)) return false;
     const states = [1, 2, 3, 4].map((q) => quarterStateOf(w.id, q));
@@ -68,7 +73,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
   };
   const hrefFor = (over: Record<string, string>) => {
     const p = new URLSearchParams();
-    for (const [k, v] of Object.entries({ fy: String(fy), month, status, staff: staffF, client: clientF, field: fieldF, view: viewPending ? "pending" : "", ...over })) if (v) p.set(k, v);
+    for (const [k, v] of Object.entries({ fy: String(fy), month, status, staff: staffF, client: clientF, field: fieldF, view: viewPending ? "pending" : "", mine: mine ? "1" : "", ...over })) if (v) p.set(k, v);
     return `/records/interviews?${p}`;
   };
   const thc = "border border-line bg-page px-2 py-2 text-left text-xs font-semibold text-ink-2";
@@ -97,13 +102,15 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
           <div className="space-y-1.5"><label htmlFor="field" className={labelClass}>{t("interviews.field")}</label>
             <select id="field" name="field" defaultValue={fieldF} className={inputClass}><option value="">{t("filters.all")}</option>{fields.map((f) => <option key={f} value={f}>{f}</option>)}</select></div>
           <label className="inline-flex min-h-11 items-center gap-2 self-end text-sm"><input type="checkbox" name="view" value="pending" defaultChecked={viewPending} className="h-5 w-5" />{t("interviews.onlyPending")}</label>
+          <label className="inline-flex min-h-11 items-center gap-2 self-end text-sm"><input type="checkbox" name="mine" value="1" defaultChecked={mine} className="h-5 w-5" data-testid="filter-mine-input" />{t("interviews.onlyMine")}</label>
           <div className="flex gap-2 sm:col-span-3"><button type="submit" className={btnPrimary}>{t("filters.apply")}</button><Link href={`/records/interviews?fy=${fy}`} className={btnSecondary}>{t("filters.reset")}</Link></div>
         </form>
       </details>
 
-      {(viewPending || month || status || staffF || clientF || fieldF) && (
+      {(viewPending || mine || month || status || staffF || clientF || fieldF) && (
         <ul className="mb-3 flex flex-wrap gap-2" data-testid="filter-chips" aria-label={t("filters.active")}>
           {viewPending && <li data-testid="filter-chip" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-accent-soft pl-4 text-sm font-medium text-accent-text">{t("interviews.onlyPending")}<Link href={hrefFor({ view: "" })} aria-label={t("filters.remove", { name: t("interviews.onlyPending") })} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/10" data-testid="filter-chip-remove">×</Link></li>}
+          {mine && <li data-testid="filter-chip" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-accent-soft pl-4 text-sm font-medium text-accent-text">{t("interviews.onlyMine")}<Link href={hrefFor({ mine: "" })} aria-label={t("filters.remove", { name: t("interviews.onlyMine") })} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/10">×</Link></li>}
           {month && <li data-testid="filter-chip" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-accent-soft pl-4 text-sm font-medium text-accent-text">{t("interviews.month")}: {monthLabel(month)}<Link href={hrefFor({ month: "" })} aria-label={t("filters.remove", { name: monthLabel(month) })} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/10">×</Link></li>}
           {status && <li data-testid="filter-chip" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-accent-soft pl-4 text-sm font-medium text-accent-text">{t(`interviews.legendState.${status}`)}<Link href={hrefFor({ status: "" })} aria-label={t("filters.remove", { name: status })} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/10">×</Link></li>}
         </ul>
@@ -127,7 +134,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
             <thead><tr>
               <th className={`${thc} sticky left-0 z-10 min-w-40`}>{t("interviews.col.name")}</th>
               <th className={thc}>{t("interviews.col.field")}</th><th className={thc}>{t("interviews.col.start")}</th><th className={thc}>{t("interviews.col.company")}</th>
-              <th className={thc}>{t("interviews.col.address")}</th><th className={thc}>{t("interviews.col.phone")}</th><th className={thc}>{t("interviews.col.pic")}</th>
+              <th className={thc}>{t("interviews.col.responsible")}</th><th className={thc}>{t("interviews.col.address")}</th><th className={thc}>{t("interviews.col.phone")}</th><th className={thc}>{t("interviews.col.pic")}</th>
               {months.flatMap((m, i) => {
                 const head = <th key={m} className={`${thc} min-w-24 ${m === month ? "bg-accent-soft" : ""}`}>{monthLabel(m)}</th>;
                 return i % 3 === 2 ? [head, <th key={`q${i}`} className={`${thc} min-w-56`}>{t("interviews.quarterNote", { q: quarterOfMonth(m) })}</th>] : [head];
@@ -141,6 +148,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                   <td className={tdc}>{(locale === "ja" ? w.fieldNameJa : w.fieldNameId) ?? "—"}</td>
                   <td className={`${tdc} whitespace-nowrap`}>{w.startDate.replace(/-/g, "/")}</td>
                   <td className={tdc}>{w.companyName}<div className="text-xs text-ink-2">{w.siteName}</div></td>
+                  <td className={tdc} data-testid="grid-responsible" data-staff={respOf.get(w.id)?.staffId ?? ""}>{respOf.get(w.id)?.staffId ? respName.get(respOf.get(w.id)!.staffId!) ?? "—" : <span className="text-ink-2">—</span>}</td>
                   <td className={`${tdc} min-w-40`}>{w.siteAddress ?? "—"}</td>
                   <td className={`${tdc} whitespace-nowrap`}>{w.sitePhone ?? "—"}</td>
                   <td className={tdc}>{w.contacts[0] ? <>{w.contacts[0].name}<div className="text-xs text-ink-2">{w.contacts[0].phone ?? ""}</div></> : "—"}</td>
