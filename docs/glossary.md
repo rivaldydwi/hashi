@@ -21,7 +21,13 @@ Teks Jepang (`messages/ja.json`) memakai istilah Jepang aslinya. Istilah baru: t
 | 特定技能 | Tokutei Ginō | SSW (Specified Skilled Worker) | Program visa kerja terampil |
 | 技能実習・育成就労 | Ginō Jisshū / Ikusei Shūrō | Magang / Ikusei | Program magang dan penggantinya |
 | 管理者 / 施設長 | kanrisha / shisetsuchō | Manajer / kepala fasilitas | Contoh jabatan PIC klien |
-| 在留カード | Zairyū Kādo | Residence Card | Kartu izin tinggal (fitur langkah 7) |
+| 在留カード | Zairyū Kādo | Residence Card | Kartu izin tinggal (pelacak: desain di `docs/zairyu-card.md`, T-004) |
+| 在留資格 | Zairyū Shikaku | Status of Residence | Jenis status tinggal di kartu (mis. 特定技能1号) |
+| 在留期間 | Zairyū Kikan | Period of Stay | Lama izin tinggal (mis. 1 tahun) |
+| 在留期限 | Zairyū Kigen | Tanggal habis izin tinggal | Tanggal kalender terakhir kartu berlaku (hari itu masih berlaku) |
+| 在留期間更新許可申請 | Zairyū Kikan Kōshin Kyoka Shinsei | Permohonan perpanjangan izin tinggal | Pengajuan perpanjangan ke imigrasi (nyūkan) |
+| 特例期間 | Tokurei Kikan | Masa tinggal tambahan selama proses | Masa setelah tanggal habis sambil menunggu hasil permohonan (perlu dikonfirmasi TSK) |
+| 担当 | Tantō | Penanggung jawab pekerja | Staf TSK yang ditetapkan untuk seorang pekerja (T-010); penerima pengingat kartu |
 | 取引先プロフィール | Torihikisaki Purofīru | Profil klien | Lembar PDF profil perusahaan klien (langkah 6) |
 | 求人票 | Kyūjinhyō | Lembar job order | Lembar PDF satu lowongan lengkap dengan kondisi kerja (langkah 6) |
 | 労働条件 | Rōdō Jōken | Kondisi kerja | Gaji, jam kerja, libur, tempat tinggal, dst. di lembar job order |
