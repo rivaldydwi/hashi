@@ -70,11 +70,26 @@ Laporan tahunan ke imigrasi dibuat per tahun fiskal (April-Maret), diserahkan se
   Filter status/`?view=pending` bekerja pada status kuartal.
 - **KPI dashboard** "Wawancara berkala kuartal ini belum dilakukan" = jumlah kuartal **open** pada tahun fiskal berjalan (`openInterviewQuarters`, satu fungsi dengan grid: `quartersOfFiscalYear`) = pekerja yang masih perlu diwawancara sebelum tenggat; sama dengan `?view=pending` di grid.
   Kuartal **missed** (FY berjalan maupun FY lalu) TIDAK masuk KPI: sudah tidak bisa diperbaiki, tampil di grid dan daftar tahunan sebagai "bolong" sebagai bahan laporan (jadi tanda "sudah dilaporkan" belum diperlukan).
-- **Daftar persiapan laporan tahunan** (`/records/interviews/annual?fy=`): pekerja yang wajib dilaporkan, masa kerja, status + jumlah wawancara per kuartal, kuartal bolong (= `missed`), dan kuartal berjalan yang masih bisa dikejar (`open`). Formulir laporan imigrasinya sendiri belum dibuat.
+- **Daftar persiapan laporan tahunan** (`/records/interviews/annual?fy=`): pekerja yang wajib dilaporkan, masa kerja, status + jumlah wawancara per kuartal, kuartal bolong (= `missed`), dan kuartal berjalan yang masih bisa dikejar (`open`). Formulir laporannya (form 5-5) ada per wawancara dan per pekerja (lihat bagian berikut).
 - **Pekerja yang sudah berhenti di form catatan**: pemilih pekerja ①/② dan "Lanjutkan" memuat penempatan ENDED di bawah yang aktif dengan penanda "berhenti <tanggal>", jadi catatan/wawancara susulan tetap bisa dibuat. Halaman sel wawancara dan ekspor PDF 定期面談 juga membuka pekerja yang sudah berhenti.
 - Data lama tidak diubah: wawancara per bulan tetap sah; unik (pekerja, bulan) tetap berlaku, jadi saat ini satu bulan hanya bisa punya satu wawancara aktif (kuartal bisa diisi oleh bulan mana pun di dalamnya).
 - Seed: satu penempatan ENDED di tengah tahun fiskal (tanpa keputusan DEPARTED, hanya data demo) dengan wawancara di kuartal pertama sehingga kuartal berikutnya Belum; `verify:seed` memeriksa KPI = grid dan pekerja berhenti ikut FY-nya, tidak FY sesudahnya.
 Kolom identitas grid (bidang, tanggal mulai, perusahaan, alamat, telepon, PIC) ditarik dari data yang sudah ada, tidak disimpan ganda.
+
+## Form 5-5 (参考様式第5-5号) dan halaman tahunan per pekerja (T-009)
+Tiap 定期面談 dilaporkan ke imigrasi dengan 参考様式第5-5号「定期面談報告書（1号特定技能外国人用）」. Form kosong resmi dan publik di situs 出入国在留管理庁 (cari "参考様式第5-5号"); berkasnya TIDAK di-commit
+(lisensi tidak jelas), cukup rujukan ini. Wawancara dengan atasan/監督者 tidak memakai form 5-6: cukup dicatat sebagai ② 議事録 (jawaban staf TSK, 2026-10-06).
+- **Penyimpanan** (migration 0024, kolom di `periodic_interviews`): `method` (対面 `in_person` / オンライン `online`), `responder_role` (支援責任者 `support_manager` / 支援担当者 `support_staff`), `responder_title` (役職名), `form55` (jsonb, <= 20000 karakter).
+  Nama 対応者 = kolom `staff_id` yang sudah ada (bawaan form: penanggung jawab efektif pekerja dari T-010 bila masih staf aktif, selain itu pengguna yang login; boleh diganti per wawancara). Form kosong (semua NULL) = belum diisi; data lama tetap sah dan tetap bisa dicetak.
+- **Butir TETAP di satu berkas**: `src/db/form55.ts` (`FORM55_GROUPS`: ① 業務内容 3 butir, ② 待遇 6, ③ 保護 5, ④ 生活 2, ⑤ その他 2 = 18; kode `work.1` dst., label Jepang untuk PDF + Indonesia untuk form) dan validator zod (`parseForm55`). Jangan mengganti nomor kode: data lama merujuknya.
+  Label butir disusun dari rincian staf TSK, BUKAN salinan kata-per-kata form resmi; cocokkan dengan form terbaru lalu ubah di berkas itu saja (tanpa migrasi).
+  Bentuk jsonb: `{v:1, items:{<kode>:{a:"ok"|"problem", text}}, nonconformity: true|false|null (⑥), special (⑦), response: {...}|null (bagian 4), createdOn}`. Butir "problem" wajib berisi; bagian 4 (発生日, 内容, 本人/所属機関/関係機関への対応) hanya disimpan bila ⑥ = 有 (発生日 + 内容 wajib), selain itu dibuang.
+  Butir yang belum dijawab tidak ada di peta (draf boleh).
+- **Form isian** di halaman sel wawancara (`Form55Fields`, form yang sama dengan wawancara: satu tombol simpan). "Tidak berlaku" atau "Belum dilaksanakan" tidak menyimpan isi form. Riwayat versi tetap jalan (snapshot trigger memuat form lama; riwayat menampilkan ringkasan jumlah butir/masalah/ketidaksesuaian).
+- **PDF**: `/records/export/form55/<pekerja>/<YYYY-MM-01>` (satu form) dan `/records/export/form55-year/<pekerja>?fy=` (gabungan setahun: semua wawancara yang dilaksanakan, satu form per halaman, urut bulan; yang form-nya kosong tercetak kosong). `src/lib/pdf/form55.ts`, label di `labels.ja.ts`, tes isi teks `tests/unit/form55.test.ts`. Hanya staf TSK (LPK/sensei 404).
+- **Halaman tahunan per pekerja** `/records/workers/<id>/annual?fy=`: tabel 定期面談 setahun (status form, jumlah butir, masalah, ketidaksesuaian, PDF per baris), tombol PDF gabungan, dan bagian TERPISAH "Wawancara karena kejadian" (catatan ② yang menyebut pekerja ini; tidak memakai form 5-5). Ditautkan dari daftar tahunan, sel wawancara, dan riwayat.
+- **Audit**: `periodic_interview.*` mencatat `period` (bulan, jadi kuartalnya), `form55: "filled"` dan `nonconformity: yes|no`, `method`; tidak pernah isi teks atau nama. Ekspor PDF: `activity_export` dengan `exportKind` `form55` / `form55_nonconformity` / `form55_year`, tanpa nama.
+- Tes: unit `form55.test.ts`; `verify-rls` bagian W; `verify:seed` (form terisi, 基準不適合, form kosong); e2e `form55.spec.ts`.
 
 ## Ekspor PDF
 `src/lib/pdf/` (pdfkit, murni JavaScript: tanpa browser headless; font Noto Sans JP OFL di `assets/fonts` disematkan sebagai subset). Empat jenis: catatan tunggal, laporan harian, 時系列 (internal / untuk klien), 定期面談.

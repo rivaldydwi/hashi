@@ -921,8 +921,13 @@ export const periodicInterviews = pgTable(
     resultStatus: text("result_status"),
     reason: text("reason"),
     content: text("content"),
-    staffId: uuid("staff_id").references(() => users.id),
+    staffId: uuid("staff_id").references(() => users.id), // 面談対応者 (nama)
     note: text("note"),
+    // Form 参考様式第5-5号 (T-009; migration 0024). Form kosong (semua NULL) = belum diisi; data lama tetap sah.
+    method: text("method"), // 方式: in_person (対面) | online (オンライン)
+    responderRole: text("responder_role"), // 面談対応者の区分: support_manager (支援責任者) | support_staff (支援担当者)
+    responderTitle: text("responder_title"), // 役職名 (teks)
+    form55: jsonb("form55"), // butir checklist + 基準不適合等への対応, divalidasi zod (src/db/form55.ts), <= 20000 karakter
     status: text("status").notNull().default("active"),
     voidReason: text("void_reason"),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
@@ -939,6 +944,9 @@ export const periodicInterviews = pgTable(
     check("periodic_interviews_status_check", sql`${t.status} in ('active','void')`),
     check("periodic_interviews_void_check", sql`${t.status} = 'active' or (${t.voidReason} is not null and length(btrim(${t.voidReason})) > 0)`),
     check("periodic_interviews_month_check", sql`extract(day from ${t.periodMonth}) = 1`),
+    check("periodic_interviews_method_check", sql`${t.method} is null or ${t.method} in ('in_person','online')`),
+    check("periodic_interviews_responder_role_check", sql`${t.responderRole} is null or ${t.responderRole} in ('support_manager','support_staff')`),
+    check("periodic_interviews_form55_size_check", sql`${t.form55} is null or length(${t.form55}::text) <= 20000`),
   ],
 );
 

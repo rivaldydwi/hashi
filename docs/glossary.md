@@ -49,6 +49,9 @@ Teks Jepang (`messages/ja.json`) memakai istilah Jepang aslinya. Istilah baru: t
 | 対象外 | Taishōgai | Tidak berlaku | Bulan yang tidak perlu wawancara berkala |
 | 問題なし / 要フォロー / 問題あり / 未実施 | Mondai nashi / yō fōrō / mondai ari / mijisshi | Tidak ada masalah / perlu tindak lanjut / ada masalah / belum dilaksanakan | Status wawancara berkala |
 | 定期面談 | Teiki Mendan | Wawancara berkala | Wawancara berkala pekerja (Catatan kegiatan, tab 4; langkah 7A) |
+| 定期面談報告書 (参考様式第5-5号) | Teiki Mendan Hōkokusho (Sankō Yōshiki dai 5-5 gō) | Laporan wawancara berkala (form 5-5) | Form resmi imigrasi per wawancara (T-009) |
+| 基準不適合等 | Kijun Futekigō-tō | Ketidaksesuaian terhadap standar dan sejenisnya | Butir 6 form 5-5; bila ada, bagian 4 (penanganan) wajib diisi |
+| 面談対応者 | Mendan Taiōsha | Penanggung jawab wawancara | Staf yang mewawancarai (支援責任者 / 支援担当者) |
 | 入管 | Nyūkan | Imigrasi | |
 | 行政書士 | Gyōsei Shoshi | Pengurus administrasi hukum (Gyōsei Shoshi) | Dipakai di catatan internal saja |
 

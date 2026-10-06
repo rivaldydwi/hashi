@@ -34,6 +34,47 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-06 · T-009 · Form 定期面談報告書 (参考様式第5-5号) + halaman tahunan per pekerja + hasil deploy T-010
+
+**PR:** (branch `eng/T-009-form-5-5`; nomor PR di komentar pembuka PR)
+**Status:** siap direview
+
+**Hasil deploy T-010 lewat `scripts/deploy.sh --backup`** (PR #9 di-merge `ac8037a`, setelah `PM: DISETUJUI` dan CI hijau di `10100f9`)
+- Cadangan terenkripsi dulu: `hashi-20261006-193317-*` (database 634 entri, 146 berkas dokumen, 736 KB; `LAST_FAILED` tidak ada). Migration 0023 terterap otomatis (tabel `responsible_assignments` ada di produksi).
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: ac8037a (label image: ac8037a); health: {"status":"ok","commit":"ac8037a"}`. Demo tidak disentuh.
+
+**Yang dikerjakan**
+- Migration 0024: kolom `method`, `responder_role`, `responder_title`, `form55` (jsonb) di `periodic_interviews`, dengan CHECK (nilai method/role, form55 <= 20000 karakter). Data lama tidak diubah (form kosong = belum diisi). Tanpa migrasi data.
+- `src/db/form55.ts`: SATU berkas butir TETAP (18 butir: ① 3, ② 6, ③ 5, ④ 2, ⑤ 2; kode `work.1` dst.; label Jepang untuk PDF + Indonesia untuk form) dan validator zod (`parseForm55`: butir bermasalah wajib isi; bagian 4 hanya bila ⑥ = 有 dan wajib 発生日 + 内容, selain itu dibuang).
+- Form isian `Form55Fields` di halaman sel wawancara (id/ja; bagian 4 hanya muncul bila ⑥ = 有; satu tombol simpan dengan wawancara). 対応者 bawaan = penanggung jawab efektif pekerja (T-010, `responsibleOfWorker`), bisa diganti per wawancara (staf + jabatan + 役職名). "Tidak berlaku"/"Belum dilaksanakan" tidak menyimpan isi form. Riwayat versi jalan (snapshot trigger memuat form lama; riwayat menampilkan ringkasan).
+- PDF form 5-5 (`src/lib/pdf/form55.ts`; rute `/records/export/form55/<pekerja>/<bulan>` dan `/records/export/form55-year/<pekerja>?fy=`): bagian 1-4, ⑥/⑦, 作成年月日, 面談実施者の氏名; gabungan setahun = satu form per wawancara yang dilaksanakan, urut bulan.
+- Halaman tahunan per pekerja `/records/workers/<id>/annual?fy=`: tabel 定期面談 + status form + PDF per baris + PDF gabungan, dan bagian TERPISAH berlabel "Wawancara karena kejadian" (catatan ② yang menyebut pekerja). Ditautkan dari daftar tahunan, sel wawancara.
+- Audit: hanya `period`, `form55=filled`, `nonconformity=yes|no`, `method`; ekspor `activity_export` dengan `exportKind` form55 / form55_nonconformity / form55_year. Tanpa isi teks/nama.
+- Seed demo: wawancara terlaksana berisi form (satu dari empat sengaja kosong; "issue" memuat 基準不適合 + penanganan). Docs: `docs/catatan-kegiatan.md`, `docs/glossary.md`, CLAUDE.md; tautan form resmi hanya sebagai rujukan (berkas kosong tidak di-commit).
+
+**Verifikasi** (semua terhadap db-dev `hashi_dev`; produksi tidak disentuh)
+- `npm run typecheck` → lulus; `npm run build` → 0 peringatan
+- `npm run test:unit` → 69 lulus (termasuk `form55.test.ts`: validator, dan isi teks PDF: semua 18 butir, bagian 4 hanya bila 有, form kosong, gabungan setahun)
+- `npm run test:i18n` → konsisten; `npm run verify:audit-coverage` → lulus
+- `db:seed -- --reset` + `npm run test:rls` → semua lulus (bagian baru W: simpan + riwayat memuat form lama, CHECK method/role/ukuran juga lewat UPDATE tanpa WHERE, TSK lain/LPK/sensei/super admin/peran null membaca 0 baris dan form tak berubah); `npm run verify:seed` → lulus (pemeriksaan form 5-5 baru)
+- `E2E_PORT=3120 npm run test:e2e` → 184 lulus (8 baru di `form55.spec.ts`: isi lengkap + dimuat ulang, bagian 4 bersyarat, edit/versi/riwayat/audit tanpa isi, tidak disimpan untuk "Belum dilaksanakan", kedua PDF + audit ekspor, halaman tahunan + wawancara kejadian terpisah, ponsel 390px tanpa scroll horizontal, 対応者 bawaan, LPK/sensei 404)
+- Cek manual di image produksi lokal: `docker build --target runner` (tag sementara `hashi-t009-check`, kontainer sementara port 3125 ke db-dev; keduanya sudah dihapus, kontainer lain tidak disentuh). Rute PDF 200 `application/pdf` di image; dirender dengan `pdftoppm` dan tangkapan layar form + halaman tahunan: `docs/screenshots/T-009/` (data dummy seed saja).
+
+**Kondisi server:** produksi `ac8037a` (T-010). T-009 BELUM di-deploy (menunggu `PM: DISETUJUI`; ada migrasi 0024 → deploy dengan `--backup`).
+
+**Kendala / catatan**
+- Label butir 18 butir disusun dari rincian di TASKS (staf TSK), bukan salinan form resmi; PDF memuat kalimat itu apa adanya. Dipakai sebagai DRAFT.
+- Satu kolom nama dipakai untuk 対応者 (③ "氏名" bagian 2) dan 面談実施者の氏名 di penutup; form hanya memiliki satu staf per wawancara.
+- Audit mencatat bulan periode (`period`), kuartal diturunkan darinya; tidak ada kolom kuartal terpisah.
+- Wawancara yang dibatalkan (void) tidak ikut halaman tahunan maupun PDF gabungan.
+
+**Pertanyaan**
+- BUTUH IPAL: tolong minta staf TSK mencocokkan kalimat 18 butir (`src/db/form55.ts`) dan tata letak PDF (`docs/screenshots/T-009/`) dengan form 5-5 resmi terbaru; selisih diubah di satu berkas itu (tanpa migrasi). Sampai dikonfirmasi, jangan dikirim ke imigrasi.
+- BUTUH IPAL: apakah 面談実施者 (penutup) boleh selalu sama dengan 対応者, atau perlu kolom tersendiri?
+
+**Usulan berikutnya** (bukan tugas)
+- Bila kelak perlu, tanda "sudah dilaporkan ke imigrasi" per tahun fiskal; saat ini belum diperlukan.
+
 ## 2026-10-06 · T-010 · Penanggung jawab pekerja (担当/責任者) + batas 50 pekerja per staf + hasil deploy T-008
 
 **PR:** #9 (branch `eng/T-010-penanggung-jawab`)

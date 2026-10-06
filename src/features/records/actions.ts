@@ -12,6 +12,7 @@ import {
 import {
   CASE_CATEGORIES, COUNTERPARTIES, INTERVIEW_REASONS, INTERVIEW_RESULTS, MAX_ATTACHMENTS_PER_RECORD, MEETING_METHODS, WORK_TYPES, cleanSections,
 } from "@/db/records-core";
+import { FORM55_METHODS, FORM55_RESPONDER_ROLES, form55FromFields, parseForm55, summarizeForm55 } from "@/db/form55";
 import { allWorkers } from "@/db/records-queries";
 import { audit } from "@/lib/audit";
 import { ActionError, pgErrorCode } from "@/lib/errors";
@@ -543,6 +544,12 @@ export async function setFollowupStatus(_prev: FormState, fd: FormData): Promise
 }
 
 // ---------------------------------------------------------------------------------------------------- wawancara berkala
+/** Audit form 5-5: hanya kuartal fiskal, terisi/tidaknya, dan ada/tidaknya 基準不適合 (TANPA isi teks, nama, atau jawaban per butir). */
+function formAudit(v: Record<string, unknown>): Record<string, unknown> {
+  const sum = summarizeForm55(v.form55 as never);
+  return sum.filled ? { form55: "filled", nonconformity: sum.nonconformity === null ? undefined : sum.nonconformity ? "yes" : "no" } : {};
+}
+
 export async function savePeriodicInterview(_prev: FormState, fd: FormData): Promise<FormState> {
   return run(async (me) => {
     const candidateId = str(fd, "candidateId");
@@ -555,7 +562,7 @@ export async function savePeriodicInterview(_prev: FormState, fd: FormData): Pro
     const note = strOrNull(fd, "note");
     let v: Record<string, unknown>;
     if (!applicable) {
-      v = { applicable: false, interviewDate: null, resultStatus: null, reason: null, content: null, staffId: null, note };
+      v = { applicable: false, interviewDate: null, resultStatus: null, reason: null, content: null, staffId: null, note, method: null, responderRole: null, responderTitle: null, form55: null };
     } else {
       const result = str(fd, "resultStatus");
       const reason = str(fd, "reason");
@@ -568,7 +575,24 @@ export async function savePeriodicInterview(_prev: FormState, fd: FormData): Pro
         if (!reason) throw new ActionError("records.errors.reasonSelectRequired");
       }
       if (!uuid.safeParse(staff).success) throw new ActionError("records.errors.invalid");
-      v = { applicable: true, interviewDate: result !== "not_done" && date ? date : null, resultStatus: result, reason: reason || null, content: strOrNull(fd, "content", 8000), staffId: staff, note };
+      // Form 5-5 (T-009): hanya untuk wawancara yang benar-benar dilakukan; "Belum dilaksanakan" tidak menyimpan isi form
+      const method = str(fd, "method");
+      const role = str(fd, "responderRole");
+      if (method && !(FORM55_METHODS as readonly string[]).includes(method)) throw new ActionError("records.errors.invalid");
+      if (role && !(FORM55_RESPONDER_ROLES as readonly string[]).includes(role)) throw new ActionError("records.errors.invalid");
+      let form55: unknown = null;
+      if (result !== "not_done") {
+        const raw = form55FromFields((n) => str(fd, n));
+        if (raw) {
+          const parsed = parseForm55(raw);
+          if (!parsed.ok) throw new ActionError(`records.errors.${parsed.error}`);
+          const dates = [parsed.value.createdOn, parsed.value.response?.occurredOn, parsed.value.response?.company.notifiedOn, parsed.value.response?.agency.on];
+          if (dates.some((x) => x && (!ymd.safeParse(x).success || x > today))) throw new ActionError("records.errors.dateInvalid");
+          form55 = parsed.value;
+        }
+      }
+      const keep = result !== "not_done";
+      v = { applicable: true, interviewDate: result !== "not_done" && date ? date : null, resultStatus: result, reason: reason || null, content: strOrNull(fd, "content", 8000), staffId: staff, note, method: keep ? method || null : null, responderRole: keep ? role || null : null, responderTitle: keep ? strOrNull(fd, "responderTitle", 100) : null, form55 };
     }
     let id = "";
     await tenantQuery(async (tx) => {
@@ -579,13 +603,13 @@ export async function savePeriodicInterview(_prev: FormState, fd: FormData): Pro
       if (!existing) {
         const [row] = await tx.insert(periodicInterviews).values({ organizationId: me.organizationId, createdBy: me.id, candidateId, periodMonth: month, ...v } as typeof periodicInterviews.$inferInsert).returning({ id: periodicInterviews.id });
         id = row.id;
-        await log(tx, me, "periodic_interview.create", "periodic_interview", id, { resultStatus: v.resultStatus ?? undefined, reason: v.reason ?? undefined, period });
+        await log(tx, me, "periodic_interview.create", "periodic_interview", id, { resultStatus: v.resultStatus ?? undefined, reason: v.reason ?? undefined, period, ...formAudit(v) });
       } else {
         id = existing.id;
         const fields = changedNames(existing as never, v);
         if (!fields.length) return;
         await tx.update(periodicInterviews).set(v as never).where(eq(periodicInterviews.id, id));
-        await log(tx, me, "periodic_interview.update", "periodic_interview", id, { resultStatus: v.resultStatus ?? undefined, reason: v.reason ?? undefined, period, fields });
+        await log(tx, me, "periodic_interview.update", "periodic_interview", id, { resultStatus: v.resultStatus ?? undefined, reason: v.reason ?? undefined, period, fields, ...formAudit(v) });
       }
     });
     void tz;
