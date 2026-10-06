@@ -28,6 +28,9 @@ COPY src/db ./src/db
 # supaya volume baru yang kosong mewarisi pemilik node dan seed bisa menulis berkas dummy.
 ENV STORAGE_DIR=/app/docs-data
 RUN mkdir -p /app/docs-data && chown node:node /app/docs-data
+# Commit pembangun image (bawaan unknown; deploy: GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build)
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.revision=$GIT_SHA
 USER node
 CMD ["npm", "run", "db:migrate"]
 
@@ -44,6 +47,11 @@ COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 # supaya volume baru yang kosong mewarisi pemilik node dan aplikasi bisa menulis.
 ENV STORAGE_DIR=/app/docs-data
 RUN mkdir -p /app/docs-data && chown node:node /app/docs-data
+# Commit pembangun image (bawaan unknown): label OCI + env yang dibaca /api/health dan label versi di sidebar. ARG diletakkan paling akhir
+# supaya layer build di atasnya tetap ter-cache saat hanya sha yang berubah.
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.revision=$GIT_SHA
+ENV GIT_SHA=$GIT_SHA
 USER node
 EXPOSE 3100
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

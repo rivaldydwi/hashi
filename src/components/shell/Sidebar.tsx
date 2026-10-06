@@ -17,11 +17,14 @@ export function Sidebar({
   soon,
   org,
   user,
+  commit,
 }: {
   items: SidebarItem[];
   soon: SoonItem[];
   org: { name: string; roleLabel: string };
   user: { name: string; email: string };
+  /** Sha pendek commit yang berjalan ("unknown" bila image dibangun tanpa GIT_SHA). */
+  commit: string;
 }) {
   const pathname = usePathname();
   const t = useTranslations("shell");
@@ -100,6 +103,7 @@ export function Sidebar({
             </form>
           </div>
         </details>
+        <p className="px-2 pb-1 text-[11px] text-ink-2" data-testid="build-version">{tc("version", { commit })}</p>
       </div>
     </div>
   );

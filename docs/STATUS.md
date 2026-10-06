@@ -34,6 +34,39 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-06 · T-005 · Commit yang berjalan bisa dibaca langsung
+
+**PR:** #4 (branch `eng/T-005-commit-terbaca`)
+**Status:** siap direview (deploy produksi dilakukan SETELAH merge; hasilnya dicatat di bawah setelah itu)
+
+**Yang dikerjakan**
+- `Dockerfile`: `ARG GIT_SHA=unknown` (di akhir stage supaya cache layer tetap) → `LABEL org.opencontainers.image.revision` di stage `runner` DAN `tools`; stage `runner` juga `ENV GIT_SHA`.
+- `compose.yaml`: `build.args.GIT_SHA: ${GIT_SHA:-unknown}` untuk `app` dan `migrate`. `scripts/demo-lib.sh` `dc()` mengisi `GIT_SHA` otomatis dari `git rev-parse --short HEAD` (jadi `dc up` demo ikut tanpa perubahan perintah).
+- `/api/health` → `{"status":"ok","commit":"<sha pendek>"}` (`src/lib/build-info.ts`: hanya sha heksadesimal 7-40 karakter yang dipercaya, selain itu `unknown`; tidak ada info lain). Respons galat (503) tidak berubah.
+- Label versi: `common.version` diganti dari "Hashi v0.2" menjadi "Hashi · {commit}" (id dan ja). **Catatan:** kunci lama itu TIDAK dirender di mana pun (kunci mati), jadi tidak ada "footer" yang diganti; saya menampilkannya sebagai teks kecil di bagian bawah sidebar (`data-testid="build-version"`, di bawah menu akun).
+- Perintah deploy di README, `CLAUDE.md`, `docs/HISTORY.md` menjadi `GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build`.
+- CI (job `docker`): build `runner` dan `tools` dengan `GIT_SHA=${GITHUB_SHA::7}`, lalu periksa label = sha, env `GIT_SHA` di container = sha, dan build TANPA build-arg tetap berhasil dengan label dan env `unknown`.
+
+**Verifikasi** (perintah → hasil apa adanya)
+- `npm run typecheck` → lulus. `npm run test:i18n` → lulus (1299 kunci). `npm run test:unit` → lulus (tes baru `build-info`). `npm run build` → 0 peringatan.
+- `E2E_PORT=3120 npx playwright test health ui-polish dashboard` → 20 lulus (tes baru: `/api/health` memuat tepat kunci `status` dan `commit`; sidebar menampilkan "Hashi · unknown|sha", bukan "v0.2"). e2e penuh tidak dijalankan lokal (hanya yang tersentuh); CI menjalankannya.
+- Lokal: `docker build --target runner --build-arg GIT_SHA=c634f2b` → label `c634f2b`, env `c634f2b`. Tanpa arg → `unknown` dan `unknown` (build tidak gagal). Image uji itu sudah saya hapus (milik saya, `hashi-t005-test`).
+
+**Kondisi server:** belum ada yang di-deploy (menunggu merge). Demo TIDAK disentuh (izin Ipal diperlukan); demo akan ikut sha saat deploy berikutnya yang memang direncanakan.
+
+**Kendala / catatan**
+- Tanpa `GIT_SHA` di perintah deploy, hasilnya `unknown` (disengaja, tidak gagal). Mudah lupa: usulan menjadikan deploy satu skrip (`scripts/deploy.sh` yang mengisi sha dan memeriksa `/api/health`).
+- `.claude/settings.local.json` (izin `gh pr merge`) kini dikecualikan lewat `.git/info/exclude` lokal karena `.gitignore` repo tidak memuatnya (PM mengira diabaikan secara bawaan). Usulan: tambahkan `.claude/settings.local.json` ke `.gitignore` lewat PR kecil.
+
+**Pertanyaan**
+- Tidak ada yang butuh Ipal.
+
+**Usulan berikutnya** (bukan tugas)
+- `scripts/deploy.sh` (sha otomatis + health check + cetak commit yang berjalan).
+- Tambah `.claude/settings.local.json` ke `.gitignore`.
+
+---
+
 ## 2026-10-06 · T-002 · Cadangan di luar server: desain + skrip lokal
 
 **PR:** #3 (branch `eng/T-002-backup-desain`)

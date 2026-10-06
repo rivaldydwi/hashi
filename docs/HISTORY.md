@@ -97,7 +97,7 @@ Server ini dipakai bersama layanan lain (Actual Budget, OpenClaw, monitoring, mi
 **Produksi**
 ```bash
 git pull
-docker compose up -d --build          # migrasi otomatis lewat service `migrate`; JANGAN pakai --remove-orphans
+GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build          # migrasi otomatis lewat service `migrate`; JANGAN pakai --remove-orphans
 curl http://127.0.0.1:3110/api/health # {"status":"ok"}
 ```
 Tidak ada tes basis data yang dijalankan di produksi; verifikasi cukup CI hijau + health check. Database baru TIDAK di-seed otomatis; reseed produksi hanya dengan izin eksplisit pemilik (`ALLOW_DESTRUCTIVE_DB=1`).

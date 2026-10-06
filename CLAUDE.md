@@ -34,7 +34,7 @@ Kamu berjalan di Mini PC/VS Code → kamu **engineer**. Kamu sesi cloud di claud
 6. `git push -u origin <branch>`, lalu buka PR ke `main` dengan judul `[<ID>] <ringkas>` (`gh pr create`). Isi PR: apa yang berubah, hasil verifikasi, kriteria selesai sebagai checklist, pertanyaan.
 7. Tunggu review. PM menjawab lewat komentar PR yang diawali penanda:
    - `PM: REVISI`: perbaiki di branch yang sama, push, lalu komentar `ENGINEER: siap direview ulang`.
-   - `PM: DISETUJUI`: kalau CI hijau, `gh pr merge <no> --merge --delete-branch`. Lalu deploy bila tugasnya meminta (`git pull && docker compose up -d --build` + health check) dan lanjut ke langkah 1.
+   - `PM: DISETUJUI`: kalau CI hijau, `gh pr merge <no> --merge --delete-branch`. Lalu deploy bila tugasnya meminta (`git pull && GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build` + health check) dan lanjut ke langkah 1.
    (PM dan engineer memakai akun GitHub yang sama, jadi tombol "Approve" GitHub tidak bisa dipakai; penandanya adalah komentar.)
 8. Kalau tidak ada tugas `SIAP`, jangan mengarang tugas sendiri: tulis di STATUS bahwa antrean kosong, lalu berhenti.
 
@@ -89,7 +89,7 @@ npm run test:i18n      # kunci id == ja, dan setiap kolom di sections.ts punya l
 npm run test:e2e       # tes browser; MENAMBAH data uji -> jalankan di database dev saja
 ```
 
-Production di OptiPlex: `docker compose up -d --build` (migration otomatis lewat service `migrate`).
+Production di OptiPlex: `GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build` (migration otomatis lewat service `migrate`).
 Port 3100 dipakai aplikasi lain di OptiPlex → Hashi memakai `APP_PORT=3110`.
 
 ### Database development (jangan mengotori data demo production)
@@ -372,4 +372,4 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 
 1. Kerjakan satu langkah → `npm run typecheck && npm run test:rls && npm run build && npm run test:e2e`
 2. Commit (Bahasa Indonesia) di branch tugas → `git push` → PR → CI (GitHub Actions) harus hijau → review PM (lihat "Peran dan aturan kerja")
-3. Setelah `PM: DISETUJUI` dan merge, deploy di OptiPlex: `git checkout main && git pull && docker compose up -d --build`
+3. Setelah `PM: DISETUJUI` dan merge, deploy di OptiPlex: `git checkout main && git pull && GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build`

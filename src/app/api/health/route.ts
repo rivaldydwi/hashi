@@ -1,4 +1,5 @@
 import { pingDb } from "@/db";
+import { buildCommit } from "@/lib/build-info";
 
 export const dynamic = "force-dynamic";
 
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     await pingDb();
-    return Response.json({ status: "ok" });
+    return Response.json({ status: "ok", commit: buildCommit() });
   } catch {
     return Response.json({ status: "error", db: "unreachable" }, { status: 503 });
   }

@@ -82,8 +82,21 @@ jobs:
       DATABASE_URL: postgresql://hashi_app:app-ci@localhost:5432/hashi_test
     steps:
       - uses: actions/checkout@v5
-      - run: docker build --target runner -t hashi-app:ci .
-      - run: docker build --target tools -t hashi-tools:ci .
+      - name: Build image runner dan tools dengan GIT_SHA (T-005)
+        run: |
+          SHA="${GITHUB_SHA::7}"
+          docker build --target runner --build-arg GIT_SHA="$SHA" -t hashi-app:ci .
+          docker build --target tools --build-arg GIT_SHA="$SHA" -t hashi-tools:ci .
+      # Label revision harus sama dengan commit yang dibangun; tanpa --build-arg build tetap berhasil dan hasilnya "unknown"
+      - name: Label revision image = commit; tanpa GIT_SHA tetap "unknown"
+        run: |
+          SHA="${GITHUB_SHA::7}"
+          test "$(docker image inspect hashi-app:ci --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$SHA"
+          test "$(docker image inspect hashi-tools:ci --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$SHA"
+          docker build --target runner -t hashi-app:noarg .
+          test "$(docker image inspect hashi-app:noarg --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "unknown"
+          docker run --rm hashi-app:ci sh -c 'test "$GIT_SHA" = "'"$SHA"'"'
+          docker run --rm hashi-app:noarg sh -c 'test "$GIT_SHA" = "unknown"'
       # Sama seperti di OptiPlex (`docker compose run --rm migrate ...`): script berjalan DI DALAM image
       # tools yang hanya berisi src/db. Impor ke modul di luar itu gagal di sini, bukan di produksi.
       - name: Buat role aplikasi
