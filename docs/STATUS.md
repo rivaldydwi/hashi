@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-06 · T-004 · Desain pelacak 在留カード + hasil deploy T-009
 
-**PR:** (branch `eng/T-004-desain-zairyu-card`; nomor PR di komentar pembuka)
+**PR:** #11 (branch `eng/T-004-desain-zairyu-card`)
 **Status:** siap direview (dokumen saja, tanpa kode/skema/migrasi)
 
 **Hasil deploy T-009 lewat `scripts/deploy.sh --backup`** (PR #10 di-merge `28e525b`, setelah `PM: DISETUJUI` dan CI hijau di head `2398b55`)
