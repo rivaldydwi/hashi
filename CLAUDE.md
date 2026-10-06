@@ -24,7 +24,9 @@ Kamu berjalan di Mini PC/VS Code → kamu **engineer**. Kamu sesi cloud di claud
 - Pull request + komentar PR: diskusi per tugas dan review.
 
 **Siklus engineer (satu tugas = satu branch = satu PR):**
-1. `git checkout main && git pull`. Baca entri teratas `docs/STATUS.md`, lalu `docs/TASKS.md`.
+1. `git status` dulu: ada perubahan belum di-commit, atau branch bukan `main`/`eng/*` → jangan sentuh apa pun, cukup lapor (mungkin Ipal sedang bekerja).
+   Lalu `git checkout main && git pull --ff-only`. Baca entri teratas `docs/STATUS.md`, lalu `docs/TASKS.md`.
+   Cek CI `main` (`gh run list -L3`): merah = prioritas di atas tugas apa pun (perbaiki di branch `eng/fix-<slug>`, PR seperti biasa, lapor).
 2. Kalau ada PR milikmu yang masih terbuka: baca komentar PM terbaru dan tangani dulu (lihat langkah 7). Tugas baru baru diambil setelah PR lama selesai.
 3. Ambil tugas `SIAP` paling atas. Buat branch `eng/<ID>-<slug>` dari `main` (contoh `eng/T-002-backup-desain`).
 4. Kerjakan. Jalankan verifikasi yang relevan (lihat "Alur kerja" di bawah dan kriteria selesai tugasnya). Tulis hasilnya apa adanya; tes yang gagal tetap dilaporkan.
@@ -51,6 +53,8 @@ PM boleh push commit yang HANYA mengubah `docs/TASKS.md` langsung ke `main`. Per
 - Jangan pernah commit secret, `.env`, `.env.demo`, dump database, isi `docs-data/`, atau cadangan. Cek `git status` / `git diff --cached` sebelum commit.
 - Jangan push langsung ke `main` (kecuali PM untuk `docs/TASKS.md` saja). Jangan force-push, rebase, atau amend commit yang sudah di-push.
 - Jangan melewati, menonaktifkan, atau melemahkan tes supaya hijau. Jangan merge PR yang CI-nya merah.
+- `test:rls` / `verify:seed` / `test:e2e` / migrasi percobaan / reseed HANYA terhadap `db-dev` (`_dev`/`_test`). Deploy produksi hanya bila tugasnya meminta;
+  demo (`hashi-demo`: `dc up`, `demo-*.sh`, `seed:*`) dan Funnel hanya dengan izin Ipal. Jangan hapus data, berkas, atau branch yang bukan buatanmu.
 - Satu PR = satu tugas; perubahan di luar lingkup tugas → usulkan di STATUS, jangan diselipkan.
 - Jangan menulis nama/ID model AI di commit, PR, atau kode.
 

@@ -95,7 +95,7 @@ Engineer hanya bekerja saat sesinya hidup. Supaya Ipal tidak perlu mengetik apa-
 di folder repo ini sekali, lalu ketik:
 
 ```
-/loop 30m Jalankan satu putaran siklus engineer sesuai CLAUDE.md bagian "Peran dan aturan kerja".
+/loop 1h Jalankan satu putaran siklus engineer sesuai CLAUDE.md bagian "Peran dan aturan kerja".
 ```
 
 VS Code dan Mini PC harus tetap menyala. PM memeriksa repo secara berkala dari sisi cloud.
