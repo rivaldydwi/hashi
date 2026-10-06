@@ -12,34 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-007 · Riwayat catatan per pekerja ("lanjutkan catatan") · `SIAP`
-
-**Masukan staf TSK (Ghulam, via Ipal 2026-10-06):** catatan 業務記録/議事録 sering berlanjut ("minggu ini sampai A, minggu depan lanjut B"); staf ingin melihat
-catatan sebelumnya seperti riwayat email. **Keputusan: SATU rangkaian per pekerja** (fokusnya perkara di pekerja itu), jadi tidak perlu tabel "thread" baru.
-
-Kerjakan:
-- **Halaman riwayat pekerja** (mis. `/records/workers/[candidateId]`, hanya TSK seperti rute `/records/*` lain): semua catatan ① dan ② yang menyebut pekerja itu,
-  plus baris kronologi kasus (③) dan wawancara berkala (④) miliknya, urut waktu (terbaru di atas, bisa dibalik), dengan label jenis. Catatan void tetap tampil dicoret.
-  Di atasnya: **tindak lanjut yang masih terbuka** untuk pekerja itu. Paginasi bila panjang.
-- **Tombol "Lanjutkan"** di halaman catatan: membuka form catatan baru dengan pekerja, lokasi (配属先), dan kasus yang sama sudah terisi (ditandai `autoFilled`),
-  dan di samping/atas form menampilkan ringkasan 3 catatan terakhir pekerja itu + tindak lanjut terbuka (baca saja). Simpan `continues_record_id` (opsional,
-  FK ke `activity_records`, orang tua harus organisasi sama dan menyebut pekerja yang sama: trigger) supaya halaman catatan bisa menunjuk "lanjutan dari …" / "dilanjutkan oleh …".
-- Tautan ke halaman riwayat dari: detail catatan (per pekerja yang disebut), detail kandidat sisi TSK, grid 定期面談.
-- Catatan dengan beberapa pekerja muncul di riwayat setiap pekerja itu.
-
-**Kriteria selesai**
-- [ ] Migration kolom `continues_record_id` + trigger penjaga + bagian di `verify-rls` (LPK/sensei/TSK lain tidak bisa membaca/menautkan).
-- [ ] e2e: buat catatan → "Lanjutkan" → form terisi pekerja/lokasi/kasus + ringkasan tampil → simpan → kedua catatan saling menunjuk; halaman riwayat memuat keduanya
-  dan tindak lanjut terbuka. LPK dan sensei: rute 404.
-- [ ] Audit: aksi baru (bila ada) di `ACTIONS` + `verify:audit-coverage`; tanpa isi catatan.
-- [ ] Label id + ja (`test:i18n`), tampilan ponsel rapi; `seed:records`/`verify:seed` memuat minimal satu rangkaian lanjutan.
-- [ ] typecheck, test:rls, build, e2e, CI hijau.
-- [ ] Sebelum mulai: deploy T-006 lewat `scripts/deploy.sh` dan catat outputnya di entri STATUS T-007 (kriteria T-006). Bonus kecil yang boleh ikut PR ini:
-  `scripts/deploy.sh` jangan jatuh ke port 3100 bila `APP_PORT` tidak ada (3100 dipakai aplikasi lain di OptiPlex): gagal dengan pesan jelas.
-
----
-
-### T-008 · 定期面談 sesuai aturan kuartal + pekerja yang sudah berhenti · `SIAP` (setelah T-007)
+### T-008 · 定期面談 sesuai aturan kuartal + pekerja yang sudah berhenti · `SIAP`
 
 **Aturan dari staf TSK (2026-10-06):**
 - 定期面談 wajib **minimal sekali per kuartal tahun fiskal** (Apr-Jun, Jul-Sep, Okt-Des, Jan-Mar), dimulai sejak pekerja **mulai bekerja di perusahaan**. Boleh lebih sering.
@@ -58,6 +31,9 @@ Kerjakan:
   diberi penanda "berhenti <tanggal>" dan bulan sesudah berhenti tidak ditagih.
 - **Daftar laporan tahunan** per FY: pekerja yang wajib dilaporkan + jumlah wawancara per kuartal + kuartal yang bolong (untuk persiapan laporan imigrasi). Belum perlu
   membuat formulir laporan tahunan imigrasi itu sendiri.
+- **Pekerja yang sudah berhenti di form catatan** (temuan T-007): pemilih pekerja di form ①/② dan "Lanjutkan" sekarang hanya memuat penempatan ACTIVE. Tambahkan pekerja
+  ENDED (diberi penanda "berhenti <tanggal>", di bawah pekerja aktif), supaya catatan/wawancara susulan dan lanjutan tetap bisa dibuat untuk mereka.
+- Deploy T-007 lewat `scripts/deploy.sh` dan catat output-nya di STATUS T-008.
 - Data lama: wawancara per-bulan yang ada tetap sah; tidak ada data yang dihapus. Bila unique (pekerja, bulan) menghalangi lebih dari satu wawancara per bulan, biarkan dulu (catat di STATUS).
 
 **Kriteria selesai**
@@ -171,11 +147,15 @@ Isi dokumen:
 - Pelacak 在留カード: implementasi (setelah desain T-004 disetujui).
 - Langkah 8 siap pilot: seed 200 siswa dummy, cek kecepatan halaman daftar/detail, `SHOW_DEMO_ACCOUNTS=false`, daftar periksa sebelum data nyata.
 - Langkah 7 sisanya: checklist keberangkatan/kedatangan, bagian 管理・報告 di lembar 定期面談, profil pekerja lengkap, status visa + tanggal tiba untuk LPK (baca-saja), notifikasi email/LINE.
+- `scripts/deploy.sh`: log build ke berkas (mis. `~/hashi-backups/deploy.log`), terminal hanya ringkasan (usulan engineer, T-007).
+- Catatan lanjutan: syarat "pekerja sama" hanya diperiksa saat dibuat; bila nanti perlu ketat, trigger di `activity_record_subjects` (temuan T-007, belum perlu).
 - Telusuri peringatan `pg` "client.query() ... already executing" di log e2e (lihat `docs/HISTORY.md` §4).
 - Langkah 9: demo ke TSK.
 
 ## Selesai
 
+- **T-007** Riwayat catatan per pekerja (PR #7): `/records/workers/<id>` (①②③④ dalam satu garis waktu + tindak lanjut terbuka), tombol "Lanjutkan"
+  (`continues_record_id`, migration 0022, penjaga database), `verify-rls` bagian U, 7 e2e baru; deploy T-006 lewat skrip: produksi `32ea832`.
 - **T-006** Skrip deploy (PR #6): `scripts/deploy.sh` (main + bersih + pull --ff-only + build dengan `GIT_SHA` + tunggu health = commit; `--backup`, `--check`),
   `.claude/settings.local.json` di `.gitignore`, peringatan timer cadangan memakai working tree. Deploy pertama lewat skrip dicatat di STATUS T-007.
 - **T-003** Cadangan lokal terjadwal (PR #5): systemd user timer 02:00 JST (`Persistent=true`), `backup-run.sh` (log + `LAST_FAILED`), `decrypt.sh`, uji pulih
