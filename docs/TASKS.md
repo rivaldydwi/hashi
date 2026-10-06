@@ -12,28 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-006 · Skrip deploy + `.gitignore` izin lokal · `SIAP`
-
-Dari usulan T-005: perintah deploy mudah lupa `GIT_SHA`, dan `.claude/settings.local.json` belum diabaikan git.
-
-Kerjakan:
-- `scripts/deploy.sh`: hanya produksi (project compose `hashi`): menolak jalan bila working tree kotor atau bukan di `main`, `git pull --ff-only`,
-  `GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build` (tanpa `--remove-orphans`), menunggu `/api/health` sampai `commit` = sha itu
-  (batas waktu, gagal dengan kode ≠ 0 dan pesan jelas), lalu mencetak commit yang berjalan. Opsional `--backup`: jalankan `scripts/backup.sh` dulu.
-- `.gitignore`: tambah `.claude/settings.local.json`.
-- Catatan dari review T-003: timer cadangan menjalankan skrip dari working tree repo, jadi bila engineer sedang di branch fitur pukul 02:00, versi skrip
-  branch itulah yang jalan. Cukup tulis peringatan ini di `docs/backup.md` §3 (tidak perlu mengubah mekanisme sekarang).
-- README, `CLAUDE.md` (siklus engineer langkah 7 dan "Alur kerja"), `docs/HISTORY.md`: perintah deploy produksi menjadi `scripts/deploy.sh`.
-
-**Kriteria selesai**
-- [ ] Deploy produksi lewat `scripts/deploy.sh` berhasil dan mencetak commit yang sama dengan `main`; STATUS mencatat output-nya.
-- [ ] Uji tolak: working tree kotor → menolak tanpa menyentuh container.
-- [ ] `git check-ignore .claude/settings.local.json` → diabaikan.
-- [ ] CI hijau.
-
----
-
-### T-007 · Riwayat catatan per pekerja ("lanjutkan catatan") · `SIAP` (setelah T-006)
+### T-007 · Riwayat catatan per pekerja ("lanjutkan catatan") · `SIAP`
 
 **Masukan staf TSK (Ghulam, via Ipal 2026-10-06):** catatan 業務記録/議事録 sering berlanjut ("minggu ini sampai A, minggu depan lanjut B"); staf ingin melihat
 catatan sebelumnya seperti riwayat email. **Keputusan: SATU rangkaian per pekerja** (fokusnya perkara di pekerja itu), jadi tidak perlu tabel "thread" baru.
@@ -55,6 +34,8 @@ Kerjakan:
 - [ ] Audit: aksi baru (bila ada) di `ACTIONS` + `verify:audit-coverage`; tanpa isi catatan.
 - [ ] Label id + ja (`test:i18n`), tampilan ponsel rapi; `seed:records`/`verify:seed` memuat minimal satu rangkaian lanjutan.
 - [ ] typecheck, test:rls, build, e2e, CI hijau.
+- [ ] Sebelum mulai: deploy T-006 lewat `scripts/deploy.sh` dan catat outputnya di entri STATUS T-007 (kriteria T-006). Bonus kecil yang boleh ikut PR ini:
+  `scripts/deploy.sh` jangan jatuh ke port 3100 bila `APP_PORT` tidak ada (3100 dipakai aplikasi lain di OptiPlex): gagal dengan pesan jelas.
 
 ---
 
@@ -195,6 +176,8 @@ Isi dokumen:
 
 ## Selesai
 
+- **T-006** Skrip deploy (PR #6): `scripts/deploy.sh` (main + bersih + pull --ff-only + build dengan `GIT_SHA` + tunggu health = commit; `--backup`, `--check`),
+  `.claude/settings.local.json` di `.gitignore`, peringatan timer cadangan memakai working tree. Deploy pertama lewat skrip dicatat di STATUS T-007.
 - **T-003** Cadangan lokal terjadwal (PR #5): systemd user timer 02:00 JST (`Persistent=true`), `backup-run.sh` (log + `LAST_FAILED`), `decrypt.sh`, uji pulih
   dari set hasil jadwal cocok dengan produksi. Deploy T-005 tercatat: produksi `6a03395`. **Keputusan Ipal (2026-10-06):** kunci cadangan sudah disalin Ipal ke penyimpanan pribadi di luar server; linger TIDAK diaktifkan (Mini PC selalu menyala dan login). Jangan ditanyakan lagi.
 - **T-005** Commit yang berjalan terbaca (PR #4): label image + env `GIT_SHA`, `/api/health` memuat `commit`, label "Hashi · <sha>" di sidebar, dicek di CI.
