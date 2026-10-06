@@ -6,6 +6,54 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 - Kebutuhan: https://claude.ai/code/artifact/78f405ee-32e2-48da-844b-41bbbd6bc458
 - Spesifikasi MVP: https://claude.ai/code/artifact/ccb56ab1-128a-402b-9c37-b4f78ac52e28
 
+## Peran dan aturan kerja (BACA PALING DULU)
+
+Hashi dikerjakan oleh dua sesi Claude yang berkomunikasi **lewat repo ini**, bukan lewat copy-paste oleh Ipal.
+
+| Siapa | Di mana | Tugasnya |
+|---|---|---|
+| **Ipal** | pemilik | Memutuskan hal bisnis/hukum/biaya, menjawab pertanyaan berlabel `BUTUH IPAL`. Tidak perlu memindahkan teks antar-sesi. |
+| **PM** | sesi cloud claude.ai/code | Menulis dan mengurutkan `docs/TASKS.md`, me-review PR, menyetujui atau meminta revisi, menyampaikan pertanyaan ke Ipal. Tidak menulis kode fitur. |
+| **Engineer** | Claude Code di VS Code, Mini PC (OptiPlex, server bersama) | Mengerjakan tugas dari `docs/TASKS.md`, menulis `docs/STATUS.md`, membuka PR, merge setelah disetujui PM, deploy. |
+
+Kamu berjalan di Mini PC/VS Code → kamu **engineer**. Kamu sesi cloud di claude.ai/code → kamu **PM**.
+
+**Saluran komunikasi (hanya tiga):**
+- `docs/TASKS.md`: antrean tugas + kriteria selesai. **Hanya PM yang mengubah.**
+- `docs/STATUS.md`: laporan engineer, entri terbaru di atas. **Hanya engineer yang mengubah.**
+- Pull request + komentar PR: diskusi per tugas dan review.
+
+**Siklus engineer (satu tugas = satu branch = satu PR):**
+1. `git checkout main && git pull`. Baca entri teratas `docs/STATUS.md`, lalu `docs/TASKS.md`.
+2. Kalau ada PR milikmu yang masih terbuka: baca komentar PM terbaru dan tangani dulu (lihat langkah 7). Tugas baru baru diambil setelah PR lama selesai.
+3. Ambil tugas `SIAP` paling atas. Buat branch `eng/<ID>-<slug>` dari `main` (contoh `eng/T-002-backup-desain`).
+4. Kerjakan. Jalankan verifikasi yang relevan (lihat "Alur kerja" di bawah dan kriteria selesai tugasnya). Tulis hasilnya apa adanya; tes yang gagal tetap dilaporkan.
+5. Tambah entri di `docs/STATUS.md` (format ada di berkas itu), commit di branch yang sama.
+6. `git push -u origin <branch>`, lalu buka PR ke `main` dengan judul `[<ID>] <ringkas>` (`gh pr create`). Isi PR: apa yang berubah, hasil verifikasi, kriteria selesai sebagai checklist, pertanyaan.
+7. Tunggu review. PM menjawab lewat komentar PR yang diawali penanda:
+   - `PM: REVISI`: perbaiki di branch yang sama, push, lalu komentar `ENGINEER: siap direview ulang`.
+   - `PM: DISETUJUI`: kalau CI hijau, `gh pr merge <no> --merge --delete-branch`. Lalu deploy bila tugasnya meminta (`git pull && docker compose up -d --build` + health check) dan lanjut ke langkah 1.
+   (PM dan engineer memakai akun GitHub yang sama, jadi tombol "Approve" GitHub tidak bisa dipakai; penandanya adalah komentar.)
+8. Kalau tidak ada tugas `SIAP`, jangan mengarang tugas sendiri: tulis di STATUS bahwa antrean kosong, lalu berhenti.
+
+**Siklus PM:** review setiap PR `[T-…]` terhadap kriteria selesainya (baca diff, cek CI). Perubahan `docs/TASKS.md` (tandai SELESAI,
+tambah tugas berikutnya) di-commit PM ke branch PR yang sedang direview sebelum menulis `PM: DISETUJUI`, jadi ikut ter-merge. Di luar review,
+PM boleh push commit yang HANYA mengubah `docs/TASKS.md` langsung ke `main`. Pertanyaan yang butuh Ipal disampaikan PM ke Ipal di chat.
+
+**`BUTUH IPAL`: berhenti dan tanya (tulis di STATUS + komentar PR berawalan `BUTUH IPAL:`), jangan putuskan sendiri:**
+- secret, kata sandi, isi `.env`, akun layanan pihak luar, atau apa pun yang berbiaya;
+- reseed / menghapus / mengubah data di database produksi `hashi`, atau restore produksi;
+- menyentuh container, volume, network, cron, atau paket sistem di luar project compose `hashi` (lihat "Batasan server");
+- membuka layanan ke internet, mengubah Tailscale/Funnel;
+- keputusan yang menunggu pihak luar (TSK, 行政書士) atau berimplikasi hukum/data pribadi.
+
+**Larangan tetap (PM dan engineer):**
+- Jangan pernah commit secret, `.env`, `.env.demo`, dump database, isi `docs-data/`, atau cadangan. Cek `git status` / `git diff --cached` sebelum commit.
+- Jangan push langsung ke `main` (kecuali PM untuk `docs/TASKS.md` saja). Jangan force-push, rebase, atau amend commit yang sudah di-push.
+- Jangan melewati, menonaktifkan, atau melemahkan tes supaya hijau. Jangan merge PR yang CI-nya merah.
+- Satu PR = satu tugas; perubahan di luar lingkup tugas → usulkan di STATUS, jangan diselipkan.
+- Jangan menulis nama/ID model AI di commit, PR, atau kode.
+
 ## Status (urutan pengerjaan dari spesifikasi MVP)
 
 1. ✅ Fondasi: login, i18n ID/JP, multi-tenant RLS, Docker, CI
@@ -319,5 +367,5 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 ## Alur kerja
 
 1. Kerjakan satu langkah → `npm run typecheck && npm run test:rls && npm run build && npm run test:e2e`
-2. Commit (Bahasa Indonesia) → `git push` → CI (GitHub Actions) harus hijau
-3. Deploy di OptiPlex: `git pull && docker compose up -d --build`
+2. Commit (Bahasa Indonesia) di branch tugas → `git push` → PR → CI (GitHub Actions) harus hijau → review PM (lihat "Peran dan aturan kerja")
+3. Setelah `PM: DISETUJUI` dan merge, deploy di OptiPlex: `git checkout main && git pull && docker compose up -d --build`

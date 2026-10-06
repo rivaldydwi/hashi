@@ -3,9 +3,11 @@
 Sistem profil & seleksi kandidat untuk **LPK** (Indonesia) dan **TSK / 登録支援機関** (Jepang).
 Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ulang.
 
-> Status: **v0.3** — fondasi (login, dua bahasa, isolasi data RLS), kelola organisasi/pengguna/kemitraan, dan
-> **profil kandidat lengkap** (daftar, tambah, halaman detail, dokumen, persetujuan data, keputusan & catatan TSK).
-> Penilaian kandidat (bulanan LPK dan kunjungan/interview TSK) dan **klien (配属先) + job order + penempatan** milik TSK sudah ada.
+> Status (Oktober 2026): langkah 1-6 spesifikasi MVP selesai dan langkah 7A (catatan kegiatan TSK) selesai.
+> Sudah ada: fondasi (login, dua bahasa, isolasi data RLS), organisasi/pengguna/kemitraan, profil kandidat lengkap, penilaian LPK dan TSK,
+> klien (配属先) + job order + penempatan, lembar klien PDF (format DRAFT), catatan kegiatan TSK, dashboard yang bisa diatur, dan riwayat aktivitas.
+> Berikutnya: cadangan di luar server (wajib sebelum data nyata), pelacak 在留カード, lalu siap pilot. Antrean: [docs/TASKS.md](docs/TASKS.md);
+> laporan terbaru: [docs/STATUS.md](docs/STATUS.md); riwayat dan keputusan teknis: [docs/HISTORY.md](docs/HISTORY.md).
 
 ## Fitur saat ini
 
@@ -18,7 +20,11 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 | **Admin / staf TSK** | Melihat kandidat LPK mitra yang **dibagikan** ke TSK, mengunduh dokumen, mengambil keputusan dan menulis catatan; mengedit data hanya setelah keputusan *Lulus interview client* atau sesudahnya |
 | **Admin / staf TSK** (klien dan job order) | Mengelola **klien** (法人 → lokasi 事業所 → PIC, beserta bidang kerja yang diterima lokasi), membuat **job order** (求人) dan melihat **kandidat cocok** (bidang sama, syarat bahasa/gender ditandai hijau/merah, urut nilai terbaru), menekan **Ajukan**, memantau terisi/ditutup, dan mengisi **tanggal mulai kerja (就労開始日)** penempatan. Hapus permanen klien/lokasi/PIC/job order: hanya **Admin TSK** |
 | **Super admin** (bidang kerja) | Mengelola master **bidang kerja** (`skill_fields`): menambah, mengubah nama, menonaktifkan; yang sudah dipakai tidak bisa dihapus |
+| **Admin / staf TSK** (catatan kegiatan) | Catatan kerja harian, notulen dan catatan wawancara, kronologi kasus (PDF internal dan versi klien), wawancara berkala, tugas tindak lanjut, laporan harian, foto. Tidak bisa dihapus (salah = dibatalkan + alasan). Lihat [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md) |
+| **Admin / staf TSK** (lembar klien) | Ekspor PDF profil klien dan lembar job order berbahasa Jepang, mode internal atau untuk dibagikan. Lihat [docs/lembar-klien.md](docs/lembar-klien.md) |
+| **Admin LPK / TSK** (riwayat) | Riwayat aktivitas organisasi di `/activity` (tidak bisa diubah/dihapus), ekspor CSV |
 | **Semua pengguna** | Login, ganti bahasa, ganti kata sandi di *Akun saya* |
+| **Semua pengguna** | Dashboard per peran yang bisa diatur (urutan, ukuran, sembunyikan widget) |
 
 Cara kerja akun baru:
 
@@ -44,6 +50,12 @@ Data demo tanpa reseed: `npm run seed:records`. **Catatan disimpan 5 tahun dan t
 
 Ekspor PDF berbahasa Jepang untuk klien dan job order (profil klien, lembar job order; mode internal / untuk dibagikan; label Jepang atau Jepang + Indonesia). Format masih DRAFT sampai dikonfirmasi TSK; semua label dan urutan bagian ada di
 `src/lib/pdf/client-sheet.config.ts`. Dokumentasi: [docs/lembar-klien.md](docs/lembar-klien.md). Data demo tanpa reseed: `npm run seed:client-sheet`.
+
+## Cara kerja tim
+
+Ipal (pemilik) memutuskan; **PM** (sesi Claude di claude.ai/code) menulis tugas di [docs/TASKS.md](docs/TASKS.md) dan me-review PR;
+**engineer** (Claude Code di VS Code, Mini PC) mengerjakan tugas di branch `eng/<ID>-…`, melapor di [docs/STATUS.md](docs/STATUS.md),
+dan merge setelah PM menulis `PM: DISETUJUI` di PR. Aturan lengkap: `CLAUDE.md` bagian "Peran dan aturan kerja".
 
 ## Stack
 
@@ -413,17 +425,21 @@ npm run dev   # http://localhost:3100
 ## Struktur folder
 
 ```
-drizzle/                 migration SQL (0001 = RLS policy, ditulis manual)
+drizzle/                 migration SQL 0000-0021 (RLS, trigger, GRANT ditulis manual)
 docker/postgres/init/    script pembuatan role hashi_app
-messages/                teks antarmuka: id.json, ja.json
-scripts/                 migrate, seed, verify-rls
+messages/                teks antarmuka: id.json, ja.json (kunci identik)
+scripts/                 migrate, seed (+ seed:records, seed:client-sheet), verify-* (rls, seed, i18n, audit), skrip demo
 src/auth.ts              konfigurasi login
-src/db/                  schema + withTenant/withSystem
-src/features/            logika per fitur: users, organizations, account (actions + komponen)
-src/lib/                 sesi, hak akses, kata sandi, audit log
-src/app/(app)/           halaman setelah login (users, admin, account)
+src/db/                  schema, withTenant/withSystem, query bersama, data demo, audit (satu-satunya yang boleh diimpor scripts/)
+src/features/            logika per fitur: candidates, assessments, clients, job-orders, client-sheet, records, documents,
+                         dashboard, audit, users, organizations, skill-fields, account
+src/lib/                 sesi, hak akses, audit(), PDF (lib/pdf), zona waktu
+src/components/          shell aplikasi dan komponen bersama
+src/app/(app)/           halaman setelah login (candidates, assessments, clients, job-orders, records, sheet, activity, users, admin, account)
 src/app/login/           halaman login
+tests/unit/              tes unit (node:test)
 tests/e2e/               tes browser (Playwright)
+docs/                    TASKS (antrean), STATUS (laporan engineer), HISTORY, dokumentasi fitur, glosarium, merek
 ```
 
 ## Catatan keputusan
