@@ -43,12 +43,28 @@ Menunggu Ipal: pilihan tujuan (A restic → B2 direkomendasikan di `docs/backup.
 
 ---
 
-### T-004 · Pelacak zairyū kādo (在留カード): desain · `DITAHAN`
+### T-004 · Pelacak zairyū kādo (在留カード): desain · `SIAP` (setelah T-005)
 
-Menunggu T-002 selesai. Bentuknya: dokumen desain dulu (`docs/zairyu-card.md`), BELUM kode: tabel + RLS (hanya TSK), kolom yang disimpan (tanggal
-habis, status perpanjangan, tanggal pengajuan ke 入管, tanggal terima kartu baru; nomor kartu perlu tidaknya dipertanyakan), penanggung jawab (担当)
-per pekerja, jadwal pengingat dari `CLAUDE.md` (persiapan H-4 bulan, pengajuan mulai H-3 bulan, H-30/H-14/H-7, lewat; berhenti saat kartu baru
-diterima), tampilan dashboard, dan daftar pertanyaan untuk staf TSK. Rincian ditulis PM saat dibuka.
+Hanya dokumen desain `docs/zairyu-card.md`, **belum ada kode atau migrasi**. Tujuannya supaya Ipal bisa menanyakan hal yang tepat ke staf TSK
+sebelum skema dibuat. Bahan: `CLAUDE.md` bagian "Keputusan untuk langkah 7", model `placements`, catatan kegiatan (7A), dashboard.
+
+Isi dokumen:
+- **Data:** tabel usulan (kolom, tipe, wajib/opsional), relasi ke `candidates`/`placements`, riwayat kartu (perpanjangan berulang = baris baru, bukan menimpa).
+  Kolom: tanggal habis, jenis status tinggal (在留資格), status proses perpanjangan, tanggal pengajuan ke 入管, tanggal terima kartu baru, penanggung jawab (担当).
+  Nomor kartu dan foto kartu: tulis pro/kontra + rekomendasi (bawaan: TIDAK disimpan sampai terbukti perlu).
+- **Hak akses:** RLS hanya TSK (pola `activity_member()` / `client_owner`), siapa boleh mengubah, tidak ada DELETE, audit tanpa isi; LPK tidak melihat apa pun
+  (status visa + tanggal tiba untuk LPK adalah tugas terpisah, sebutkan batasnya saja).
+- **Pengingat:** tabel tahap per tanggal (H-4 bulan persiapan, H-3 bulan bisa mengajukan, H-30, H-14, H-7, lewat; berhenti saat kartu baru diterima) sebagai
+  fungsi murni (input: tanggal habis, tanggal terima, hari ini menurut zona organisasi; output: tahap). Sertakan contoh kasus tepi (tanggal sudah lewat saat
+  data dimasukkan, kartu diterima sebelum habis, akhir bulan, zona Tokyo vs Jakarta).
+- **Tampilan:** KPI dashboard + daftar "perlu tindakan" + bagian di detail pekerja; tidak ada email/LINE dulu (dalam aplikasi saja).
+- **Rencana pemecahan** jadi 2-4 tugas implementasi kecil, masing-masing dengan kriteria selesai.
+- **Pertanyaan untuk staf TSK** (bernomor, bisa langsung diteruskan Ipal), termasuk penerima pengingat (担当 + salinan Admin TSK) yang belum dikonfirmasi.
+
+**Kriteria selesai**
+- [ ] `docs/zairyu-card.md` memuat semua bagian di atas; istilah sesuai `docs/glossary.md` (tambahkan istilah baru ke glosarium).
+- [ ] Tidak ada perubahan kode, skema, atau migrasi.
+- [ ] Daftar pertanyaan TSK juga disalin ke STATUS dengan label `BUTUH IPAL` (untuk diteruskan ke TSK).
 
 ---
 
