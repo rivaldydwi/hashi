@@ -110,7 +110,8 @@ Kerjakan:
 - [ ] KPI = jumlah di daftar (fungsi yang sama); seed demo memuat satu staf ≥ 45 dan pekerja tanpa penanggung jawab; `verify:seed` memeriksa.
 - [ ] Audit perubahan penanggung jawab (id saja, tanpa nama); label id/ja; e2e alur tetapkan per perusahaan → ganti per pekerja → angka beban berubah.
 - [ ] typecheck, test:unit, test:rls, build, e2e, CI hijau.
-- [ ] `BUTUH IPAL` di STATUS bila aturan 50 perlu definisi lebih rinci (mis. dihitung per 支援責任者 atau per 支援担当者); boleh jalan dengan definisi di atas dulu.
+- Definisi batas **sudah dikonfirmasi staf TSK (2026-10-06):** dihitung **per orang staf TSK yang menjadi penanggung jawab**, total semua pekerja yang dia pegang di seluruh
+  Jepang dan semua klien (bukan per klien, bukan per daerah). Contoh: 30 pekerja di klien A + 20 di klien B = 50 (batas tercapai).
 
 ---
 
