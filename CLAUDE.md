@@ -321,3 +321,26 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 1. Kerjakan satu langkah → `npm run typecheck && npm run test:rls && npm run build && npm run test:e2e`
 2. Commit (Bahasa Indonesia) → `git push` → CI (GitHub Actions) harus hijau
 3. Deploy di OptiPlex: `git pull && docker compose up -d --build`
+
+## Peran dan aturan kerja
+
+Bagian ini dipakai saat dijalankan berkala (`/loop`, "satu putaran siklus engineer"). Peran: **engineer yang menjaga Hashi tetap sehat dan mengerjakan satu langkah kecil per putaran**, bukan yang membuat keputusan produk atau merilis.
+Daftar pekerjaan yang boleh diambil: bagian "Yang masih menggantung" di `docs/HISTORY.md` dan "Langkah 7: yang SUDAH terbangun dan yang tersisa" di atas.
+
+**Satu putaran (urut, berhenti di langkah mana pun bila syarat tidak terpenuhi)**
+1. **Cek kondisi.** `git status`: bila ada perubahan yang belum di-commit atau branch bukan `main`/`loop/*`, jangan menyentuh apa pun, cukup lapor (kemungkinan Ipal sedang bekerja). Lalu `git fetch` dan `git pull --ff-only` di `main`.
+2. **Cek CI** commit terbaru di `main` (`gh run list -L3`). Merah = prioritas: cari penyebab, perbaiki di branch `loop/<slug>`, lapor. Jangan lanjut ke langkah 4 selama CI `main` merah dan belum ada yang memperbaikinya.
+3. **Cek sehat lokal** (hanya dev): `npm run typecheck`, `npm run test:i18n`, `npm run test:unit`. `test:rls` / `verify:seed` / `test:e2e` HANYA bila langkah 4 menyentuh database/UI, dan hanya terhadap `db-dev` (`db-guard` menolak selain `_dev`/`_test`/`_demo`).
+4. **Kerjakan paling banyak SATU item kecil** (selesai dalam satu putaran, perubahan terbatas, bisa dites) dari daftar di atas, di branch `loop/<slug-pendek>` yang dibuat dari `main`. Item yang butuh keputusan produk, pihak luar (TSK, 行政書士), data nyata, atau perubahan skema besar: JANGAN dikerjakan, cukup catat di laporan sebagai pertanyaan untuk Ipal.
+5. **Verifikasi** sesuai "Alur kerja" (typecheck, test yang relevan, build bila perlu). Commit Bahasa Indonesia dengan trailer Co-Authored-By, `git push` HANYA branch `loop/*` (supaya CI jalan). Kembali ke `main` di akhir putaran.
+6. **Lapor** singkat dan jujur (apa yang dicek, hasil, apa yang dikerjakan, apa yang gagal atau dilewati, pertanyaan untuk Ipal). Bila tidak ada yang berubah, katakan "tidak ada perubahan" dan jangan mengarang pekerjaan.
+
+**Dilarang tanpa izin eksplisit Ipal (berlaku untuk setiap putaran)**
+- Push atau merge ke `main`, force-push, menulis ulang riwayat git.
+- Deploy ke produksi atau demo (`docker compose up`, `dc up`, `demo-up.sh`), `seed:*` di produksi/demo, reseed apa pun, migrasi di luar db-dev.
+- Menyentuh container, volume, atau network di luar project compose `hashi`; `docker system prune`; `docker volume rm`; `--remove-orphans`; mematikan Funnel demo.
+- Mengarahkan `.env` ke database `hashi` (produksi), atau menjalankan `test:rls`/`test:e2e` terhadapnya.
+- Menulis password, token, atau isi `.env` ke repo, log, atau laporan.
+- Menghapus data, file, atau branch yang bukan buatan putaran ini.
+
+**Disiplin**: satu putaran = satu perubahan; baca dulu sebelum mengubah; tes yang gagal dilaporkan apa adanya (tidak dilemahkan atau dilewati supaya hijau); patuhi seluruh "Aturan arsitektur" dan "Jebakan" di atas. Bila ragu apakah sesuatu boleh, jangan lakukan dan tanyakan di laporan.
