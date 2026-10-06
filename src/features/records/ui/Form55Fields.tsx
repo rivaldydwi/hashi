@@ -11,8 +11,6 @@ type Props = {
   responderRole: string | null;
   responderTitle: string | null;
   today: string;
-  /** Tanggal wawancara bawaan untuk "作成年月日" (sama dengan tanggal wawancara bila belum diisi). */
-  interviewDate: string | null;
   disabled?: boolean;
 };
 
@@ -24,7 +22,7 @@ const radio = "inline-flex min-h-11 items-center gap-2 text-sm";
  * Semua input tak terkendali (nama dari `f55Name`); state klien hanya untuk menampilkan kolom isi per butir dan bagian 4. Nama ke server = `form55FromFields`.
  * Butir dan label dari `src/db/form55.ts` (id: terjemahan + rujukan Jepang kecil; ja: Jepang saja).
  */
-export function Form55Fields({ defaults, method, responderRole, responderTitle, today, interviewDate, disabled }: Props) {
+export function Form55Fields({ defaults, method, responderRole, responderTitle, today, disabled }: Props) {
   const t = useTranslations("records.form55");
   const locale = useLocale();
   const [answers, setAnswers] = useState<Record<string, "ok" | "problem" | undefined>>(() => Object.fromEntries(Object.entries(defaults?.items ?? {}).map(([k, v]) => [k, v.a])));
@@ -86,6 +84,12 @@ export function Form55Fields({ defaults, method, responderRole, responderTitle, 
                     <label className={radio}><input type="radio" name={f55Name.answer(it.code)} value="problem" checked={a === "problem"} onChange={() => setAnswers((s) => ({ ...s, [it.code]: "problem" }))} disabled={disabled} className="h-5 w-5" data-testid={`${it.code}-problem`} />{t("problem")}</label>
                     {a && <button type="button" onClick={() => setAnswers((s) => ({ ...s, [it.code]: undefined }))} disabled={disabled} className="min-h-11 px-2 text-xs text-ink-2 underline">{t("clear")}</button>}
                   </div>
+                  {it.code === "other.2" && (
+                    <div className="space-y-1">
+                      <label htmlFor="f55-other" className={labelClass}>{t("otherLabel")}</label>
+                      <input id="f55-other" name={f55Name.otherLabel} defaultValue={defaults?.otherLabel ?? ""} lang="ja" maxLength={FORM55_LIMITS.short} disabled={disabled} className={inputClass} data-testid="f55-otherLabel" />
+                    </div>
+                  )}
                   {a === "problem" && (
                     <div className="space-y-1">
                       <label htmlFor={`t-${it.code}`} className={labelClass}>{t("problemText")} *</label>
@@ -154,7 +158,7 @@ export function Form55Fields({ defaults, method, responderRole, responderTitle, 
 
       <div className="grid gap-4 sm:grid-cols-2">
         {field("f55-created", t("createdOn"), <input id="f55-created" type="date" max={today} name={f55Name.createdOn} defaultValue={defaults?.createdOn ?? ""} disabled={disabled} className={inputClass} data-testid="f55-createdOn" />)}
-        <p className="self-end text-xs text-ink-2">{t("createdOnHint", { date: interviewDate ? interviewDate.replace(/-/g, "/") : "—" })}</p>
+        <p className="self-end text-xs text-ink-2">{t("createdOnHint")}</p>
       </div>
     </div>
   );

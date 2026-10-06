@@ -4,6 +4,7 @@ import type { Tx } from "@/db";
 import { readForm55 } from "@/db/form55";
 import { allWorkers } from "@/db/records-queries";
 import { activityRecordSubjects, activityRecords, periodicInterviews, users } from "@/db/schema";
+import { ymdIn } from "@/lib/org-time";
 import type { Form55PdfData } from "@/lib/pdf/form55";
 
 export type YearInterview = {
@@ -17,6 +18,8 @@ export type YearInterview = {
   responderRole: string | null;
   responderTitle: string | null;
   form: ReturnType<typeof readForm55>;
+  /** Waktu baris terakhir disimpan (dasar 作成年月日 bawaan). */
+  updatedAt: Date;
 };
 export type EventMeeting = { id: string; recordDate: string; subject: string | null; authorName: string };
 
@@ -35,7 +38,7 @@ export async function yearInterviews(tx: Tx, candidateId: string, fy: number): P
     .orderBy(asc(periodicInterviews.periodMonth));
   return rows.map(({ r, staffName }) => ({
     id: r.id, month: r.periodMonth, applicable: r.applicable, interviewDate: r.interviewDate, resultStatus: r.resultStatus, method: r.method,
-    responderName: staffName, responderRole: r.responderRole, responderTitle: r.responderTitle, form: readForm55(r.form55),
+    responderName: staffName, responderRole: r.responderRole, responderTitle: r.responderTitle, form: readForm55(r.form55), updatedAt: r.updatedAt,
   }));
 }
 
@@ -53,9 +56,9 @@ export async function eventMeetings(tx: Tx, candidateId: string, fy: number): Pr
   return rows;
 }
 
-/** Susun data PDF satu wawancara: pekerja + perusahaan penerima dari `allWorkers`, 対応者 dari staf yang tersimpan. */
-export function toForm55Pdf(w: Worker, r: YearInterview): Form55PdfData {
-  return { workerName: w.fullName, orgName: w.companyName, interviewDate: r.interviewDate, method: r.method, responderName: r.responderName, responderRole: r.responderRole, responderTitle: r.responderTitle, form: r.form };
+/** Susun data PDF satu wawancara: pekerja + perusahaan penerima dari `allWorkers`, 対応者 dari staf yang tersimpan, 作成年月日 bawaan = tanggal simpan terakhir menurut zona `tz` (zona TSK). */
+export function toForm55Pdf(w: Worker, r: YearInterview, tz: string): Form55PdfData {
+  return { savedOn: ymdIn(r.updatedAt, tz), workerName: w.fullName, orgName: w.companyName, interviewDate: r.interviewDate, method: r.method, responderName: r.responderName, responderRole: r.responderRole, responderTitle: r.responderTitle, form: r.form };
 }
 
 /** Yang ikut PDF gabungan: wawancara berlaku dan benar-benar dilaksanakan (bukan "Belum dilaksanakan"). */

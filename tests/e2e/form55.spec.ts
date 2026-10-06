@@ -52,6 +52,8 @@ test("isi form 5-5 lengkap (butir ada masalah + 基準不適合 + penanganan): t
   await expect(page.getByTestId("treatment.3-text")).toHaveAttribute("required", ""); // butir bermasalah wajib berisi
   await page.getByTestId("treatment.3-text").fill(`有給の申請が難しい${run}`);
   await page.getByTestId("life.2-ok").check();
+  await page.getByTestId("other.2-ok").check();
+  await page.getByTestId("f55-otherLabel").fill("通勤手段");
   await page.getByTestId("nc-yes").check();
   await expect(page.getByTestId("f55-response")).toBeVisible();
   await page.getByTestId("r-occurredOn").fill("2020-05-10");
@@ -81,12 +83,14 @@ test("isi form 5-5 lengkap (butir ada masalah + 基準不適合 + penanganan): t
   expect(r.form55.response.company.notified).toBe("done");
   expect(r.form55.response.agency.reason).toBe("不要と判断");
   expect(r.form55.createdOn).toBe("2020-05-21");
+  expect(r.form55.otherLabel).toBe("通勤手段");
   // dimuat ulang: semua isian kembali
   await page.reload();
   await expect(page.getByTestId("method-online")).toBeChecked();
   await expect(page.getByTestId("treatment.3-problem")).toBeChecked();
   await expect(page.getByTestId("treatment.3-text")).toHaveValue(`有給の申請が難しい${run}`);
   await expect(page.getByTestId("nc-yes")).toBeChecked();
+  await expect(page.getByTestId("f55-otherLabel")).toHaveValue("通勤手段");
   await expect(page.getByTestId("r-content")).toHaveValue(`申出あり${run}`);
   await expect(page.getByTestId("form55-state")).toContainText("ketidaksesuaian");
   await page.context().close();

@@ -16,7 +16,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ candidateId: st
   const data = await withTenant(g.scope, async (tx) => {
     const worker = (await allWorkers(tx)).find((w) => w.id === candidateId);
     if (!worker) return null;
-    const forms = (await yearInterviews(tx, candidateId, fy)).filter(isConducted).map((r) => toForm55Pdf(worker, r));
+    const forms = (await yearInterviews(tx, candidateId, fy)).filter(isConducted).map((r) => toForm55Pdf(worker, r, g.tz));
     await auditExport(tx, g.me, { exportKind: "form55_year", rows: forms.length, clientVersion: false });
     return { fy, workerName: worker.fullName, forms };
   });

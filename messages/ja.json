@@ -1703,12 +1703,13 @@
       "toAgency": "関係機関への報告",
       "agencyBody": "機関名",
       "createdOn": "作成年月日",
-      "createdOnHint": "未入力の場合、PDFでは面談日（{date}）を使います。",
+      "createdOnHint": "未入力の場合は、フォームを最後に保存した日（TSKのタイムゾーン）になります。別の日付にしたい場合のみ入力してください。",
       "pdf": "第5-5号PDFをダウンロード",
       "filled": "入力済み",
       "notFilled": "未入力",
       "stateNonconformity": "基準不適合あり",
-      "summary": "回答{answered}件、問題{problems}件、基準不適合：{nc}"
+      "summary": "回答{answered}件、問題{problems}件、基準不適合：{nc}",
+      "otherLabel": "「その他」の括弧内（内容）"
     }
   },
   "sheet": {

@@ -34,6 +34,33 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-06 · T-009 · revisi ke-1: teks form 5-5 sama dengan form resmi
+
+**PR:** #10 (branch `eng/T-009-form-5-5`)
+**Status:** revisi ke-1, siap direview ulang
+
+**Yang diubah (sesuai `PM: REVISI`; tanpa migrasi, hanya `src/db/form55.ts`, `labels.ja.ts`, `src/lib/pdf/form55.ts`, form, seed, tes, docs)**
+- 18 kalimat butir ①〜⑤ diganti teks resmi (bentuk pernyataan "〜こと。"); judul kelompok jadi "…に関する事項" / "その他の事項". ⑤(2) punya isian kurung terpisah (`otherLabel`, tersimpan di jsonb `form55`, default "" untuk data lama; dicetak `その他（<isian>）`; kolom isian di form).
+- Tabel butir di PDF: kolom 面談事項 / 面談内容 / 問題の有無 (`□有 □無`, terpilih ■) / 問題の内容. ⑥ dicetak `■有り（下記4に詳細を記載） □なし`.
+- Bagian 1-2 memakai label resmi (①特定技能外国人の氏名, ②特定技能所属機関の氏名又は名称, ③面談日, ④方式, ①対応者の氏名, ②対応者の役職, 役職名 kolom tersendiri). Bagian 4 sesuai form dengan kotak pilihan (ア/イ(ア)/イ(イ)/ウ); "所属機関（受入れ企業）" diganti "特定技能所属機関"; terjemahan Indonesia hanya di form isian, tidak di PDF.
+- 作成年月日: kosong = tanggal form terakhir disimpan menurut zona TSK (dari `updated_at`, dihitung saat cetak), BUKAN tanggal wawancara; bisa diisi eksplisit. Seed demo kini memakai bawaan itu.
+- Header PDF: `参考様式第5－5号` di kiri atas; nama organisasi kecil di kanan; footer "作成日時" tetap.
+- 面談実施者 = 対応者 (keputusan PM): tetap satu kolom.
+- Perbaikan kecil di `PdfBuilder.table`: baris pertama setelah pindah halaman tercetak tebal (font header tidak dikembalikan); kini Regular. Berlaku juga untuk PDF lain, tanpa perubahan tata letak.
+
+**Verifikasi** (db-dev `hashi_dev`; produksi tidak disentuh)
+- `npm run typecheck` → lulus; `npm run build` → 0 peringatan; `npm run test:i18n` → konsisten (1481 kunci)
+- `npm run test:unit` → 71 lulus (`form55.test.ts` diperbarui: kalimat resmi butir ①〜⑤, label bagian 1/2/4, kotak pilihan, `その他（通勤手段）`, 作成年月日 eksplisit vs tanggal simpan, header, data lama tanpa `otherLabel`, tidak ada "所属機関（受入れ企業）")
+- `db:seed -- --reset` + `npm run test:rls` → lulus; `npm run verify:seed` → lulus; `E2E_PORT=3120 npm run test:e2e` → 184 lulus (e2e form55 kini juga mengisi dan memuat ulang `otherLabel`)
+- Tangkapan layar baru dari image runner lokal (kontainer/image sementara sudah dihapus): `docs/screenshots/T-009/form55-pdf-1.png`, `form55-pdf-2.png`, `annual-page.png`.
+
+**Kondisi server:** produksi tetap `ac8037a`; T-009 belum di-deploy (menunggu `PM: DISETUJUI`; ada migrasi 0024 → `--backup`).
+
+**Kendala / catatan**
+- Label tetap DRAFT sampai staf TSK mengecek (PM yang menyampaikan ke Ipal); jangan dikirim ke imigrasi.
+
+**Pertanyaan:** tidak ada yang baru.
+
 ## 2026-10-06 · T-009 · Form 定期面談報告書 (参考様式第5-5号) + halaman tahunan per pekerja + hasil deploy T-010
 
 **PR:** #10 (branch `eng/T-009-form-5-5`)

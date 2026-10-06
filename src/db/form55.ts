@@ -1,8 +1,7 @@
 // Form 参考様式第5-5号「定期面談報告書（1号特定技能外国人用）」 (T-009): SATU berkas konfigurasi untuk daftar butir, label, dan validator.
 // Modul murni (hanya zod) supaya dipakai aplikasi, PDF, skrip seed/verifikasi, dan tes. Kode butir TETAP ("work.1" dst.): jangan diganti nomornya,
 // data lama merujuk kode ini. Label Jepang = teks yang tercetak di PDF; label Indonesia = bantuan di form (id).
-// FORMAT DRAFT: kalimat butir disusun dari rincian tugas T-009 (staf TSK), BUKAN salinan kata-per-kata form resmi; cocokkan dengan form 出入国在留管理庁 terbaru
-// lalu ubah di sini saja bila perlu (tidak ada migrasi: data hanya menyimpan kode butir).
+// Kalimat butir Jepang = teks resmi form 5-5 (diberikan PM, 2026-10-06); status tetap DRAFT sampai dicek staf TSK. Bila form berubah, ubah di sini saja (tanpa migrasi: data hanya menyimpan kode butir).
 import { z } from "zod";
 
 export type Form55Item = { code: string; ja: string; id: string };
@@ -10,46 +9,46 @@ export type Form55Group = { key: "work" | "treatment" | "protection" | "life" | 
 
 export const FORM55_GROUPS: readonly Form55Group[] = [
   {
-    key: "work", no: "①", ja: "業務内容", id: "Isi pekerjaan",
+    key: "work", no: "①", ja: "業務内容に関する事項", id: "Isi pekerjaan",
     items: [
-      { code: "work.1", ja: "雇用契約に定められた業務以外の業務に従事していないか", id: "Tidak mengerjakan pekerjaan di luar isi kontrak kerja" },
-      { code: "work.2", ja: "契約外の他の事業者の下で就労していないか", id: "Tidak bekerja di bawah pemberi kerja lain di luar kontrak" },
-      { code: "work.3", ja: "安全衛生に配慮した環境で就労しているか", id: "Bekerja dengan memperhatikan keselamatan dan kesehatan kerja (K3)" },
+      { code: "work.1", ja: "雇用契約と異なる業務に従事していないこと。", id: "Tidak mengerjakan pekerjaan di luar isi kontrak kerja" },
+      { code: "work.2", ja: "他の事業主の下で業務に従事していないこと。", id: "Tidak bekerja di bawah pemberi kerja lain di luar kontrak" },
+      { code: "work.3", ja: "安全衛生に配慮して適切に業務を行っていること。", id: "Bekerja dengan memperhatikan keselamatan dan kesehatan kerja (K3)" },
     ],
   },
   {
-    key: "treatment", no: "②", ja: "待遇", id: "Perlakuan / syarat kerja",
+    key: "treatment", no: "②", ja: "待遇に関する事項", id: "Perlakuan / syarat kerja",
     items: [
-      { code: "treatment.1", ja: "報酬が契約どおり毎月支払われているか", id: "Gaji diterima setiap bulan sesuai kontrak" },
-      { code: "treatment.2", ja: "労働時間が契約どおりか", id: "Jam kerja sesuai kontrak" },
-      { code: "treatment.3", ja: "休日・休暇（一時帰国のための休暇を含む）が与えられているか", id: "Hari libur dan cuti diberikan (termasuk cuti pulang sementara)" },
-      { code: "treatment.4", ja: "住居が適切に確保されているか", id: "Tempat tinggal layak" },
-      { code: "treatment.5", ja: "食費・居住費等の費用が合意どおりか", id: "Biaya makan, tempat tinggal, dan sejenisnya sesuai kesepakatan" },
-      { code: "treatment.6", ja: "支援計画に沿った支援を受けているか", id: "Menerima dukungan sesuai rencana dukungan (支援計画)" },
+      { code: "treatment.1", ja: "雇用契約に基づき毎月適切に報酬を受け取っていること。", id: "Gaji diterima setiap bulan sesuai kontrak" },
+      { code: "treatment.2", ja: "雇用契約と異なる労働時間となっていないこと。", id: "Jam kerja sesuai kontrak" },
+      { code: "treatment.3", ja: "休日、休暇等が適切に付与されていること（一時帰国休暇を含む）", id: "Hari libur dan cuti diberikan (termasuk cuti pulang sementara)" },
+      { code: "treatment.4", ja: "適切な住居が確保されていること。", id: "Tempat tinggal layak" },
+      { code: "treatment.5", ja: "定期的に負担する食費、居住費等が合意したとおりの内容であること。", id: "Biaya makan, tempat tinggal, dan sejenisnya sesuai kesepakatan" },
+      { code: "treatment.6", ja: "支援計画にのっとった支援の提供を受けていること。", id: "Menerima dukungan sesuai rencana dukungan (支援計画)" },
     ],
   },
   {
-    key: "protection", no: "③", ja: "保護", id: "Perlindungan",
+    key: "protection", no: "③", ja: "保護に関する事項", id: "Perlindungan",
     items: [
-      { code: "protection.1", ja: "暴行・脅迫・監禁を受けていないか", id: "Tidak mengalami kekerasan, ancaman, atau pengurungan" },
-      { code: "protection.2", ja: "保証金の徴収・違約金契約がないか", id: "Tidak ada uang jaminan atau kontrak denda" },
-      { code: "protection.3", ja: "預金通帳等の不当な管理がないか", id: "Tidak ada pengelolaan harta yang tidak wajar (buku tabungan dan sejenisnya)" },
-      { code: "protection.4", ja: "旅券・在留カードを本人が保管しているか", id: "Paspor dan kartu izin tinggal dipegang sendiri" },
-      { code: "protection.5", ja: "私生活の自由が制限されていないか", id: "Kebebasan pribadi tidak dibatasi" },
+      { code: "protection.1", ja: "暴行・脅迫・監禁等の不法行為を受けていないこと。", id: "Tidak mengalami kekerasan, ancaman, atau pengurungan" },
+      { code: "protection.2", ja: "相手方を問わず保証金の徴収・違約金を定める契約等がないこと。", id: "Tidak ada uang jaminan atau kontrak denda" },
+      { code: "protection.3", ja: "預金通帳の管理など不当な財産管理を受けていないこと。", id: "Tidak ada pengelolaan harta yang tidak wajar (buku tabungan dan sejenisnya)" },
+      { code: "protection.4", ja: "旅券・在留カードを自分で保管していること。", id: "Paspor dan kartu izin tinggal dipegang sendiri" },
+      { code: "protection.5", ja: "私生活の自由を不当に制限されていないこと。", id: "Kebebasan pribadi tidak dibatasi" },
     ],
   },
   {
-    key: "life", no: "④", ja: "生活", id: "Kehidupan",
+    key: "life", no: "④", ja: "生活に関する事項", id: "Kehidupan",
     items: [
-      { code: "life.1", ja: "日常生活上の問題がないか", id: "Tidak ada masalah kehidupan sehari-hari" },
-      { code: "life.2", ja: "健康上の問題がないか", id: "Tidak ada masalah kesehatan" },
+      { code: "life.1", ja: "日常生活においてトラブルが発生していないこと。", id: "Tidak ada masalah kehidupan sehari-hari" },
+      { code: "life.2", ja: "健康状態に異常がないこと。", id: "Tidak ada masalah kesehatan" },
     ],
   },
   {
-    key: "other", no: "⑤", ja: "その他", id: "Lain-lain",
+    key: "other", no: "⑤", ja: "その他の事項", id: "Lain-lain",
     items: [
-      { code: "other.1", ja: "不法就労者がいないか", id: "Tidak ada pekerja ilegal" },
-      { code: "other.2", ja: "その他", id: "Lainnya" },
+      { code: "other.1", ja: "不法就労者が働いていないこと。", id: "Tidak ada pekerja ilegal" },
+      { code: "other.2", ja: "その他", id: "Lainnya (isi kurung diisi terpisah)" },
     ],
   },
 ];
@@ -92,7 +91,10 @@ export const form55Schema = z.object({
   nonconformity: z.boolean().nullable(),
   special: txt(FORM55_LIMITS.text), // ⑦ その他特筆事項
   response: responseSchema.nullable(),
-  createdOn: dateOrNull, // 作成年月日
+  /** Isi kurung pada ⑤(2) "その他（　）": apa yang dimaksud "lainnya" (terpisah dari 問題の内容). */
+  otherLabel: txt(FORM55_LIMITS.short).default(""),
+  /** 作成年月日 eksplisit; null = tanggal form TERAKHIR DISIMPAN (zona waktu TSK), dihitung saat dicetak. */
+  createdOn: dateOrNull,
 });
 
 export type Form55 = z.infer<typeof form55Schema>;
@@ -105,7 +107,7 @@ export const emptyResponse = (): Form55Response => ({
   agency: { reported: null, on: null, body: "", reason: "" },
 });
 
-export const emptyForm55 = (): Form55 => ({ v: 1, items: {}, nonconformity: null, special: "", response: null, createdOn: null });
+export const emptyForm55 = (): Form55 => ({ v: 1, items: {}, nonconformity: null, special: "", response: null, otherLabel: "", createdOn: null });
 
 /** Kunci galat yang dipahami UI (records.errors.<kunci> di messages) bila isi form tidak sah. */
 export type Form55Error = "form55Invalid" | "form55ItemText" | "form55ResponseRequired";
@@ -154,6 +156,7 @@ export const f55Name = {
   text: (code: string) => `f55.${code}.text`,
   nonconformity: "f55.nonconformity",
   special: "f55.special",
+  otherLabel: "f55.otherLabel",
   createdOn: "f55.createdOn",
   occurredOn: "f55.r.occurredOn",
   content: "f55.r.content",
@@ -185,6 +188,7 @@ export function form55FromFields(get: (name: string) => string): Form55 | null {
   };
   const special = s(f55Name.special);
   const createdOn = d(f55Name.createdOn);
-  if (Object.keys(items).length === 0 && nonconformity === null && !special && !createdOn) return null;
-  return { v: 1, items, nonconformity, special, response: nonconformity === true ? response : null, createdOn };
+  const otherLabel = s(f55Name.otherLabel);
+  if (Object.keys(items).length === 0 && nonconformity === null && !special && !createdOn && !otherLabel) return null;
+  return { v: 1, items, nonconformity, special, response: nonconformity === true ? response : null, otherLabel, createdOn };
 }

@@ -87,7 +87,7 @@ export default async function InterviewFormPage({ params }: { params: Promise<{ 
         <section className="space-y-3 border-t border-line pt-4" aria-labelledby="f55-title" data-testid="form55-section">
             <h3 id="f55-title" className="text-[17px] font-semibold">{t("form55.title")}</h3>
             <p className="text-xs text-ink-2">{t("form55.ignoredHint")}</p>
-            <Form55Fields defaults={f55} method={r?.method ?? null} responderRole={r?.responderRole ?? null} responderTitle={r?.responderTitle ?? null} today={today} interviewDate={r?.interviewDate ?? null} />
+            <Form55Fields defaults={f55} method={r?.method ?? null} responderRole={r?.responderRole ?? null} responderTitle={r?.responderTitle ?? null} today={today} />
           </section>
         </ActionForm>
         {conducted && (

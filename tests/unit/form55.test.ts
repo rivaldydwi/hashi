@@ -63,12 +63,12 @@ test("ringkasan untuk audit/daftar: hitungan saja, tanpa teks", () => {
 });
 
 const data = (over: Partial<Form55PdfData> = {}, form: Form55 | null = null): Form55PdfData => ({
-  workerName: "ダミー 太郎", orgName: "さくらフーズ株式会社", interviewDate: "2026-09-15", method: "online", responderName: "鈴木 花子", responderRole: "support_staff", responderTitle: "主任", form, ...over,
+  workerName: "ダミー 太郎", orgName: "さくらフーズ株式会社", interviewDate: "2026-09-15", method: "online", responderName: "鈴木 花子", responderRole: "support_staff", responderTitle: "主任", form, savedOn: "2026-09-25", ...over,
 });
 const fullForm = (): Form55 => {
   const r = parseForm55(form55FromFields(fields({
     [f55Name.answer("work.1")]: "ok", [f55Name.answer("treatment.3")]: "problem", [f55Name.text("treatment.3")]: "有給の取得が難しい（ISI-TREATMENT3）",
-    [f55Name.answer("protection.4")]: "ok", [f55Name.nonconformity]: "yes", [f55Name.special]: "TOKKI-ISI", [f55Name.createdOn]: "2026-09-20",
+    [f55Name.answer("protection.4")]: "ok", [f55Name.nonconformity]: "yes", [f55Name.special]: "TOKKI-ISI", [f55Name.otherLabel]: "通勤手段", [f55Name.createdOn]: "2026-09-20",
     [f55Name.occurredOn]: "2026-09-01", [f55Name.content]: "KEJADIAN-ISI", [f55Name.workerKind]: "referred", [f55Name.workerBody]: "労働基準監督署",
     [f55Name.notified]: "done", [f55Name.notifiedOn]: "2026-09-03", [f55Name.notifiedTo]: "工場長", [f55Name.immigration]: "not_done", [f55Name.immigrationNote]: "IMM-CATATAN",
     [f55Name.reported]: "not_done", [f55Name.reportedReason]: "ALASAN-INSTANSI",
@@ -77,26 +77,55 @@ const fullForm = (): Form55 => {
   return (r as { ok: true; value: Form55 }).value;
 };
 
-test("PDF per wawancara: bagian 1-3 dan butir pada tempatnya; bagian 4 hanya bila ⑥ = 有", async () => {
+test("PDF per wawancara: label bagian 1-2, kalimat butir RESMI, ⑤(2) その他（isian）, ⑥/⑦, bagian 4 hanya bila ⑥ = 有", async () => {
   const { n, text } = await read(await renderForm55Pdf(ctx, data({}, fullForm())));
   const t = norm(text);
   assert.ok(n >= 1);
-  for (const s of ["参考様式第5-5号", "定期面談報告書（1号特定技能外国人用）", "1面談対象者", "ダミー太郎", "さくらフーズ株式会社", "2026/09/15", "□対面", "■オンライン", "■支援担当者", "主任", "鈴木花子", "3面談結果", "①業務内容", "⑤その他"]) assert.ok(t.includes(s), `tidak ada: ${s}`);
-  for (const g of FORM55_GROUPS) for (const it of g.items) assert.ok(t.includes(norm(it.ja)), `butir tidak tercetak: ${it.code}`);
-  assert.ok(t.includes("ISI-TREATMENT3") && t.includes("TOKKI-ISI"));
-  assert.ok(t.includes("4基準不適合等への対応") && t.includes("KEJADIAN-ISI") && t.includes("労働基準監督署") && t.includes("工場長") && t.includes("IMM-CATATAN") && t.includes("ALASAN-INSTANSI"));
+  for (const s of [
+    "参考様式第5－5号", "定期面談報告書（1号特定技能外国人用）", "1面談対象者", "①特定技能外国人の氏名", "ダミー太郎", "②特定技能所属機関の氏名又は名称", "さくらフーズ株式会社", "③面談日", "2026/09/15",
+    "④方式", "□対面", "■オンライン", "2面談対応者", "①対応者の氏名", "鈴木花子", "②対応者の役職", "■支援担当者", "□支援責任者", "役職名", "主任",
+    "3面談結果", "面談事項", "面談内容", "問題の有無", "問題の内容", "①業務内容に関する事項", "②待遇に関する事項", "③保護に関する事項", "④生活に関する事項", "⑤その他の事項",
+    "雇用契約と異なる業務に従事していないこと。", "他の事業主の下で業務に従事していないこと。", "安全衛生に配慮して適切に業務を行っていること。",
+    "休日、休暇等が適切に付与されていること（一時帰国休暇を含む）", "定期的に負担する食費、居住費等が合意したとおりの内容であること。", "支援計画にのっとった支援の提供を受けていること。",
+    "相手方を問わず保証金の徴収・違約金を定める契約等がないこと。", "旅券・在留カードを自分で保管していること。", "健康状態に異常がないこと。", "不法就労者が働いていないこと。", "その他（通勤手段）",
+    "⑥基準不適合等の有無", "■有り（下記4に詳細を記載）", "□なし", "⑦その他特筆すべき事項", "TOKKI-ISI", "■有□無", // butir 有 (③待遇(3))
+  ]) assert.ok(t.includes(norm(s)), `tidak ada: ${s}`);
+  for (const g of FORM55_GROUPS) for (const it of g.items) if (it.code !== "other.2") assert.ok(t.includes(norm(it.ja)), `butir tidak tercetak: ${it.code}`);
+  assert.ok(t.includes("ISI-TREATMENT3"));
+  assert.ok(t.includes("4基準不適合等への対応") && t.includes("①基準不適合等の発生年月日") && t.includes("②基準不適合等の内容") && t.includes("KEJADIAN-ISI"));
+  for (const s of ["③基準不適合等への対応結果", "ア1号特定技能外国人への対応", "■労働基準監督署等の関係行政機関案内（案内した機関:労働基準監督署）", "□特段対応なし", "イ特定技能所属機関への対応", "(ア)責任者への基準不適合等の通知", "■通知済み（通知日:2026/09/03/通知の相手方:工場長）", "□未通知",
+    "(イ)基準不適合等の出入国在留管理庁への案内", "□案内済み□未了".replace("□未了", "■未了"), "IMM-CATATAN", "ウ関係行政機関への対応", "□関係行政機関へ通報済み", "■関係行政機関への通報未了（通報不要と判断した場合を含む。）（理由:ALASAN-INSTANSI）"]) assert.ok(t.includes(norm(s)), `bagian 4 tidak ada: ${s}`);
+  assert.ok(!t.includes("所属機関（受入れ企業）"), "istilah non-resmi tidak boleh ada");
   assert.ok(t.includes("2026/09/20") && t.includes("作成年月日") && t.includes("面談実施者の氏名"));
   // tanpa 基準不適合: bagian 4 tidak ada
   const none = parseForm55({ ...fullForm(), nonconformity: false, response: null }) as { ok: true; value: Form55 };
   const t2 = norm((await read(await renderForm55Pdf(ctx, data({}, none.value)))).text);
   assert.ok(!t2.includes("4基準不適合等への対応") && !t2.includes("KEJADIAN-ISI"));
-  assert.ok(t2.includes("なし"));
+  assert.ok(t2.includes("■なし") && t2.includes("□有り（下記4に詳細を記載）"));
+});
+
+test("作成年月日: eksplisit dipakai; kosong = tanggal form terakhir disimpan (savedOn), BUKAN tanggal wawancara", async () => {
+  const f = fullForm();
+  const explicit = norm((await read(await renderForm55Pdf(ctx, data({}, f)))).text);
+  assert.ok(explicit.includes("作成年月日2026/09/20"));
+  const auto = parseForm55({ ...f, createdOn: null }) as { ok: true; value: Form55 };
+  const t = norm((await read(await renderForm55Pdf(ctx, data({ savedOn: "2026-10-02" }, auto.value)))).text);
+  assert.ok(t.includes("作成年月日2026/10/02") && !t.includes("作成年月日2026/09/15"));
+  const none = norm((await read(await renderForm55Pdf(ctx, data({ savedOn: "2026-10-03" }, null)))).text);
+  assert.ok(none.includes("作成年月日2026/10/03"));
+});
+
+test("header PDF: nomor form resmi di kiri atas, nama organisasi kecil di kanan; formulir lama tanpa otherLabel tetap terbaca (default kosong)", async () => {
+  const { text } = await read(await renderForm55Pdf(ctx, data({}, fullForm())));
+  assert.ok(text.indexOf("参考様式第5－5号") < text.indexOf("TSK Demo Tokyo"));
+  const old = readForm55({ v: 1, items: {}, nonconformity: null, special: "", response: null, createdOn: null }); // data T-009 awal (tanpa otherLabel)
+  assert.equal(old?.otherLabel, "");
 });
 
 test("PDF form kosong (data lama): tetap tercetak, butir kosong, tanpa galat", async () => {
   const { text } = await read(await renderForm55Pdf(ctx, data({ method: null, responderName: null, responderRole: null, responderTitle: null }, null)));
   const t = norm(text);
-  assert.ok(t.includes("□対面") && t.includes("□オンライン") && t.includes("③保護") && !t.includes("4基準不適合等への対応"));
+  assert.ok(t.includes("□対面") && t.includes("□オンライン") && t.includes("③保護に関する事項") && !t.includes("4基準不適合等への対応"));
 });
 
 test("PDF gabungan setahun: satu form per pekerja-bulan, urut seperti diberikan; tanpa form = halaman kosong berpesan", async () => {

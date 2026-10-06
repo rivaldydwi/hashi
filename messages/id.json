@@ -1703,12 +1703,13 @@
       "toAgency": "Penanganan ke instansi terkait (sudah dilaporkan?)",
       "agencyBody": "Nama instansi",
       "createdOn": "Tanggal pembuatan (sakusei nengappi)",
-      "createdOnHint": "Kosong = memakai tanggal wawancara ({date}) di PDF.",
+      "createdOnHint": "Kosong = tanggal form terakhir disimpan (zona waktu TSK). Isi bila laporan ingin diberi tanggal lain, mis. dibuat belakangan.",
       "pdf": "Unduh PDF form 5-5",
       "filled": "Form terisi",
       "notFilled": "Form belum diisi",
       "stateNonconformity": "Ada ketidaksesuaian",
-      "summary": "{answered} butir dijawab, {problems} bermasalah, ketidaksesuaian: {nc}"
+      "summary": "{answered} butir dijawab, {problems} bermasalah, ketidaksesuaian: {nc}",
+      "otherLabel": "Isi kurung \"Lainnya\" (hal yang dimaksud)"
     }
   },
   "sheet": {

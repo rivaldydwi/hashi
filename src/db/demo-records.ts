@@ -344,7 +344,7 @@ function demoForm55(status: string, date: string): Form55 {
   if (status === "issue") items["treatment.3"] = { a: "problem", text: "有給休暇を申請しづらい雰囲気がある。" };
   const nc = status === "issue";
   return {
-    v: 1, items, nonconformity: nc, special: status === "no_issue" ? "特になし。" : "次回の定期面談で状況を再確認する。", createdOn: date,
+    v: 1, items, nonconformity: nc, special: status === "no_issue" ? "特になし。" : "次回の定期面談で状況を再確認する。", otherLabel: "特になし", createdOn: null,
     response: nc
       ? {
           occurredOn: date, content: "有給休暇の申請を断られたとの申出があった。",

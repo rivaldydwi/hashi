@@ -17,7 +17,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ candidateId: s
     const row = (await yearInterviews(tx, candidateId, fiscalYearOf(month))).find((r) => r.month === month && r.applicable);
     if (!row) return null;
     await auditExport(tx, g.me, { exportKind: summarizeForm55(row.form).nonconformity ? "form55_nonconformity" : "form55", rows: 1, clientVersion: false });
-    return toForm55Pdf(worker, row);
+    return toForm55Pdf(worker, row, g.tz);
   });
   if (!data) return text(404, "Not found");
   const buf = await renderForm55Pdf({ orgName: g.me.organizationName, tz: g.tz, now: new Date() }, data);
