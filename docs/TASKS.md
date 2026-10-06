@@ -12,35 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-010 · Penanggung jawab pekerja (担当/責任者) + batas 50 pekerja per staf · `SIAP`
-
-**Dari staf TSK (2026-10-06):** di divisi 支援部, tiap staf menjadi penanggung jawab (責任者) untuk **satu daerah atau satu/beberapa perusahaan klien**.
-Mulai **April 2027** (aturan pemerintah Jepang, menurut TSK) **satu staf TSK maksimal mendukung 50 pekerja**. Penanggung jawab juga dibutuhkan untuk pengingat 在留カード (T-004)
-dan sebagai bawaan kolom 対応者 di form 5-5 (T-009).
-
-Kerjakan:
-- **Data:** penanggung jawab ditetapkan **per perusahaan klien** (bawaan untuk semua pekerjanya), bisa **diganti per pekerja** (penempatan). Penanggung jawab efektif pekerja =
-  pilihan per pekerja bila ada, kalau tidak dari perusahaannya. Riwayat perubahan tercatat (audit + tanggal mulai berlaku), tanpa menghapus. Hanya staf TSK organisasi sama (trigger).
-  "Daerah" belum dimodelkan terpisah: cukup kelompokkan lewat perusahaan; catat di STATUS bila ternyata perlu.
-- **Beban kerja:** halaman/daftar staf dengan jumlah pekerja yang didukung (penempatan ACTIVE dengan penanggung jawab efektif = staf itu). Peringatan **≥ 45** (kuning) dan
-  **> 50** (merah) + KPI dashboard TSK_ADMIN "staf melebihi batas". Jangan memblokir penyimpanan (keputusan hukum; cukup peringatan jelas yang menyebut aturan April 2027).
-  Batas 50 dan tanggal berlaku ditaruh di SATU konstanta konfigurasi.
-- **Penggunaan:** tampil di detail pekerja sisi TSK, grid 定期面談, halaman riwayat pekerja (T-007); filter "pekerja saya".
-- Pekerja tanpa penanggung jawab efektif = daftar "belum ada penanggung jawab" (KPI juga).
-
-**Kriteria selesai**
-- [ ] Migration + RLS (hanya TSK organisasi sama; LPK/sensei tidak melihat) + bagian di `verify-rls`.
-- [ ] Tes unit fungsi murni "penanggung jawab efektif" dan hitungan beban (pekerja ENDED tidak dihitung; ganti per pekerja menimpa perusahaan).
-- [ ] KPI = jumlah di daftar (fungsi yang sama); seed demo memuat satu staf ≥ 45 dan pekerja tanpa penanggung jawab; `verify:seed` memeriksa.
-- [ ] Deploy T-008 lewat `scripts/deploy.sh` dan catat output-nya di STATUS T-010.
-- [ ] Audit perubahan penanggung jawab (id saja, tanpa nama); label id/ja; e2e alur tetapkan per perusahaan → ganti per pekerja → angka beban berubah.
-- [ ] typecheck, test:unit, test:rls, build, e2e, CI hijau.
-- Definisi batas **sudah dikonfirmasi staf TSK (2026-10-06):** dihitung **per orang staf TSK yang menjadi penanggung jawab**, total semua pekerja yang dia pegang di seluruh
-  Jepang dan semua klien (bukan per klien, bukan per daerah). Contoh: 30 pekerja di klien A + 20 di klien B = 50 (batas tercapai).
-
----
-
-### T-009 · Form 定期面談報告書 (参考様式第5-5号) + halaman tahunan per pekerja · `SIAP` (setelah T-010)
+### T-009 · Form 定期面談報告書 (参考様式第5-5号) + halaman tahunan per pekerja · `SIAP`
 
 **Dari staf TSK:** tiap 定期面談 dilaporkan dengan form resmi imigrasi **参考様式第5-5号「定期面談報告書（1号特定技能外国人用）」**. Form ini diisi/dicetak saat
 akan melapor; terpisah dari catatan harian pekerja. Ada juga "form khusus per pekerja" berisi semua 面談 dia selama 1 tahun fiskal.
@@ -70,6 +42,8 @@ Kerjakan:
 - **PDF form 5-5 per wawancara** (pdfkit, tata letak mengikuti form resmi, label Jepang) + **halaman tahunan per pekerja** (FY): semua 定期面談 + daftar 面談 karena
   kejadian (② 議事録・面談記録 yang menyebut pekerja itu, terpisah dan berlabel) + tombol PDF gabungan setahun (semua form 5-5 pekerja itu).
 - Audit `periodic_interview.*` / `activity_export`: jenis, kuartal, ada/tidaknya 基準不適合; TANPA isi teks atau nama.
+
+- Deploy T-010 lewat `scripts/deploy.sh` dan catat output-nya di STATUS T-009.
 
 **Kriteria selesai**
 - [ ] Semua butir form 5-5 bisa diisi, disimpan, diedit (riwayat versi tetap jalan), dan muncul di PDF pada posisi yang sesuai; PDF diuji unit (isi teks) dan dicek manual
@@ -113,7 +87,7 @@ Isi dokumen:
 
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
 - Pelacak 在留カード: implementasi (setelah desain T-004 disetujui).
-- Langkah 8 siap pilot: seed 200 siswa dummy, cek kecepatan halaman daftar/detail, `SHOW_DEMO_ACCOUNTS=false`, daftar periksa sebelum data nyata.
+- Langkah 8 siap pilot: seed 200 siswa dummy (sekaligus memunculkan satu staf ≥ 45 pekerja untuk tampilan beban T-010), cek kecepatan halaman daftar/detail, `SHOW_DEMO_ACCOUNTS=false`, daftar periksa sebelum data nyata.
 - Langkah 7 sisanya: checklist keberangkatan/kedatangan, bagian 管理・報告 di lembar 定期面談, profil pekerja lengkap, status visa + tanggal tiba untuk LPK (baca-saja), notifikasi email/LINE.
 - `scripts/deploy.sh`: log build ke berkas (mis. `~/hashi-backups/deploy.log`), terminal hanya ringkasan (usulan engineer, T-007).
 - Catatan lanjutan: syarat "pekerja sama" hanya diperiksa saat dibuat; bila nanti perlu ketat, trigger di `activity_record_subjects` (temuan T-007, belum perlu).
@@ -122,6 +96,9 @@ Isi dokumen:
 
 ## Selesai
 
+- **T-010** Penanggung jawab pekerja (PR #9): `responsible_assignments` (migration 0023, per perusahaan atau per penempatan, append-only, tulis hanya TSK_ADMIN),
+  beban per staf `WORKLOAD` (50, kuning ≥ 45, merah > 50, berlaku 2027-04-01, tidak memblokir), `/records/responsible`, 2 KPI TSK_ADMIN. Seed ≥ 45 ditunda ke langkah 8
+  (dibuktikan di e2e). Deploy T-008: produksi `5f9c613`.
 - **T-008** 定期面談 per kuartal (PR #8): `quarterState` (done/open/missed/na/notDue/notRequired; kuning 14 hari terakhir), KPI = kuartal `open`, `missed` = bolong di grid
   dan daftar laporan tahunan `/records/interviews/annual`; pekerja ENDED ikut grid, laporan, dan pemilih form. Deploy T-007: produksi `31008ad`.
 - **T-007** Riwayat catatan per pekerja (PR #7): `/records/workers/<id>` (①②③④ dalam satu garis waktu + tindak lanjut terbuka), tombol "Lanjutkan"
