@@ -12,40 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-008 · 定期面談 sesuai aturan kuartal + pekerja yang sudah berhenti · `SIAP`
-
-**Aturan dari staf TSK (2026-10-06):**
-- 定期面談 wajib **minimal sekali per kuartal tahun fiskal** (Apr-Jun, Jul-Sep, Okt-Des, Jan-Mar), dimulai sejak pekerja **mulai bekerja di perusahaan**. Boleh lebih sering.
-- Laporan tahunan ke imigrasi per tahun fiskal (April-Maret), diserahkan setelah tahun fiskal berakhir. **Semua pekerja yang sempat bekerja di tahun fiskal itu wajib
-  dilaporkan, termasuk yang berhenti di tengah tahun** (contoh: mulai Mei 2026, berhenti Jan 2027 → tetap masuk laporan FY2026). Mulai Feb 2026 → masuk FY2025.
-
-Masalah sekarang: (1) grid menagih **tiap bulan** (bulan tanpa wawancara = "Belum"), jadi dashboard penuh tanda merah palsu; (2) grid hanya memuat penempatan ACTIVE,
-jadi pekerja yang berhenti di tengah tahun hilang dari grid, padahal wajib dilaporkan.
-
-Kerjakan:
-- **Tagihan per kuartal:** kuartal "wajib" bila pekerja bekerja minimal satu hari di kuartal itu (`placements.start_date` .. `end_date`, juga ENDED). Kuartal **Selesai**
-  bila ada ≥1 wawancara (status selain 未実施) bertanggal di kuartal itu; **Belum** bila kuartal sudah berjalan/lewat tanpa wawancara; kuartal depan tidak ditagih.
-  Fungsi murni baru (mis. `quarterState`) + tes unit kasus tepi (mulai di tengah kuartal, berhenti di tengah kuartal, mulai Feb → hanya Q4 FY sebelumnya, pindah tahun fiskal).
-  KPI dashboard "定期面談 belum dilakukan" dan `?view=pending` memakai fungsi yang SAMA (jumlah = kuartal Belum).
-- **Grid:** tetap tampilkan bulan (wawancara boleh bulanan), tetapi status utama per kuartal. Baris = semua pekerja yang bekerja di FY itu (ACTIVE dan ENDED), pekerja yang berhenti
-  diberi penanda "berhenti <tanggal>" dan bulan sesudah berhenti tidak ditagih.
-- **Daftar laporan tahunan** per FY: pekerja yang wajib dilaporkan + jumlah wawancara per kuartal + kuartal yang bolong (untuk persiapan laporan imigrasi). Belum perlu
-  membuat formulir laporan tahunan imigrasi itu sendiri.
-- **Pekerja yang sudah berhenti di form catatan** (temuan T-007): pemilih pekerja di form ①/② dan "Lanjutkan" sekarang hanya memuat penempatan ACTIVE. Tambahkan pekerja
-  ENDED (diberi penanda "berhenti <tanggal>", di bawah pekerja aktif), supaya catatan/wawancara susulan dan lanjutan tetap bisa dibuat untuk mereka.
-- Deploy T-007 lewat `scripts/deploy.sh` dan catat output-nya di STATUS T-008.
-- Data lama: wawancara per-bulan yang ada tetap sah; tidak ada data yang dihapus. Bila unique (pekerja, bulan) menghalangi lebih dari satu wawancara per bulan, biarkan dulu (catat di STATUS).
-
-**Kriteria selesai**
-- [ ] Tes unit `quarterState` (kasus tepi di atas) lulus; KPI = jumlah di daftar `?view=pending` (diperiksa `verify:seed` atau e2e).
-- [ ] Pekerja ENDED di tengah FY muncul di grid FY itu dan di daftar laporan; tidak muncul di FY sesudah berhenti.
-- [ ] Seed demo memuat minimal satu pekerja ENDED di tengah FY dan satu kuartal Belum.
-- [ ] `docs/catatan-kegiatan.md` bagian "Wawancara berkala" diperbarui (aturan kuartal, sumber: staf TSK).
-- [ ] typecheck, test:unit, test:rls, build, e2e, CI hijau.
-
----
-
-### T-010 · Penanggung jawab pekerja (担当/責任者) + batas 50 pekerja per staf · `SIAP` (setelah T-008)
+### T-010 · Penanggung jawab pekerja (担当/責任者) + batas 50 pekerja per staf · `SIAP`
 
 **Dari staf TSK (2026-10-06):** di divisi 支援部, tiap staf menjadi penanggung jawab (責任者) untuk **satu daerah atau satu/beberapa perusahaan klien**.
 Mulai **April 2027** (aturan pemerintah Jepang, menurut TSK) **satu staf TSK maksimal mendukung 50 pekerja**. Penanggung jawab juga dibutuhkan untuk pengingat 在留カード (T-004)
@@ -65,6 +32,7 @@ Kerjakan:
 - [ ] Migration + RLS (hanya TSK organisasi sama; LPK/sensei tidak melihat) + bagian di `verify-rls`.
 - [ ] Tes unit fungsi murni "penanggung jawab efektif" dan hitungan beban (pekerja ENDED tidak dihitung; ganti per pekerja menimpa perusahaan).
 - [ ] KPI = jumlah di daftar (fungsi yang sama); seed demo memuat satu staf ≥ 45 dan pekerja tanpa penanggung jawab; `verify:seed` memeriksa.
+- [ ] Deploy T-008 lewat `scripts/deploy.sh` dan catat output-nya di STATUS T-010.
 - [ ] Audit perubahan penanggung jawab (id saja, tanpa nama); label id/ja; e2e alur tetapkan per perusahaan → ganti per pekerja → angka beban berubah.
 - [ ] typecheck, test:unit, test:rls, build, e2e, CI hijau.
 - Definisi batas **sudah dikonfirmasi staf TSK (2026-10-06):** dihitung **per orang staf TSK yang menjadi penanggung jawab**, total semua pekerja yang dia pegang di seluruh
@@ -154,6 +122,8 @@ Isi dokumen:
 
 ## Selesai
 
+- **T-008** 定期面談 per kuartal (PR #8): `quarterState` (done/open/missed/na/notDue/notRequired; kuning 14 hari terakhir), KPI = kuartal `open`, `missed` = bolong di grid
+  dan daftar laporan tahunan `/records/interviews/annual`; pekerja ENDED ikut grid, laporan, dan pemilih form. Deploy T-007: produksi `31008ad`.
 - **T-007** Riwayat catatan per pekerja (PR #7): `/records/workers/<id>` (①②③④ dalam satu garis waktu + tindak lanjut terbuka), tombol "Lanjutkan"
   (`continues_record_id`, migration 0022, penjaga database), `verify-rls` bagian U, 7 e2e baru; deploy T-006 lewat skrip: produksi `32ea832`.
 - **T-006** Skrip deploy (PR #6): `scripts/deploy.sh` (main + bersih + pull --ff-only + build dengan `GIT_SHA` + tunggu health = commit; `--backup`, `--check`),
