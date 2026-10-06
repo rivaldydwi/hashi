@@ -22,6 +22,15 @@ Teks Jepang (`messages/ja.json`) memakai istilah Jepang aslinya. Istilah baru: t
 | 技能実習・育成就労 | Ginō Jisshū / Ikusei Shūrō | Magang / Ikusei | Program magang dan penggantinya |
 | 管理者 / 施設長 | kanrisha / shisetsuchō | Manajer / kepala fasilitas | Contoh jabatan PIC klien |
 | 在留カード | Zairyū Kādo | Residence Card | Kartu izin tinggal (fitur langkah 7) |
+| 取引先プロフィール | Torihikisaki Purofīru | Profil klien | Lembar PDF profil perusahaan klien (langkah 6) |
+| 求人票 | Kyūjinhyō | Lembar job order | Lembar PDF satu lowongan lengkap dengan kondisi kerja (langkah 6) |
+| 労働条件 | Rōdō Jōken | Kondisi kerja | Gaji, jam kerja, libur, tempat tinggal, dst. di lembar job order |
+| 社内用 | Shanaiyō | Hanya internal | Mode ekspor: semua isian, jangan dikirim ke luar |
+| 提供用 | Teikyōyō | Untuk dibagikan | Mode ekspor: tanpa telepon PIC, catatan internal, syarat gender, nama staf |
+| 基本給 | Kihon-kyū | Gaji pokok | Kolom gaji bulanan job order |
+| 就業開始予定 | Shūgyō Kaishi Yotei | Rencana mulai kerja | Target mulai kerja di lembar |
+| 応募締切 | Ōbo Shimekiri | Batas pendaftaran | Tenggat pengajuan kandidat |
+| 最寄り駅 | Mayori-eki | Stasiun terdekat | Akses ke lokasi kerja |
 | 業務記録 | Gyōmu Kiroku | Catatan kerja harian | Laporan pekerjaan yang dikerjakan hari itu (Catatan kegiatan, tab 1) |
 | 議事録・面談記録 | Gijiroku / Mendan Kiroku | Notulen dan catatan pertemuan | Laporan rapat/pertemuan, terutama dengan klien (tab 2) |
 | 時系列 | Jikeiretsu | Kronologi kasus | Urutan kejadian satu kasus; bisa dikirim ke klien (tab 3) |

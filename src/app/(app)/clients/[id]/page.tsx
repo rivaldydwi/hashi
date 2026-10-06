@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/PageHeader";
 import { btnPrimary, cardClass } from "@/components/styles";
 import { ActiveToggle, CompanyForm, DeleteButton } from "@/features/clients/ClientForms";
-import { COMPANY_FIELDS } from "@/features/clients/fields";
+import { COMPANY_ALL_FIELDS } from "@/features/clients/fields";
 import { requireTsk, uuid } from "@/features/clients/guards";
 import { getCompany } from "@/features/clients/queries";
+import { ExportCompanySheet } from "@/features/client-sheet/ExportSheet";
 import { toFormValue } from "@/features/candidates/sections";
 import { tenantQuery } from "@/lib/session";
 
@@ -22,7 +24,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
   if (!data) notFound(); // tidak ada, atau milik TSK lain (RLS)
   const t = await getTranslations("clients");
   const { company, sites } = data;
-  const values = Object.fromEntries(COMPANY_FIELDS.map((f) => [f.name, toFormValue(f, (company as Record<string, unknown>)[f.name])]));
+  const values = Object.fromEntries(COMPANY_ALL_FIELDS.map((f) => [f.name, toFormValue(f, (company as Record<string, unknown>)[f.name])]));
 
   return (
     <>
@@ -31,7 +33,12 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
         intro={company.nameAlt ?? undefined}
         backHref="/clients"
         backLabel={t("title")}
-        action={!company.active ? <span className="rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700">{t("inactive")}</span> : undefined}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {!company.active && <span className="rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700">{t("inactive")}</span>}
+            <Suspense fallback={null}><ExportCompanySheet me={me} companyId={company.id} /></Suspense>
+          </div>
+        }
       />
       <div className="space-y-4">
         <section className={`${cardClass} p-5`} data-testid="section-company">

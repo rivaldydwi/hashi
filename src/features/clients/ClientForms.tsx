@@ -8,7 +8,8 @@ import { FieldInputs } from "@/features/candidates/DetailForms";
 import { useSkillFieldOptions } from "@/features/skill-fields/SkillFieldsProvider";
 import { idle, type FormState } from "@/lib/form-state";
 import { createCompany, createSite, deleteCompany, deleteContact, deleteSite, saveContact, setCompanyActive, setContactActive, setSiteActive, updateCompany, updateSite } from "./actions";
-import { COMPANY_FIELDS, CONTACT_FIELDS, SITE_FIELDS } from "./fields";
+import { COMPANY_FIELDS, COMPANY_SHEET_FIELDS, CONTACT_FIELDS, SITE_FIELDS, SITE_SHEET_FIELDS } from "./fields";
+import type { FieldDef } from "@/features/candidates/sections";
 
 type Values = Record<string, string | boolean>;
 type Action = (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -48,15 +49,29 @@ export function Submit({ pending, children }: { pending: boolean; children: Reac
   );
 }
 
+/** Bagian lipat "Informasi untuk lembar" (langkah 6): terbuka sendiri bila sudah ada isinya. Label kolom memakai namespace form yang sama. */
+export function SheetSection({ section, labelNs, idPrefix, fields, values }: { section: string; labelNs: string; idPrefix: string; fields: FieldDef[]; values: Values }) {
+  const t = useTranslations("sheet");
+  const hasValue = fields.some((f) => String(values[f.name] ?? "") !== "");
+  return (
+    <details className="rounded-lg border border-stone-200 p-3" open={hasValue} data-testid={`sheet-section-${section}`}>
+      <summary className="cursor-pointer text-sm font-medium text-brand-700">{t("sectionTitle")}</summary>
+      <p className="mb-3 mt-1 text-xs text-stone-500">{t("sectionHint")}</p>
+      <FieldInputs section={section} labelNs={labelNs} idPrefix={idPrefix} fields={fields} values={values} />
+    </details>
+  );
+}
+
 export function CompanyForm({ company }: { company?: { id: string; values: Values } }) {
   const t = useTranslations("clients");
-  const empty = Object.fromEntries(COMPANY_FIELDS.map((f) => [f.name, ""]));
+  const empty = Object.fromEntries([...COMPANY_FIELDS, ...COMPANY_SHEET_FIELDS].map((f) => [f.name, ""]));
   return (
     <ManualForm action={company ? updateCompany : createCompany} testid={company ? "form-company-edit" : "form-company-add"}>
       {({ state, pending }) => (
         <>
           {company && <input type="hidden" name="companyId" value={company.id} />}
           <FieldInputs section="company" labelNs="clients.forms.company" idPrefix="company" fields={COMPANY_FIELDS} values={company?.values ?? empty} />
+          <SheetSection section="company" labelNs="clients.forms.company" idPrefix="company" fields={COMPANY_SHEET_FIELDS} values={company?.values ?? empty} />
           <FormAlert state={state} />
           <Submit pending={pending}>{company ? t("save") : t("addCompany")}</Submit>
         </>
@@ -69,7 +84,7 @@ export function CompanyForm({ company }: { company?: { id: string; values: Value
 export function SiteForm({ companyId, site }: { companyId: string; site?: { id: string; values: Values; fieldIds: string[] } }) {
   const t = useTranslations("clients");
   const options = useSkillFieldOptions();
-  const empty = Object.fromEntries(SITE_FIELDS.map((f) => [f.name, ""]));
+  const empty = Object.fromEntries([...SITE_FIELDS, ...SITE_SHEET_FIELDS].map((f) => [f.name, ""]));
   return (
     <ManualForm action={site ? updateSite : createSite} testid={site ? "form-site-edit" : "form-site-add"}>
       {({ state, pending }) => (
@@ -77,6 +92,7 @@ export function SiteForm({ companyId, site }: { companyId: string; site?: { id: 
           <input type="hidden" name="companyId" value={companyId} />
           {site && <input type="hidden" name="siteId" value={site.id} />}
           <FieldInputs section="site" labelNs="clients.forms.site" idPrefix="site" fields={SITE_FIELDS} values={site?.values ?? empty} />
+          <SheetSection section="site" labelNs="clients.forms.site" idPrefix="site" fields={SITE_SHEET_FIELDS} values={site?.values ?? empty} />
           <fieldset className="space-y-1.5" data-testid="site-fields">
             <legend className={labelClass}>{t("acceptedFields")}</legend>
             <div className="flex flex-wrap gap-x-5 gap-y-1">

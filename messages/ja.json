@@ -891,7 +891,11 @@
           "corporateNumber": "法人番号（13桁）",
           "hqAddress": "本社所在地",
           "phone": "電話番号",
-          "note": "備考"
+          "note": "備考",
+          "industry": "業種・施設種別",
+          "employeeCount": "従業員数",
+          "foreignWorkerExperience": "外国人受入れ実績",
+          "publicIntro": "紹介文（提供用にも掲載されます）"
         }
       },
       "site": {
@@ -899,7 +903,8 @@
           "name": "事業所名",
           "address": "事業所住所",
           "phone": "事業所電話番号",
-          "note": "備考"
+          "note": "備考",
+          "accessNote": "最寄り駅・アクセス"
         }
       },
       "contact": {
@@ -1008,7 +1013,13 @@
           "genderRequirement": "性別の条件",
           "targetStartDate": "就労開始予定日",
           "applicationDeadline": "推薦期限",
-          "note": "備考"
+          "note": "備考",
+          "workHours": "勤務時間",
+          "daysOff": "休日・休暇",
+          "housing": "住居",
+          "housingNote": "住居の補足",
+          "commuteNote": "通勤",
+          "benefitsNote": "福利厚生"
         },
         "options": {
           "program": {
@@ -1026,6 +1037,12 @@
           "genderRequirement": {
             "MALE": "男性",
             "FEMALE": "女性"
+          },
+          "housing": {
+            "provided": "寮あり",
+            "allowance": "住宅手当",
+            "none": "なし",
+            "unspecified": "未定"
           }
         }
       },
@@ -1537,6 +1554,52 @@
       "photo_invalidType": "JPG・PNG・WebPの写真のみ使用できます。",
       "photo_heic": "HEIC形式は未対応です。カメラ設定を「互換性優先」（JPEG）にするか、JPGで送ってください。",
       "photo_unreadable": "写真を読み取れません。別の写真をお試しください。"
+    }
+  },
+  "sheet": {
+    "sectionTitle": "書類用の情報",
+    "sectionHint": "任意。PDF書類（取引先プロフィール・求人票）に使われます。",
+    "open": "PDFを書き出す",
+    "dialogTitle": "PDFの書き出し",
+    "close": "閉じる",
+    "draftNote": "この書類の書式は仮のものです。登録支援機関の確認後に項目名や順序を調整できます。",
+    "modeLabel": "モード",
+    "modeInternal": "社内用",
+    "modeInternalHint": "担当者の電話番号、性別条件、社内メモを含む全項目。社外には送らないでください。",
+    "modeShare": "提供用",
+    "modeShareHint": "担当者の電話番号、社内メモ、性別条件、作成者名を含みません。",
+    "langLabel": "項目名の言語",
+    "langJa": "日本語",
+    "langJaid": "日本語＋インドネシア語",
+    "previewTitle": "PDFの内容プレビュー",
+    "missingHint": "未入力：{fields}。空の項目は省略されますが、書き出しはできます。",
+    "skippedHint": "空のため省略される項目：",
+    "excludedTitle": "このモードでは意図的に含まれないもの：",
+    "confirmText": "この書類を社外（LPK、候補者、取引先）に送ってよいことを確認しました。",
+    "confirmRequired": "上の確認にチェックするとダウンロードできます。",
+    "download": "PDFをダウンロード",
+    "excluded": {
+      "contactDetails": "担当者の電話番号・メール（氏名と役職のみ）",
+      "contacts": "取引先の担当者一覧",
+      "internalNote": "社内メモ",
+      "genderRequirement": "性別条件",
+      "staffName": "作成した職員名"
+    },
+    "missing": {
+      "industry": "業種",
+      "employeeCount": "従業員数",
+      "foreignWorkerExperience": "外国人受入れ実績",
+      "publicIntro": "紹介文",
+      "accessNote": "最寄り駅・アクセス",
+      "description": "業務内容",
+      "workHours": "勤務時間",
+      "daysOff": "休日",
+      "monthlySalary": "基本給",
+      "housing": "住居",
+      "commuteNote": "通勤",
+      "benefitsNote": "福利厚生",
+      "targetStartDate": "就業開始予定",
+      "applicationDeadline": "応募締切"
     }
   }
 }

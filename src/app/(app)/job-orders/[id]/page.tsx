@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { skillFieldName } from "@/db/skill-fields";
 import { matchCandidates } from "@/db/job-matching";
+import { ExportJobOrderSheet } from "@/features/client-sheet/ExportSheet";
 import { DecisionBadge } from "@/components/DecisionBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { cardClass, tableHeadClass } from "@/components/styles";
 import { toFormValue } from "@/features/candidates/sections";
 import { requireTsk, uuid } from "@/features/clients/guards";
-import { JOB_ORDER_FIELDS } from "@/features/job-orders/fields";
+import { JOB_ORDER_ALL_FIELDS } from "@/features/job-orders/fields";
 import { DeleteJobOrder, JobOrderForm, ProposeButton, StatusButtons } from "@/features/job-orders/JobOrderForms";
 import { getJobOrder } from "@/features/job-orders/queries";
 import { formatAvg } from "@/features/assessments/fields";
@@ -39,7 +41,7 @@ export default async function JobOrderPage({ params, searchParams }: { params: P
   const locale = await getLocale();
   const { jo } = data;
   const tab = (Array.isArray(sp.tab) ? sp.tab[0] : sp.tab) === "match" ? "match" : "detail";
-  const values = Object.fromEntries(JOB_ORDER_FIELDS.map((f) => [f.name, toFormValue(f, (jo as Record<string, unknown>)[f.name])]));
+  const values = Object.fromEntries(JOB_ORDER_ALL_FIELDS.map((f) => [f.name, toFormValue(f, (jo as Record<string, unknown>)[f.name])]));
   const matches = tab === "match" ? await tenantQuery((tx) => matchCandidates(tx, jo, me.organizationId)) : [];
 
   const tabClass = (active: boolean) => `rounded-lg px-4 py-2 text-sm font-medium ${active ? "bg-stone-900 text-white" : "bg-white text-stone-700 border border-stone-300 hover:bg-stone-100"}`;
@@ -50,7 +52,12 @@ export default async function JobOrderPage({ params, searchParams }: { params: P
         intro={`${data.companyName} / ${data.siteName} · ${skillFieldName({ nameId: data.fieldNameId, nameJa: data.fieldNameJa }, locale)}`}
         backHref="/job-orders"
         backLabel={t("title")}
-        action={<span className={`rounded-full px-3 py-1 text-sm font-medium ${STATUS_STYLE[jo.status]}`} data-testid="job-order-status">{t(`status.${jo.status}`)} · {data.selected} / {jo.positions}</span>}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-3 py-1 text-sm font-medium ${STATUS_STYLE[jo.status]}`} data-testid="job-order-status">{t(`status.${jo.status}`)} · {data.selected} / {jo.positions}</span>
+            <Suspense fallback={null}><ExportJobOrderSheet me={me} jobOrderId={jo.id} /></Suspense>
+          </div>
+        }
       />
       <nav className="mb-4 flex gap-2" aria-label="tabs">
         <Link href={`/job-orders/${id}`} className={tabClass(tab === "detail")} data-testid="tab-detail">{t("tabDetail")}</Link>

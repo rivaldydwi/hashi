@@ -21,6 +21,7 @@
     "test:e2e": "playwright test",
     "verify:audit-coverage": "tsx scripts/verify-audit-coverage.ts",
     "build:brand": "tsx scripts/build-brand.ts",
+    "seed:client-sheet": "tsx scripts/seed-client-sheet.ts",
     "seed:records": "tsx scripts/seed-records.ts"
   },
   "dependencies": {

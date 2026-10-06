@@ -2729,6 +2729,75 @@ async function main() {
     JSON.stringify([sr.fkRestrict, String(sr.lpkDelete).slice(0, 60), sr.lpkSummaryBlocked, String(sr.workerDelete).slice(0, 60)]),
   );
 
+  // --- T. Lembar klien (langkah 6): kolom baru klien/lokasi/job order tetap TSK-only (LPK, sensei, super admin, TSK lain, peran null: tidak terbaca dan tidak bisa diubah); CHECK nilai ---
+  const tr: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    const [co] = await tx.insert(clientCompanies).values({ orgId: tsk.id, name: "Perusahaan T", industry: "RAHASIA-INDUSTRI", employeeCount: 10, foreignWorkerExperience: "RAHASIA-EXP", publicIntro: "RAHASIA-INTRO" }).returning();
+    const [si] = await tx.insert(clientSites).values({ orgId: tsk.id, companyId: co.id, name: "Lokasi T", accessNote: "RAHASIA-AKSES" }).returning();
+    const [food] = await tx.select({ id: skillFields.id }).from(skillFields).where(eq(skillFields.code, "food"));
+    await tx.insert(clientSiteFields).values({ siteId: si.id, fieldId: food.id, orgId: tsk.id });
+    const [jo] = await tx.insert(jobOrders).values({ orgId: tsk.id, siteId: si.id, fieldId: food.id, title: "JO T", housing: "provided", workHours: "RAHASIA-JAM", daysOff: "RAHASIA-LIBUR", commuteNote: "RAHASIA-JALAN", benefitsNote: "RAHASIA-FASILITAS" }).returning();
+    const seen = async () => {
+      const q = async (query: string) => Number((await tx.execute(sql.raw(query))).rows[0].n);
+      return [
+        await q("select count(*)::int as n from client_companies where public_intro = 'RAHASIA-INTRO' or industry = 'RAHASIA-INDUSTRI'"),
+        await q("select count(*)::int as n from client_sites where access_note = 'RAHASIA-AKSES'"),
+        await q("select count(*)::int as n from job_orders where work_hours = 'RAHASIA-JAM' or housing = 'provided' and title = 'JO T'"),
+      ];
+    };
+    const MARK = "DITANDAI-T";
+    const actors: Array<[string, string, string | null, string | null]> = [
+      ["tskAdminA", tsk.id, "TSK_ADMIN", tskAdminUser.id],
+      ["tskStaffA", tsk.id, "TSK_STAFF", staffUser.id],
+      ["tskAdminB", tskB, "TSK_ADMIN", adminB],
+      ["lpkAdmin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id],
+      ["sensei", lpk1.id, "LPK_SENSEI", lpkAdminUser.id],
+      ["superAdmin", platformOrg.id, "SUPER_ADMIN", null],
+      ["roleNull", tsk.id, null, null],
+    ];
+    for (const [who, org, role, uid] of actors) {
+      await actAs(tx, org, role, uid);
+      tr[`read/${who}`] = await seen();
+      // UPDATE tanpa WHERE atas kolom baru: baris apa yang berubah (dihitung sebagai sistem)
+      await scratch(tx, async (sp) => {
+        await actAs(sp, org, role, uid);
+        await attempt(sp, (t) => t.update(clientCompanies).set({ publicIntro: MARK }));
+        await attempt(sp, (t) => t.update(clientSites).set({ accessNote: MARK }));
+        await attempt(sp, (t) => t.update(jobOrders).set({ workHours: MARK }));
+        await actAsSystem(sp);
+        tr[`updated/${who}`] = [
+          (await sp.select({ o: clientCompanies.orgId }).from(clientCompanies).where(eq(clientCompanies.publicIntro, MARK))).map((r) => r.o === tsk.id ? "A" : "lain").join(","),
+          (await sp.select({ o: clientSites.orgId }).from(clientSites).where(eq(clientSites.accessNote, MARK))).map((r) => r.o === tsk.id ? "A" : "lain").join(","),
+          (await sp.select({ o: jobOrders.orgId }).from(jobOrders).where(eq(jobOrders.workHours, MARK))).map((r) => r.o === tsk.id ? "A" : "lain").join(","),
+        ];
+      });
+    }
+    await actAsSystem(tx);
+    tr.negEmployees = await attempt(tx, (t) => t.update(clientCompanies).set({ employeeCount: -1 }).where(eq(clientCompanies.id, co.id)));
+    tr.badHousing = await attempt(tx, (t) => t.update(jobOrders).set({ housing: "bogus" }).where(eq(jobOrders.id, jo.id)));
+    tr.nullsOk = await attempt(tx, (t) => t.update(jobOrders).set({ housing: null, workHours: null }).where(eq(jobOrders.id, jo.id)));
+  });
+  const z = (v: unknown) => JSON.stringify(v) === JSON.stringify([0, 0, 0]);
+  const owned = (who: string) => JSON.stringify(tr[`read/${who}`]) === JSON.stringify([1, 1, 1]);
+  check(
+    "Lembar klien: kolom baru (jenis usaha, perkenalan, akses, jam kerja, tempat tinggal, ...) hanya terbaca staf TSK pemilik; LPK_ADMIN, sensei, super admin, TSK lain, dan peran null membaca 0 baris",
+    owned("tskAdminA") && owned("tskStaffA") && ["tskAdminB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => z(tr[`read/${w}`])),
+    JSON.stringify(Object.fromEntries(Object.entries(tr).filter(([k]) => k.startsWith("read/")))),
+  );
+  check(
+    "Lembar klien: UPDATE tanpa WHERE atas kolom baru hanya mengubah baris TSK pemilik (staf TSK A); selain itu 0 baris",
+    ["tskAdminA", "tskStaffA"].every((w) => (tr[`updated/${w}`] as string[]).every((x) => x === "A" || x.split(",").every((y) => y === "A"))) &&
+      ["tskAdminB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => (tr[`updated/${w}`] as string[]).every((x) => x === "")),
+    JSON.stringify(Object.fromEntries(Object.entries(tr).filter(([k]) => k.startsWith("updated/")))),
+  );
+  check(
+    "Lembar klien: jumlah karyawan tidak boleh negatif; tempat tinggal hanya provided/allowance/none/unspecified; semua kolom boleh dikosongkan",
+    /client_companies_employee_count_check/.test(String(tr.negEmployees)) && /job_orders_housing_check/.test(String(tr.badHousing)) && tr.nullsOk === null,
+    `${String(tr.negEmployees).slice(0, 60)} | ${String(tr.badHousing).slice(0, 60)}`,
+  );
+
   await pool.end();
   await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);

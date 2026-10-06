@@ -35,6 +35,11 @@ export class PdfBuilder {
     });
   }
 
+  /** Jumlah halaman sejauh ini (setelah semua isi digambar, sebelum finish()): untuk audit ekspor. */
+  get pageCount() {
+    return this.doc.bufferedPageRange().count;
+  }
+
   get width() {
     return this.doc.page.width - M.left - M.right;
   }

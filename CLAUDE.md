@@ -13,7 +13,7 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 3. ✅ **Profil kandidat**: daftar, tambah, halaman detail, keputusan & catatan TSK, persetujuan data, dokumen, audit
 4. ✅ **Penilaian kandidat**: skema + RLS + tes (A) · UI LPK (B) · UI TSK (C)
 5. ✅ **Klien (配属先) dan job order**: bidang kerja master, klien/lokasi/PIC milik TSK, job order, seleksi per job order, penempatan (fondasi langkah 7)
-6. ⏭ Lembar client PDF (bahasa Jepang)
+6. ✅ **Lembar klien PDF** (profil klien + lembar job order, bahasa Jepang; format DRAFT menunggu koreksi TSK): lihat `docs/lembar-klien.md`
 7. Pengingat dokumen kedaluwarsa · 8. Siap pilot (dummy 200 siswa) · 9. Demo ke TSK
 
 Keputusan penyimpanan file dokumen (langkah 3): **Docker named volume di disk**, bukan object storage.
@@ -95,7 +95,7 @@ Tes yang mengubah data kandidat WAJIB memakai kandidat uji sendiri (`createScrat
 
 - ✅ **7A Catatan kegiatan** (業務記録, 議事録・面談記録, 時系列, 定期面談, tugas tindak lanjut, laporan harian, foto, PDF): lihat `docs/catatan-kegiatan.md` dan butir "Catatan kegiatan" di aturan arsitektur.
 - ⏭ Tersisa: pelacak 在留カード dan pengingatnya, checklist keberangkatan/kedatangan, bagian "管理・報告" lembar 定期面談 (dokumen, permohonan, tanggal pengajuan 入管), profil pekerja lengkap,
-  status visa/tanggal tiba untuk LPK, notifikasi email/LINE, lembar klien PDF (langkah 6; `src/lib/pdf/` sudah siap dipakai ulang).
+  status visa/tanggal tiba untuk LPK, notifikasi email/LINE.
 - **Cadangan di luar server WAJIB berjalan sebelum data nyata masuk** (catatan disimpan 5 tahun dan tidak bisa dihapus lewat aplikasi).
 
 ## Keputusan untuk langkah 7 (catatan kebutuhan; 7A sudah diimplementasikan, sisanya BELUM)
@@ -226,6 +226,12 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   Audit di log org TSK saja (`activity_*`, `periodic_interview.*`, `activity_export`): jenis/status/kategori/bulan, TIDAK PERNAH isi, nama pekerja, atau nama berkas; tanda baca tidak diaudit. Action yang mengalihkan halaman dari `ActionForm redirectTo` TIDAK boleh memanggil `revalidatePath`
   (form terlepas sebelum pengalihan). PDF: `src/lib/pdf` (pdfkit di-BUNDLE, bukan external: nft kehilangan `@noble/*` di image), label di `labels.ja.ts`, versi klien tanpa nama staf/kode kasus dan wajib `confirm=1`. Foto: `sharp` (rotasi EXIF lalu buang semua metadata), HEIC ditolak. Fitur baru
   = tabel + RLS + bagian S di `verify-rls` + `ACTIONS` audit + `verify:audit-coverage` + `seed:records`/`verify:seed`.
+- **Lembar klien PDF** (langkah 6, migration 0021; `src/lib/pdf/client-sheet*.ts`, `src/features/client-sheet/`, rute `/sheet/company/[id]` dan `/sheet/job-order/[id]`; `docs/lembar-klien.md`): FORMAT DRAFT, semua label/urutan bagian/kolom di
+  SATU berkas `client-sheet.config.ts` (pasangan `[Jepang, Indonesia]`). Alur: loader (`queries.ts`, lewat RLS TSK) -> model murni `buildCompanySheet`/`buildJobOrderSheet` (`client-sheet-model.ts`: bagian kosong dilewati, mode `share` membuang
+  telepon PIC, catatan internal, syarat gender, nama staf SECARA STRUKTUR, bukan disembunyikan) -> `renderSheetPdf` (pdfkit) DAN pratinjau `SheetPreview` dari model yang sama. Mode `share` WAJIB `confirm=1` (400 tanpa itu). Hanya TSK (`staffOrResponse`: LPK/sensei/super admin 404).
+  Audit `client_sheet_export` (jenis, mode, bahasa label, halaman; tanpa nama/isi); `job_order.housing` boleh tercatat sebagai nilai, teks bebas/gaji tidak. Kolom lama dipakai ulang (`description` = 業務内容, `monthly_salary` = 基本給, `salary_note`, `work_place`, `note` = internal);
+  tabel PIC = `client_site_contacts` (tanpa email). Menambah isian lembar = kolom + zod di `fields.ts` + label form (`clients.forms.*`/`jobOrders.forms.*`) + baris di model + `COMPLETENESS` + `sheet.missing.*`. Data demo: `src/db/demo-client-sheet.ts` (`seed:client-sheet` additive, 1 perusahaan + 1 job order OPEN sengaja kosong).
+  Tes: `tests/unit/client-sheet.test.ts`, e2e `client-sheet.spec.ts`, `verify-rls` bagian T, `verify:seed` 2e. Kebijakan syarat gender di dokumen dibagikan perlu dikonfirmasi ke 行政書士 sebelum data nyata.
 - **Hapus kandidat permanen** (`candidates/delete-actions.ts`, `DeleteCandidate.tsx`, migration 0013): HANYA LPK_ADMIN pemilik, ditegakkan
   di UI (komponen tidak dirender untuk peran lain), server action (peran + organisasi + ketik nama/kode persis), RLS (`candidates_lpk_admin_delete`),
   dan trigger `candidates_block_delete` (BEFORE DELETE: menolak bila ada keputusan TSK DOCUMENT_PROCESS atau DEPARTED dari TSK mana pun, daftar

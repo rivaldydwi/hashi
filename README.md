@@ -40,6 +40,11 @@ Logo, ikon, dan aturan pakainya ada di [docs/brand.md](docs/brand.md). Aset turu
 Fitur khusus staf TSK: catatan kerja harian, notulen pertemuan, kronologi kasus (PDF untuk klien), wawancara berkala, tugas tindak lanjut, laporan harian ke leader, foto. Dokumentasi: [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md).
 Data demo tanpa reseed: `npm run seed:records`. **Catatan disimpan 5 tahun dan tidak bisa dihapus lewat aplikasi: cadangan di luar server wajib sebelum data nyata masuk.**
 
+## Lembar klien (langkah 6)
+
+Ekspor PDF berbahasa Jepang untuk klien dan job order (profil klien, lembar job order; mode internal / untuk dibagikan; label Jepang atau Jepang + Indonesia). Format masih DRAFT sampai dikonfirmasi TSK; semua label dan urutan bagian ada di
+`src/lib/pdf/client-sheet.config.ts`. Dokumentasi: [docs/lembar-klien.md](docs/lembar-klien.md). Data demo tanpa reseed: `npm run seed:client-sheet`.
+
 ## Stack
 
 | Bagian | Teknologi |

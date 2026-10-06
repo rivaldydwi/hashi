@@ -469,13 +469,19 @@ export const clientCompanies = pgTable(
     corporateNumber: text("corporate_number"), // 法人番号 (13 digit), opsional
     hqAddress: text("hq_address"),
     phone: text("phone"),
-    note: text("note"),
+    note: text("note"), // catatan INTERNAL TSK (tidak pernah ikut versi "dibagikan")
+    // Informasi untuk lembar profil klien (langkah 6; migration 0021), semuanya opsional
+    industry: text("industry"), // 業種 / 施設種別
+    employeeCount: integer("employee_count"), // 従業員数
+    foreignWorkerExperience: text("foreign_worker_experience"), // 外国人受入れ実績
+    publicIntro: text("public_intro"), // 紹介文 (ikut versi yang dibagikan)
     active: boolean("active").notNull().default(true),
     ...timestamps,
   },
   (t) => [
     index("client_companies_org_name_idx").on(t.orgId, t.name),
     check("client_companies_corporate_number_check", sql`${t.corporateNumber} is null or ${t.corporateNumber} ~ '^[0-9]{13}$'`),
+    check("client_companies_employee_count_check", sql`${t.employeeCount} is null or ${t.employeeCount} >= 0`),
   ],
 );
 
@@ -492,7 +498,8 @@ export const clientSites = pgTable(
     name: text("name").notNull(), // nama lokasi (事業所)
     address: text("address"),
     phone: text("phone"),
-    note: text("note"),
+    accessNote: text("access_note"), // 最寄り駅・アクセス (langkah 6)
+    note: text("note"), // catatan INTERNAL
     active: boolean("active").notNull().default(true),
     ...timestamps,
   },
@@ -555,10 +562,17 @@ export const jobOrders = pgTable(
     title: text("title").notNull(),
     positions: smallint("positions").notNull().default(1),
     program: jobProgram("program").notNull().default("SSW"),
-    description: text("description"),
-    salaryNote: text("salary_note"), // gaji / kondisi (teks bebas)
-    monthlySalary: integer("monthly_salary"), // gaji bulanan (yen), opsional
+    description: text("description"), // 業務内容
+    salaryNote: text("salary_note"), // 手当・昇給などの補足 (teks bebas)
+    monthlySalary: integer("monthly_salary"), // 基本給 bulanan (yen), opsional
     workPlace: text("work_place"),
+    // Kondisi kerja untuk lembar job order (langkah 6; migration 0021), semuanya opsional
+    workHours: text("work_hours"), // 勤務時間
+    daysOff: text("days_off"), // 休日・休暇
+    housing: text("housing"), // provided | allowance | none | unspecified (CHECK)
+    housingNote: text("housing_note"),
+    commuteNote: text("commute_note"), // 通勤
+    benefitsNote: text("benefits_note"), // 福利厚生
     minJlpt: text("min_jlpt"), // N5..N1, opsional (N4 = N4 atau lebih tinggi)
     jftRequired: boolean("jft_required").notNull().default(false), // wajib JFT-Basic lulus (skor >= 200)
     genderRequirement: gender("gender_requirement"),
@@ -575,6 +589,7 @@ export const jobOrders = pgTable(
     check("job_orders_positions_check", sql`${t.positions} between 1 and 1000`),
     check("job_orders_salary_check", sql`${t.monthlySalary} is null or ${t.monthlySalary} >= 0`),
     check("job_orders_min_jlpt_check", sql`${t.minJlpt} is null or ${t.minJlpt} in ('N5', 'N4', 'N3', 'N2', 'N1')`),
+    check("job_orders_housing_check", sql`${t.housing} is null or ${t.housing} in ('provided', 'allowance', 'none', 'unspecified')`),
   ],
 );
 

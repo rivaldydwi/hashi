@@ -91,6 +91,7 @@ export const ACTIONS: Record<string, Def> = {
   "client_contact.deactivate": d("tsk", () => "Menonaktifkan PIC klien", () => "配属先担当者を無効にしました"),
   "client_contact.delete": d("tsk", () => "Menghapus PIC klien", () => "配属先担当者を削除しました"),
   "job_order.create": d("tsk", () => "Membuat job order", () => "求人を作成しました"),
+  "client_sheet_export": d("tsk", () => "Mengekspor lembar klien / job order ke PDF", () => "取引先プロフィール／求人票をPDFに書き出しました"),
   "job_order.update": d("tsk", () => "Mengubah job order", () => "求人を変更しました"),
   "job_order.status": d("tsk", () => "Mengubah status job order", () => "求人の状況を変更しました"),
   "job_order.delete": d("tsk", () => "Menghapus job order", () => "求人を削除しました"),

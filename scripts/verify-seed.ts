@@ -320,6 +320,23 @@ async function main() {
     check("KPI Catatan kegiatan bermakna: belum dibaca > 0, laporan belum dibaca >= 1, tindak lanjut terbuka > 0", kpi.r > 0 && kpi.l >= 1 && kpi.f > 0, JSON.stringify(kpi));
   }
 
+  // ---------- 2e. Informasi untuk lembar klien (langkah 6) ----------
+  {
+    const ownerQ = async <T extends Record<string, unknown>>(q: ReturnType<typeof sql>) => (await withSystem((tx) => tx.execute(q), ownerDb.db)).rows as T[];
+    const n = async (q: ReturnType<typeof sql>) => Number((await ownerQ<{ n: string }>(q))[0].n);
+    const cjk = /[\u3040-\u30ff\u3400-\u9fff]/;
+    const comps = await ownerQ<{ industry: string | null; employee_count: number | null; foreign_worker_experience: string | null; public_intro: string | null }>(sql`select industry, employee_count, foreign_worker_experience, public_intro from client_companies`);
+    const completeCo = comps.filter((c) => c.industry && c.employee_count !== null && c.foreign_worker_experience && c.public_intro);
+    const emptyCo = comps.filter((c) => !c.industry && c.employee_count === null && !c.foreign_worker_experience && !c.public_intro);
+    check("Lembar klien: >= 2 perusahaan lengkap (berisi huruf Jepang) dan TEPAT 1 perusahaan sengaja kosong", completeCo.length >= 2 && emptyCo.length === 1 && completeCo.every((c) => cjk.test(c.public_intro ?? "") && cjk.test(c.industry ?? "")), `${completeCo.length} lengkap, ${emptyCo.length} kosong`);
+    check("Lembar klien: >= 4 lokasi punya akses/stasiun dan >= 1 lokasi kosong", (await n(sql`select count(*)::int as n from client_sites where access_note is not null`)) >= 4 && (await n(sql`select count(*)::int as n from client_sites where access_note is null`)) >= 1);
+    const jos = await ownerQ<{ status: string; work_hours: string | null; days_off: string | null; housing: string | null; commute_note: string | null; benefits_note: string | null }>(sql`select status::text, work_hours, days_off, housing, commute_note, benefits_note from job_orders`);
+    const joDone = jos.filter((j) => j.work_hours && j.days_off && j.housing && j.commute_note && j.benefits_note);
+    const joEmpty = jos.filter((j) => !j.work_hours && !j.days_off && !j.housing && !j.commute_note && !j.benefits_note);
+    check("Lembar klien: >= 5 job order lengkap dan TEPAT 1 job order OPEN sengaja kosong", joDone.length >= 5 && joEmpty.length === 1 && joEmpty[0].status === "OPEN", `${joDone.length} lengkap, ${joEmpty.length} kosong`);
+    check("Lembar klien: jenis tempat tinggal beragam (>= 2 nilai) dan jam kerja berbahasa Jepang", new Set(joDone.map((j) => j.housing)).size >= 2 && joDone.every((j) => cjk.test(j.work_hours ?? "")));
+  }
+
   // ---------- 3. Berkas dokumen vs baris database ----------
   if (process.env.VERIFY_SKIP_FILES === "1") {
     console.log("ℹ VERIFY_SKIP_FILES=1: pemeriksaan berkas dilewati");

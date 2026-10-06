@@ -891,7 +891,11 @@
           "corporateNumber": "Nomor badan hukum (13 digit)",
           "hqAddress": "Alamat kantor pusat",
           "phone": "Telepon",
-          "note": "Catatan"
+          "note": "Catatan",
+          "industry": "Jenis usaha / fasilitas (gyōshu)",
+          "employeeCount": "Jumlah karyawan (jūgyōin-sū)",
+          "foreignWorkerExperience": "Pengalaman menerima pekerja asing (gaikokujin ukeire jisseki)",
+          "publicIntro": "Teks perkenalan (shōkai-bun; ikut versi yang dibagikan, tulis dalam bahasa Jepang)"
         }
       },
       "site": {
@@ -899,7 +903,8 @@
           "name": "Nama lokasi (jigyōsho-mei)",
           "address": "Alamat lokasi kerja",
           "phone": "Telepon lokasi",
-          "note": "Catatan"
+          "note": "Catatan",
+          "accessNote": "Stasiun terdekat / akses (mayori-eki)"
         }
       },
       "contact": {
@@ -1006,7 +1011,13 @@
           "genderRequirement": "Syarat jenis kelamin",
           "targetStartDate": "Target mulai kerja",
           "applicationDeadline": "Batas pengajuan",
-          "note": "Catatan"
+          "note": "Catatan",
+          "workHours": "Jam kerja (kinmu jikan)",
+          "daysOff": "Hari libur / cuti (kyūjitsu, kyūka)",
+          "housing": "Tempat tinggal (jūkyo)",
+          "housingNote": "Catatan tempat tinggal",
+          "commuteNote": "Transportasi ke tempat kerja (tsūkin)",
+          "benefitsNote": "Fasilitas / kesejahteraan (fukuri kōsei)"
         },
         "options": {
           "program": {
@@ -1024,6 +1035,12 @@
           "genderRequirement": {
             "MALE": "Laki-laki",
             "FEMALE": "Perempuan"
+          },
+          "housing": {
+            "provided": "Asrama tersedia (ryō ari)",
+            "allowance": "Tunjangan perumahan (jūtaku teate)",
+            "none": "Tidak ada",
+            "unspecified": "Belum ditentukan"
           }
         }
       },
@@ -1537,6 +1554,52 @@
       "photo_invalidType": "Hanya foto JPG, PNG, atau WebP.",
       "photo_heic": "Format HEIC belum didukung. Ubah pengaturan kamera ke \"Paling kompatibel\" (JPEG) atau kirim sebagai JPG.",
       "photo_unreadable": "Foto tidak bisa dibaca. Coba foto lain."
+    }
+  },
+  "sheet": {
+    "sectionTitle": "Informasi untuk lembar",
+    "sectionHint": "Opsional. Dipakai di lembar PDF (profil klien dan lembar job order). Tulis dalam bahasa Jepang.",
+    "open": "Ekspor PDF",
+    "dialogTitle": "Ekspor PDF",
+    "close": "Tutup",
+    "draftNote": "Format lembar ini masih rancangan (draft); label dan urutan bagian bisa disesuaikan setelah dicek oleh TSK.",
+    "modeLabel": "Mode",
+    "modeInternal": "Hanya internal (Shanaiyō)",
+    "modeInternalHint": "Semua isian, termasuk telepon PIC, syarat jenis kelamin, dan catatan internal. Jangan dikirim ke luar.",
+    "modeShare": "Untuk dibagikan (Teikyōyō)",
+    "modeShareHint": "Tanpa telepon PIC, catatan internal, syarat jenis kelamin, dan nama staf penyusun.",
+    "langLabel": "Bahasa label",
+    "langJa": "Jepang",
+    "langJaid": "Jepang + Indonesia",
+    "previewTitle": "Pratinjau isi PDF",
+    "missingHint": "Belum diisi: {fields}. Bagian yang kosong dilewati; ekspor tetap bisa dilakukan.",
+    "skippedHint": "Bagian dilewati karena kosong:",
+    "excludedTitle": "Sengaja tidak disertakan pada versi ini:",
+    "confirmText": "Saya sudah memeriksa bahwa dokumen ini boleh dikirim ke pihak luar (LPK, calon pekerja, atau klien).",
+    "confirmRequired": "Centang konfirmasi di atas untuk mengaktifkan unduhan.",
+    "download": "Unduh PDF",
+    "excluded": {
+      "contactDetails": "Telepon dan email PIC (hanya nama dan jabatan)",
+      "contacts": "Daftar PIC klien",
+      "internalNote": "Catatan internal TSK",
+      "genderRequirement": "Syarat jenis kelamin",
+      "staffName": "Nama staf penyusun"
+    },
+    "missing": {
+      "industry": "jenis usaha",
+      "employeeCount": "jumlah karyawan",
+      "foreignWorkerExperience": "pengalaman menerima pekerja asing",
+      "publicIntro": "teks perkenalan",
+      "accessNote": "akses / stasiun terdekat",
+      "description": "uraian pekerjaan",
+      "workHours": "jam kerja",
+      "daysOff": "hari libur",
+      "monthlySalary": "gaji pokok",
+      "housing": "tempat tinggal",
+      "commuteNote": "transportasi",
+      "benefitsNote": "fasilitas",
+      "targetStartDate": "rencana mulai kerja",
+      "applicationDeadline": "batas pendaftaran"
     }
   }
 }

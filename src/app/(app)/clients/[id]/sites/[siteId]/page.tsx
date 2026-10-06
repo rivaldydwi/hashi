@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { skillFieldName } from "@/db/skill-fields";
 import { PageHeader } from "@/components/PageHeader";
 import { cardClass } from "@/components/styles";
+import { ExportCompanySheet } from "@/features/client-sheet/ExportSheet";
 import { ActiveToggle, ContactForm, DeleteButton, SiteForm } from "@/features/clients/ClientForms";
-import { CONTACT_FIELDS, SITE_FIELDS } from "@/features/clients/fields";
+import { CONTACT_FIELDS, SITE_ALL_FIELDS } from "@/features/clients/fields";
 import { requireTsk, uuid } from "@/features/clients/guards";
 import { getSite } from "@/features/clients/queries";
 import { jobOrdersForSite } from "@/features/job-orders/queries";
@@ -28,7 +30,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
   const jobs = await tenantQuery((tx) => jobOrdersForSite(tx, siteId));
   const locale = await getLocale();
   const { site, company, fields, contacts } = data;
-  const siteValues = Object.fromEntries(SITE_FIELDS.map((f) => [f.name, toFormValue(f, (site as Record<string, unknown>)[f.name])]));
+  const siteValues = Object.fromEntries(SITE_ALL_FIELDS.map((f) => [f.name, toFormValue(f, (site as Record<string, unknown>)[f.name])]));
   const contactValues = (c: (typeof contacts)[number]) => Object.fromEntries(CONTACT_FIELDS.map((f) => [f.name, toFormValue(f, (c as Record<string, unknown>)[f.name])]));
 
   return (
@@ -38,7 +40,12 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         intro={company.name}
         backHref={`/clients/${company.id}`}
         backLabel={company.name}
-        action={!site.active ? <span className="rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700">{t("inactive")}</span> : undefined}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {!site.active && <span className="rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700">{t("inactive")}</span>}
+            {site.active && <Suspense fallback={null}><ExportCompanySheet me={me} companyId={company.id} siteId={site.id} /></Suspense>}
+          </div>
+        }
       />
       <div className="space-y-4">
         <section className={`${cardClass} p-5`} data-testid="section-site">

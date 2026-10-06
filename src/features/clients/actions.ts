@@ -10,7 +10,7 @@ import { ActionError, pgErrorCode } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
 import { tenantQuery, type CurrentUser } from "@/lib/session";
 import { buildSchema, changedFields, type FieldDef } from "@/features/candidates/sections";
-import { COMPANY_FIELDS, CONTACT_FIELDS, SITE_FIELDS } from "./fields";
+import { COMPANY_ALL_FIELDS, CONTACT_FIELDS, SITE_ALL_FIELDS } from "./fields";
 import { requireAdminAction, requireTskAction, uuid } from "./guards";
 
 const FK_VIOLATION = "23503";
@@ -37,12 +37,12 @@ export async function createCompany(_prev: FormState, formData: FormData): Promi
   let id = "";
   const res = await guarded(async () => {
     const me = await requireTskAction();
-    const parsed = parse(COMPANY_FIELDS, formData);
+    const parsed = parse(COMPANY_ALL_FIELDS, formData);
     if (!parsed.success) return { status: "error", key: "clients.errors.invalid" };
     const values = parsed.data as Values;
     id = await tenantQuery(async (tx) => {
       const [row] = await tx.insert(clientCompanies).values({ ...(values as object), orgId: me.organizationId } as typeof clientCompanies.$inferInsert).returning({ id: clientCompanies.id });
-      await auditClient(tx, me, "client_company.create", "client_company", row.id, filled(COMPANY_FIELDS, values));
+      await auditClient(tx, me, "client_company.create", "client_company", row.id, filled(COMPANY_ALL_FIELDS, values));
       return row.id;
     });
     return { status: "success", key: "clients.saved" };
@@ -58,7 +58,7 @@ export async function updateCompany(_prev: FormState, formData: FormData): Promi
   return guarded(async () => {
     const me = await requireTskAction();
     const id = uuid.safeParse(formData.get("companyId"));
-    const parsed = parse(COMPANY_FIELDS, formData);
+    const parsed = parse(COMPANY_ALL_FIELDS, formData);
     if (!id.success || !parsed.success) return { status: "error", key: "clients.errors.invalid" };
     const values = parsed.data as Values;
     await tenantQuery(async (tx) => {
@@ -66,7 +66,7 @@ export async function updateCompany(_prev: FormState, formData: FormData): Promi
       if (!before) throw new ActionError("clients.errors.notFound");
       const done = await tx.update(clientCompanies).set(values).where(eq(clientCompanies.id, id.data)).returning({ id: clientCompanies.id });
       if (done.length !== 1) throw new ActionError("clients.errors.forbidden");
-      const changed = changedFields(COMPANY_FIELDS, before, values);
+      const changed = changedFields(COMPANY_ALL_FIELDS, before, values);
       if (changed.length) await auditClient(tx, me, "client_company.update", "client_company", id.data, changed);
     });
     revalidatePath("/clients");
@@ -147,7 +147,7 @@ export async function createSite(_prev: FormState, formData: FormData): Promise<
   const res = await guarded(async () => {
     const me = await requireTskAction();
     const companyId = uuid.safeParse(formData.get("companyId"));
-    const parsed = parse(SITE_FIELDS, formData);
+    const parsed = parse(SITE_ALL_FIELDS, formData);
     if (!companyId.success || !parsed.success) return { status: "error", key: "clients.errors.invalid" };
     const values = parsed.data as Values;
     const siteId = await tenantQuery(async (tx) => {
@@ -156,7 +156,7 @@ export async function createSite(_prev: FormState, formData: FormData): Promise<
       const fieldIds = await resolveFieldIds(tx, formData, []);
       const [row] = await tx.insert(clientSites).values({ ...(values as object), orgId: me.organizationId, companyId: companyId.data } as typeof clientSites.$inferInsert).returning({ id: clientSites.id });
       await syncSiteFields(tx, me, row.id, fieldIds);
-      await auditClient(tx, me, "client_site.create", "client_site", row.id, [...filled(SITE_FIELDS, values), ...(fieldIds.length ? ["fieldIds"] : [])]);
+      await auditClient(tx, me, "client_site.create", "client_site", row.id, [...filled(SITE_ALL_FIELDS, values), ...(fieldIds.length ? ["fieldIds"] : [])]);
       return row.id;
     });
     ids = { companyId: companyId.data, siteId };
@@ -173,7 +173,7 @@ export async function updateSite(_prev: FormState, formData: FormData): Promise<
   return guarded(async () => {
     const me = await requireTskAction();
     const siteId = uuid.safeParse(formData.get("siteId"));
-    const parsed = parse(SITE_FIELDS, formData);
+    const parsed = parse(SITE_ALL_FIELDS, formData);
     if (!siteId.success || !parsed.success) return { status: "error", key: "clients.errors.invalid" };
     const values = parsed.data as Values;
     await tenantQuery(async (tx) => {
@@ -184,7 +184,7 @@ export async function updateSite(_prev: FormState, formData: FormData): Promise<
       const done = await tx.update(clientSites).set(values).where(eq(clientSites.id, siteId.data)).returning({ id: clientSites.id });
       if (done.length !== 1) throw new ActionError("clients.errors.forbidden");
       const fieldsChanged = await syncSiteFields(tx, me, siteId.data, fieldIds);
-      const changed = [...changedFields(SITE_FIELDS, before, values), ...(fieldsChanged ? ["fieldIds"] : [])];
+      const changed = [...changedFields(SITE_ALL_FIELDS, before, values), ...(fieldsChanged ? ["fieldIds"] : [])];
       if (changed.length) await auditClient(tx, me, "client_site.update", "client_site", siteId.data, changed);
     });
     revalidatePath("/clients");

@@ -28,7 +28,7 @@ export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
   candidate_document: ["type"],
   partnership: ["active"],
   skill_field: ["code"],
-  job_order: ["status"],
+  job_order: ["status", "housing"], // housing = pilihan (provided/allowance/none/unspecified); gaji dan teks bebas TIDAK pernah
   placement: ["status"],
   audit_export: ["rows", "from", "to"],
   // Catatan kegiatan TSK: hanya jenis/status/kategori; TIDAK PERNAH isi teks, nama pekerja, atau nama berkas
@@ -40,6 +40,8 @@ export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
   activity_daily_report: [],
   periodic_interview: ["resultStatus", "reason", "period", "status"],
   activity_export: ["exportKind", "rows", "clientVersion"],
+  // Lembar klien (langkah 6): jenis dokumen, mode, bahasa label, jumlah halaman; TANPA nama perusahaan dan isi
+  client_sheet_export: ["sheetKind", "mode", "labelLang", "pages"],
 };
 
 const isPlain = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);

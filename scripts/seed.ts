@@ -15,6 +15,7 @@ import { periodMonthsAgo, currentPeriod, todayInAppTz, todayInTskTz } from "../s
 import { buildDemoAudit } from "../src/db/demo-audit";
 import { buildAssessments, buildProfile, FIELD_JA, FIELD_KEYS, FIELDS, isIntentionallyIncomplete, sharedDaysAgo, type DemoProfile } from "../src/db/demo-data";
 import { addDays, addMonths, uuidFor } from "../src/db/demo-rng";
+import { seedClientSheet } from "../src/db/demo-client-sheet";
 import { seedRecords } from "../src/db/demo-records";
 import { clearDocumentStorage, demoAttachmentPath, demoDocumentPath, dummyPdf, dummyPng, storageRootFor, writeDemoFile } from "../src/db/demo-files";
 import {
@@ -355,6 +356,9 @@ async function main() {
         minJlpt: jo.minJlpt, jftRequired: jo.jft, genderRequirement: jo.gender, targetStartDate: shiftDays(jo.start), applicationDeadline: shiftDays(jo.deadline), note: "ダミーデータ（デモ用）",
       });
     }
+
+    // ---- Informasi untuk lembar klien (langkah 6): kolom baru perusahaan/lokasi/job order (satu perusahaan dan satu job order sengaja tidak lengkap)
+    await seedClientSheet(tx);
 
     // ---- Keputusan TSK (hanya LPK mitra); yang punya kode job order dikaitkan ke job order sebidang
     await tx.insert(candidateSelections).values(

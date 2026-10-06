@@ -6,13 +6,14 @@ import { btnDanger, btnPrimary, btnSecondary } from "@/components/styles";
 import { FieldInputs } from "@/features/candidates/DetailForms";
 import { ManualForm, Submit } from "@/features/clients/ClientForms";
 import { createJobOrder, deleteJobOrder, proposeCandidate, setJobOrderStatus, updateJobOrder, updatePlacement } from "./actions";
-import { JOB_ORDER_FIELDS, PLACEMENT_FIELDS } from "./fields";
+import { SheetSection } from "@/features/clients/ClientForms";
+import { JOB_ORDER_FIELDS, JOB_ORDER_SHEET_FIELDS, PLACEMENT_FIELDS } from "./fields";
 
 type Values = Record<string, string | boolean>;
 
 export function JobOrderForm({ siteId, jobOrder, siteFieldIds }: { siteId: string; jobOrder?: { id: string; values: Values }; siteFieldIds: string[] }) {
   const t = useTranslations("jobOrders");
-  const empty: Values = Object.fromEntries(JOB_ORDER_FIELDS.map((f) => [f.name, f.kind === "boolean" ? false : f.name === "positions" ? "1" : f.name === "program" ? "SSW" : ""]));
+  const empty: Values = Object.fromEntries([...JOB_ORDER_FIELDS, ...JOB_ORDER_SHEET_FIELDS].map((f) => [f.name, f.kind === "boolean" ? false : f.name === "positions" ? "1" : f.name === "program" ? "SSW" : ""]));
   return (
     <ManualForm action={jobOrder ? updateJobOrder : createJobOrder} testid={jobOrder ? "form-job-order-edit" : "form-job-order-add"}>
       {({ state, pending }) => (
@@ -20,6 +21,7 @@ export function JobOrderForm({ siteId, jobOrder, siteFieldIds }: { siteId: strin
           <input type="hidden" name="siteId" value={siteId} />
           {jobOrder && <input type="hidden" name="jobOrderId" value={jobOrder.id} />}
           <FieldInputs section="jobOrder" labelNs="jobOrders.forms.jobOrder" idPrefix="jo" fields={JOB_ORDER_FIELDS} values={jobOrder?.values ?? empty} skillFieldIds={siteFieldIds} />
+          <SheetSection section="jobOrder" labelNs="jobOrders.forms.jobOrder" idPrefix="jo" fields={JOB_ORDER_SHEET_FIELDS} values={jobOrder?.values ?? empty} />
           <FormAlert state={state} />
           <Submit pending={pending}>{jobOrder ? t("save") : t("create")}</Submit>
         </>

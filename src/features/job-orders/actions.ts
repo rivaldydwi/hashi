@@ -13,7 +13,7 @@ import { assertSkillFieldUsable } from "@/features/candidates/guards";
 import { upsertSelection } from "@/features/candidates/selection";
 import { auditTsk } from "@/features/clients/audit";
 import { requireAdminAction, requireTskAction, uuid } from "@/features/clients/guards";
-import { JOB_ORDER_FIELDS, PLACEMENT_FIELDS } from "./fields";
+import { JOB_ORDER_ALL_FIELDS, PLACEMENT_FIELDS } from "./fields";
 
 const FK_VIOLATION = "23503";
 type Values = Record<string, unknown>;
@@ -27,7 +27,7 @@ async function guarded(fn: () => Promise<FormState>): Promise<FormState> {
   }
 }
 const dbMessage = (err: unknown) => String((err as { cause?: { message?: string } }).cause?.message ?? (err as Error).message);
-const filled = (values: Values) => JOB_ORDER_FIELDS.filter((f) => values[f.name] !== null && values[f.name] !== undefined && values[f.name] !== false).map((f) => f.name);
+const filled = (values: Values) => JOB_ORDER_ALL_FIELDS.filter((f) => values[f.name] !== null && values[f.name] !== undefined && values[f.name] !== false).map((f) => f.name);
 
 // ---------------------------------------------------------------------------------------------- Job order
 
@@ -36,7 +36,7 @@ export async function createJobOrder(_prev: FormState, formData: FormData): Prom
   const res = await guarded(async () => {
     const me = await requireTskAction();
     const siteId = uuid.safeParse(formData.get("siteId"));
-    const parsed = buildSchema(JOB_ORDER_FIELDS).safeParse(Object.fromEntries(formData));
+    const parsed = buildSchema(JOB_ORDER_ALL_FIELDS).safeParse(Object.fromEntries(formData));
     if (!siteId.success || !parsed.success) return { status: "error", key: "jobOrders.errors.invalid" };
     const values = parsed.data as Values;
     try {
@@ -48,7 +48,7 @@ export async function createJobOrder(_prev: FormState, formData: FormData): Prom
           .insert(jobOrders)
           .values({ ...(values as object), orgId: me.organizationId, siteId: siteId.data } as typeof jobOrders.$inferInsert)
           .returning({ id: jobOrders.id });
-        await auditTsk(tx, me, "job_order.create", "job_order", row.id, filled(values));
+        await auditTsk(tx, me, "job_order.create", "job_order", row.id, filled(values), undefined, values.housing ? { after: { housing: values.housing } } : undefined);
         return row.id;
       });
     } catch (err) {
@@ -68,7 +68,7 @@ export async function updateJobOrder(_prev: FormState, formData: FormData): Prom
   return guarded(async () => {
     const me = await requireTskAction();
     const id = uuid.safeParse(formData.get("jobOrderId"));
-    const parsed = buildSchema(JOB_ORDER_FIELDS).safeParse(Object.fromEntries(formData));
+    const parsed = buildSchema(JOB_ORDER_ALL_FIELDS).safeParse(Object.fromEntries(formData));
     if (!id.success || !parsed.success) return { status: "error", key: "jobOrders.errors.invalid" };
     const values = parsed.data as Values;
     try {
@@ -78,8 +78,8 @@ export async function updateJobOrder(_prev: FormState, formData: FormData): Prom
         await assertSkillFieldUsable(tx, values.fieldId, before.fieldId);
         const done = await tx.update(jobOrders).set(values).where(eq(jobOrders.id, id.data)).returning({ id: jobOrders.id });
         if (done.length !== 1) throw new ActionError("clients.errors.forbidden");
-        const changed = changedFields(JOB_ORDER_FIELDS, before as Record<string, unknown>, values);
-        if (changed.length) await auditTsk(tx, me, "job_order.update", "job_order", id.data, changed);
+        const changed = changedFields(JOB_ORDER_ALL_FIELDS, before as Record<string, unknown>, values);
+        if (changed.length) await auditTsk(tx, me, "job_order.update", "job_order", id.data, changed, undefined, changed.includes("housing") ? { before: { housing: before.housing }, after: { housing: values.housing ?? null } } : undefined);
       });
     } catch (err) {
       if (pgErrorCode(err) === PG_CHECK_VIOLATION && /bidang job order/.test(dbMessage(err))) return { status: "error", key: "jobOrders.errors.fieldNotAccepted" };
