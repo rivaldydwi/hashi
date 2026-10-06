@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Daftar persiapan laporan tahunan ke imigrasi (T-008): per tahun fiskal (April-Maret), SEMUA pekerja yang bekerja minimal satu hari di tahun itu
- * (termasuk yang berhenti di tengah tahun), jumlah wawancara per kuartal, dan kuartal yang bolong. Formulir laporan imigrasinya sendiri belum dibuat (T-009).
+ * (termasuk yang berhenti di tengah tahun), jumlah wawancara per kuartal, dan kuartal yang bolong.
  */
 export default async function AnnualInterviewListPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requireStaff();
@@ -61,6 +61,7 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
                       <Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>
                       <div className="text-xs font-normal text-ink-2">{w.companyName}</div>
                       <Link href={`/records/workers/${w.id}`} className="inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text">{t("whistory.historyLink")}</Link>
+                      <Link href={`/records/workers/${w.id}/annual?fy=${fy}`} className="ml-3 inline-flex min-h-11 items-center text-xs font-normal text-accent-text underline" data-testid="annual-worker-link">{t("annual.workerLink")}</Link>
                     </th>
                     <td className={`${td} whitespace-nowrap`}>
                       {w.spans.map((s) => `${s.start.replace(/-/g, "/")} – ${s.end ? s.end.replace(/-/g, "/") : t("annual.ongoing")}`).reverse().map((x, i) => <div key={i}>{x}</div>)}

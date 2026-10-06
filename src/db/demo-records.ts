@@ -1,6 +1,7 @@
 // Data DEMO Catatan kegiatan TSK (langkah 7A): catatan ①/②, kasus + kronologi, tugas, laporan harian, tanda baca, wawancara berkala, lampiran.
 // Dipakai (1) scripts/seed.ts untuk lingkungan baru dan (2) scripts/seed-records.ts yang MENAMBAH di atas data yang sudah ada (produksi/demo, TANPA reseed).
 // Semua isi karangan. Id deterministik. Berjalan di koneksi OWNER (RLS dilewati); trigger tetap berjalan (kode kasus, versi, riwayat).
+import { FORM55_ITEM_CODES, type Form55 } from "./form55";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Tx } from "./index";
 import {
@@ -264,10 +265,15 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
       const lastDay = 10 + ((mi * 5 + wi * 3) % 15);
       const date = `${m.slice(0, 7)}-${String(lastDay).padStart(2, "0")}`;
       const staffPick = [s1, s2, admin][(mi + wi) % 3];
+      // Form 5-5 (T-009): wawancara yang dilaksanakan terisi; satu dari empat sengaja dibiarkan kosong (data lama / belum diisi)
+      const conducted = !na && st !== "not_done";
+      const f55 = conducted && (mi + wi) % 4 !== 3 ? demoForm55(st, date) : null;
       await tx.insert(periodicInterviews).values({
         id: T(`pi:${wi}:${m}`), organizationId: orgId, createdBy: staffPick.id, candidateId: w.id, periodMonth: m, applicable: !na,
         interviewDate: na || st === "not_done" ? null : date, resultStatus: na ? null : st, reason: na || st === "not_done" ? null : reasons[(mi + wi) % 3],
         content: na ? null : st === "not_done" ? null : contents[(mi + wi) % contents.length], staffId: na ? null : staffPick.id, note: na ? "一時帰国のため対象外" : st === "follow_up" ? "次回の面談で再確認する" : null,
+        method: conducted ? ((mi + wi) % 2 === 0 ? "in_person" : "online") : null, responderRole: conducted ? (staffPick === admin ? "support_manager" : "support_staff") : null,
+        responderTitle: conducted ? (staffPick === admin ? "支援責任者" : "支援担当") : null, form55: f55,
         createdAt: new Date(`${date}T10:00:00${JST_OFFSET}`),
       }).onConflictDoNothing();
       pi++;
@@ -329,4 +335,23 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
   }
 
   return { files, summary: counts, notes };
+}
+
+/** Isi form 5-5 demo (T-009): semua butir dijawab; "issue" = masalah di ②(3) + 基準不適合 beserta penanganannya, "follow_up" = catatan kecil di ④(1). */
+function demoForm55(status: string, date: string): Form55 {
+  const items: Form55["items"] = Object.fromEntries(FORM55_ITEM_CODES.map((c) => [c, { a: "ok" as const, text: "" }]));
+  if (status === "follow_up") items["life.1"] = { a: "problem", text: "夜間の騒音で眠れない日がある。" };
+  if (status === "issue") items["treatment.3"] = { a: "problem", text: "有給休暇を申請しづらい雰囲気がある。" };
+  const nc = status === "issue";
+  return {
+    v: 1, items, nonconformity: nc, special: status === "no_issue" ? "特になし。" : "次回の定期面談で状況を再確認する。", otherLabel: "特になし", createdOn: null,
+    response: nc
+      ? {
+          occurredOn: date, content: "有給休暇の申請を断られたとの申出があった。",
+          worker: { kind: "referred", body: "労働基準監督署", reason: "" },
+          company: { notified: "done", notifiedOn: date, notifiedTo: "配属先 工場長", notifiedReason: "", immigration: "not_done", immigrationNote: "軽微なため案内は不要と判断" },
+          agency: { reported: "not_done", on: null, body: "", reason: "現時点では関係機関への報告は不要と判断" },
+        }
+      : null,
+  };
 }

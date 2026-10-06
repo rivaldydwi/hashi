@@ -1,8 +1,9 @@
 import { getLocale, getTranslations } from "next-intl/server";
+import { readForm55, summarizeForm55 } from "@/db/form55";
 import { dateTimeIn } from "@/lib/org-time";
 import type { RevisionRow } from "../queries";
 
-export type RevField = { key: string; label: string; kind?: "text" | "time" | "ids" | "bool" };
+export type RevField = { key: string; label: string; kind?: "text" | "time" | "ids" | "bool" | "form55" };
 
 export const toSnake = (o: Record<string, unknown>): Record<string, unknown> =>
   Object.fromEntries(Object.entries(o).map(([k, v]) => [k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`), v instanceof Date ? v.toISOString() : v]));
@@ -22,6 +23,10 @@ export async function RevisionHistory({ revisions, current, fields, names, tz, t
     if (f.kind === "ids") return (v as string[]).map((id) => names[id] ?? id.slice(0, 8)).join(", ");
     if (f.kind === "time") return dateTimeIn(String(v), locale, tz);
     if (f.kind === "bool") return v ? t("history.yes") : t("history.no");
+    if (f.kind === "form55") {
+      const x = summarizeForm55(readForm55(v));
+      return t("form55.summary", { answered: x.answered, problems: x.problems, nc: x.nonconformity === null ? "—" : x.nonconformity ? t("form55.yes") : t("form55.no") });
+    }
     if (typeof v === "object") return JSON.stringify(v);
     const s = String(v);
     return names[s] ?? s;

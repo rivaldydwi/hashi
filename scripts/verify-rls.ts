@@ -2917,6 +2917,48 @@ async function main() {
     JSON.stringify(Object.fromEntries(Object.entries(vr).filter(([k]) => k.startsWith("read/") || k.startsWith("insert/")).map(([k, v]) => [k, typeof v === "string" ? v.slice(0, 30) : v]))),
   );
 
+  // --- W. Form 5-5 di wawancara berkala (T-009; migration 0024): kolom method/responder_role/form55 dijaga CHECK, ikut riwayat versi (snapshot memuat form55 lama), tertutup bagi LPK/sensei/TSK lain ---
+  const wr: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    const [vis] = (await tx.execute(sql`select p.candidate_id::text as id from placements p where p.status = 'ACTIVE' limit 1`)).rows as Array<{ id: string }>;
+    const form = (n: number) => JSON.stringify({ v: 1, items: { "work.1": { a: "ok", text: "" } }, nonconformity: false, special: `catatan-${n}`, response: null, createdOn: null }).replace(/'/g, "''");
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    const ins = `insert into periodic_interviews (organization_id, created_by, candidate_id, period_month, result_status, reason, method, responder_role, responder_title, form55) values ('${tsk.id}', '${staffUser.id}', '${vis.id}', '2020-02-01', 'no_issue', 'agency', 'online', 'support_staff', 'staf', '${form(1)}'::jsonb) returning id::text as id`;
+    const id = ((await tx.execute(sql.raw(ins))).rows[0] as { id: string }).id;
+    wr.insert = await num(tx, `select count(*)::int as n from periodic_interviews where id = '${id}' and method = 'online' and responder_role = 'support_staff' and form55 ->> 'special' = 'catatan-1'`);
+    await tx.execute(sql.raw(`update periodic_interviews set form55 = '${form(2)}'::jsonb, method = 'in_person' where id = '${id}'`));
+    wr.snapshot = await num(tx, `select count(*)::int as n from activity_revisions where entity_type = 'periodic_interview' and entity_id = '${id}' and version_no = 1 and snapshot -> 'form55' ->> 'special' = 'catatan-1' and snapshot ->> 'method' = 'online'`);
+    wr.version = await num(tx, `select version_no::int as n from periodic_interviews where id = '${id}'`);
+    wr.badMethod = await attempt(tx, (t) => t.execute(sql.raw(`update periodic_interviews set method = 'telepon' where id = '${id}'`)));
+    wr.badRole = await attempt(tx, (t) => t.execute(sql.raw(`update periodic_interviews set responder_role = 'bos' where id = '${id}'`)));
+    wr.tooBig = await attempt(tx, (t) => t.execute(sql.raw(`update periodic_interviews set form55 = jsonb_build_object('x', repeat('a', 20001)) where id = '${id}'`)));
+    wr.noWhere = await attempt(tx, (t) => t.execute(sql.raw(`update periodic_interviews set method = 'online', responder_role = 'bogus'`)));
+    for (const [who, org, role, uid] of [["tskB", tskB, "TSK_ADMIN", adminB], ["lpkAdmin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id], ["sensei", lpk1.id, "LPK_SENSEI", senseiUser.id], ["superAdmin", platformOrg.id, "SUPER_ADMIN", null], ["roleNull", tsk.id, null, null]] as const) {
+      await actAs(tx, org, role, uid);
+      wr[`read/${who}`] = await num(tx, `select count(*)::int as n from periodic_interviews where id = '${id}'`);
+      wr[`write/${who}`] = await attempt(tx, (t) => t.execute(sql.raw(`update periodic_interviews set form55 = '${form(3)}'::jsonb`))); // 0 baris terlihat -> tidak mengubah apa pun
+    }
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    wr.unchanged = await num(tx, `select count(*)::int as n from periodic_interviews where id = '${id}' and form55 ->> 'special' = 'catatan-2'`);
+  });
+  check(
+    "Form 5-5: staf TSK menyimpan method/responder_role/form55; edit menaikkan versi dan snapshot riwayat memuat form55 + method LAMA",
+    wr.insert === 1 && wr.snapshot === 1 && wr.version === 2,
+    JSON.stringify([wr.insert, wr.snapshot, wr.version]),
+  );
+  check(
+    "Form 5-5: CHECK menolak method di luar (in_person/online), responder_role di luar (support_manager/support_staff), dan form55 > 20000 karakter (juga UPDATE tanpa WHERE)",
+    /method_check/.test(String(wr.badMethod)) && /responder_role_check/.test(String(wr.badRole)) && /form55_size_check/.test(String(wr.tooBig)) && /responder_role_check/.test(String(wr.noWhere)),
+    JSON.stringify([String(wr.badMethod).slice(0, 60), String(wr.badRole).slice(0, 60), String(wr.tooBig).slice(0, 60), String(wr.noWhere).slice(0, 60)]),
+  );
+  check(
+    "Form 5-5: TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris wawancara dan form55 tetap utuh setelah UPDATE tanpa WHERE mereka",
+    ["tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => wr[`read/${w}`] === 0) && wr.unchanged === 1,
+    JSON.stringify(Object.fromEntries(Object.entries(wr).filter(([k]) => k.startsWith("read/") || k === "unchanged"))),
+  );
+
   await pool.end();
   await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);

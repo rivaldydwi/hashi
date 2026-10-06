@@ -4,6 +4,7 @@
 // Filter memakai fungsi YANG SAMA dengan halaman (src/db/candidate-list.ts: parseFilters + listCandidatesFiltered).
 // Pemakaian: npm run verify:seed   (butuh DATABASE_URL dan MIGRATE_DATABASE_URL; VERIFY_SKIP_FILES=1 melewati pemeriksaan berkas)
 
+import { parseForm55 } from "../src/db/form55";
 import "dotenv/config";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
@@ -321,6 +322,10 @@ async function main() {
     const pending = await asTsk(admin, (tx) => openInterviewQuarters(tx, today));
     const statusSet = new Set(piRows.map((r) => r.result_status));
     check("Wawancara berkala: tiap pekerja aktif punya wawancara; campuran status (問題なし dominan, 要フォロー, 問題あり, 未実施), semua alasan, bulan 対象外, kuartal Q1; ada kuartal berjalan (open)", workers.every((w) => piBy.has(w.id)) && ["no_issue", "follow_up", "issue", "not_done"].every((s) => statusSet.has(s)) && piRows.filter((r) => r.result_status === "no_issue").length > piRows.length / 2 - 1 && ["agency", "support", "worker"].every((x) => piRows.some((r) => r.reason === x)) && piRows.some((r) => !r.applicable) && (await n(sql`select count(*)::int as n from periodic_interview_quarter_notes where quarter = 1`)) >= 1 && pending.length > 0, `${piRows.length} wawancara; kuartal open ${pending.length}`);
+    // Form 5-5 (T-009): ada yang terisi lengkap, ada 基準不適合 beserta penanganan, ada wawancara yang dilaksanakan tetapi form-nya kosong (data lama); butir hanya berkode tetap
+    const f55 = await ownerQ<{ form55: unknown; method: string | null; result_status: string | null; applicable: boolean }>(sql`select form55, method, result_status, applicable from periodic_interviews where status = 'active'`);
+    const parsed = f55.filter((r) => r.form55).map((r) => parseForm55(r.form55));
+    check("Form 5-5: seed punya form terisi sah, minimal satu 基準不適合 dengan penanganan, minimal satu wawancara terlaksana tanpa form, dan kedua cara wawancara; tanpa form pada yang belum dilaksanakan", parsed.length > 0 && parsed.every((p) => p.ok) && parsed.some((p) => p.ok && p.value.nonconformity === true && !!p.value.response?.content) && f55.some((r) => r.applicable && r.result_status && r.result_status !== "not_done" && !r.form55) && ["in_person", "online"].every((m) => f55.some((r) => r.method === m)) && f55.every((r) => !r.form55 || (r.applicable && r.result_status !== "not_done")), `${parsed.length} form; ${f55.length} wawancara`);
     // Aturan kuartal + pekerja berhenti (T-008): KPI = jumlah kuartal Belum pada fungsi yang sama dengan grid; pekerja ENDED di tengah FY ikut grid/laporan FY-nya, tidak FY sesudahnya
     const curQ = await asTsk(admin, (tx) => quartersOfFiscalYear(tx, fiscalYearOf(today), today));
     const gridPending = curQ.reduce((nn, x) => nn + x.quarters.filter((c) => c.state === "open").length, 0);

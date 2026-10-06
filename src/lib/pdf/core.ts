@@ -134,6 +134,7 @@ export class PdfBuilder {
       if (this.doc.y + h > this.bottomY) {
         this.doc.addPage();
         header();
+        this.doc.font("Regular").fontSize(9); // header() memakai Bold: kembalikan supaya baris pertama di halaman baru tidak tercetak tebal
       }
       const y = this.doc.y;
       if (row.span) {

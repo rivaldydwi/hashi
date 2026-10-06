@@ -38,7 +38,7 @@ export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
   activity_followup: ["status"],
   activity_attachment: [],
   activity_daily_report: [],
-  periodic_interview: ["resultStatus", "reason", "period", "status"],
+  periodic_interview: ["resultStatus", "reason", "period", "status", "method", "form55", "nonconformity"], // form55 = "filled"; nonconformity = yes|no (TANPA isi form)
   activity_export: ["exportKind", "rows", "clientVersion"],
   // Penanggung jawab pekerja (T-010): hanya cakupan (company | placement); id staf/pekerja/perusahaan tidak dicatat di nilai
   responsible_assignment: ["scope"],
