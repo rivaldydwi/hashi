@@ -187,8 +187,8 @@ meneruskannya, isi `AUTH_URL=https://alamat-demo` di `.env.demo` lalu `scripts/d
 
 ```bash
 cd ~/hashi
-git pull                      # atau: git am file.patch
-GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build  # migration baru otomatis dijalankan container `migrate`
+scripts/deploy.sh            # git pull --ff-only + build dengan GIT_SHA + tunggu /api/health memuat commit baru (tolak bila bukan main / kotor); migration otomatis lewat `migrate`
+#                             # opsi: --backup (cadangan dulu), --check (hanya periksa syarat). Tanpa skrip: GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build
 docker compose ps             # app dan db harus (healthy)
 curl -fsS http://127.0.0.1:3110/api/health
 ```
@@ -202,7 +202,7 @@ Verifikasi di produksi cukup lewat **CI hijau** (`gh run list`) dan cek `/api/he
 docker compose ps                         # status
 docker compose logs -f app                # log aplikasi
 docker stats --no-stream                  # pemakaian RAM
-git pull && GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build  # update ke versi terbaru
+scripts/deploy.sh                          # update ke versi terbaru (pull, build, cek health + commit)
 docker compose down                       # hentikan (data tetap aman di volume)
 
 # Isi ulang data demo dari nol

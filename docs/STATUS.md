@@ -34,6 +34,46 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-06 · T-006 · Skrip deploy + `.gitignore` izin lokal
+
+**PR:** #6 (branch `eng/T-006-deploy-skrip`)
+**Status:** siap direview (deploy lewat skrip ini dilakukan SETELAH merge; outputnya dicatat di entri berikutnya)
+
+**Yang dikerjakan**
+- `scripts/deploy.sh` (hanya produksi, project compose `hashi`): menolak bila bukan `main` atau working tree kotor (termasuk berkas baru), `git pull --ff-only`, `GIT_SHA=<sha pendek> docker compose -p hashi up -d --build` (tanpa `--remove-orphans`),
+  menunggu `http://127.0.0.1:$APP_PORT/api/health` sampai `commit` = sha itu (bawaan 120 dtk, `--timeout N`; gagal ≠ 0 dengan pesan + `docker compose ps`), lalu mencetak commit berjalan + label image + isi health.
+  Opsi: `--backup` (jalankan `scripts/backup.sh` dulu, kunci dari env atau `~/.config/hashi/backup.env`; cadangan gagal → deploy dibatalkan sebelum menyentuh container) dan `--check` (hanya memeriksa syarat dan mencetak rencana). Demo dan db-dev tidak disentuh.
+- `.gitignore`: `.claude/settings.local.json`.
+- `docs/backup.md` §3: peringatan bahwa timer menjalankan skrip dari working tree repo (branch fitur pukul 02:00 = versi branch yang jalan).
+- README (bagian update), `CLAUDE.md` (siklus langkah 7, "Produksi di OptiPlex", "Alur kerja" langkah 3), `docs/HISTORY.md`: perintah deploy produksi menjadi `scripts/deploy.sh`.
+  Instruksi instalasi pertama dan reseed produksi demo di README tetap memakai `GIT_SHA=… docker compose up -d --build` langsung (skrip mensyaratkan `main` bersih + pull, bukan untuk instalasi awal).
+
+**Verifikasi** (perintah → hasil apa adanya)
+- `bash -n scripts/deploy.sh` → ok; `--help` mencetak pemakaian.
+- Uji tolak, dengan sidik container (`StartedAt`+`Id` `hashi-app-1`/`hashi-db-1`) sama sebelum dan sesudah:
+  - di branch `eng/T-006-deploy-skrip` → "harus di branch main", exit 1;
+  - klon sementara di `main` dengan berkas baru → "working tree tidak bersih" + daftar berkas, exit 1;
+  - `--bogus` dan `--timeout abc` → ditolak, exit 1;
+  - klon bersih di `main` + `--check` (`APP_PORT=3110`) → exit 0, mencetak "commit akan di-deploy" dan "commit berjalan sekarang: 6a03395" dari health produksi, container tidak tersentuh.
+  Pada percobaan pertama `--check` gagal karena `main` klon uji tak punya upstream; pesan galat `git pull` saya perjelas (tidak lagi menuduh "riwayat menyimpang").
+- `git check-ignore -v .claude/settings.local.json` → `.gitignore:22` (diabaikan). `.git/info/exclude` lokal yang saya tambahkan sebelumnya jadi redundan (aman dibiarkan).
+- Jalur sukses penuh (`up -d --build` + menunggu health) BELUM dijalankan: skrip belum ada di `main`, sedangkan skrip menolak branch selain `main`. Dijalankan setelah merge (kriteria "deploy lewat skrip"), dan hasilnya dicatat.
+- CI: lihat status PR (tidak ada perubahan kode aplikasi).
+
+**Kondisi server:** tidak ada yang di-deploy atau diubah. Produksi masih `6a03395`.
+
+**Kendala / catatan**
+- Setelah merge, `main` berisi 3 commit dokumen/skrip di atas `6a03395` (T-003, T-006, TASKS): deploy skrip akan membangun image dengan commit baru walau kode aplikasi sama.
+- Klon uji sementara di folder scratchpad sudah dihapus.
+
+**Pertanyaan**
+- Dua BUTUH IPAL dari T-003 (salinan kunci cadangan, linger) masih menunggu jawaban Ipal; tidak ada yang baru.
+
+**Usulan berikutnya** (bukan tugas)
+- Setelah deploy lewat skrip, deploy demo (izin Ipal) supaya demo juga memuat `commit` di health.
+
+---
+
 ## 2026-10-06 · T-003 · Cadangan lokal terjadwal (+ hasil deploy T-005)
 
 **PR:** #5 (branch `eng/T-003-backup-terjadwal`)

@@ -47,6 +47,8 @@ systemctl --user start hashi-backup.service   # picu sekarang (uji / cadangan ma
   buka berkas itu di terminal Ipal sendiri (`cat ~/.config/hashi/backup.env`), salin baris `HASHI_BACKUP_PASSPHRASE=…` ke pengelola kata sandi, lalu pastikan bisa dibaca kembali dari sana. Jangan menempelkannya ke chat, tiket, atau repo. Menghapus berkas ini tanpa salinan = cadangan lama tidak terbuka lagi.
 - **Log dan kegagalan:** `~/hashi-backups/backup.log` (diputar ke `backup.log.1` bila > 1 MB). Bila putaran gagal, `~/hashi-backups/LAST_FAILED` berisi waktu, kode keluar, dan pesan; berkas itu dihapus oleh putaran berikutnya yang berhasil.
   **Periksa `ls ~/hashi-backups/LAST_FAILED` secara berkala**: pemberitahuan keluar (email/LINE) belum ada. `systemctl --user status hashi-backup.service` juga menunjukkan hasil terakhir.
+- **Peringatan: skrip dijalankan dari working tree repo** (`<repo>/scripts/backup-run.sh` → `backup.sh`), bukan dari salinan terpasang. Bila pukul 02:00 engineer sedang berada di branch fitur, versi skrip DI BRANCH ITULAH yang jalan
+  (dan bila working tree sedang berubah/rusak, cadangan bisa gagal). Biasakan kembali ke `main` setelah bekerja; kegagalan akan tampak sebagai `LAST_FAILED`.
 - **Retensi:** 14 set terbaru bernama `hashi-<tanggal>-<jam>-*` dipertahankan; dump manual lama (`pre-*`, `hashi-prod-backup-*`) tidak pernah disentuh.
 
 **Menjalankan manual** (tanpa timer):
