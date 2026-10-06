@@ -18,3 +18,5 @@ hashi-backups/
 *.dump
 *.sha256.tmp
 hashi-restore-test/
+# izin Claude Code per mesin (tidak boleh ter-commit)
+.claude/settings.local.json
