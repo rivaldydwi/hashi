@@ -6,33 +6,13 @@ bagian "Peran dan aturan kerja".
 **Status:** `SIAP` (boleh diambil) · `DITAHAN` (menunggu keputusan Ipal/pihak luar, jangan diambil) · `SELESAI` (PR sudah di-merge).
 Ambil tugas `SIAP` **paling atas**. Satu tugas = satu branch `eng/<ID>-<slug>` = satu PR berjudul `[<ID>] …`.
 
-Terakhir diperbarui PM: 2026-10-06 (keputusan Ipal soal cadangan).
+Terakhir diperbarui PM: 2026-10-06 (setelah review T-005).
 
 ---
 
 ## Antrean
 
-### T-005 · Commit yang berjalan bisa dibaca langsung · `SIAP`
-
-Dari usulan T-001: saat ini commit produksi hanya bisa ditebak dari waktu build image.
-
-Kerjakan:
-- Build image menerima build-arg `GIT_SHA` (bawaan `unknown`) dan menulisnya ke `LABEL org.opencontainers.image.revision` serta env aplikasi.
-  `compose.yaml` meneruskannya (mis. `GIT_SHA: ${GIT_SHA:-unknown}`); perintah deploy di README/CLAUDE.md menjadi
-  `GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build` (berlaku juga untuk `dc up` demo di `scripts/demo-lib.sh`).
-- `/api/health` mengembalikan `{"status":"ok","commit":"<sha pendek>"}`. Tidak ada informasi lain (tanpa versi paket, env, atau nama host).
-- Footer UI: ganti `common.version` "Hashi v0.2" menjadi versi yang tidak basi (mis. "Hashi" + sha pendek), id dan ja.
-- Job `docker` di CI: build dengan `GIT_SHA` dan periksa label image berisi sha tersebut.
-
-**Kriteria selesai**
-- [ ] `docker image inspect` menunjukkan label revision = commit yang dibangun; `/api/health` memuat `commit`.
-- [ ] Tanpa `GIT_SHA`, build tetap berhasil (`unknown`), tidak gagal.
-- [ ] Deploy dilakukan setelah merge, dan STATUS mencatat output `/api/health` produksi beserta commit-nya.
-- [ ] typecheck, test:i18n, build, CI hijau.
-
----
-
-### T-003 · Cadangan lokal terjadwal · `SIAP` (setelah T-005)
+### T-003 · Cadangan lokal terjadwal · `SIAP`
 
 **Keputusan Ipal (2026-10-06):** untuk sekarang cadangan **lokal saja** (belum ada tujuan luar-server, akun, maupun biaya). Ipal **mengizinkan** memasang
 jadwal di host untuk Hashi. Salinan luar-server ditunda sampai proyek siap dipakai sungguhan; itu tetap syarat sebelum data nyata (lihat Cadangan di bawah).
@@ -55,12 +35,32 @@ Kerjakan:
 - [ ] Set hasil jadwal itu dipulihkan ke db-dev dengan `scripts/restore.sh` (hitungan cocok dengan produksi), lalu database/folder uji dibuang.
 - [ ] Kegagalan disimulasikan (mis. kunci kosong di salinan berkas env sementara) → `LAST_FAILED` muncul, log menjelaskan; lalu kembali normal.
 - [ ] Tidak ada kunci di repo/log/PR; `git ls-files` tanpa `.gpg`/`.dump`/`backup.env`.
+- [ ] STATUS mencatat hasil deploy T-005 (output `/api/health` produksi + commit), karena PR #4 sudah di-merge sebelum deploy.
 - [ ] STATUS mencatat: jenis jadwal, waktu putaran berikutnya, lokasi berkas kunci, dan cara Ipal menyalin kuncinya.
 - [ ] CI hijau.
 
 ---
 
-### T-004 · Pelacak zairyū kādo (在留カード): desain · `SIAP` (setelah T-003)
+### T-006 · Skrip deploy + `.gitignore` izin lokal · `SIAP` (setelah T-003)
+
+Dari usulan T-005: perintah deploy mudah lupa `GIT_SHA`, dan `.claude/settings.local.json` belum diabaikan git.
+
+Kerjakan:
+- `scripts/deploy.sh`: hanya produksi (project compose `hashi`): menolak jalan bila working tree kotor atau bukan di `main`, `git pull --ff-only`,
+  `GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build` (tanpa `--remove-orphans`), menunggu `/api/health` sampai `commit` = sha itu
+  (batas waktu, gagal dengan kode ≠ 0 dan pesan jelas), lalu mencetak commit yang berjalan. Opsional `--backup`: jalankan `scripts/backup.sh` dulu.
+- `.gitignore`: tambah `.claude/settings.local.json`.
+- README, `CLAUDE.md` (siklus engineer langkah 7 dan "Alur kerja"), `docs/HISTORY.md`: perintah deploy produksi menjadi `scripts/deploy.sh`.
+
+**Kriteria selesai**
+- [ ] Deploy produksi lewat `scripts/deploy.sh` berhasil dan mencetak commit yang sama dengan `main`; STATUS mencatat output-nya.
+- [ ] Uji tolak: working tree kotor → menolak tanpa menyentuh container.
+- [ ] `git check-ignore .claude/settings.local.json` → diabaikan.
+- [ ] CI hijau.
+
+---
+
+### T-004 · Pelacak zairyū kādo (在留カード): desain · `SIAP` (setelah T-006)
 
 Hanya dokumen desain `docs/zairyu-card.md`, **belum ada kode atau migrasi**. Tujuannya supaya Ipal bisa menanyakan hal yang tepat ke staf TSK
 sebelum skema dibuat. Bahan: `CLAUDE.md` bagian "Keputusan untuk langkah 7", model `placements`, catatan kegiatan (7A), dashboard.
@@ -96,6 +96,7 @@ Isi dokumen:
 
 ## Selesai
 
+- **T-005** Commit yang berjalan terbaca (PR #4): label image + env `GIT_SHA`, `/api/health` memuat `commit`, label "Hashi · <sha>" di sidebar, dicek di CI.
 - **T-002** Cadangan terenkripsi lokal (PR #3): `docs/backup.md`, `scripts/backup.sh`, `scripts/restore.sh`; uji restore ke db-dev cocok dengan produksi
   dan aplikasi bisa membuka dokumen hasil restore. Belum ada jadwal dan salinan luar-server (T-003).
 - **T-001** Laporan kondisi Mini PC (PR #2). Hasil penting: produksi sehat dan kodenya setara `main`; **belum ada cadangan otomatis maupun cadangan
