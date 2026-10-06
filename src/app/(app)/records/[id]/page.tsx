@@ -5,7 +5,7 @@ import { btnPrimary, btnSecondary, cardClass, inputClass, labelClass } from "@/c
 import { MAX_ATTACHMENTS_PER_RECORD, SECTION_KEYS, cleanSections } from "@/db/records-core";
 import { addRecordToTimeline, createCaseFromRecord, markRecordRead, voidRecord } from "@/features/records/actions";
 import { requireStaff } from "@/features/records/access";
-import { getRecord, listCases, listStaff } from "@/features/records/queries";
+import { continuationOf, getRecord, listCases, listStaff } from "@/features/records/queries";
 import { ActionForm } from "@/features/records/ui/ActionForm";
 import { Attachments } from "@/features/records/ui/Attachments";
 import { AddFollowupForm, FollowupList } from "@/features/records/ui/Followups";
@@ -27,8 +27,9 @@ export default async function RecordDetailPage({ params, searchParams }: { param
   const locale = await getLocale();
   const tz = safeTimezone(me.organizationTimezone, me.organizationType);
   const today = ymdIn(new Date(), tz);
-  const { rec, staff, cases, names } = await tenantQuery(async (tx) => {
+  const { rec, staff, cases, names, chain } = await tenantQuery(async (tx) => {
     const rec = await getRecord(tx, id);
+    const chain = rec ? await continuationOf(tx, id) : { from: null, by: [] };
     const staff = await listStaff(tx);
     const cases = await listCases(tx, { status: "open", workerId: "" });
     const names: Record<string, string> = Object.fromEntries(staff.map((s) => [s.id, s.name]));
@@ -37,7 +38,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
       if (rec.r.caseId && rec.caseCode) names[rec.r.caseId] = rec.caseCode;
       if (rec.r.clientSiteId && rec.siteName) names[rec.r.clientSiteId] = `${rec.companyName} / ${rec.siteName}`;
     }
-    return { rec, staff, cases, names };
+    return { rec, staff, cases, names, chain };
   });
   if (!rec) notFound();
   const r = rec.r;
@@ -84,7 +85,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
           {dl(t("f.date"), dateLabelSync(r.recordDate, locale))}
           {dl(t("f.author"), rec.authorName)}
           {dl(t("f.subjects"), rec.subjects.length ? (
-            <ul className="flex flex-wrap gap-2">{rec.subjects.map((s) => <li key={s.id}><Link href={`/candidates/${s.id}`} className="text-sm font-medium text-accent-text hover:underline">{s.name}</Link></li>)}</ul>
+            <ul className="flex flex-wrap gap-2">{rec.subjects.map((s) => <li key={s.id} className="flex flex-wrap items-center gap-2"><Link href={`/candidates/${s.id}`} className="text-sm font-medium text-accent-text hover:underline">{s.name}</Link><Link href={`/records/workers/${s.id}`} className="inline-flex min-h-11 items-center text-xs font-medium text-accent-text hover:underline" data-testid="worker-history-link">{t("whistory.historyLink")}</Link></li>)}</ul>
           ) : <span className="text-ink-2">—</span>)}
           {dl(t("f.site"), rec.siteName ? `${rec.companyName} / ${rec.siteName}` : "—")}
           {dl(t("f.case"), r.caseId ? <Link href={`/records/cases/${r.caseId}`} className="text-sm font-medium text-accent-text hover:underline">{rec.caseCode} {rec.caseTitle}</Link> : "—")}
@@ -117,7 +118,18 @@ export default async function RecordDetailPage({ params, searchParams }: { param
             ))}
           </div>
         )}
+        {(chain.from || chain.by.length > 0) && (
+          <div className="mt-3 space-y-1 border-t border-line pt-3 text-sm" data-testid="continuation-chain">
+            {chain.from && (
+              <p data-testid="continued-from">{t("continue.from")}: <Link href={`/records/${chain.from.id}`} className="font-medium text-accent-text hover:underline" lang="ja">{dateLabelSync(chain.from.recordDate, locale)} {chain.from.summary ? `· ${chain.from.summary}` : ""}</Link>{chain.from.status === "void" && <> <Badge tone="danger">{t("badge.void")}</Badge></>}</p>
+            )}
+            {chain.by.map((c) => (
+              <p key={c.id} data-testid="continued-by">{t("continue.by")}: <Link href={`/records/${c.id}`} className="font-medium text-accent-text hover:underline" lang="ja">{dateLabelSync(c.recordDate, locale)} {c.summary ? `· ${c.summary}` : ""}</Link>{c.status === "void" && <> <Badge tone="danger">{t("badge.void")}</Badge></>}</p>
+            ))}
+          </div>
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          {!isVoid && rec.subjects.length > 0 && <Link href={`/records/new?kind=${r.kind}&continue=${r.id}`} className={btnSecondary} data-testid="continue-record">{t("continue.button")}</Link>}
           {canEdit && <Link href={`/records/${r.id}/edit`} className={btnPrimary} data-testid="edit-record">{t("detail.edit")}</Link>}
           <a href={`/records/export/record/${r.id}`} className={btnSecondary} data-testid="export-record">{t("export.record")}</a>
         </div>

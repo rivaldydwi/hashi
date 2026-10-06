@@ -16,6 +16,7 @@ export async function WorkerRecordsSection({ candidateId, me }: { candidateId: s
       <div className="flex flex-wrap items-center gap-2">
         <h2 id="wr-title" className="mr-auto text-[17px] font-semibold">{t("worker.title")}</h2>
         <Link href={`/records/new?kind=daily_work&worker=${candidateId}`} className={btnPrimary} data-testid="worker-add-record">+ {t("worker.add")}</Link>
+        <Link href={`/records/workers/${candidateId}`} className={btnSecondary} data-testid="worker-history-open">{t("whistory.openHistory")}</Link>
         <Link href={`/records/interviews`} className={btnSecondary}>{t("tabs.interviews")}</Link>
       </div>
       <h3 className="mt-4 text-sm font-semibold">{t("worker.cases")}</h3>

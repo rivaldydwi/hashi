@@ -34,6 +34,48 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-06 · T-007 · Riwayat catatan per pekerja ("Lanjutkan") + hasil deploy lewat `scripts/deploy.sh`
+
+**PR:** #7 (branch `eng/T-007-riwayat-pekerja`)
+**Status:** siap direview (deploy T-007 ke produksi dilakukan setelah merge, lewat `scripts/deploy.sh`)
+
+**Hasil deploy T-006 lewat `scripts/deploy.sh --backup`** (kriteria T-006; PR #6 di-merge `32ea832`)
+- `scripts/deploy.sh --backup` dari `main` bersih → cadangan terenkripsi dulu (set `hashi-20261006-161934-*`, `LAST_FAILED` tidak ada), lalu `GIT_SHA=32ea832 docker compose -p hashi up -d --build` tanpa `--remove-orphans`.
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: 32ea832 (label image: 32ea832); health: {"status":"ok","commit":"32ea832"}`, exit 0. `main` = `32ea832`. Demo (`hashi-demo-*`) tidak disentuh (Up, healthy).
+- Catatan: keluaran `docker compose up --build` (log build) membanjiri terminal; usulan di bawah.
+
+**Yang dikerjakan (T-007)**
+- **Migration 0022** (`activity_records.continues_record_id`, FK + indeks + CHECK bukan diri sendiri) + penjaga di database: terkunci setelah dibuat (trigger versi), asal harus ada/terlihat/organisasi sama/AKTIF (BEFORE INSERT), dan menyebut setidaknya satu pekerja yang sama (constraint trigger TERTUNDA, diperiksa saat commit karena pekerja ditambahkan setelah baris catatan).
+- **Halaman riwayat** `/records/workers/<candidateId>`: ① + ② yang menyebut pekerja, baris kronologi ③ dari kasus yang melibatkannya, dan wawancara berkala ④, dalam satu garis waktu (terbaru di atas, `?order=asc` membalik, 30 entri per halaman, yang dibatalkan dicoret) + tindak lanjut yang masih terbuka di atasnya. Catatan multi-pekerja muncul di tiap pekerja.
+- **"Lanjutkan"** di detail catatan → form baru dengan pekerja/lokasi/kasus terisi dan ditandai "Diisi otomatis, periksa" (`autoFilled`), panel baca-saja 3 catatan terakhir + tindak lanjut terbuka (di samping form pada layar lebar, di atas pada ponsel). Detail catatan menampilkan "Lanjutan dari …" / "Dilanjutkan oleh …"; asal yang dibatalkan tidak bisa dilanjutkan, rantai yang ada tetap terlihat.
+- Tautan ke riwayat dari detail catatan (per pekerja), detail kandidat sisi TSK, dan grid 定期面談.
+- Audit: `activity_record.create` memuat `continued: true` (tanpa id/isi); `verify:audit-coverage` lulus. Label id + ja (`test:i18n`: 1334 kunci). Seed: `d13` melanjutkan `d10`; `verify:seed` memeriksa rantai valid (juga lewat `seed:records --force` bila nanti dibutuhkan di produksi/demo: catatan baru, tidak mengubah yang ada).
+- **Bonus T-006:** `scripts/deploy.sh` tidak lagi jatuh ke port 3100 bila `APP_PORT` tidak ada (env/.env): gagal dengan pesan jelas sebelum menyentuh apa pun.
+- Dokumentasi: `docs/catatan-kegiatan.md` (bagian baru), `CLAUDE.md` (butir Catatan kegiatan TSK).
+
+**Verifikasi** (perintah → hasil apa adanya)
+- `npm run typecheck` → lulus. `npm run test:i18n` → lulus. `npm run test:unit` → lulus. `npm run verify:audit-coverage` → lulus. `npm run build` → 0 peringatan.
+- `db:seed -- --reset` (db-dev) lalu `npm run test:rls` → **lulus**, termasuk bagian U baru: lanjutan sah tersimpan; pekerja berbeda ditolak saat commit; asal dibatalkan/tidak ada/menunjuk diri sendiri ditolak; `continues_record_id` tak bisa diubah/dikosongkan (kolom lain tetap bisa diedit); TSK lain dan LPK tidak bisa menautkan; LPK_ADMIN, sensei, super admin, TSK lain, dan peran null membaca 0 baris.
+- `npm run verify:seed` → lulus (cek baru: 1 dari 1 rantai valid).
+- `E2E_PORT=3120 npm run test:e2e` → **165 lulus** (7 tes baru `records-continue`: asal A → "Lanjutkan" → form terisi + penanda otomatis + panel → simpan → saling menunjuk (dan baris DB: asal, pekerja, lokasi, kasus cocok); riwayat memuat kedua catatan + tindak lanjut + label Lanjutan + urutan dibalik + tautan dari detail kandidat dan grid; ③ dan ④ ikut, yang dibatalkan dicoret; paginasi 30/halaman dan ponsel 390 px tanpa scroll horizontal (juga form lanjutan + panel); LPK/sensei 404 untuk riwayat, "Lanjutkan", dan detail; asal dibatalkan tidak bisa dilanjutkan; audit `continued` tanpa isi; POST dengan asal tak sah ditolak server tanpa membuat catatan).
+- `deploy.sh` tanpa `APP_PORT` (repo uji sementara) → exit 1 "APP_PORT tidak ditemukan…"; dengan `APP_PORT=3110 --check` → exit 0.
+
+**Kondisi server:** belum ada yang di-deploy untuk T-007 (menunggu merge). Produksi `32ea832` healthy. Migration 0022 akan berjalan otomatis lewat service `migrate` saat deploy; tidak merusak data (kolom nullable baru + trigger).
+
+**Kendala / catatan**
+- Pekerja yang sudah TIDAK aktif (mis. penempatan berakhir) tidak muncul di pemilih pekerja form, sehingga catatan yang pekerjanya sudah tidak aktif tidak bisa dilanjutkan (halaman "Lanjutkan" = 404 bila tak ada pekerja aktif). Masuk lingkup T-008 (pekerja yang sudah berhenti).
+- Syarat "pekerja sama" hanya diperiksa saat catatan lanjutan DIBUAT; mengedit pekerja catatan lanjutan sesudahnya tidak memeriksanya lagi (rantai tetap valid saat dibuat). Bila PM ingin ketat, perlu trigger tambahan pada `activity_record_subjects`.
+- e2e menambah catatan uji (termasuk 32 catatan untuk paginasi) di db-dev; `test:rls` perlu `db:seed -- --reset` dulu (sudah tercatat di HISTORY).
+
+**Pertanyaan**
+- Tidak ada yang butuh Ipal.
+
+**Usulan berikutnya** (bukan tugas)
+- `scripts/deploy.sh`: keluarkan log build ke berkas (`~/hashi-backups/deploy.log`) dan cetak hanya ringkasan.
+- Setelah T-007 di-deploy, jalankan `seed:records --force` di demo (izin Ipal) supaya demo punya contoh rantai lanjutan (d13).
+
+---
+
 ## 2026-10-06 · T-006 · Skrip deploy + `.gitignore` izin lokal
 
 **PR:** #6 (branch `eng/T-006-deploy-skrip`)

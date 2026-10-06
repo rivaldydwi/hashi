@@ -29,6 +29,15 @@ Pendukung: `activity_daily_reports` (+ `_recipients`) laporan harian ke leader, 
 - Pembaca yang `version_no_read` < versi sekarang melihat "Diperbarui sejak kamu baca".
 - Kunci asing ke `candidates` RESTRICT. Hapus kandidat oleh LPK_ADMIN ditolak bila ada catatan (trigger `candidates_block_delete` dan `candidate_delete_summary().blocked`).
 
+## Riwayat per pekerja dan "Lanjutkan" (T-007)
+- **Satu rangkaian per pekerja** (keputusan: fokusnya perkara di pekerja itu; tidak ada tabel "thread"). Halaman `/records/workers/<candidateId>` (hanya staf TSK; LPK/sensei 404; pekerja yang tidak terlihat = 404) menampilkan dalam SATU garis waktu: catatan ① dan ② yang menyebut pekerja,
+  baris kronologi ③ dari kasus yang melibatkannya, dan wawancara berkala ④ miliknya. Terbaru di atas (bisa dibalik `?order=asc`), 30 entri per halaman, yang dibatalkan tetap tampil dicoret. Di atasnya: tindak lanjut yang masih terbuka (dari catatan, kasus, atau wawancara pekerja itu).
+  Catatan dengan beberapa pekerja muncul di riwayat tiap pekerja. Kueri: `workerTimeline`, `openTasksOfWorker` di `src/features/records/queries.ts`.
+- **Tombol "Lanjutkan"** di detail catatan -> `/records/new?kind=<jenis>&continue=<id>`: pekerja, lokasi (配属先), dan kasus terisi dari catatan asal (ditandai "Diisi otomatis, periksa"), dan panel baca-saja menampilkan 3 catatan terakhir pekerja + tindak lanjut terbuka.
+  Disimpan sebagai `activity_records.continues_record_id` (migration 0022): asal harus ada dan terlihat (organisasi sama), AKTIF, dan menyebut setidaknya satu pekerja yang sama (trigger tertunda, diperiksa saat COMMIT karena pekerja ditambahkan setelah baris catatan);
+  terkunci setelah dibuat (tidak bisa diubah/dikosongkan, juga oleh pembuatnya). Detail catatan menampilkan "Lanjutan dari …" dan "Dilanjutkan oleh …". Catatan asal yang dibatalkan tidak bisa dilanjutkan, tetapi rantai yang sudah ada tetap terlihat (dengan penanda dibatalkan).
+- Tautan ke riwayat: detail catatan (per pekerja), detail kandidat sisi TSK, grid 定期面談. Audit: `activity_record.create` memuat `continued: true` (tanpa id/isi). Seed: `d13` melanjutkan `d10`; `verify:seed` memeriksa rantai valid; RLS bagian U; e2e `records-continue`.
+
 ## Laporan harian
 Laporan = pembungkus (author, tanggal). `shared_at` diisi saat staf menekan "Kirim ke leader"; penerima bawaan semua TSK_ADMIN (tanpa pengirim) ditambah pilihan staf lain. ① yang dibuat atau diedit
 sesudah `shared_at` diberi penanda; "Kirim ulang" memperbarui `shared_at`. Penerima yang sudah membaca melihat "Diperbarui sejak kamu baca" bila laporan dikirim ulang atau ada ① baru/diedit sesudah waktu baca.

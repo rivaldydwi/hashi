@@ -290,3 +290,116 @@ export async function recordsOfWorker(tx: Tx, candidateId: string, n = 20) {
 }
 
 export const _unused = { ne, or };
+
+// ------------------------------------------------------------------------------------------------ T-007: riwayat per pekerja + "lanjutkan catatan"
+
+export const WORKER_TIMELINE_PAGE_SIZE = 30;
+export type TimelineItem = {
+  item: "record" | "event" | "interview";
+  id: string;
+  /** Waktu urut: ①/②/baris kronologi/wawancara dalam satu garis waktu. */
+  at: Date;
+  /** record: kind (daily_work|meeting); event: "timeline"; interview: "interview" */
+  sub: string;
+  status: string;
+  summary: string;
+  authorName: string | null;
+  caseId: string | null;
+  caseCode: string | null;
+  /** hanya wawancara: bulan periode "YYYY-MM" (untuk tautan) */
+  period: string | null;
+  continuesId: string | null;
+  openTasks: number;
+};
+
+/**
+ * Satu garis waktu per pekerja: catatan ① dan ② yang menyebutnya, baris kronologi ③ dari kasus yang melibatkannya, dan wawancara berkala ④ miliknya.
+ * Yang dibatalkan tetap ikut (ditandai di UI). Catatan dengan beberapa pekerja muncul di riwayat tiap pekerja. `tz` = zona organisasi (tanggal ① jadi pukul 00:00 zona itu).
+ */
+export async function workerTimeline(tx: Tx, candidateId: string, opts: { order: "asc" | "desc"; page: number; tz: string }): Promise<{ items: TimelineItem[]; total: number }> {
+  const dir = opts.order === "asc" ? sql`asc` : sql`desc`;
+  const union = sql`
+    select 'record'::text as item, r.id::text as id, coalesce(r.started_at, (r.record_date::timestamp at time zone ${opts.tz})) as at, r.kind as sub, r.status,
+           left(coalesce(r.subject, r.action_taken, r.result, ''), 240) as summary, u.name as author_name, r.case_id::text as case_id, c.code as case_code, null::text as period,
+           r.continues_record_id::text as continues_id,
+           (select count(*)::int from activity_followups f where f.record_id = r.id and f.status = 'open') as open_tasks, r.created_at as tie
+      from activity_records r
+      join users u on u.id = r.author_id
+      left join activity_cases c on c.id = r.case_id
+     where exists (select 1 from activity_record_subjects s where s.record_id = r.id and s.candidate_id = ${candidateId}::uuid)
+    union all
+    select 'event', e.id::text, e.occurred_at, 'timeline', e.status, left(e.event, 240), u.name, c.id::text, c.code, null, null, 0, e.created_at
+      from case_timeline_events e
+      join activity_cases c on c.id = e.case_id
+      join users u on u.id = e.created_by
+     where exists (select 1 from activity_case_subjects s where s.case_id = c.id and s.candidate_id = ${candidateId}::uuid)
+    union all
+    select 'interview', i.id::text, (coalesce(i.interview_date, i.period_month)::timestamp at time zone ${opts.tz}), 'interview', i.status, left(coalesce(i.content, ''), 240), su.name, null, null,
+           i.period_month::text, null, 0, i.created_at
+      from periodic_interviews i
+      left join users su on su.id = i.staff_id
+     where i.candidate_id = ${candidateId}::uuid and (i.applicable or i.interview_date is not null or i.content is not null)`;
+  const [{ n }] = (await tx.execute(sql`select count(*)::int as n from (${union}) x`)).rows as Array<{ n: number }>;
+  const rows = (await tx.execute(
+    sql`select * from (${union}) x order by at ${dir}, tie ${dir}, id ${dir} limit ${WORKER_TIMELINE_PAGE_SIZE} offset ${(opts.page - 1) * WORKER_TIMELINE_PAGE_SIZE}`,
+  )).rows as Array<Record<string, unknown>>;
+  return {
+    total: n,
+    items: rows.map((r) => ({
+      item: r.item as TimelineItem["item"], id: String(r.id), at: new Date(r.at as string), sub: String(r.sub), status: String(r.status), summary: String(r.summary ?? ""),
+      authorName: (r.author_name as string | null) ?? null, caseId: (r.case_id as string | null) ?? null, caseCode: (r.case_code as string | null) ?? null,
+      period: (r.period as string | null) ?? null, continuesId: (r.continues_id as string | null) ?? null, openTasks: Number(r.open_tasks ?? 0),
+    })),
+  };
+}
+
+export type WorkerTask = { id: string; description: string; assigneeName: string; dueDate: string | null; recordId: string | null; caseId: string | null; interviewId: string | null };
+
+/** Tindak lanjut yang MASIH TERBUKA untuk pekerja ini: dari catatan yang menyebutnya, kasus yang melibatkannya, atau wawancara berkalanya. */
+export async function openTasksOfWorker(tx: Tx, candidateId: string): Promise<WorkerTask[]> {
+  const rows = (await tx.execute(sql`
+    select f.id::text as id, f.description, u.name as assignee_name, f.due_date::text as due_date, f.record_id::text as record_id, f.case_id::text as case_id, f.interview_id::text as interview_id
+      from activity_followups f
+      join users u on u.id = f.assignee_id
+     where f.status = 'open'
+       and (
+         exists (select 1 from activity_record_subjects s where s.record_id = f.record_id and s.candidate_id = ${candidateId}::uuid)
+         or exists (select 1 from activity_case_subjects s where s.case_id = f.case_id and s.candidate_id = ${candidateId}::uuid)
+         or exists (select 1 from periodic_interviews i where i.id = f.interview_id and i.candidate_id = ${candidateId}::uuid)
+       )
+     order by f.due_date asc nulls last, f.created_at asc`)).rows as Array<Record<string, unknown>>;
+  return rows.map((r) => ({ id: String(r.id), description: String(r.description), assigneeName: String(r.assignee_name), dueDate: (r.due_date as string | null) ?? null, recordId: (r.record_id as string | null) ?? null, caseId: (r.case_id as string | null) ?? null, interviewId: (r.interview_id as string | null) ?? null }));
+}
+
+export type RecentRecord = { id: string; kind: string; recordDate: string; summary: string; authorName: string };
+
+/** Catatan aktif terakhir yang menyebut pekerja ini (ringkasan untuk panel "lanjutkan"). */
+export async function recentRecordsOfWorker(tx: Tx, candidateId: string, limit = 3): Promise<RecentRecord[]> {
+  const rows = (await tx.execute(sql`
+    select r.id::text as id, r.kind, r.record_date::text as record_date, left(coalesce(r.subject, r.action_taken, r.result, ''), 240) as summary, u.name as author_name
+      from activity_records r join users u on u.id = r.author_id
+     where r.status = 'active' and exists (select 1 from activity_record_subjects s where s.record_id = r.id and s.candidate_id = ${candidateId}::uuid)
+     order by r.record_date desc, r.created_at desc
+     limit ${limit}`)).rows as Array<Record<string, unknown>>;
+  return rows.map((r) => ({ id: String(r.id), kind: String(r.kind), recordDate: String(r.record_date), summary: String(r.summary ?? ""), authorName: String(r.author_name) }));
+}
+
+export type ContinuationLink = { id: string; kind: string; recordDate: string; status: string; summary: string };
+
+/** Rantai satu catatan: asalnya ("lanjutan dari …") dan yang melanjutkannya ("dilanjutkan oleh …"). */
+export async function continuationOf(tx: Tx, recordId: string): Promise<{ from: ContinuationLink | null; by: ContinuationLink[] }> {
+  const pick = {
+    id: activityRecords.id, kind: activityRecords.kind, recordDate: activityRecords.recordDate, status: activityRecords.status,
+    summary: sql<string>`left(coalesce(${activityRecords.subject}, ${activityRecords.actionTaken}, ${activityRecords.result}, ''), 160)`,
+  };
+  const [cur] = await tx.select({ parent: activityRecords.continuesRecordId }).from(activityRecords).where(eq(activityRecords.id, recordId)).limit(1);
+  const from = cur?.parent ? ((await tx.select(pick).from(activityRecords).where(eq(activityRecords.id, cur.parent)).limit(1))[0] ?? null) : null;
+  const by = await tx.select(pick).from(activityRecords).where(eq(activityRecords.continuesRecordId, recordId)).orderBy(asc(activityRecords.recordDate), asc(activityRecords.createdAt));
+  return { from, by };
+}
+
+/** Pekerja (kandidat) yang boleh dilihat sesi ini: dasar halaman riwayat. Null bila tidak ada / tidak terlihat (RLS). */
+export async function workerBasics(tx: Tx, candidateId: string) {
+  const [w] = await tx.select({ id: candidates.id, name: candidates.fullName, katakana: candidates.nameKatakana }).from(candidates).where(eq(candidates.id, candidateId)).limit(1);
+  return w ?? null;
+}

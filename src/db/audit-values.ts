@@ -32,7 +32,7 @@ export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
   placement: ["status"],
   audit_export: ["rows", "from", "to"],
   // Catatan kegiatan TSK: hanya jenis/status/kategori; TIDAK PERNAH isi teks, nama pekerja, atau nama berkas
-  activity_record: ["kind", "status", "workType"],
+  activity_record: ["kind", "status", "workType", "continued"], // continued = dibuat sebagai lanjutan catatan lain (true; id/isi tidak dicatat)
   activity_case: ["category", "status"],
   case_timeline_event: ["status"],
   activity_followup: ["status"],

@@ -2798,6 +2798,71 @@ async function main() {
     `${String(tr.negEmployees).slice(0, 60)} | ${String(tr.badHousing).slice(0, 60)}`,
   );
 
+  // --- U. Lanjutkan catatan (T-007): continues_record_id. Hanya staf TSK organisasi sama; asal harus ada/terlihat, aktif, dan satu pekerja sama (diperiksa saat COMMIT);
+  //        terkunci setelah dibuat; tidak terbaca LPK/sensei/TSK lain ---
+  const ur: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    const workers = (await tx.execute(sql`select distinct p.candidate_id::text as id from placements p where p.status = 'ACTIVE' limit 2`)).rows as Array<{ id: string }>;
+    if (workers.length < 2) throw new Error("Bagian U butuh >= 2 pekerja aktif (seed)");
+    const [w1, w2] = [workers[0].id, workers[1].id];
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const rec = async (cont: string | null, worker: string, uid = tskAdminUser.id) => {
+      const id = ((await tx.execute(sql.raw(`insert into activity_records (organization_id, created_by, author_id, kind, record_date, work_type, action_taken, continues_record_id) values ('${tsk.id}', '${uid}', '${uid}', 'daily_work', current_date, 'interview', 'lanjutan uji', ${cont ? `'${cont}'` : "null"}) returning id::text as id`))).rows[0] as { id: string }).id;
+      await tx.execute(sql.raw(`insert into activity_record_subjects (record_id, candidate_id, organization_id) values ('${id}', '${worker}', '${tsk.id}')`));
+      return id;
+    };
+    const parent = await rec(null, w1);
+    // valid: pekerja sama, asal aktif, organisasi sama (pemeriksaan tertunda dipaksa berjalan sekarang)
+    ur.valid = await attempt(tx, async (t) => { await rec(parent, w1); await t.execute(sql`set constraints activity_records_continue_subjects immediate`); });
+    ur.validCount = await num(tx, `select count(*)::int as n from activity_records where continues_record_id = '${parent}'`);
+    // pekerja tidak sama -> ditolak saat commit
+    ur.otherWorker = await attempt(tx, async (t) => { await rec(parent, w2); await t.execute(sql`set constraints activity_records_continue_subjects immediate`); });
+    // asal sudah dibatalkan -> ditolak
+    const voided = await rec(null, w1);
+    await tx.execute(sql.raw(`update activity_records set status = 'void', void_reason = 'uji' where id = '${voided}'`));
+    ur.voidParent = await attempt(tx, async () => { await rec(voided, w1); });
+    // asal tidak ada
+    ur.missingParent = await attempt(tx, async () => { await rec("00000000-0000-4000-8000-000000000000", w1); });
+    // menunjuk diri sendiri
+    ur.selfRef = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set continues_record_id = id where id = '${parent}'`)));
+    // terkunci setelah dibuat (juga bagi pembuatnya sendiri)
+    const child = ((await tx.execute(sql.raw(`select id::text as id from activity_records where continues_record_id = '${parent}' limit 1`))).rows[0] as { id: string }).id;
+    ur.lockedChange = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set continues_record_id = '${voided}' where id = '${child}'`)));
+    ur.lockedClear = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set continues_record_id = null where id = '${child}'`)));
+    ur.editOtherFieldOk = await attempt(tx, (t) => t.execute(sql.raw(`update activity_records set note = 'edit biasa' where id = '${child}'`)));
+    // organisasi lain / peran lain: tidak bisa menautkan, tidak bisa membaca
+    await actAs(tx, tskB, "TSK_ADMIN", adminB);
+    ur.crossOrgLink = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_records (organization_id, created_by, author_id, kind, record_date, work_type, action_taken, continues_record_id) values ('${tskB}', '${adminB}', '${adminB}', 'daily_work', current_date, 'interview', 'x', '${parent}')`)));
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    ur.lpkLink = await attempt(tx, (t) => t.execute(sql.raw(`insert into activity_records (organization_id, created_by, author_id, kind, record_date, work_type, action_taken, continues_record_id) values ('${tsk.id}', '${lpkAdminUser.id}', '${lpkAdminUser.id}', 'daily_work', current_date, 'interview', 'x', '${parent}')`)));
+    const readers: Array<[string, string, string | null, string | null]> = [
+      ["staffA", tsk.id, "TSK_STAFF", staffUser.id], ["adminA", tsk.id, "TSK_ADMIN", tskAdminUser.id], ["tskB", tskB, "TSK_ADMIN", adminB],
+      ["lpkAdmin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id], ["sensei", lpk1.id, "LPK_SENSEI", senseiUser.id], ["superAdmin", platformOrg.id, "SUPER_ADMIN", null], ["roleNull", tsk.id, null, null],
+    ];
+    for (const [who, org, role, uid] of readers) {
+      await actAs(tx, org, role, uid);
+      ur[`read/${who}`] = await num(tx, `select count(*)::int as n from activity_records where continues_record_id = '${parent}'`);
+    }
+  });
+  const E2 = (v: unknown) => typeof v === "string" && v.length > 0;
+  check(
+    "Lanjutkan catatan: catatan lanjutan sah (pekerja sama, asal aktif) tersimpan; pekerja berbeda ditolak saat commit; asal yang dibatalkan, tidak ada, atau menunjuk diri sendiri ditolak",
+    ur.valid === null && ur.validCount === 1 && /pekerja yang sama/.test(String(ur.otherWorker)) && /sudah dibatalkan|tidak ada/.test(String(ur.voidParent)) && /tidak ada|dibatalkan/.test(String(ur.missingParent)) && E2(ur.selfRef),
+    JSON.stringify([ur.valid, ur.validCount, String(ur.otherWorker).slice(0, 60), String(ur.voidParent).slice(0, 50), String(ur.missingParent).slice(0, 50), String(ur.selfRef).slice(0, 50)]),
+  );
+  check(
+    "Lanjutkan catatan: continues_record_id terkunci setelah dibuat (ubah/kosongkan ditolak), kolom lain tetap bisa diedit; TSK lain dan LPK tidak bisa menautkan ke catatan TSK ini",
+    /tidak bisa diganti/.test(String(ur.lockedChange)) && /tidak bisa diganti/.test(String(ur.lockedClear)) && ur.editOtherFieldOk === null && E2(ur.crossOrgLink) && E2(ur.lpkLink),
+    JSON.stringify([String(ur.lockedChange).slice(0, 50), String(ur.lockedClear).slice(0, 50), ur.editOtherFieldOk, String(ur.crossOrgLink).slice(0, 50), String(ur.lpkLink).slice(0, 50)]),
+  );
+  check(
+    "Lanjutkan catatan: rantai hanya terbaca staf TSK organisasi pemilik; TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris",
+    ur["read/staffA"] === 1 && ur["read/adminA"] === 1 && ["tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => ur[`read/${w}`] === 0),
+    JSON.stringify(Object.fromEntries(Object.entries(ur).filter(([k]) => k.startsWith("read/")))),
+  );
+
   await pool.end();
   await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);
