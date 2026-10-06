@@ -164,7 +164,11 @@
     "wMyFollowups": "自分のフォローアップ",
     "wOpenCases": "対応中のケース",
     "emptyMyFollowups": "未完了の課題はありません。",
-    "emptyOpenCases": "対応中のケースはありません。"
+    "emptyOpenCases": "対応中のケースはありません。",
+    "kpiStaffOver": "上限を超えた職員",
+    "kpiStaffOverHint": "職員1人あたり50名超（2027年4月からの基準）",
+    "kpiUnassigned": "担当者が未設定の就労者",
+    "kpiUnassignedHint": "責任者が決まっていない就労者"
   },
   "users": {
     "title": "ユーザー管理",
@@ -1147,7 +1151,8 @@
       "meetings": "議事録・面談記録",
       "cases": "ケース（時系列）",
       "interviews": "定期面談",
-      "tasks": "フォローアップ"
+      "tasks": "フォローアップ",
+      "responsible": "担当者"
     },
     "kinds": {
       "daily_work": "業務記録",
@@ -1458,7 +1463,8 @@
         "address": "配属先企業住所",
         "phone": "配属先企業電話番号",
         "pic": "配属先企業担当者",
-        "actions": "操作"
+        "actions": "操作",
+        "responsible": "担当者"
       },
       "quarterNote": "Q{q} 備考",
       "editQuarter": "編集",
@@ -1492,7 +1498,8 @@
         "open": "未実施（当四半期）",
         "missed": "期限超過（過ぎた四半期）",
         "na": "対象外"
-      }
+      },
+      "onlyMine": "自分の就労者"
     },
     "export": {
       "record": "PDFで書き出し",
@@ -1675,6 +1682,80 @@
       "benefitsNote": "福利厚生",
       "targetStartDate": "就業開始予定",
       "applicationDeadline": "応募締切"
+    }
+  },
+  "responsible": {
+    "title": "就労者の担当者（責任者）",
+    "intro": "職員は、1社または複数の取引先企業の責任者になります。担当者は企業ごとに設定され（その企業の全就労者の既定）、就労者ごとに変更できます。",
+    "rule": "基準：{date}から、登録支援機関の職員1人が支援できる就労者は最大{max}名です（職員1人あたり、全取引先の合計）。この画面は警告のみで、{warnAt}名から黄色、{max}名超で赤になります。保存はブロックしません。",
+    "view": {
+      "over": "上限を超えた職員",
+      "unassigned": "担当者なし"
+    },
+    "filter": {
+      "mine": "自分の就労者"
+    },
+    "workload": {
+      "title": "職員ごとの担当人数"
+    },
+    "col": {
+      "staff": "職員",
+      "count": "担当人数",
+      "level": "状態",
+      "actions": "操作"
+    },
+    "level": {
+      "ok": "問題なし",
+      "warn": "上限に近い／到達",
+      "over": "上限超過"
+    },
+    "warning": {
+      "warn": "{name}さんの担当は{n}名です（{date}から上限{max}名）。",
+      "over": "{name}さんの担当は{n}名で、{date}から適用される上限{max}名を超えています。"
+    },
+    "viewWorkers": "就労者を見る",
+    "noneOver": "上限を超えた職員はいません。",
+    "unassigned": {
+      "title": "担当者が未設定",
+      "none": "就労中の人は全員、担当者が設定されています。"
+    },
+    "companies": {
+      "title": "企業ごとの担当者",
+      "hint": "その企業の全就労者の既定です。変更できるのは管理者のみです。"
+    },
+    "workers": {
+      "title": "就労者",
+      "emptyTitle": "就労者がいません",
+      "emptyBody": "この条件に合う就労者はいません。"
+    },
+    "none": "未設定",
+    "followCompany": "企業に合わせる",
+    "source": {
+      "company": "企業から",
+      "placement": "個別設定",
+      "none": "未設定"
+    },
+    "scope": {
+      "company": "企業",
+      "placement": "就労者"
+    },
+    "form": {
+      "staff": "担当者",
+      "workerStaff": "この就労者の担当者（個別）",
+      "effectiveFrom": "適用開始日"
+    },
+    "save": "保存",
+    "saved": "担当者を保存しました。",
+    "history": {
+      "title": "変更履歴",
+      "empty": "変更はまだありません。",
+      "from": "{date}から適用"
+    },
+    "errors": {
+      "dateInvalid": "適用開始日が正しくありません。",
+      "targetNotFound": "企業または就労者が見つかりません。",
+      "staffInvalid": "職員が正しくありません。",
+      "noChange": "現在の設定から変更がありません。"
     }
   }
 }

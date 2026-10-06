@@ -2,15 +2,18 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { btnPrimary, btnSecondary, cardClass } from "@/components/styles";
 import { tenantQuery, type CurrentUser } from "@/lib/session";
+import { responsibleOfWorker } from "@/db/responsibility-queries";
+import { safeTimezone, ymdIn } from "@/lib/org-time";
 import { recordsOfWorker } from "../queries";
 import { Badge, dateLabelSync } from "./common";
 
 /** Bagian "Catatan kegiatan" di detail pekerja AKTIF (hanya sisi TSK; tidak pernah dirender untuk LPK). */
 export async function WorkerRecordsSection({ candidateId, me }: { candidateId: string; me: CurrentUser }) {
-  void me;
-  const t = await getTranslations("records");
+    const t = await getTranslations("records");
   const locale = await getLocale();
-  const { recs, cases } = await tenantQuery((tx) => recordsOfWorker(tx, candidateId, 15));
+  const tz = safeTimezone(me.organizationTimezone, me.organizationType);
+  const tresp = await getTranslations("responsible");
+  const { recs, cases, resp } = await tenantQuery(async (tx) => ({ ...(await recordsOfWorker(tx, candidateId, 15)), resp: await responsibleOfWorker(tx, candidateId, ymdIn(new Date(), tz)) }));
   return (
     <section className={`${cardClass} p-4 sm:p-5`} id="catatan-kegiatan" data-testid="section-worker-records" aria-labelledby="wr-title">
       <div className="flex flex-wrap items-center gap-2">
@@ -19,6 +22,7 @@ export async function WorkerRecordsSection({ candidateId, me }: { candidateId: s
         <Link href={`/records/workers/${candidateId}`} className={btnSecondary} data-testid="worker-history-open">{t("whistory.openHistory")}</Link>
         <Link href={`/records/interviews`} className={btnSecondary}>{t("tabs.interviews")}</Link>
       </div>
+      {resp && <p className="mt-3 text-sm" data-testid="worker-responsible">{tresp("form.staff")}: <span className="font-medium">{resp.name ?? tresp("none")}</span>{resp.name && <span className="text-xs text-ink-2"> ({tresp(`source.${resp.source}`)})</span>} <Link href={`/records/responsible?staff=${resp.staffId ?? ""}`} className="ml-2 text-xs font-medium text-accent-text hover:underline">{tresp("title")}</Link></p>}
       <h3 className="mt-4 text-sm font-semibold">{t("worker.cases")}</h3>
       {cases.length === 0 ? <p className="mt-1 text-sm text-ink-2">{t("worker.noCases")}</p> : (
         <ul className="mt-1 divide-y divide-line" data-testid="worker-cases">

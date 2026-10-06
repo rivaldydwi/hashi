@@ -1047,3 +1047,28 @@ export const activityRevisions = pgTable(
     check("activity_revisions_type_check", sql`${t.entityType} in ('record','timeline_event','case','periodic_interview')`),
   ],
 );
+
+// ---------------------------------------------------------------------------------------------
+// Penanggung jawab pekerja (担当/責任者; T-010, migration 0023): per PERUSAHAAN klien (bawaan semua pekerjanya) atau per PENEMPATAN (menimpa perusahaan).
+// Riwayat APPEND-ONLY: tiap perubahan = baris baru dengan tanggal mulai berlaku (tidak ada UPDATE/DELETE). `staff_id` NULL = dikosongkan (perusahaan: tanpa penanggung jawab;
+// penempatan: kembali mengikuti perusahaan). Hanya TSK organisasi sama (RLS); menulis hanya TSK_ADMIN. Staf harus staf TSK organisasi yang sama (trigger).
+// ---------------------------------------------------------------------------------------------
+export const responsibleAssignments = pgTable(
+  "responsible_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    companyId: uuid("company_id").references(() => clientCompanies.id, { onDelete: "cascade" }),
+    placementId: uuid("placement_id").references(() => placements.id, { onDelete: "cascade" }),
+    staffId: uuid("staff_id").references(() => users.id),
+    effectiveFrom: date("effective_from").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid("created_by").notNull().references(() => users.id),
+  },
+  (t) => [
+    index("responsible_assignments_company_idx").on(t.companyId, t.effectiveFrom),
+    index("responsible_assignments_placement_idx").on(t.placementId, t.effectiveFrom),
+    index("responsible_assignments_staff_idx").on(t.staffId),
+    check("responsible_assignments_scope_check", sql`num_nonnulls(${t.companyId}, ${t.placementId}) = 1`),
+  ],
+);

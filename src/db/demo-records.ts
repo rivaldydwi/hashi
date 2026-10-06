@@ -6,7 +6,7 @@ import type { Tx } from "./index";
 import {
   activityAttachments, activityCaseSubjects, activityCases, activityDailyReportRecipients, activityDailyReports, activityFollowups, activityRecordHandlers,
   activityRecordReads, activityRecordRecipients, activityRecordSubjects, activityRecords, caseTimelineEvents, candidateSelections, candidates, clientCompanies,
-  clientSiteContacts, clientSites, jobOrders, organizations, partnerships, periodicInterviewQuarterNotes, periodicInterviews, placements, users,
+  clientSiteContacts, clientSites, jobOrders, organizations, partnerships, periodicInterviewQuarterNotes, periodicInterviews, placements, responsibleAssignments, users,
 } from "./schema";
 import { fiscalMonths, fiscalYearOf, quarterOfMonth } from "./records-core";
 import { addDays, uuidFor } from "./demo-rng";
@@ -279,6 +279,27 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
     }
   }
   bump("interviews", pi);
+
+  // ================= Penanggung jawab pekerja (T-010) =================
+  // Per perusahaan: tiap perusahaan yang punya pekerja aktif diberi penanggung jawab bergantian (staf 1, staf 2), KECUALI perusahaan pekerja ke-3: sengaja dibiarkan
+  // kosong supaya ada pekerja tanpa penanggung jawab. Satu pekerja (w0) punya penanggung jawab khusus yang menimpa perusahaannya.
+  const respStaff = [s1, s2];
+  const workerCompanies = [...new Set([w0, w1, w2].map((w) => siteCompany.get(w.siteId)).filter((c): c is string => !!c))];
+  const skipCompany = siteCompany.get(w2.siteId);
+  let respN = 0;
+  for (const [i, companyId] of workerCompanies.entries()) {
+    if (companyId === skipCompany) continue; // perusahaan pekerja ke-3 sengaja tanpa penanggung jawab
+    await tx.insert(responsibleAssignments).values({ id: T(`resp:company:${i}`), organizationId: orgId, companyId, staffId: respStaff[i % respStaff.length].id, effectiveFrom: addDays(opts.today, -120), createdBy: admin.id, createdAt: at(120, 1) }).onConflictDoNothing();
+    respN++;
+  }
+  const [placeW0] = await tx.select({ id: placements.id }).from(placements).where(and(eq(placements.candidateId, w0.id), eq(placements.status, "ACTIVE"))).limit(1);
+  if (placeW0) {
+    const companyStaff = respStaff[workerCompanies.indexOf(siteCompany.get(w0.siteId) ?? "") % respStaff.length] ?? s1;
+    const other = respStaff.find((x) => x.id !== companyStaff.id) ?? admin;
+    await tx.insert(responsibleAssignments).values({ id: T("resp:placement:w0"), organizationId: orgId, placementId: placeW0.id, staffId: other.id, effectiveFrom: addDays(opts.today, -30), createdBy: admin.id, createdAt: at(30, 1) }).onConflictDoNothing();
+    respN++;
+  }
+  bump("responsible", respN);
 
   // ================= Pekerja yang SUDAH BERHENTI di tengah tahun fiskal (T-008) =================
   // Satu penempatan ENDED (tanpa keputusan DEPARTED: hanya data demo, supaya hitungan keputusan di daftar kandidat tidak bergeser). Masa kerja ~100 hari yang selesai 30 hari lalu:

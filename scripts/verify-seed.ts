@@ -17,6 +17,7 @@ import { AUDIT_PAGE_SIZE, listAudit, parseAuditFilters } from "../src/db/audit-h
 import { ACTIONS } from "../src/db/audit-describe";
 import { activeWorkers, allWorkers, followupIds, openInterviewQuarters, quartersOfFiscalYear, unreadRecordIds, unreadReportIds } from "../src/db/records-queries";
 import { fiscalYearOf } from "../src/db/records-core";
+import { responsibilityOverview } from "../src/db/responsibility-queries";
 import { todayInTskTz } from "../src/db/time";
 import { demoAttachmentPath } from "../src/db/demo-files";
 import { access } from "node:fs/promises";
@@ -326,6 +327,13 @@ async function main() {
     check("KPI 定期面談 = jumlah kuartal BERJALAN (open) di grid (satu fungsi: quartersOfFiscalYear); kuartal terlewat (missed) tidak masuk KPI", gridPending === pending.length && pending.length > 0, `KPI ${pending.length}, grid ${gridPending}`);
     const missedAll = curQ.reduce((nn, x) => nn + x.quarters.filter((c) => c.state === "missed").length, 0);
     check("Wawancara berkala: seed memuat >= 1 kuartal open (berjalan) dan >= 1 kuartal missed (terlewat)", pending.length >= 1 && missedAll >= 1, `open ${pending.length}, missed ${missedAll}`);
+    // Penanggung jawab pekerja (T-010): KPI/daftar = satu fungsi; ada pekerja tanpa penanggung jawab, ada penetapan per perusahaan dan per pekerja; ENDED tidak dihitung dalam beban
+    const ov = await asTsk(admin, (tx) => responsibilityOverview(tx, today));
+    const ov2 = await asTsk(admin, (tx) => responsibilityOverview(tx, today));
+    const activeN = ov.workers.filter((w) => w.status === "ACTIVE").length;
+    const loadSum = ov.workload.reduce((nn, x) => nn + x.count, 0);
+    const asg = await ownerQ<{ company: string; placement: string }>(sql`select count(*) filter (where company_id is not null)::text as company, count(*) filter (where placement_id is not null)::text as placement from responsible_assignments`);
+    check("Penanggung jawab: >= 1 pekerja aktif tanpa penanggung jawab; ada penetapan per perusahaan dan per pekerja; beban per staf hanya menghitung pekerja ACTIVE (jumlah beban + tanpa penanggung jawab = pekerja aktif); KPI = daftar (fungsi sama)", ov.unassigned.length >= 1 && Number(asg[0].company) >= 1 && Number(asg[0].placement) >= 1 && loadSum + ov.unassigned.length === activeN && ov.overLimit.length === ov2.overLimit.length && ov.unassigned.length === ov2.unassigned.length, `aktif ${activeN}, beban ${loadSum}, tanpa ${ov.unassigned.length}, melebihi ${ov.overLimit.length}, penetapan perusahaan ${asg[0].company} / pekerja ${asg[0].placement}`);
     const endedW = (await asTsk(admin, (tx) => allWorkers(tx))).filter((w) => w.status === "ENDED");
     const endedFy = endedW[0]?.endDate ? fiscalYearOf(endedW[0].endDate) : null;
     const qEnded = endedFy !== null ? await asTsk(admin, (tx) => quartersOfFiscalYear(tx, endedFy, today)) : [];
