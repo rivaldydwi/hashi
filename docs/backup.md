@@ -1,8 +1,8 @@
 # Cadangan Hashi (T-002: desain + skrip lokal)
 
-> **Status:** skrip lokal sudah ada dan teruji (`scripts/backup.sh`, `scripts/restore.sh`). **Belum ada jadwal otomatis dan belum ada salinan di luar server**:
-> keduanya T-003 dan menunggu keputusan Ipal (akun, biaya, tempat menyimpan kunci). Selama itu belum jalan, **jangan memasukkan data nyata**.
-> Catatan kegiatan disimpan 5 tahun dan tidak bisa dihapus lewat aplikasi; kehilangan disk Mini PC = kehilangan seluruh riwayat.
+> **Status (T-003, 2026-10-06):** **jadwal lokal AKTIF**: systemd user timer `hashi-backup.timer`, harian pukul 02:00 JST (`Persistent=true`), menjalankan `scripts/backup.sh` lewat `scripts/backup-run.sh` dengan `HASHI_BACKUP_KEEP=14`.
+> **Salinan di luar server DITUNDA** atas keputusan Ipal (sampai proyek siap dipakai sungguhan). **Risikonya: disk Mini PC rusak/hilang = cadangan ikut hilang.** Selama itu **jangan memasukkan data nyata**:
+> catatan kegiatan disimpan 5 tahun dan tidak bisa dihapus lewat aplikasi, jadi kehilangan disk = kehilangan seluruh riwayat. Lapisan lokal ini melindungi dari salah hapus, migrasi buruk, dan kerusakan data logis, bukan dari kerusakan perangkat keras.
 
 ## 1. Apa yang dicadangkan
 
@@ -29,7 +29,27 @@ Proyeksi data nyata (pilot 200 siswa, ±10 dokumen/siswa @ 1 MB + foto catatan k
 - **Checksum:** `hashi-<tanggal>.sha256` (SHA-256 berkas terenkripsi). Skrip memeriksanya sendiri sesudah menulis; `restore.sh` memeriksanya sebelum memulihkan.
 - **Uji pemulihan rutin:** tiap bulan jalankan `restore.sh` ke db-dev (bagian 4) dan catat hasilnya. Cadangan yang tidak pernah diuji dianggap belum ada.
 
-## 3. Menjalankan cadangan
+## 3. Cadangan terjadwal (systemd user timer) dan menjalankan manual
+
+**Pasang / cek / copot** (hanya menyentuh dua unit milik Hashi dan berkas kuncinya; layanan dan jadwal lain tidak disentuh):
+
+```bash
+scripts/systemd/install.sh install     # membuat kunci bila belum ada, memasang unit, mengaktifkan timer
+scripts/systemd/install.sh status      # kapan putaran berikutnya + status terakhir
+scripts/systemd/install.sh uninstall   # mencopot timer dan unit; kunci dan cadangan TIDAK dihapus
+systemctl --user start hashi-backup.service   # picu sekarang (uji / cadangan manual dengan kunci yang sama)
+```
+
+- **Mengapa systemd user timer, bukan cron:** `Persistent=true` menjalankan putaran yang terlewat (PC mati pukul 02:00) begitu timer aktif lagi, cron biasa melewatinya; unit-nya ada di repo (`scripts/systemd/`) sehingga bisa dipasang ulang; log masuk ke journal juga.
+- **Batasan:** `loginctl show-user ipal -p Linger` = `no`, jadi timer user hanya hidup selama sesi login `ipal` aktif (di Mini PC ini sesi desktop selalu aktif). Bila Mini PC direstart dan tidak ada yang login, tidak ada cadangan sampai login
+  (lalu `Persistent` mengejar yang terlewat). Mengaktifkan `sudo loginctl enable-linger ipal` menghilangkan batasan ini TETAPI membuat SEMUA layanan user (mis. `openclaw-gateway`) ikut jalan tanpa login: keputusan Ipal, belum dilakukan.
+- **Kunci:** `~/.config/hashi/backup.env` (folder 700, berkas 600) berisi `HASHI_BACKUP_PASSPHRASE` dan `HASHI_BACKUP_KEEP=14`. Dibuat acak oleh `install.sh` dan tidak pernah dicetak. **Salin ke pengelola kata sandi (di luar server)**:
+  buka berkas itu di terminal Ipal sendiri (`cat ~/.config/hashi/backup.env`), salin baris `HASHI_BACKUP_PASSPHRASE=…` ke pengelola kata sandi, lalu pastikan bisa dibaca kembali dari sana. Jangan menempelkannya ke chat, tiket, atau repo. Menghapus berkas ini tanpa salinan = cadangan lama tidak terbuka lagi.
+- **Log dan kegagalan:** `~/hashi-backups/backup.log` (diputar ke `backup.log.1` bila > 1 MB). Bila putaran gagal, `~/hashi-backups/LAST_FAILED` berisi waktu, kode keluar, dan pesan; berkas itu dihapus oleh putaran berikutnya yang berhasil.
+  **Periksa `ls ~/hashi-backups/LAST_FAILED` secara berkala**: pemberitahuan keluar (email/LINE) belum ada. `systemctl --user status hashi-backup.service` juga menunjukkan hasil terakhir.
+- **Retensi:** 14 set terbaru bernama `hashi-<tanggal>-<jam>-*` dipertahankan; dump manual lama (`pre-*`, `hashi-prod-backup-*`) tidak pernah disentuh.
+
+**Menjalankan manual** (tanpa timer):
 
 ```bash
 export HASHI_BACKUP_PASSPHRASE='...'      # dari pengelola kata sandi; JANGAN ditulis di repo atau riwayat shell bersama
@@ -61,10 +81,16 @@ Bersihkan setelah uji: `docker exec hashi-db-dev-1 psql -U hashi_owner -d postgr
 Skrip tidak mau memulihkan ke produksi, dengan sengaja. Langkah (urut):
 1. Ipal memutuskan dan menyetujui. Buat cadangan keadaan SEKARANG dulu (`scripts/backup.sh`) walaupun rusak, supaya tidak ada yang hilang lagi.
 2. `docker compose stop app` (database dan volume tetap).
-3. Database: pulihkan ke database kosong. Mis. `psql -d postgres -c 'drop database hashi with (force)'`, `create database hashi owner hashi_owner`, lalu
-   `decrypt hashi-<ts>-db.dump.gpg | docker exec -i hashi-db-1 pg_restore -U hashi_owner -d hashi --exit-on-error` (role `hashi_owner`/`hashi_app` sudah ada; kepemilikan dan hak ikut dalam dump, tetapi
-   **kata sandi role tidak ikut dump**: tetap dari `.env`).
-4. Dokumen: ekstrak ke volume dengan container sementara berjalan sebagai root, lalu `chown -R 1000:1000 /d` (pemilik file di image aplikasi = 1000; lihat README bagian "Dokumen kandidat dan backup").
+3. Database: pulihkan ke database kosong. Kunci dimuat dulu (`set -a; . ~/.config/hashi/backup.env; set +a`, atau dari pengelola kata sandi), lalu:
+   ```bash
+   docker exec hashi-db-1 psql -U hashi_owner -d postgres -c 'drop database hashi with (force)'
+   docker exec hashi-db-1 psql -U hashi_owner -d postgres -c 'create database hashi owner hashi_owner'
+   scripts/decrypt.sh ~/hashi-backups/hashi-<ts>-db.dump.gpg | docker exec -i hashi-db-1 pg_restore -U hashi_owner -d hashi --exit-on-error
+   ```
+   (`scripts/decrypt.sh` hanya menulis ke stdout; setara dengan `gpg --decrypt` memakai kunci dari `HASHI_BACKUP_PASSPHRASE`. Role `hashi_owner`/`hashi_app` sudah ada; kepemilikan dan hak ikut dalam dump, tetapi
+   **kata sandi role tidak ikut dump**: tetap dari `.env`.)
+4. Dokumen: `scripts/decrypt.sh ~/hashi-backups/hashi-<ts>-docs.tar.gpg | docker run --rm -i --pull=never -v hashi_docs-data:/d alpine sh -c 'tar -xf - -C /d && chown -R 1000:1000 /d'`
+   (volume ditulis sebagai root lalu diserahkan ke uid 1000, pemilik file di image aplikasi; lihat README bagian "Dokumen kandidat dan backup").
 5. `docker compose up -d` lalu cek `curl http://127.0.0.1:3110/api/health`, login, dan buka satu dokumen.
 6. Catat di `docs/STATUS.md` apa yang dipulihkan, dari cadangan mana, dan berapa data yang hilang (selisih waktu).
 
@@ -82,8 +108,9 @@ Perkiraan harga **diambil dari ingatan, belum diverifikasi ke halaman harga resm
 enkripsi di sisi klien (penyedia tidak bisa membaca), retensi 5 tahunan jadi satu baris konfigurasi, dan restore per berkas mudah. Lapisan lokal `backup.sh` tetap berguna sebagai cadangan cepat dan untuk uji pemulihan.
 Bila Ipal ingin menghindari akun awan, pilih C. Untuk A, pertanyaan untuk Ipal ada di STATUS (akun siapa, kartu pembayaran, tempat menyimpan kunci restic dan `HASHI_BACKUP_PASSPHRASE`).
 
-## 6. Yang BELUM ada (T-003)
+## 6. Yang BELUM ada
 
-- Jadwal (cron/systemd timer) untuk `backup.sh` dan pengiriman ke luar server. Keduanya menyentuh host, jadi menunggu persetujuan Ipal.
-- Pemberitahuan bila cadangan gagal (mis. ping ke layanan pemantau di Mini PC).
-- Pengujian pemulihan penuh dari salinan luar-server (dari mesin lain, hanya dengan kunci dari pengelola kata sandi).
+- **Salinan di luar server** (keputusan Ipal: ditunda; tetap WAJIB sebelum data nyata masuk). Pilihan dan rekomendasi di §5.
+- Pemberitahuan keluar bila cadangan gagal/terlambat (sekarang hanya `LAST_FAILED` dan journal).
+- Linger (agar timer jalan tanpa sesi login): lihat batasan di §3.
+- Pengujian pemulihan penuh dari mesin lain, hanya dengan kunci dari pengelola kata sandi.

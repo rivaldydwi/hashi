@@ -1,0 +1,10 @@
+# Cadangan terenkripsi Hashi (T-003). Dipasang oleh scripts/systemd/install.sh (placeholder @REPO@ diganti jalur repo).
+[Unit]
+Description=Hashi: cadangan terenkripsi harian (database + dokumen)
+
+[Service]
+Type=oneshot
+# HASHI_BACKUP_PASSPHRASE dan HASHI_BACKUP_KEEP; berkas di luar repo, mode 600
+EnvironmentFile=%h/.config/hashi/backup.env
+WorkingDirectory=@REPO@
+ExecStart=@REPO@/scripts/backup-run.sh

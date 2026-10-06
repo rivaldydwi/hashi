@@ -34,6 +34,56 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-06 · T-003 · Cadangan lokal terjadwal (+ hasil deploy T-005)
+
+**PR:** #5 (branch `eng/T-003-backup-terjadwal`)
+**Status:** siap direview
+
+**Hasil deploy T-005** (PR #4 di-merge `6a03395`, lalu deploy produksi sesuai arahan PM)
+- Sebelum deploy: dump manual `~/hashi-backups/pre-t005-prod-<waktu>.dump` + `.sha256` (630 entri terbaca). Tanpa migrasi baru.
+- `GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build` → `hashi-app-1` healthy.
+- `curl -fsS http://127.0.0.1:3110/api/health` → `{"status":"ok","commit":"6a03395"}`; `docker image inspect hashi-app` label `org.opencontainers.image.revision` = `6a03395` (= `git rev-parse --short HEAD` di `main`).
+- Demo TIDAK disentuh (`hashi-demo-*` tetap Up 3 jam, health `{"status":"ok"}` tanpa `commit` = masih image lama; ikut deploy berikutnya yang diizinkan Ipal).
+
+**Yang dikerjakan (T-003)**
+- **Jadwal: systemd USER timer** `hashi-backup.timer`, harian 02:00 JST, `Persistent=true`. Alasan: mengejar putaran yang terlewat saat PC mati (cron biasa tidak), unit tersimpan di repo (`scripts/systemd/`) dan bisa dipasang ulang, log juga masuk journal.
+  Dipasang dengan `scripts/systemd/install.sh install` (idempoten; `status` dan `uninstall` tersedia). Hanya dua unit milik Hashi + berkas kunci; layanan/jadwal lain tidak disentuh.
+- `scripts/backup-run.sh` (pembungkus): menjalankan `backup.sh` dengan `HASHI_BACKUP_KEEP=14`, log ke `~/hashi-backups/backup.log` (diputar ke `.log.1` bila > 1 MB), `LAST_FAILED` (waktu, kode, pesan) saat gagal dan dihapus saat berhasil.
+- `scripts/decrypt.sh` (stdout saja) dan `docs/backup.md` §4b langkah 3-4 ditulis ulang dengan perintah lengkap (catatan PM soal `decrypt`).
+- `docs/backup.md`: status (jadwal lokal aktif; luar-server ditunda, risiko disk rusak = cadangan hilang), cara pasang/copot/cek, batasan linger, retensi, §6 diperbarui.
+- Kunci dibuat acak oleh `install.sh` langsung ke berkas (tidak pernah dicetak). Dump manual lama tidak dihapus.
+
+**Verifikasi** (perintah → hasil apa adanya)
+- `scripts/systemd/install.sh install` → timer aktif; `systemctl --user list-timers hashi-backup.timer` → **putaran berikutnya Rabu 2026-10-07 02:00 JST**.
+- Dipicu manual `systemctl --user start hashi-backup.service` → exit 0, Result=success, set baru `hashi-20261006-133454-*` (database 630 entri, 146 berkas dokumen, 732 KB), log `BERHASIL`, tidak ada `LAST_FAILED`.
+- Set hasil jadwal itu dipulihkan ke db-dev dengan `scripts/restore.sh` → **cocok dengan produksi**: 5 organisasi, 36 kandidat, 144 dokumen, 16 catatan kegiatan, 150 entri audit; 146 berkas dokumen. Database `hashi_restore_dev` dan folder uji dibuang.
+  (Satu salah langkah saya: glob `hashi-*.sha256` sempat mengenai dump manual lama `hashi-prod-backup-…sql`; `restore.sh` menolaknya "berkas tidak ada", tidak ada yang berubah; diulang dengan pola nama yang tepat.)
+- Simulasi gagal: `HASHI_BACKUP_PASSPHRASE= scripts/backup-run.sh` → exit 1, `LAST_FAILED` berisi waktu + kode 1 + pesan "HASHI_BACKUP_PASSPHRASE belum di-set", log `GAGAL`, tidak ada set parsial. Lalu `systemctl --user start hashi-backup.service` → berhasil, `LAST_FAILED` terhapus.
+- Rotasi log diuji di folder sementara: log 1,2 MB → `backup.log.1` + log baru.
+- `scripts/decrypt.sh`: db dimulai `PGDMP`, docs 146 berkas; kunci salah → exit 2.
+- Repo: `git ls-files | grep -E '\.(gpg|dump)$|backup\.env'` → 0 baris; kunci tidak ada di repo/log/PR/STATUS.
+- CI: lihat status PR (tidak ada perubahan kode aplikasi).
+
+**Kondisi server:** produksi `6a03395` healthy (lihat atas). Perubahan di host: dua unit user systemd + symlink `timers.target.wants`, `~/.config/hashi/backup.env` (600, folder 700), `~/hashi-backups/backup.log` + set cadangan baru (2 set utuh: satu dari uji manual, satu dari uji pemulihan kegagalan).
+
+**Info untuk Ipal**
+- **Jenis jadwal:** systemd user timer; **putaran berikutnya: Rabu 2026-10-07 02:00 JST**, lalu tiap hari.
+- **Lokasi kunci:** `/home/ipal/.config/hashi/backup.env` (berisi `HASHI_BACKUP_PASSPHRASE` dan `HASHI_BACKUP_KEEP`).
+- **Cara menyalin kunci:** di terminal Ipal sendiri jalankan `cat ~/.config/hashi/backup.env`, salin baris `HASHI_BACKUP_PASSPHRASE=…` ke pengelola kata sandi, lalu cek bisa dibaca kembali dari sana. Jangan ditempel ke chat/tiket/repo.
+
+**Kendala / catatan**
+- `Linger=no` untuk `ipal`: timer user hanya hidup selama sesi login aktif (sesi desktop di Mini PC ini aktif). Bila direstart tanpa login, tidak ada cadangan sampai login (lalu `Persistent` mengejar).
+- Pengaman Claude Code sempat menolak `rm` bervariabel di dalam skrip (T-002); semua `rm` di skrip baru memakai `${VAR:?}`.
+
+**Pertanyaan**
+- BUTUH IPAL: aktifkan `sudo loginctl enable-linger ipal` agar timer jalan tanpa login? Efek sampingnya: SEMUA layanan user (mis. `openclaw-gateway`) ikut hidup tanpa login. Belum dilakukan. Alternatif: tetap seperti sekarang (cadangan jalan selama ada sesi login).
+- BUTUH IPAL: sudah menyalin kunci ke pengelola kata sandi? (Tidak bisa saya pastikan dari server.)
+
+**Usulan berikutnya** (bukan tugas)
+- Pemberitahuan bila `LAST_FAILED` ada (mis. tampil di dashboard super admin atau notifikasi), dan uji pemulihan bulanan terjadwal ke db-dev.
+
+---
+
 ## 2026-10-06 · T-005 · Commit yang berjalan bisa dibaca langsung
 
 **PR:** #4 (branch `eng/T-005-commit-terbaca`)

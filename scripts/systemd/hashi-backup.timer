@@ -1,0 +1,12 @@
+# Harian pukul 02:00 waktu Mini PC (JST). Persistent=true: bila PC mati/sesi belum aktif saat 02:00, dijalankan begitu timer aktif lagi.
+[Unit]
+Description=Hashi: jadwal cadangan harian 02:00
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+AccuracySec=1min
+Unit=hashi-backup.service
+
+[Install]
+WantedBy=timers.target
