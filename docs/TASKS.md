@@ -6,42 +6,13 @@ bagian "Peran dan aturan kerja".
 **Status:** `SIAP` (boleh diambil) · `DITAHAN` (menunggu keputusan Ipal/pihak luar, jangan diambil) · `SELESAI` (PR sudah di-merge).
 Ambil tugas `SIAP` **paling atas**. Satu tugas = satu branch `eng/<ID>-<slug>` = satu PR berjudul `[<ID>] …`.
 
-Terakhir diperbarui PM: 2026-10-06 (setelah review T-005).
+Terakhir diperbarui PM: 2026-10-06 (setelah review T-003).
 
 ---
 
 ## Antrean
 
-### T-003 · Cadangan lokal terjadwal · `SIAP`
-
-**Keputusan Ipal (2026-10-06):** untuk sekarang cadangan **lokal saja** (belum ada tujuan luar-server, akun, maupun biaya). Ipal **mengizinkan** memasang
-jadwal di host untuk Hashi. Salinan luar-server ditunda sampai proyek siap dipakai sungguhan; itu tetap syarat sebelum data nyata (lihat Cadangan di bawah).
-
-Kerjakan:
-- **Kunci:** buat `HASHI_BACKUP_PASSPHRASE` acak (`openssl rand -hex 24`) di berkas di luar repo, mis. `~/.config/hashi/backup.env`, mode 600, folder 700.
-  Jangan pernah mencetak nilainya ke log, STATUS, PR, atau terminal yang tersimpan. Di STATUS cukup tulis LOKASI berkasnya (Ipal disarankan menyalinnya sendiri
-  ke tempat lain; tulis caranya, bukan kuncinya).
-- **Jadwal:** harian pukul 02:00 waktu Mini PC, menjalankan `scripts/backup.sh` dengan `HASHI_BACKUP_KEEP=14`. Pilih systemd **user** timer (`Persistent=true`,
-  supaya jadwal yang terlewat karena PC mati tetap jalan saat menyala) atau cron; tulis alasannya. Hanya entri milik Hashi; jangan ubah jadwal/layanan lain.
-  Unit/skrip pembungkus disimpan di repo (mis. `scripts/systemd/hashi-backup.{service,timer}` + cara pasang), jadi bisa dipasang ulang.
-- **Log dan kegagalan:** keluaran tiap putaran ke `~/hashi-backups/backup.log` (berputar/terbatas ukurannya), dan gagal harus kelihatan: mis. berkas
-  `~/hashi-backups/LAST_FAILED` berisi waktu + pesan singkat, dihapus saat berhasil. (Pemberitahuan ke luar ditunda.)
-- **Retensi dump manual lama** (`pre-*-*.dump`): JANGAN dihapus di tugas ini.
-- `docs/backup.md`: perbarui status (jadwal lokal aktif; luar-server ditunda atas keputusan Ipal, risikonya: disk rusak = cadangan ikut hilang), cara pasang/
-  copot jadwal, dan perbaiki §4b langkah 3 (`decrypt` adalah fungsi skrip; tulis perintah `gpg` lengkap atau buat `scripts/decrypt.sh`).
-
-**Kriteria selesai**
-- [ ] Timer/cron terpasang; dipicu sekali secara manual (mis. `systemctl --user start hashi-backup.service`) dan menghasilkan set cadangan baru + log.
-- [ ] Set hasil jadwal itu dipulihkan ke db-dev dengan `scripts/restore.sh` (hitungan cocok dengan produksi), lalu database/folder uji dibuang.
-- [ ] Kegagalan disimulasikan (mis. kunci kosong di salinan berkas env sementara) → `LAST_FAILED` muncul, log menjelaskan; lalu kembali normal.
-- [ ] Tidak ada kunci di repo/log/PR; `git ls-files` tanpa `.gpg`/`.dump`/`backup.env`.
-- [ ] STATUS mencatat hasil deploy T-005 (output `/api/health` produksi + commit), karena PR #4 sudah di-merge sebelum deploy.
-- [ ] STATUS mencatat: jenis jadwal, waktu putaran berikutnya, lokasi berkas kunci, dan cara Ipal menyalin kuncinya.
-- [ ] CI hijau.
-
----
-
-### T-006 · Skrip deploy + `.gitignore` izin lokal · `SIAP` (setelah T-003)
+### T-006 · Skrip deploy + `.gitignore` izin lokal · `SIAP`
 
 Dari usulan T-005: perintah deploy mudah lupa `GIT_SHA`, dan `.claude/settings.local.json` belum diabaikan git.
 
@@ -50,6 +21,8 @@ Kerjakan:
   `GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build` (tanpa `--remove-orphans`), menunggu `/api/health` sampai `commit` = sha itu
   (batas waktu, gagal dengan kode ≠ 0 dan pesan jelas), lalu mencetak commit yang berjalan. Opsional `--backup`: jalankan `scripts/backup.sh` dulu.
 - `.gitignore`: tambah `.claude/settings.local.json`.
+- Catatan dari review T-003: timer cadangan menjalankan skrip dari working tree repo, jadi bila engineer sedang di branch fitur pukul 02:00, versi skrip
+  branch itulah yang jalan. Cukup tulis peringatan ini di `docs/backup.md` §3 (tidak perlu mengubah mekanisme sekarang).
 - README, `CLAUDE.md` (siklus engineer langkah 7 dan "Alur kerja"), `docs/HISTORY.md`: perintah deploy produksi menjadi `scripts/deploy.sh`.
 
 **Kriteria selesai**
@@ -96,6 +69,8 @@ Isi dokumen:
 
 ## Selesai
 
+- **T-003** Cadangan lokal terjadwal (PR #5): systemd user timer 02:00 JST (`Persistent=true`), `backup-run.sh` (log + `LAST_FAILED`), `decrypt.sh`, uji pulih
+  dari set hasil jadwal cocok dengan produksi. Deploy T-005 tercatat: produksi `6a03395`. Linger belum aktif (menunggu Ipal).
 - **T-005** Commit yang berjalan terbaca (PR #4): label image + env `GIT_SHA`, `/api/health` memuat `commit`, label "Hashi · <sha>" di sidebar, dicek di CI.
 - **T-002** Cadangan terenkripsi lokal (PR #3): `docs/backup.md`, `scripts/backup.sh`, `scripts/restore.sh`; uji restore ke db-dev cocok dengan produksi
   dan aplikasi bisa membuka dokumen hasil restore. Belum ada jadwal dan salinan luar-server (T-003).
