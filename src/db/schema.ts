@@ -790,6 +790,8 @@ export const activityRecords = pgTable(
     authorId: uuid("author_id").notNull().references(() => users.id),
     caseId: uuid("case_id").references(() => activityCases.id),
     clientSiteId: uuid("client_site_id").references(() => clientSites.id, { onDelete: "restrict" }),
+    // "Lanjutkan catatan" (T-007): catatan asal; hanya diisi saat dibuat (terkunci), org sama, asal aktif, dan menyebut pekerja yang sama (trigger, migration 0022)
+    continuesRecordId: uuid("continues_record_id").references((): AnyPgColumn => activityRecords.id),
     status: text("status").notNull().default("active"),
     voidReason: text("void_reason"),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
@@ -819,6 +821,8 @@ export const activityRecords = pgTable(
     index("activity_records_org_date_idx").on(t.organizationId, t.recordDate),
     index("activity_records_author_date_idx").on(t.authorId, t.recordDate),
     index("activity_records_case_idx").on(t.caseId),
+    index("activity_records_continues_idx").on(t.continuesRecordId),
+    check("activity_records_not_self_check", sql`${t.continuesRecordId} is null or ${t.continuesRecordId} <> ${t.id}`),
     check("activity_records_kind_check", sql`${t.kind} in ('daily_work','meeting')`),
     check("activity_records_status_check", sql`${t.status} in ('active','void')`),
     check("activity_records_void_check", sql`${t.status} = 'active' or (${t.voidReason} is not null and length(btrim(${t.voidReason})) > 0)`),

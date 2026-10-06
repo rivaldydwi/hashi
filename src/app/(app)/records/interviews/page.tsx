@@ -127,7 +127,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
             <tbody>
               {shown.map((w) => (
                 <tr key={w.id} data-testid="interview-row" data-worker={w.id}>
-                  <th scope="row" className={`${tdc} sticky left-0 z-10 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link></th>
+                  <th scope="row" className={`${tdc} sticky left-0 z-10 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link> <Link href={`/records/workers/${w.id}`} className="ml-1 inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text" data-testid="interview-worker-history">{t("whistory.historyLink")}</Link></th>
                   <td className={tdc}>{(locale === "ja" ? w.fieldNameJa : w.fieldNameId) ?? "—"}</td>
                   <td className={`${tdc} whitespace-nowrap`}>{w.startDate.replace(/-/g, "/")}</td>
                   <td className={tdc}>{w.companyName}<div className="text-xs text-ink-2">{w.siteName}</div></td>

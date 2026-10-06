@@ -1553,7 +1553,50 @@
       "photo_tooBig": "写真が空か、10MBを超えています。",
       "photo_invalidType": "JPG・PNG・WebPの写真のみ使用できます。",
       "photo_heic": "HEIC形式は未対応です。カメラ設定を「互換性優先」（JPEG）にするか、JPGで送ってください。",
-      "photo_unreadable": "写真を読み取れません。別の写真をお試しください。"
+      "photo_unreadable": "写真を読み取れません。別の写真をお試しください。",
+      "continueInvalid": "続きを書く元の記録が見つからないか、取消済みです。",
+      "continueSubjects": "続きの記録には、元の記録と同じ就労者を少なくとも1人含めてください。"
+    },
+    "continue": {
+      "button": "続きを書く",
+      "title": "記録の続きを書く",
+      "panelTitle": "{name}さんの状況",
+      "intro": "この記録は{date}の記録の続きです。就労者・配属先・案件は元の記録から自動入力されています。",
+      "recent": "直近の記録3件",
+      "noRecent": "これまでの記録はありません。",
+      "openTasks": "未対応・継続事項",
+      "noTasks": "未対応の事項はありません。",
+      "allHistory": "履歴をすべて見る",
+      "from": "続きの元",
+      "by": "この記録の続き"
+    },
+    "whistory": {
+      "title": "{name}さんの履歴",
+      "intro": "この就労者に関する記録・時系列・定期面談を1つの時間軸で表示します。",
+      "newDaily": "業務記録を追加",
+      "newMeeting": "議事録を追加",
+      "profile": "就労者プロフィール",
+      "openHistory": "履歴を見る",
+      "historyLink": "履歴",
+      "openTasks": "未対応・継続事項",
+      "noOpenTasks": "この就労者の未対応事項はありません。",
+      "openSource": "開く",
+      "timeline": "時間軸",
+      "total": "{n}件",
+      "orderLabel": "並び順",
+      "order": {
+        "desc": "新しい順",
+        "asc": "古い順"
+      },
+      "emptyTitle": "履歴はまだありません",
+      "emptyBody": "この就労者の記録・時系列・定期面談はまだありません。",
+      "continued": "続き",
+      "type": {
+        "daily_work": "業務記録",
+        "meeting": "議事録・面談記録",
+        "timeline": "時系列",
+        "interview": "定期面談"
+      }
     }
   },
   "sheet": {

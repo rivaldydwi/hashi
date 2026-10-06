@@ -27,10 +27,12 @@ const area = `${inputClass} min-h-24 py-2`;
  * diunggah SETELAH catatan tersimpan (butuh id catatan). Peringatan beforeunload bila ada perubahan belum tersimpan; tanpa draf di peramban.
  */
 export function RecordForm({
-  kind, me, staff, workers, sites, companies, cases, roleLabels, initial, photosLeft,
+  kind, me, staff, workers, sites, companies, cases, roleLabels, initial, photosLeft, autoFilled = [], continuesRecordId,
 }: {
   kind: "daily_work" | "meeting"; me: { id: string; role: string }; staff: PickStaff[]; workers: PickWorker[]; sites: Array<{ id: string; label: string }>; companies: Array<{ id: string; name: string }>;
   cases: Array<{ id: string; label: string }>; roleLabels: Record<string, string>; initial: RecordInitial; photosLeft: number;
+  /** Kolom yang nilai awalnya diisi otomatis (mis. dari "Lanjutkan"): subjects | site | case. Ditandai "Diisi otomatis, periksa". */
+  autoFilled?: Array<"subjects" | "site" | "case">; continuesRecordId?: string;
 }) {
   const t = useTranslations("records");
   const tc = useTranslations("common");
@@ -48,6 +50,7 @@ export function RecordForm({
   const formRef = useRef<HTMLFormElement>(null);
   const editing = Boolean(initial.id);
   const isAdmin = me.role === "TSK_ADMIN";
+  const auto = (k: "subjects" | "site" | "case") => autoFilled.includes(k) && <p className="text-xs text-accent-text" data-testid={`autofilled-${k}`}>{tAll("candidates.form.autoFilled")}</p>;
 
   useEffect(() => {
     if (!dirty) return;
@@ -96,6 +99,7 @@ export function RecordForm({
       }}
     >
       {initial.id && <input type="hidden" name="id" value={initial.id} />}
+      {continuesRecordId && <input type="hidden" name="continuesRecordId" value={continuesRecordId} />}
 
       <section className={`${cardClass} space-y-4 p-4 sm:p-5`}>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -115,6 +119,7 @@ export function RecordForm({
         <div className="space-y-1.5">
           <span className={labelClass}>{t("f.subjects")}</span>
           <WorkerPicker workers={workers} selected={initial.subjects} />
+          {auto("subjects")}
           {kind === "meeting" && <p className="text-xs text-ink-2">{t("f.subjectsOptional")}</p>}
         </div>
 
@@ -125,6 +130,7 @@ export function RecordForm({
               <option value="">{t("f.siteAuto")}</option>
               {sites.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
+            {auto("site")}
           </div>
           <div className="space-y-1.5">
             <label htmlFor="caseId" className={labelClass}>{t("f.case")}</label>
@@ -132,6 +138,7 @@ export function RecordForm({
               <option value="">{t("f.noCase")}</option>
               {cases.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
+            {auto("case")}
           </div>
         </div>
       </section>

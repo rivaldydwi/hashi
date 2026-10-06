@@ -101,6 +101,9 @@ export async function saveRecord(_prev: FormState, fd: FormData): Promise<FormSt
     if ((siteRaw && !uuid.safeParse(siteRaw).success) || (caseRaw && !uuid.safeParse(caseRaw).success)) throw new ActionError("records.errors.invalid");
     const authorRaw = str(fd, "authorId");
     if (authorRaw && !uuid.safeParse(authorRaw).success) throw new ActionError("records.errors.invalid");
+    // "Lanjutkan catatan" (T-007): hanya saat membuat; terkunci setelahnya (trigger database)
+    const continuesRaw = editing ? "" : str(fd, "continuesRecordId");
+    if (continuesRaw && !uuid.safeParse(continuesRaw).success) throw new ActionError("records.errors.invalid");
 
     let values: Record<string, unknown>;
     let kind: "daily_work" | "meeting";
@@ -166,17 +169,24 @@ export async function saveRecord(_prev: FormState, fd: FormData): Promise<FormSt
         if (!(await tx.select({ id: clientCompanies.id }).from(clientCompanies).where(eq(clientCompanies.id, values.clientCompanyId as string)).limit(1)).length) throw new ActionError("records.errors.invalid");
       }
       const base = { recordDate: recordDate.data, caseId: caseRaw || null, clientSiteId: siteId };
+      if (continuesRaw) {
+        // catatan asal: terlihat (RLS = organisasi sama), aktif, dan menyebut setidaknya satu pekerja yang sama (database memeriksa lagi saat commit)
+        const [parent] = await tx.select({ status: activityRecords.status }).from(activityRecords).where(eq(activityRecords.id, continuesRaw)).limit(1);
+        if (!parent || parent.status !== "active") throw new ActionError("records.errors.continueInvalid");
+        const parentSubjects = (await tx.select({ c: activityRecordSubjects.candidateId }).from(activityRecordSubjects).where(eq(activityRecordSubjects.recordId, continuesRaw))).map((r) => r.c);
+        if (!subjectIds.some((s) => parentSubjects.includes(s))) throw new ActionError("records.errors.continueSubjects");
+      }
 
       if (!editing) {
         const [row] = await tx
           .insert(activityRecords)
-          .values({ organizationId: me.organizationId, createdBy: me.id, authorId: me.role === "TSK_ADMIN" && authorRaw ? authorRaw : me.id, kind, ...base, ...values } as typeof activityRecords.$inferInsert)
+          .values({ organizationId: me.organizationId, createdBy: me.id, authorId: me.role === "TSK_ADMIN" && authorRaw ? authorRaw : me.id, kind, ...base, ...values, continuesRecordId: continuesRaw || null } as typeof activityRecords.$inferInsert)
           .returning({ id: activityRecords.id });
         resultId = row.id;
         await syncSet(tx, "subjects", row.id, me.organizationId, subjectIds);
         if (kind === "meeting") await syncSet(tx, "handlers", row.id, me.organizationId, handlerIds.length ? handlerIds : [me.id]);
         if (recipientIds.length) await syncSet(tx, "recipients", row.id, me.organizationId, recipientIds);
-        await log(tx, me, "activity_record.create", "activity_record", row.id, { kind, ...(kind === "daily_work" ? { workType: values.workType } : {}) });
+        await log(tx, me, "activity_record.create", "activity_record", row.id, { kind, ...(kind === "daily_work" ? { workType: values.workType } : {}), ...(continuesRaw ? { continued: true } : {}) });
       } else {
         const [before] = await tx.select().from(activityRecords).where(eq(activityRecords.id, id)).limit(1);
         if (!before || before.status !== "active") throw new ActionError("records.errors.notAllowed");

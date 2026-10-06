@@ -7,6 +7,7 @@
 #   --timeout N     batas tunggu health sampai commit cocok (bawaan 120 detik)
 #   --check         hanya memeriksa syarat (branch, kebersihan, pull, sha) dan menampilkan rencana; TIDAK menyentuh container
 #
+# APP_PORT wajib ada (env atau .env); tidak ada nilai bawaan 3100 karena port itu dipakai aplikasi lain di OptiPlex.
 # Syarat (menolak dengan pesan jelas dan kode keluar != 0 bila tidak terpenuhi, SEBELUM menyentuh container): branch `main`, working tree bersih,
 # `git pull --ff-only` berhasil. Lalu `GIT_SHA=<sha pendek> docker compose -p hashi up -d --build` (TANPA --remove-orphans), menunggu
 # http://127.0.0.1:$APP_PORT/api/health sampai `commit` = sha itu, dan mencetak commit yang berjalan. Hanya produksi: demo (hashi-demo) dan db-dev tidak disentuh.
@@ -41,7 +42,8 @@ SHA="$(git rev-parse --short HEAD)"
 
 PORT="${APP_PORT:-}"
 if [[ -z "$PORT" && -f .env ]]; then PORT="$(grep -E '^APP_PORT=' .env | head -1 | cut -d= -f2- | tr -d '[:space:]"'"'"'' || true)"; fi
-PORT="${PORT:-3100}"
+# Tanpa APP_PORT JANGAN menebak 3100: di OptiPlex port itu dipakai aplikasi lain, jadi health check akan menilai aplikasi yang salah.
+[[ -n "$PORT" ]] || fail "APP_PORT tidak ditemukan (env atau .env). Isi APP_PORT=3110 di .env atau jalankan: APP_PORT=3110 scripts/deploy.sh. Tidak ada yang diubah."
 [[ "$PORT" =~ ^[0-9]+$ ]] || fail "APP_PORT tidak valid: '$PORT'"
 HEALTH="http://127.0.0.1:$PORT/api/health"
 health_commit() { curl -fsS --max-time 4 "$HEALTH" 2>/dev/null | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p'; }

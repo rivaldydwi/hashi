@@ -102,18 +102,23 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
     { key: "d10", d: 0, by: s1, ws: [w0], type: "consultation", action: "騒音の件の進捗を本人に電話で伝えた。", result: "配属先が来週から別の部屋を用意してくれるとのこと。本人は安心した様子。", next: "引っ越し当日に様子を確認する。", ago: 4 },
     { key: "d11", d: 0, by: s2, ws: [w1], type: "other", other: "役所の手続きの同行", action: "市役所での住民票の手続きに同行した。", result: "手続きは完了した。", ago: 3 },
     { key: "d12", d: 0, by: s2, ws: [w2], type: "consultation", action: "帰国前の一時帰国の手続きについて相談を受けた。", result: "必要な書類と日程の目安を案内した。", pending: "会社への休暇申請の確認。", ago: 0.3 },
+    // lanjutan dari d10 (T-007 "Lanjutkan"): pekerja, lokasi, dan kasus sama
+    { key: "d13", d: 0, by: s1, ws: [w0], type: "interview", action: "引っ越し当日に、新しい部屋での様子を電話で確認した。", result: "荷物の移動は完了し、新しい部屋では静かに過ごせているとのこと。", next: "1週間後に、もう一度状況を確認する。", ago: 0.2 },
   ];
+  // catatan lanjutan: kunci -> kunci catatan asal (asal selalu didefinisikan LEBIH DULU; pekerja yang sama diperiksa trigger saat commit)
+  const continuesOf: Record<string, string> = { d13: "d10" };
   const rid = (k: string) => T(`record:${k}`);
-  const caseOfKey: Record<string, string> = { d5: caseA, d7: caseA, d10: caseA, m2: caseA, m4: caseA, d3: caseB };
+  const caseOfKey: Record<string, string> = { d5: caseA, d7: caseA, d10: caseA, d13: caseA, m2: caseA, m4: caseA, d3: caseB };
   const siteOf = (w: typeof w0) => w.siteId;
   for (const r of daily) {
     await tx.insert(activityRecords).values({
-      id: rid(r.key), organizationId: orgId, createdBy: r.by.id, authorId: r.by.id, kind: "daily_work", recordDate: dayStr(r.d), clientSiteId: siteOf(r.ws[0]), caseId: caseOfKey[r.key] ?? null,
+      id: rid(r.key), organizationId: orgId, createdBy: r.by.id, authorId: r.by.id, kind: "daily_work", recordDate: dayStr(r.d), clientSiteId: siteOf(r.ws[0]), caseId: caseOfKey[r.key] ?? null, continuesRecordId: continuesOf[r.key] ? rid(continuesOf[r.key]) : null,
       workType: r.type, workTypeOther: r.other ?? null, actionTaken: r.action, result: r.result, pending: r.pending ?? null, nextAction: r.next ?? null, reportToText: r.reportTo ?? null, note: r.note ?? null,
       createdAt: at(r.d, r.ago), updatedAt: at(r.d, r.ago),
     }).onConflictDoNothing();
     await tx.insert(activityRecordSubjects).values(r.ws.map((w) => ({ recordId: rid(r.key), candidateId: w.id, organizationId: orgId }))).onConflictDoNothing();
     bump("records.daily");
+    if (continuesOf[r.key]) bump("records.continued");
   }
   // penerima "diminta membaca" (共有・報告先 dalam aplikasi)
   for (const [k, u] of [["d5", admin], ["d7", s2], ["d3", admin], ["d10", admin]] as const) {

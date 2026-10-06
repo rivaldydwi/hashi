@@ -1553,7 +1553,50 @@
       "photo_tooBig": "Foto kosong atau lebih dari 10 MB.",
       "photo_invalidType": "Hanya foto JPG, PNG, atau WebP.",
       "photo_heic": "Format HEIC belum didukung. Ubah pengaturan kamera ke \"Paling kompatibel\" (JPEG) atau kirim sebagai JPG.",
-      "photo_unreadable": "Foto tidak bisa dibaca. Coba foto lain."
+      "photo_unreadable": "Foto tidak bisa dibaca. Coba foto lain.",
+      "continueInvalid": "Catatan yang mau dilanjutkan tidak ditemukan, atau sudah dibatalkan.",
+      "continueSubjects": "Catatan lanjutan harus menyebut setidaknya satu pekerja yang sama dengan catatan asalnya."
+    },
+    "continue": {
+      "button": "Lanjutkan",
+      "title": "Lanjutkan catatan",
+      "panelTitle": "Konteks {name}",
+      "intro": "Catatan baru ini melanjutkan catatan tanggal {date}. Pekerja, lokasi, dan kasus diisi otomatis dari catatan itu.",
+      "recent": "3 catatan terakhir",
+      "noRecent": "Belum ada catatan sebelumnya.",
+      "openTasks": "Tindak lanjut yang masih terbuka",
+      "noTasks": "Tidak ada tindak lanjut terbuka.",
+      "allHistory": "Lihat seluruh riwayat",
+      "from": "Lanjutan dari",
+      "by": "Dilanjutkan oleh"
+    },
+    "whistory": {
+      "title": "Riwayat {name}",
+      "intro": "Catatan, kronologi kasus, dan wawancara berkala yang menyangkut pekerja ini, dalam satu garis waktu.",
+      "newDaily": "Catatan kerja baru",
+      "newMeeting": "Notulen baru",
+      "profile": "Profil pekerja",
+      "openHistory": "Riwayat lengkap",
+      "historyLink": "Riwayat",
+      "openTasks": "Tindak lanjut yang masih terbuka",
+      "noOpenTasks": "Tidak ada tindak lanjut terbuka untuk pekerja ini.",
+      "openSource": "Buka",
+      "timeline": "Garis waktu",
+      "total": "{n} entri",
+      "orderLabel": "Urutan",
+      "order": {
+        "desc": "Terbaru di atas",
+        "asc": "Terlama di atas"
+      },
+      "emptyTitle": "Belum ada riwayat",
+      "emptyBody": "Belum ada catatan, kronologi kasus, atau wawancara berkala untuk pekerja ini.",
+      "continued": "Lanjutan",
+      "type": {
+        "daily_work": "Catatan kerja (gyōmu kiroku)",
+        "meeting": "Notulen / pertemuan (gijiroku)",
+        "timeline": "Kronologi kasus (jikeiretsu)",
+        "interview": "Wawancara berkala (teiki mendan)"
+      }
     }
   },
   "sheet": {
