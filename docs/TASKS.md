@@ -70,7 +70,7 @@ jadi pekerja yang berhenti di tengah tahun hilang dari grid, padahal wajib dilap
 
 Kerjakan:
 - **Tagihan per kuartal:** kuartal "wajib" bila pekerja bekerja minimal satu hari di kuartal itu (`placements.start_date` .. `end_date`, juga ENDED). Kuartal **Selesai**
-  bila ada ≥1 wajancara (status selain 未実施) bertanggal di kuartal itu; **Belum** bila kuartal sudah berjalan/lewat tanpa wawancara; kuartal depan tidak ditagih.
+  bila ada ≥1 wawancara (status selain 未実施) bertanggal di kuartal itu; **Belum** bila kuartal sudah berjalan/lewat tanpa wawancara; kuartal depan tidak ditagih.
   Fungsi murni baru (mis. `quarterState`) + tes unit kasus tepi (mulai di tengah kuartal, berhenti di tengah kuartal, mulai Feb → hanya Q4 FY sebelumnya, pindah tahun fiskal).
   KPI dashboard "定期面談 belum dilakukan" dan `?view=pending` memakai fungsi yang SAMA (jumlah = kuartal Belum).
 - **Grid:** tetap tampilkan bulan (wawancara boleh bulanan), tetapi status utama per kuartal. Baris = semua pekerja yang bekerja di FY itu (ACTIVE dan ENDED), pekerja yang berhenti
