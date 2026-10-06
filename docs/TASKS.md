@@ -6,39 +6,11 @@ bagian "Peran dan aturan kerja".
 **Status:** `SIAP` (boleh diambil) · `DITAHAN` (menunggu keputusan Ipal/pihak luar, jangan diambil) · `SELESAI` (PR sudah di-merge).
 Ambil tugas `SIAP` **paling atas**. Satu tugas = satu branch `eng/<ID>-<slug>` = satu PR berjudul `[<ID>] …`.
 
-Terakhir diperbarui PM: 2026-10-06 (setelah review T-001).
+Terakhir diperbarui PM: 2026-10-06 (setelah review T-002).
 
 ---
 
 ## Antrean
-
-### T-002 · Cadangan di luar server: desain + skrip lokal · `SIAP`
-
-Latar: catatan kegiatan disimpan 5 tahun dan tidak bisa dihapus lewat aplikasi; cadangan luar-server **wajib** sebelum data nyata masuk.
-Tugas ini HANYA desain + skrip yang menulis cadangan terenkripsi ke disk lokal + uji restore ke db-dev. Pengiriman ke luar server
-(layanan/akun/biaya) diputuskan Ipal setelah melihat usulan ini (lihat T-003).
-
-Kerjakan:
-- `docs/backup.md`: apa yang dicadangkan (database `hashi` lewat `pg_dump -Fc`, volume `docs-data`; database dan volume demo TIDAK perlu),
-  frekuensi, retensi, enkripsi, cara restore langkah demi langkah, dan **2-3 pilihan tujuan luar-server** (mis. restic/rclone ke penyimpanan
-  awan, disk eksternal di lokasi lain) dengan perkiraan biaya bulanan untuk ukuran data sekarang. Rekomendasikan satu.
-- `scripts/backup.sh` (dan bila perlu `scripts/restore.sh`): hanya menyentuh project compose `hashi`; tidak memakai `docker system prune` /
-  `volume rm`; kunci/kata sandi enkripsi dibaca dari variabel lingkungan (nama variabelnya ditambahkan ke `.env.example` TANPA nilai); gagal
-  dengan kode keluar bukan 0 dan pesan jelas; menulis checksum.
-- Uji restore: cadangan produksi di-restore ke **db-dev** (database berakhiran `_dev`) + folder dokumen sementara; aplikasi dev bisa login dan
-  membuka satu dokumen kandidat. Tulis langkah dan hasilnya di STATUS.
-- Membaca volume `hashi_docs-data` lewat container sementara (`docker run --rm -v hashi_docs-data:/d:ro …`, image yang sudah ada di host) BOLEH untuk
-  cadangan: baca-saja, langsung terhapus, tidak menyentuh layanan lain. Cadangan manual lama di `~/hashi-backups/` jangan dihapus; usulkan retensinya di `docs/backup.md`.
-- **Belum** memasang cron/systemd timer (itu menyentuh host; masuk T-003 setelah Ipal setuju).
-
-**Kriteria selesai**
-- [ ] `docs/backup.md` lengkap dengan rekomendasi tujuan luar-server + perkiraan biaya.
-- [ ] Skrip berjalan di Mini PC, menghasilkan berkas terenkripsi + checksum; berkas cadangan TIDAK ada di repo (cek `.gitignore`).
-- [ ] Uji restore ke db-dev berhasil dan didokumentasikan (perintah + hasil).
-- [ ] README bagian backup merujuk ke `docs/backup.md`.
-- [ ] CI hijau.
-
----
 
 ### T-005 · Commit yang berjalan bisa dibaca langsung · `SIAP`
 
@@ -62,7 +34,12 @@ Kerjakan:
 
 ### T-003 · Cadangan luar-server: pasang jadwal dan tujuan · `DITAHAN`
 
-Menunggu Ipal memilih tujuan dari usulan T-002 (akun, biaya, kunci enkripsi disimpan di mana). Rincian dan kriteria ditulis PM setelah itu.
+Menunggu Ipal: pilihan tujuan (A restic → B2 direkomendasikan di `docs/backup.md` §5), akun + pembayaran, tempat menyimpan `HASHI_BACKUP_PASSPHRASE`
+(dan kunci restic) di luar server, serta izin memasang alat + jadwal di host. Rincian ditulis PM setelah itu. Sudah pasti masuk lingkup:
+- jadwal harian `backup.sh` (`HASHI_BACKUP_KEEP=14`) + pengiriman ke luar server + retensi 30/12/5;
+- peringatan bila cadangan gagal/terlambat;
+- uji pulih penuh dari salinan luar-server memakai kunci dari pengelola kata sandi;
+- perbaiki `docs/backup.md` §4b langkah 3: `decrypt` adalah fungsi di dalam skrip, bukan perintah; tulis perintah `gpg` lengkapnya (atau sediakan `scripts/decrypt.sh`).
 
 ---
 
@@ -85,6 +62,8 @@ diterima), tampilan dashboard, dan daftar pertanyaan untuk staf TSK. Rincian dit
 
 ## Selesai
 
+- **T-002** Cadangan terenkripsi lokal (PR #3): `docs/backup.md`, `scripts/backup.sh`, `scripts/restore.sh`; uji restore ke db-dev cocok dengan produksi
+  dan aplikasi bisa membuka dokumen hasil restore. Belum ada jadwal dan salinan luar-server (T-003).
 - **T-001** Laporan kondisi Mini PC (PR #2). Hasil penting: produksi sehat dan kodenya setara `main`; **belum ada cadangan otomatis maupun cadangan
   `docs-data`** (prioritas T-002); `/loop` jalan di VS Code. Pengukuran volume lewat container `alpine` sementara (baca-saja) diterima,
   tapi lain kali pakai `docker exec` ke container `hashi` yang sudah ada.
