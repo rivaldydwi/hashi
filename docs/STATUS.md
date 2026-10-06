@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-06 · T-009 · Form 定期面談報告書 (参考様式第5-5号) + halaman tahunan per pekerja + hasil deploy T-010
 
-**PR:** (branch `eng/T-009-form-5-5`; nomor PR di komentar pembuka PR)
+**PR:** #10 (branch `eng/T-009-form-5-5`)
 **Status:** siap direview
 
 **Hasil deploy T-010 lewat `scripts/deploy.sh --backup`** (PR #9 di-merge `ac8037a`, setelah `PM: DISETUJUI` dan CI hijau di `10100f9`)
