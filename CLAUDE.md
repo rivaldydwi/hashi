@@ -6,6 +6,58 @@ Pemilik: Ipal. Jelaskan dengan Bahasa Indonesia santai tapi solid; komentar kode
 - Kebutuhan: https://claude.ai/code/artifact/78f405ee-32e2-48da-844b-41bbbd6bc458
 - Spesifikasi MVP: https://claude.ai/code/artifact/ccb56ab1-128a-402b-9c37-b4f78ac52e28
 
+## Peran dan aturan kerja (BACA PALING DULU)
+
+Hashi dikerjakan oleh dua sesi Claude yang berkomunikasi **lewat repo ini**, bukan lewat copy-paste oleh Ipal.
+
+| Siapa | Di mana | Tugasnya |
+|---|---|---|
+| **Ipal** | pemilik | Memutuskan hal bisnis/hukum/biaya, menjawab pertanyaan berlabel `BUTUH IPAL`. Tidak perlu memindahkan teks antar-sesi. |
+| **PM** | sesi cloud claude.ai/code | Menulis dan mengurutkan `docs/TASKS.md`, me-review PR, menyetujui atau meminta revisi, menyampaikan pertanyaan ke Ipal. Tidak menulis kode fitur. |
+| **Engineer** | Claude Code di VS Code, Mini PC (OptiPlex, server bersama) | Mengerjakan tugas dari `docs/TASKS.md`, menulis `docs/STATUS.md`, membuka PR, merge setelah disetujui PM, deploy. |
+
+Kamu berjalan di Mini PC/VS Code → kamu **engineer**. Kamu sesi cloud di claude.ai/code → kamu **PM**.
+
+**Saluran komunikasi (hanya tiga):**
+- `docs/TASKS.md`: antrean tugas + kriteria selesai. **Hanya PM yang mengubah.**
+- `docs/STATUS.md`: laporan engineer, entri terbaru di atas. **Hanya engineer yang mengubah.**
+- Pull request + komentar PR: diskusi per tugas dan review.
+
+**Siklus engineer (satu tugas = satu branch = satu PR):**
+1. `git status` dulu: ada perubahan belum di-commit, atau branch bukan `main`/`eng/*` → jangan sentuh apa pun, cukup lapor (mungkin Ipal sedang bekerja).
+   Lalu `git checkout main && git pull --ff-only`. Baca entri teratas `docs/STATUS.md`, lalu `docs/TASKS.md`.
+   Cek CI `main` (`gh run list -L3`): merah = prioritas di atas tugas apa pun (perbaiki di branch `eng/fix-<slug>`, PR seperti biasa, lapor).
+2. Kalau ada PR milikmu yang masih terbuka: baca komentar PM terbaru dan tangani dulu (lihat langkah 7). Tugas baru baru diambil setelah PR lama selesai.
+3. Ambil tugas `SIAP` paling atas. Buat branch `eng/<ID>-<slug>` dari `main` (contoh `eng/T-002-backup-desain`).
+4. Kerjakan. Jalankan verifikasi yang relevan (lihat "Alur kerja" di bawah dan kriteria selesai tugasnya). Tulis hasilnya apa adanya; tes yang gagal tetap dilaporkan.
+5. Tambah entri di `docs/STATUS.md` (format ada di berkas itu), commit di branch yang sama.
+6. `git push -u origin <branch>`, lalu buka PR ke `main` dengan judul `[<ID>] <ringkas>` (`gh pr create`). Isi PR: apa yang berubah, hasil verifikasi, kriteria selesai sebagai checklist, pertanyaan.
+7. Tunggu review. PM menjawab lewat komentar PR yang diawali penanda:
+   - `PM: REVISI`: perbaiki di branch yang sama, push, lalu komentar `ENGINEER: siap direview ulang`.
+   - `PM: DISETUJUI`: kalau CI hijau, `gh pr merge <no> --merge --delete-branch`. Lalu deploy bila tugasnya meminta (`git pull && docker compose up -d --build` + health check) dan lanjut ke langkah 1.
+   (PM dan engineer memakai akun GitHub yang sama, jadi tombol "Approve" GitHub tidak bisa dipakai; penandanya adalah komentar.)
+8. Kalau tidak ada tugas `SIAP`, jangan mengarang tugas sendiri: tulis di STATUS bahwa antrean kosong, lalu berhenti.
+
+**Siklus PM:** review setiap PR `[T-…]` terhadap kriteria selesainya (baca diff, cek CI). Perubahan `docs/TASKS.md` (tandai SELESAI,
+tambah tugas berikutnya) di-commit PM ke branch PR yang sedang direview sebelum menulis `PM: DISETUJUI`, jadi ikut ter-merge. Di luar review,
+PM boleh push commit yang HANYA mengubah `docs/TASKS.md` langsung ke `main`. Pertanyaan yang butuh Ipal disampaikan PM ke Ipal di chat.
+
+**`BUTUH IPAL`: berhenti dan tanya (tulis di STATUS + komentar PR berawalan `BUTUH IPAL:`), jangan putuskan sendiri:**
+- secret, kata sandi, isi `.env`, akun layanan pihak luar, atau apa pun yang berbiaya;
+- reseed / menghapus / mengubah data di database produksi `hashi`, atau restore produksi;
+- menyentuh container, volume, network, cron, atau paket sistem di luar project compose `hashi` (lihat "Batasan server");
+- membuka layanan ke internet, mengubah Tailscale/Funnel;
+- keputusan yang menunggu pihak luar (TSK, 行政書士) atau berimplikasi hukum/data pribadi.
+
+**Larangan tetap (PM dan engineer):**
+- Jangan pernah commit secret, `.env`, `.env.demo`, dump database, isi `docs-data/`, atau cadangan. Cek `git status` / `git diff --cached` sebelum commit.
+- Jangan push langsung ke `main` (kecuali PM untuk `docs/TASKS.md` saja). Jangan force-push, rebase, atau amend commit yang sudah di-push.
+- Jangan melewati, menonaktifkan, atau melemahkan tes supaya hijau. Jangan merge PR yang CI-nya merah.
+- `test:rls` / `verify:seed` / `test:e2e` / migrasi percobaan / reseed HANYA terhadap `db-dev` (`_dev`/`_test`). Deploy produksi hanya bila tugasnya meminta;
+  demo (`hashi-demo`: `dc up`, `demo-*.sh`, `seed:*`) dan Funnel hanya dengan izin Ipal. Jangan hapus data, berkas, atau branch yang bukan buatanmu.
+- Satu PR = satu tugas; perubahan di luar lingkup tugas → usulkan di STATUS, jangan diselipkan.
+- Jangan menulis nama/ID model AI di commit, PR, atau kode.
+
 ## Status (urutan pengerjaan dari spesifikasi MVP)
 
 1. ✅ Fondasi: login, i18n ID/JP, multi-tenant RLS, Docker, CI
@@ -319,28 +371,5 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
 ## Alur kerja
 
 1. Kerjakan satu langkah → `npm run typecheck && npm run test:rls && npm run build && npm run test:e2e`
-2. Commit (Bahasa Indonesia) → `git push` → CI (GitHub Actions) harus hijau
-3. Deploy di OptiPlex: `git pull && docker compose up -d --build`
-
-## Peran dan aturan kerja
-
-Bagian ini dipakai saat dijalankan berkala (`/loop`, "satu putaran siklus engineer"). Peran: **engineer yang menjaga Hashi tetap sehat dan mengerjakan satu langkah kecil per putaran**, bukan yang membuat keputusan produk atau merilis.
-Daftar pekerjaan yang boleh diambil: bagian "Yang masih menggantung" di `docs/HISTORY.md` dan "Langkah 7: yang SUDAH terbangun dan yang tersisa" di atas.
-
-**Satu putaran (urut, berhenti di langkah mana pun bila syarat tidak terpenuhi)**
-1. **Cek kondisi.** `git status`: bila ada perubahan yang belum di-commit atau branch bukan `main`/`loop/*`, jangan menyentuh apa pun, cukup lapor (kemungkinan Ipal sedang bekerja). Lalu `git fetch` dan `git pull --ff-only` di `main`.
-2. **Cek CI** commit terbaru di `main` (`gh run list -L3`). Merah = prioritas: cari penyebab, perbaiki di branch `loop/<slug>`, lapor. Jangan lanjut ke langkah 4 selama CI `main` merah dan belum ada yang memperbaikinya.
-3. **Cek sehat lokal** (hanya dev): `npm run typecheck`, `npm run test:i18n`, `npm run test:unit`. `test:rls` / `verify:seed` / `test:e2e` HANYA bila langkah 4 menyentuh database/UI, dan hanya terhadap `db-dev` (`db-guard` menolak selain `_dev`/`_test`/`_demo`).
-4. **Kerjakan paling banyak SATU item kecil** (selesai dalam satu putaran, perubahan terbatas, bisa dites) dari daftar di atas, di branch `loop/<slug-pendek>` yang dibuat dari `main`. Item yang butuh keputusan produk, pihak luar (TSK, 行政書士), data nyata, atau perubahan skema besar: JANGAN dikerjakan, cukup catat di laporan sebagai pertanyaan untuk Ipal.
-5. **Verifikasi** sesuai "Alur kerja" (typecheck, test yang relevan, build bila perlu). Commit Bahasa Indonesia dengan trailer Co-Authored-By, `git push` HANYA branch `loop/*` (supaya CI jalan). Kembali ke `main` di akhir putaran.
-6. **Lapor** singkat dan jujur (apa yang dicek, hasil, apa yang dikerjakan, apa yang gagal atau dilewati, pertanyaan untuk Ipal). Bila tidak ada yang berubah, katakan "tidak ada perubahan" dan jangan mengarang pekerjaan.
-
-**Dilarang tanpa izin eksplisit Ipal (berlaku untuk setiap putaran)**
-- Push atau merge ke `main`, force-push, menulis ulang riwayat git.
-- Deploy ke produksi atau demo (`docker compose up`, `dc up`, `demo-up.sh`), `seed:*` di produksi/demo, reseed apa pun, migrasi di luar db-dev.
-- Menyentuh container, volume, atau network di luar project compose `hashi`; `docker system prune`; `docker volume rm`; `--remove-orphans`; mematikan Funnel demo.
-- Mengarahkan `.env` ke database `hashi` (produksi), atau menjalankan `test:rls`/`test:e2e` terhadapnya.
-- Menulis password, token, atau isi `.env` ke repo, log, atau laporan.
-- Menghapus data, file, atau branch yang bukan buatan putaran ini.
-
-**Disiplin**: satu putaran = satu perubahan; baca dulu sebelum mengubah; tes yang gagal dilaporkan apa adanya (tidak dilemahkan atau dilewati supaya hijau); patuhi seluruh "Aturan arsitektur" dan "Jebakan" di atas. Bila ragu apakah sesuatu boleh, jangan lakukan dan tanyakan di laporan.
+2. Commit (Bahasa Indonesia) di branch tugas → `git push` → PR → CI (GitHub Actions) harus hijau → review PM (lihat "Peran dan aturan kerja")
+3. Setelah `PM: DISETUJUI` dan merge, deploy di OptiPlex: `git checkout main && git pull && docker compose up -d --build`
