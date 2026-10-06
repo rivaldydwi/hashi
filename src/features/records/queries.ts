@@ -7,7 +7,7 @@ import {
 } from "@/db/schema";
 import { unreadRecordIds, unreadReportIds } from "@/db/records-queries";
 
-export { activeWorkers, pendingInterviewCells, interviewsOfFiscalYear, unreadRecordIds, unreadReportIds } from "@/db/records-queries";
+export { activeWorkers, allWorkers, openInterviewQuarters, quartersOfFiscalYear, interviewsOfFiscalYear, unreadRecordIds, unreadReportIds } from "@/db/records-queries";
 
 export type StaffUser = { id: string; name: string; role: string };
 

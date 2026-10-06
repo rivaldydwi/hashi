@@ -156,8 +156,8 @@
     "emptyActivity": "まだ操作の記録がありません。",
     "kpiRecordsUnread": "未読の記録",
     "kpiRecordsUnreadHint": "記録{r}件・日報{l}件",
-    "kpiInterviewsPending": "未実施の定期面談",
-    "kpiInterviewsPendingHint": "当月までの未実施セル",
+    "kpiInterviewsPending": "今四半期の定期面談が未実施",
+    "kpiInterviewsPendingHint": "四半期末までに面談が必要な就労者",
     "kpiFollowupsOpen": "未完了のフォローアップ",
     "kpiFollowupsOpenAll": "組織全体",
     "kpiFollowupsOpenMine": "自分の課題",
@@ -1309,7 +1309,8 @@
     "pickers": {
       "searchWorker": "氏名またはカタカナで検索",
       "noWorker": "該当する就労中の就労者がいません。",
-      "chosenCount": "{n}名を選択"
+      "chosenCount": "{n}名を選択",
+      "endedOn": "{date}に退職"
     },
     "report": {
       "title": "本日の日報",
@@ -1440,11 +1441,12 @@
       "field": "特定技能分野",
       "onlyPending": "未実施のセルがあるもののみ",
       "legend": "凡例",
-      "pendingCells": "未実施のセル {n}件",
+      "pendingCells": "当四半期で未実施 {n}件",
       "state": {
         "done": "実施済み",
         "pending": "未実施",
-        "na": "対象外"
+        "na": "対象外",
+        "none": "未入力"
       },
       "emptyTitle": "就労中の就労者がいません",
       "emptyBody": "出国済みの判断と配属が登録されると、ここに表示されます。",
@@ -1474,6 +1476,22 @@
         "status": "ステータス",
         "reason": "実施理由",
         "content": "面談内容"
+      },
+      "endedOn": "{date}に退職",
+      "annualLink": "年次報告の準備リスト",
+      "ruleNote": "定期面談は、就労開始後、会計年度の四半期（4〜6月・7〜9月・10〜12月・1〜3月）ごとに最低1回必要です（回数を増やしてもかまいません）。期限は四半期の末日です。当四半期で未実施の場合は赤ではなく通常表示（残り14日以内は黄色）、四半期が過ぎると赤の「期限超過」になります。未入力の月は赤表示にはなりません。",
+      "countInQuarter": "{n}回",
+      "qstate": {
+        "done": "実施済み",
+        "open": "未実施（期限 {date}）",
+        "missed": "期限超過",
+        "na": "対象外"
+      },
+      "legendState": {
+        "done": "実施済み",
+        "open": "未実施（当四半期）",
+        "missed": "期限超過（過ぎた四半期）",
+        "na": "対象外"
       }
     },
     "export": {
@@ -1596,6 +1614,20 @@
         "meeting": "議事録・面談記録",
         "timeline": "時系列",
         "interview": "定期面談"
+      }
+    },
+    "annual": {
+      "title": "年次報告の準備",
+      "intro": "この会計年度に1日でも就労した人は、年度途中で退職した人も含め、入管への報告対象です。面談がないまま過ぎた四半期は赤で「抜け」として表示され、当四半期はまだ間に合います。報告書の様式はまだありません。",
+      "summary": "報告対象 {workers}名、抜けなし {complete}名、抜けている四半期（期限超過）{gaps}件、当四半期で未実施 {open}件。",
+      "backToGrid": "一覧に戻る",
+      "emptyTitle": "この会計年度の就労者はいません",
+      "emptyBody": "この会計年度に就労した人がまだいません。",
+      "ongoing": "就労中",
+      "col": {
+        "period": "就労期間",
+        "quarter": "第{q}四半期",
+        "gaps": "抜けている四半期"
       }
     }
   },

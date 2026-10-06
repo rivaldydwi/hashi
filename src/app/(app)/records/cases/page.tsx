@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/EmptyState";
 import { btnPrimary, cardClass } from "@/components/styles";
 import { requireStaff } from "@/features/records/access";
-import { activeWorkers, listCases } from "@/features/records/queries";
+import { allWorkers, listCases } from "@/features/records/queries";
 import { Badge, dateLabelSync } from "@/features/records/ui/common";
 import { safeTimezone, ymdIn } from "@/lib/org-time";
 import { tenantQuery } from "@/lib/session";
@@ -20,7 +20,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
   const status = ["open", "closed"].includes(one(sp.status)) ? one(sp.status) : "";
   const worker = UUID.test(one(sp.worker)) ? one(sp.worker) : "";
-  const { rows, workers } = await tenantQuery(async (tx) => ({ rows: await listCases(tx, { status, workerId: worker }), workers: await activeWorkers(tx) }));
+  const { rows, workers } = await tenantQuery(async (tx) => ({ rows: await listCases(tx, { status, workerId: worker }), workers: await allWorkers(tx) }));
   const tz = safeTimezone(me.organizationTimezone, me.organizationType);
   void tz; void ymdIn;
   const pill = (on: boolean) => `inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-medium ${on ? "border-accent bg-accent-soft text-accent-text" : "border-line-btn bg-card text-ink-menu hover:bg-hover"}`;

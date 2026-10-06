@@ -253,7 +253,10 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
   let pi = 0;
   for (const [wi, w] of [w0, w1, w2].entries()) {
     const start = `${String(w.startDate).slice(0, 7)}-01`;
-    const rowsMonths = months.filter((m) => m >= start && m < curMonth);
+    let rowsMonths = months.filter((m) => m >= start && m < curMonth);
+    // Pekerja ke-3 sengaja belum diwawancara di KUARTAL BERJALAN (kuartal "open": masih bisa dikejar sebelum tenggat), asal ia punya wawancara di kuartal sebelumnya
+    const beforeThisQuarter = rowsMonths.filter((m) => quarterOfMonth(m) !== quarterOfMonth(curMonth));
+    if (wi === 2 && beforeThisQuarter.length > 0) rowsMonths = beforeThisQuarter;
     if (rowsMonths.length === 0) notes.push(`Pekerja ${wi + 1} baru mulai bekerja bulan ini: belum ada wawancara berkala.`);
     for (const [mi, m] of rowsMonths.entries()) {
       const st = statuses[pi % statuses.length];
@@ -276,6 +279,33 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
     }
   }
   bump("interviews", pi);
+
+  // ================= Pekerja yang SUDAH BERHENTI di tengah tahun fiskal (T-008) =================
+  // Satu penempatan ENDED (tanpa keputusan DEPARTED: hanya data demo, supaya hitungan keputusan di daftar kandidat tidak bergeser). Masa kerja ~100 hari yang selesai 30 hari lalu:
+  // menyentuh >= 2 kuartal; wawancara hanya di kuartal pertama, jadi kuartal berikutnya "Belum" (wajib dilaporkan ke imigrasi walau sudah berhenti).
+  const endedExists = (await tx.select({ id: placements.id }).from(placements).where(eq(placements.status, "ENDED"))).length > 0;
+  if (!endedExists) {
+    const partners = (await tx.select({ lpk: partnerships.lpkId }).from(partnerships).where(and(eq(partnerships.tskId, orgId), eq(partnerships.active, true)))).map((p) => p.lpk);
+    const everPlaced = new Set((await tx.select({ c: placements.candidateId }).from(placements)).map((p) => p.c));
+    const sels = await tx.select({ c: candidateSelections.candidateId, d: candidateSelections.decision }).from(candidateSelections).where(eq(candidateSelections.tskOrgId, orgId));
+    const decided = new Set(sels.filter((x) => ["DEPARTED", "DOCUMENT_PROCESS", "PASSED_CLIENT_INTERVIEW"].includes(x.d)).map((x) => x.c));
+    const pool = (await tx.select({ id: candidates.id, org: candidates.organizationId }).from(candidates).where(and(eq(candidates.stage, "READY"), eq(candidates.sharedWithTsk, true))))
+      .filter((c) => partners.includes(c.org) && !everPlaced.has(c.id) && !decided.has(c.id))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const ended = pool[pool.length - 1]; // ujung daftar: jarang dipakai tes lain
+    if (ended) {
+      const endDate = addDays(opts.today, -30);
+      const startDate = addDays(endDate, -100);
+      await tx.insert(placements).values({ id: T("placement:ended"), candidateId: ended.id, orgId, siteId: w1.siteId, startDate, endDate, status: "ENDED", note: "契約満了（デモ用）" }).onConflictDoNothing();
+      const firstDate = addDays(startDate, 10);
+      await tx.insert(periodicInterviews).values({
+        id: T("pi:ended:1"), organizationId: orgId, createdBy: s1.id, candidateId: ended.id, periodMonth: `${firstDate.slice(0, 7)}-01`, applicable: true, interviewDate: firstDate, resultStatus: "no_issue",
+        reason: "agency", content: "就労開始後の様子を確認した。仕事にも慣れてきており、問題なし。", staffId: s1.id, createdAt: new Date(`${firstDate}T10:00:00${JST_OFFSET}`),
+      }).onConflictDoNothing();
+      bump("interviews.endedWorker");
+      notes.push("Menambah 1 pekerja yang sudah berhenti (penempatan ENDED tanpa keputusan DEPARTED) untuk contoh laporan tahunan.");
+    }
+  }
 
   return { files, summary: counts, notes };
 }

@@ -44,9 +44,24 @@ sesudah `shared_at` diberi penanda; "Kirim ulang" memperbarui `shared_at`. Pener
 Definisi "belum dibaca" ada SATU tempat (`unreadReportIds`, `unreadRecordIds` di `src/db/records-queries.ts`): dipakai KPI dashboard, lencana sidebar, dan daftar.
 
 ## Wawancara berkala
-Tahun fiskal April-Maret (`src/db/records-core.ts`). Sel grid: **Selesai** (ada wawancara berstatus selain 未実施), **Belum** (bulan berjalan atau lewat tanpa wawancara, atau berstatus 未実施), **Tidak berlaku**
-(`applicable = false`, alasan di catatan), atau kosong (bulan depan atau sebelum pekerja mulai bekerja: tidak ditagih). Kolom identitas (bidang, tanggal mulai, perusahaan, alamat, telepon, PIC) ditarik dari
-data yang sudah ada, tidak disimpan ganda. KPI dashboard "Wawancara berkala belum dilakukan" = jumlah sel Belum (`pendingInterviewCells`), sama dengan grid `?view=pending`.
+**Aturan (sumber: staf TSK, 2026-10-06):** 定期面談 wajib **minimal sekali per kuartal tahun fiskal** (Apr-Jun, Jul-Sep, Okt-Des, Jan-Mar), dimulai sejak pekerja **mulai bekerja di perusahaan**; boleh lebih sering.
+Laporan tahunan ke imigrasi dibuat per tahun fiskal (April-Maret), diserahkan setelah tahun fiskal berakhir, dan **semua pekerja yang sempat bekerja di tahun fiskal itu wajib dilaporkan, termasuk yang berhenti di tengah tahun**
+(mulai Mei 2026, berhenti Jan 2027 -> tetap masuk laporan FY2026; mulai Feb 2026 -> masuk FY2025).
+
+**Implementasi** (fungsi murni di `src/db/records-core.ts`, kueri di `src/db/records-queries.ts`, tes `tests/unit/interview-quarters.test.ts`):
+- Masa kerja = penempatan `placements` ACTIVE maupun ENDED (`start_date` .. `end_date`, inklusif; beberapa penempatan bila pernah berhenti lalu bekerja lagi). Kuartal **wajib** bila pekerja bekerja minimal satu hari di kuartal itu.
+- `quarterState`: **Selesai** (`done`: ada >= 1 wawancara berlaku, status selain 未実施, bertanggal di kuartal itu; tanggal = tanggal wawancara, atau awal bulan periode bila kosong), **Belum, tenggat <akhir kuartal>** (`open`: kuartal BERJALAN, hari pertama sampai hari terakhir, belum ada wawancara selesai;
+  masih bisa dikejar, tampil netral dan kuning tegas pada 14 hari terakhir, konstanta tunggal `QUARTER_URGENT_DAYS`), **Terlewat** (`missed`: kuartal sudah lewat tanpa wawancara selesai; merah, tidak bisa diperbaiki), **Tidak berlaku** (`na`: hanya ada baris 対象外 di kuartal itu, tidak ditagih),
+  kuartal depan tidak ditagih (`notDue`), kuartal di luar masa kerja tidak wajib (`notRequired`). Revisi PM (2026-10-06): tenggat = akhir kuartal, jadi kuartal berjalan TIDAK langsung merah (sebelumnya semua pekerja merah tiap tanggal 1 April/Juli/Oktober/Januari).
+- **Grid** (`/records/interviews`): baris = semua pekerja yang bekerja di tahun fiskal itu (ACTIVE dan ENDED; yang berhenti diberi penanda "berhenti <tanggal>"). **Status utama per kuartal**; kolom bulan tetap ada karena wawancara boleh bulanan (Selesai / Tidak berlaku / "Belum diisi" netral, BUKAN tanda merah; bulan di luar masa kerja atau bulan depan tidak ditagih).
+  Filter status/`?view=pending` bekerja pada status kuartal.
+- **KPI dashboard** "Wawancara berkala kuartal ini belum dilakukan" = jumlah kuartal **open** pada tahun fiskal berjalan (`openInterviewQuarters`, satu fungsi dengan grid: `quartersOfFiscalYear`) = pekerja yang masih perlu diwawancara sebelum tenggat; sama dengan `?view=pending` di grid.
+  Kuartal **missed** (FY berjalan maupun FY lalu) TIDAK masuk KPI: sudah tidak bisa diperbaiki, tampil di grid dan daftar tahunan sebagai "bolong" sebagai bahan laporan (jadi tanda "sudah dilaporkan" belum diperlukan).
+- **Daftar persiapan laporan tahunan** (`/records/interviews/annual?fy=`): pekerja yang wajib dilaporkan, masa kerja, status + jumlah wawancara per kuartal, kuartal bolong (= `missed`), dan kuartal berjalan yang masih bisa dikejar (`open`). Formulir laporan imigrasinya sendiri belum dibuat.
+- **Pekerja yang sudah berhenti di form catatan**: pemilih pekerja ①/② dan "Lanjutkan" memuat penempatan ENDED di bawah yang aktif dengan penanda "berhenti <tanggal>", jadi catatan/wawancara susulan tetap bisa dibuat. Halaman sel wawancara dan ekspor PDF 定期面談 juga membuka pekerja yang sudah berhenti.
+- Data lama tidak diubah: wawancara per bulan tetap sah; unik (pekerja, bulan) tetap berlaku, jadi saat ini satu bulan hanya bisa punya satu wawancara aktif (kuartal bisa diisi oleh bulan mana pun di dalamnya).
+- Seed: satu penempatan ENDED di tengah tahun fiskal (tanpa keputusan DEPARTED, hanya data demo) dengan wawancara di kuartal pertama sehingga kuartal berikutnya Belum; `verify:seed` memeriksa KPI = grid dan pekerja berhenti ikut FY-nya, tidak FY sesudahnya.
+Kolom identitas grid (bidang, tanggal mulai, perusahaan, alamat, telepon, PIC) ditarik dari data yang sudah ada, tidak disimpan ganda.
 
 ## Ekspor PDF
 `src/lib/pdf/` (pdfkit, murni JavaScript: tanpa browser headless; font Noto Sans JP OFL di `assets/fonts` disematkan sebagai subset). Empat jenis: catatan tunggal, laporan harian, 時系列 (internal / untuk klien), 定期面談.

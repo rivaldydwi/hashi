@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { btnPrimary, btnSecondary } from "@/components/styles";
 import { requireStaff } from "@/features/records/access";
-import { RECORD_PAGE_SIZE, activeWorkers, listCases, listRecords, listStaff, parseRecordFilters } from "@/features/records/queries";
+import { RECORD_PAGE_SIZE, allWorkers, listCases, listRecords, listStaff, parseRecordFilters } from "@/features/records/queries";
 import { RecordFilters } from "@/features/records/ui/RecordFilters";
 import { RecordList } from "@/features/records/ui/RecordList";
 import { safeTimezone, ymdIn } from "@/lib/org-time";
@@ -22,7 +22,7 @@ export default async function MeetingRecordsPage({ searchParams }: { searchParam
   const data = await tenantQuery(async (tx) => ({
     list: await listRecords(tx, f, me.id),
     staff: await listStaff(tx),
-    workers: await activeWorkers(tx),
+    workers: await allWorkers(tx),
     cases: await listCases(tx, { status: "", workerId: "" }),
   }));
   const pages = Math.max(1, Math.ceil(data.list.total / RECORD_PAGE_SIZE));

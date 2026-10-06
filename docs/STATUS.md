@@ -34,6 +34,55 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-06 · T-008 · 定期面談 per kuartal + pekerja yang sudah berhenti + hasil deploy T-007
+
+**PR:** #8 (branch `eng/T-008-mendan-kuartal`)
+**Status:** revisi ke-1 (siap direview ulang; deploy T-008 ke produksi dilakukan setelah merge, lewat `scripts/deploy.sh`)
+
+**Revisi ke-1 (komentar `PM: REVISI`: kuartal berjalan tidak boleh langsung merah)**
+- `quarterState` memecah "Belum" menjadi **`open`** (kuartal BERJALAN, hari pertama sampai hari terakhir, belum ada wawancara selesai: netral, teks "Belum, tenggat <akhir kuartal>", kuning tegas pada 14 hari terakhir; angka 14 = konstanta tunggal `QUARTER_URGENT_DAYS`, helper `daysToQuarterDeadline`/`quarterUrgent`) dan **`missed`** (kuartal SUDAH LEWAT tanpa wawancara selesai: merah, "Terlewat"). Tanpa migrasi.
+- **KPI** "定期面談 kuartal ini belum dilakukan" = jumlah kuartal **`open`** di FY berjalan (`openInterviewQuarters`, menggantikan `pendingInterviewQuarters`; satu fungsi dengan grid dan `?view=pending`). Kuartal `missed` (FY berjalan dan FY lalu) tampil di grid dan daftar tahunan sebagai "bolong" dan TIDAK masuk KPI; daftar tahunan juga menampilkan jumlah kuartal berjalan yang masih bisa dikejar.
+- Filter status grid: Selesai / Belum (kuartal berjalan) / Terlewat / Tidak berlaku. Label id + ja (termasuk label KPI), `docs/catatan-kegiatan.md` diperbarui.
+- Seed: pekerja aktif belum diwawancara di kuartal berjalan (`open`) dan pekerja berhenti punya satu kuartal `missed`; `verify:seed`: >= 1 open dan >= 1 missed, KPI = jumlah open di grid (pada seed: open 3, missed 1).
+- Tes: unit (10 tes): hari pertama kuartal berjalan = `open`, hari terakhir = `open`, sehari setelah berakhir = `missed`, wawancara di hari terakhir menyelamatkan kuartal, dan batas 14 hari terakhir; e2e: open netral dengan tenggat dan masuk KPI, missed merah dan tidak masuk KPI, mengisi kuartal terlewat tidak mengubah KPI. Hasil ulang: typecheck, test:i18n, test:unit, verify:audit-coverage, test:rls (setelah reseed dev), verify:seed, build (0 peringatan), **e2e 171 lulus**.
+- Satu salah langkah saya: tes baru sempat gagal karena urutan (tes yang mengisi kuartal terlewat jalan lebih dulu) dan karena akun `tsk.admin` berbahasa Jepang; keduanya diperbaiki di tes, bukan di kode.
+
+**Hasil deploy T-007 lewat `scripts/deploy.sh --backup`** (PR #7 di-merge `31008ad`)
+- Cadangan terenkripsi dulu: `hashi-20261006-173317-*` (database 630 entri, 146 berkas dokumen, 732 KB; `LAST_FAILED` tidak ada). Lalu `GIT_SHA=31008ad docker compose -p hashi up -d --build`; migration 0022 berjalan otomatis (kolom `activity_records.continues_record_id` ada di produksi: dicek lewat `information_schema`).
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: 31008ad (label image: 31008ad); health: {"status":"ok","commit":"31008ad"}`, exit 0. Demo tidak disentuh (Up, healthy).
+
+**Yang dikerjakan (T-008)**
+- **Aturan kuartal** (fungsi murni di `src/db/records-core.ts`): `fiscalQuarterRange`, `workedInQuarter` (bekerja >= 1 hari di kuartal; ACTIVE dan ENDED, banyak penempatan), `workedInFiscalYear`, `quarterState` (Selesai / open / missed / Tidak berlaku / kuartal depan tidak ditagih / tidak wajib; lihat revisi ke-1), `monthMark` (penanda bulan: bulan tanpa wawancara netral, bukan merah; di luar masa kerja/bulan depan tidak ditagih). Tanggal wawancara = `interview_date`, atau awal bulan periode bila kosong.
+- **Kueri** (`src/db/records-queries.ts`): `allWorkers` (ACTIVE + ENDED, satu baris per pekerja, aktif dulu), `quartersOfFiscalYear` (SATU sumber untuk grid, KPI, dan daftar tahunan), `pendingInterviewQuarters` (KPI = jumlah kuartal Belum di FY berjalan; menggantikan `pendingInterviewCells`).
+- **Grid** `/records/interviews`: baris = pekerja yang bekerja di FY itu (ACTIVE dan ENDED, penanda "berhenti <tanggal>"), status utama per kuartal, bulan tetap tampil, aturan kuartal ditulis di halaman, filter status/`?view=pending` pada status kuartal.
+- **Daftar persiapan laporan tahunan** `/records/interviews/annual?fy=`: pekerja wajib dilaporkan (termasuk yang berhenti di tengah tahun), masa kerja, status + jumlah wawancara per kuartal, kuartal bolong, ringkasan. Tautan dari grid.
+- **Pekerja berhenti di form**: pemilih pekerja ①/② dan "Lanjutkan" memuat ENDED di bawah yang aktif dengan penanda "berhenti <tanggal>"; server (`assertWorkers`), halaman sel wawancara, ekspor PDF 定期面談, dan filter daftar memakai `allWorkers`.
+- **Seed**: satu penempatan ENDED di tengah FY (tanpa keputusan DEPARTED agar hitungan keputusan di daftar kandidat tidak bergeser), wawancara hanya di kuartal pertama, jadi kuartal berikutnya Belum. `verify:seed`: KPI = grid, pekerja berhenti ikut FY-nya dan tidak FY sesudahnya.
+- Label id + ja (`test:i18n` 1353 kunci); `docs/catatan-kegiatan.md` bagian "Wawancara berkala" ditulis ulang (aturan kuartal, sumber staf TSK); `CLAUDE.md` butir terkait.
+
+**Verifikasi** (perintah → hasil apa adanya)
+- `npm run typecheck`, `test:i18n`, `test:unit` (tes baru `interview-quarters`: 9 tes: kuartal Apr-Mar dan akhir bulan, mulai di tengah kuartal, mulai Februari, berhenti di tengah kuartal/inklusif 1 Jan vs 31 Des, kuartal depan, banyak wawancara/未実施/batas kuartal, 対象外, banyak penempatan, penanda bulan), `verify:audit-coverage` → lulus. `npm run build` → 0 peringatan.
+- `db:seed -- --reset` lalu `npm run test:rls` → lulus (tidak ada perubahan skema/RLS di tugas ini). `npm run verify:seed` → lulus (KPI 4 = grid 4; 1 pekerja berhenti, FY 2026).
+- `E2E_PORT=3120 npm run test:e2e` → **170 lulus**. Baru: `interview-quarters` (5 tes: pekerja ENDED muncul di grid FY-nya dengan penanda, bulan sesudah berhenti tidak ditagih dan tanpa tautan, kuartal pertama Selesai dan berikutnya Belum, tidak muncul di FY sesudahnya; daftar tahunan + ringkasan = isi tabel; pemilih form memuat ENDED di bawah yang aktif, catatan susulan dan "Lanjutkan" berhasil; mengisi kuartal bolong menutup bolong dan KPI turun 1 (wawancara uji dihapus lewat pemilik DB di `afterAll`, tes bisa diulang); LPK/sensei 404 dan ponsel tanpa scroll horizontal). `records-views` disesuaikan ke aturan kuartal (status kuartal, bulan netral, KPI = kuartal Belum).
+
+**Kondisi server:** belum ada yang di-deploy untuk T-008 (menunggu merge). Produksi `31008ad` healthy. Tidak ada migrasi baru.
+
+**Kendala / catatan**
+- ~~KPI hanya tahun fiskal berjalan~~ (diselesaikan revisi ke-1: KPI = kuartal open; kuartal terlewat hanya bahan laporan).
+- **Unik (pekerja, bulan) tetap berlaku**: satu bulan hanya bisa punya satu wawancara aktif (yang dibatalkan boleh diisi ulang). Kuartal terpenuhi oleh bulan mana pun di dalamnya, jadi aturan "minimal sekali per kuartal" tidak terhalang; hanya "lebih dari satu dalam satu bulan" yang belum bisa. Dibiarkan sesuai arahan tugas.
+- ~~Kuartal berjalan langsung Belum~~ (diperbaiki revisi ke-1: sekarang `open`, bukan merah).
+- Data demo di demo/produksi belum memuat pekerja berhenti. `seed:records --force` akan menambahkannya (penempatan ENDED + satu wawancara; tidak mengubah data lain) bila Ipal mengizinkan.
+- Kuartal yang hanya memuat baris 対象外 ditampilkan "Tidak berlaku" dan tidak ditagih (keputusan saya; bila wawancara tetap diwajibkan untuk 対象外 bulanan, beri tahu).
+
+**Pertanyaan**
+- Tidak ada yang butuh Ipal untuk tugas ini.
+
+**Usulan berikutnya** (bukan tugas)
+- Tanda "sudah dilaporkan ke imigrasi" per FY (bisa dipakai T-009) agar KPI bisa memasukkan FY lalu yang belum dilaporkan.
+- `scripts/deploy.sh`: log build ke berkas (sudah ada di cadangan tugas PM).
+
+---
+
 ## 2026-10-06 · T-007 · Riwayat catatan per pekerja ("Lanjutkan") + hasil deploy lewat `scripts/deploy.sh`
 
 **PR:** #7 (branch `eng/T-007-riwayat-pekerja`)

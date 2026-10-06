@@ -12,7 +12,7 @@ import {
 import {
   CASE_CATEGORIES, COUNTERPARTIES, INTERVIEW_REASONS, INTERVIEW_RESULTS, MAX_ATTACHMENTS_PER_RECORD, MEETING_METHODS, WORK_TYPES, cleanSections,
 } from "@/db/records-core";
-import { activeWorkers } from "@/db/records-queries";
+import { allWorkers } from "@/db/records-queries";
 import { audit } from "@/lib/audit";
 import { ActionError, pgErrorCode } from "@/lib/errors";
 import type { FormState } from "@/lib/form-state";
@@ -51,7 +51,7 @@ const changedNames = (before: Record<string, unknown>, after: Record<string, unk
 
 async function assertWorkers(tx: Tx, ids: string[], keep: string[] = []) {
   if (ids.length === 0) return;
-  const allowed = new Set([...(await activeWorkers(tx)).map((w) => w.id), ...keep]);
+  const allowed = new Set([...(await allWorkers(tx)).map((w) => w.id), ...keep]); // termasuk pekerja yang sudah berhenti (catatan/wawancara susulan, T-008)
   if (ids.some((id) => !allowed.has(id))) throw new ActionError("records.errors.workerInvalid");
 }
 

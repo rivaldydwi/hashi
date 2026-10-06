@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { activeWorkers, interviewRowsFull, quarterNotes } from "@/features/records/queries";
+import { allWorkers, interviewRowsFull, quarterNotes } from "@/features/records/queries";
 import { UUID, auditExport, pdfResponse, staffOrResponse, text, withTenant } from "@/features/records/export-route";
 import { fiscalYearOf, quarterOfMonth } from "@/db/records-core";
 import { users } from "@/db/schema";
@@ -15,7 +15,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ candidateId: st
   const fyParam = Number.parseInt(new URL(req.url).searchParams.get("fy") ?? "", 10);
   const fy = Number.isInteger(fyParam) && fyParam >= 2020 && fyParam <= 2100 ? fyParam : fiscalYearOf(ymdIn(new Date(), g.tz));
   const data = await withTenant(g.scope, async (tx) => {
-    const worker = (await activeWorkers(tx)).find((w) => w.id === candidateId);
+    const worker = (await allWorkers(tx)).find((w) => w.id === candidateId);
     if (!worker) return null;
     const [rows, notes, staff] = await Promise.all([interviewRowsFull(tx, fy), quarterNotes(tx, fy), tx.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.organizationId, g.me.organizationId)))]);
     const nameOf = new Map(staff.map((s) => [s.id, s.name]));
