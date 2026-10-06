@@ -156,8 +156,8 @@
     "emptyActivity": "Belum ada aktivitas.",
     "kpiRecordsUnread": "Catatan belum dibaca",
     "kpiRecordsUnreadHint": "{r} catatan dan {l} laporan harian",
-    "kpiInterviewsPending": "Wawancara berkala belum dilakukan",
-    "kpiInterviewsPendingHint": "Kuartal wajib yang sudah berjalan tanpa wawancara",
+    "kpiInterviewsPending": "Wawancara berkala kuartal ini belum dilakukan",
+    "kpiInterviewsPendingHint": "Pekerja yang masih perlu diwawancara sebelum tenggat kuartal",
     "kpiFollowupsOpen": "Tindak lanjut terbuka",
     "kpiFollowupsOpenAll": "Seluruh organisasi",
     "kpiFollowupsOpenMine": "Tugas milikmu",
@@ -1441,7 +1441,7 @@
       "field": "Bidang SSW",
       "onlyPending": "Hanya yang ada sel Belum",
       "legend": "Keterangan",
-      "pendingCells": "{n} kuartal belum dilaksanakan",
+      "pendingCells": "{n} kuartal berjalan belum diwawancara",
       "state": {
         "done": "Selesai",
         "pending": "Belum",
@@ -1479,11 +1479,18 @@
       },
       "endedOn": "berhenti {date}",
       "annualLink": "Daftar laporan tahunan",
-      "ruleNote": "Aturan: wawancara berkala (teiki mendan) wajib minimal sekali per kuartal tahun fiskal (Apr-Jun, Jul-Sep, Okt-Des, Jan-Mar), sejak pekerja mulai bekerja di perusahaan; boleh lebih sering. Status utama ada di kolom kuartal; bulan yang belum diisi bukan tanda merah.",
+      "ruleNote": "Aturan: wawancara berkala (teiki mendan) wajib minimal sekali per kuartal tahun fiskal (Apr-Jun, Jul-Sep, Okt-Des, Jan-Mar), sejak pekerja mulai bekerja di perusahaan; boleh lebih sering. Tenggatnya akhir kuartal: kuartal berjalan yang belum diisi tampil netral (kuning pada 14 hari terakhir), baru merah \"Terlewat\" setelah kuartalnya lewat. Bulan yang belum diisi bukan tanda merah.",
       "countInQuarter": "{n}x",
       "qstate": {
         "done": "Selesai",
-        "pending": "Belum",
+        "open": "Belum, tenggat {date}",
+        "missed": "Terlewat",
+        "na": "Tidak berlaku"
+      },
+      "legendState": {
+        "done": "Selesai",
+        "open": "Belum (kuartal berjalan)",
+        "missed": "Terlewat (kuartal lewat)",
         "na": "Tidak berlaku"
       }
     },
@@ -1611,8 +1618,8 @@
     },
     "annual": {
       "title": "Persiapan laporan tahunan",
-      "intro": "Semua pekerja yang bekerja minimal satu hari di tahun fiskal ini wajib masuk laporan ke imigrasi (nyūkan), termasuk yang berhenti di tengah tahun. Kuartal yang bolong ditandai merah. Formulir laporannya belum dibuat.",
-      "summary": "{workers} pekerja wajib dilaporkan; {complete} lengkap; {gaps} kuartal bolong.",
+      "intro": "Semua pekerja yang bekerja minimal satu hari di tahun fiskal ini wajib masuk laporan ke imigrasi (nyūkan), termasuk yang berhenti di tengah tahun. Kuartal yang sudah lewat tanpa wawancara ditandai merah sebagai bolong; kuartal berjalan masih bisa dikejar. Formulir laporannya belum dibuat.",
+      "summary": "{workers} pekerja wajib dilaporkan; {complete} tanpa kuartal bolong; {gaps} kuartal bolong (terlewat); {open} kuartal berjalan masih bisa dikejar.",
       "backToGrid": "Kembali ke grid",
       "emptyTitle": "Belum ada pekerja di tahun fiskal ini",
       "emptyBody": "Belum ada pekerja yang bekerja di tahun fiskal ini.",

@@ -28,7 +28,7 @@ async function staffPage(browser: Browser, email = "tsk.staff@hashi.test", viewp
   return page;
 }
 
-test("grid FY pekerja berhenti: baris ENDED dengan penanda 'berhenti', bulan sesudah berhenti tidak ditagih, kuartal pertama Selesai dan kuartal berikutnya Belum; FY sesudahnya tidak memuatnya", async ({ browser }) => {
+test("grid FY pekerja berhenti: baris ENDED dengan penanda 'berhenti', bulan sesudah berhenti tidak ditagih, kuartal pertama Selesai dan kuartal berikutnya Terlewat (merah); FY sesudahnya tidak memuatnya", async ({ browser }) => {
   const page = await staffPage(browser);
   await page.goto(`/records/interviews?fy=${ended.fy}`);
   const row = page.locator(`[data-testid=interview-row][data-worker="${ended.id}"]`);
@@ -36,7 +36,8 @@ test("grid FY pekerja berhenti: baris ENDED dengan penanda 'berhenti', bulan ses
   await expect(row.getByTestId("worker-ended")).toContainText(`berhenti ${ended.end.replace(/-/g, "/")}`);
   const states = await row.locator("[data-testid=quarter-state]").evaluateAll((els) => els.map((e) => e.getAttribute("data-state")));
   expect(states).toContain("done");
-  expect(states).toContain("pending");
+  expect(states).toContain("missed"); // kuartal sudah lewat tanpa wawancara = Terlewat
+  await expect(row.locator("[data-testid=quarter-state][data-state=missed]").first()).toContainText("Terlewat");
   // bulan sesudah bulan berhenti: tidak ditagih (—), tanpa tautan
   const endMonth = `${ended.end.slice(0, 7)}-01`;
   const after = await row.locator("[data-testid=interview-cell]").evaluateAll((els, em) => els.filter((e) => e.getAttribute("data-month")! > em).map((e) => [e.getAttribute("data-state"), e.querySelectorAll("a").length]), endMonth);
@@ -65,7 +66,8 @@ test("daftar laporan tahunan: pekerja berhenti termasuk di FY-nya (jumlah per ku
   const rows = await page.getByTestId("annual-row").count();
   const withGaps = await page.locator("[data-testid=annual-row]:not([data-gaps=''])").count();
   const totalGaps = (await page.getByTestId("annual-row").evaluateAll((els) => els.reduce((n, e) => n + ((e.getAttribute("data-gaps") ?? "").split(",").filter(Boolean).length), 0)));
-  await expect(page.getByTestId("annual-summary")).toContainText(`${rows} pekerja wajib dilaporkan; ${rows - withGaps} lengkap; ${totalGaps} kuartal bolong`);
+  const openCount = await page.locator("[data-testid=annual-quarter][data-state=open]").count();
+  await expect(page.getByTestId("annual-summary")).toContainText(`${rows} pekerja wajib dilaporkan; ${rows - withGaps} tanpa kuartal bolong; ${totalGaps} kuartal bolong (terlewat); ${openCount} kuartal berjalan masih bisa dikejar`);
   await page.goto(`/records/interviews/annual?fy=${ended.fy + 1}`);
   await expect(page.locator(`[data-testid=annual-row][data-worker="${ended.id}"]`)).toHaveCount(0);
   await page.goto("/records/interviews");
@@ -98,7 +100,26 @@ test("pemilih pekerja di form ①: pekerja berhenti ikut (di bawah yang aktif, d
   await page.context().close();
 });
 
-test("wawancara untuk pekerja berhenti: halaman sel terbuka; mengisi kuartal yang bolong menutup bolongnya di daftar tahunan dan KPI turun 1", async ({ browser }) => {
+test("kuartal berjalan (open) tampil netral dengan tenggat dan masuk KPI; kuartal terlewat (missed) tampil merah dan tidak masuk KPI", async ({ browser }) => {
+  const page = await staffPage(browser); // tsk.staff: UI berbahasa Indonesia
+  await page.goto("/");
+  const kpi = Number(await page.getByTestId("kpi-interviews-pending-value").textContent());
+  await page.goto(`/records/interviews?fy=${ended.fy}`);
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  const curFy = fyOf(today);
+  if (ended.fy === curFy) {
+    const open = page.locator("[data-testid=quarter-state][data-state=open]");
+    expect(await open.count()).toBe(kpi);
+    expect(kpi).toBeGreaterThan(0);
+    await expect(open.first()).toContainText(/Belum, tenggat \d{4}\/\d{2}\/\d{2}/);
+    const missed = page.locator("[data-testid=quarter-state][data-state=missed]");
+    expect(await missed.count(), "seed memuat kuartal terlewat yang TIDAK dihitung KPI").toBeGreaterThan(0);
+    await expect(missed.first()).toContainText("Terlewat");
+  }
+  await page.context().close();
+});
+
+test("wawancara untuk pekerja berhenti: halaman sel terbuka; mengisi kuartal yang bolong menutup bolongnya di daftar tahunan; KPI TIDAK berubah (kuartal terlewat bukan KPI)", async ({ browser }) => {
   const page = await staffPage(browser);
   await page.goto("/");
   const kpiBefore = Number(await page.getByTestId("kpi-interviews-pending-value").textContent());
@@ -116,10 +137,8 @@ test("wawancara untuk pekerja berhenti: halaman sel terbuka; mengisi kuartal yan
   await page.goto(`/records/interviews/annual?fy=${ended.fy}`);
   const gapAfter = (await page.locator(`[data-testid=annual-row][data-worker="${ended.id}"]`).getAttribute("data-gaps"))!.split(",").filter(Boolean);
   expect(gapAfter.length).toBe(gapBefore.length - 1);
-  if (ended.fy === Number((await ownerQuery<{ fy: number }>("select case when extract(month from (now() at time zone 'Asia/Tokyo')) >= 4 then extract(year from (now() at time zone 'Asia/Tokyo'))::int else extract(year from (now() at time zone 'Asia/Tokyo'))::int - 1 end as fy"))[0].fy)) {
-    await page.goto("/");
-    expect(Number(await page.getByTestId("kpi-interviews-pending-value").textContent())).toBe(kpiBefore - 1);
-  }
+  await page.goto("/");
+  expect(Number(await page.getByTestId("kpi-interviews-pending-value").textContent()), "kuartal terlewat tidak masuk KPI, jadi mengisinya tidak mengubah KPI").toBe(kpiBefore);
   await page.context().close();
 });
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fiscalQuarterRange, monthMark, quarterOfDate, quarterState, workedInFiscalYear, workedInQuarter, type QuarterInterview, type WorkSpan } from "../../src/db/records-core";
+import { QUARTER_URGENT_DAYS, daysToQuarterDeadline, fiscalQuarterRange, monthMark, quarterOfDate, quarterState, quarterUrgent, workedInFiscalYear, workedInQuarter, type QuarterInterview, type WorkSpan } from "../../src/db/records-core";
 
 const done = (date: string): QuarterInterview => ({ applicable: true, resultStatus: "no_issue", date });
 const span = (start: string, end: string | null = null): WorkSpan[] => [{ start, end }];
@@ -19,7 +19,7 @@ test("mulai di tengah kuartal: kuartal itu sudah wajib (bekerja minimal satu har
   const w = span("2026-05-20");
   assert.equal(workedInQuarter(w, 2026, 1), true);
   assert.equal(workedInQuarter(w, 2025, 4), false);
-  assert.equal(quarterState(2026, 1, [], "2026-10-05", w), "pending"); // Q1 lewat tanpa wawancara
+  assert.equal(quarterState(2026, 1, [], "2026-10-05", w), "missed"); // Q1 sudah lewat tanpa wawancara
   assert.equal(quarterState(2025, 4, [], "2026-10-05", w), "notRequired");
   assert.equal(quarterState(2026, 1, [done("2026-06-10")], "2026-10-05", w), "done");
 });
@@ -27,8 +27,8 @@ test("mulai di tengah kuartal: kuartal itu sudah wajib (bekerja minimal satu har
 test("mulai Februari: hanya Q4 tahun fiskal sebelumnya yang wajib di FY itu; FY berikutnya mulai Q1", () => {
   const w = span("2026-02-10");
   assert.equal(workedInFiscalYear(w, 2025), true, "masuk laporan FY2025");
-  assert.deepEqual([1, 2, 3, 4].map((q) => quarterState(2025, q as 1 | 2 | 3 | 4, [], "2026-10-05", w)), ["notRequired", "notRequired", "notRequired", "pending"]);
-  assert.equal(quarterState(2026, 1, [], "2026-10-05", w), "pending");
+  assert.deepEqual([1, 2, 3, 4].map((q) => quarterState(2025, q as 1 | 2 | 3 | 4, [], "2026-10-05", w)), ["notRequired", "notRequired", "notRequired", "missed"]);
+  assert.equal(quarterState(2026, 1, [], "2026-10-05", w), "missed");
   assert.equal(workedInQuarter(w, 2026, 4), true, "masih bekerja (tanpa tanggal berhenti)");
 });
 
@@ -39,13 +39,16 @@ test("berhenti di tengah kuartal: kuartal berhenti tetap wajib, kuartal sesudahn
   assert.equal(workedInQuarter(w, 2026, 4), true, "berhenti 15 Jan: Q4 FY2026 masih ada satu hari+ kerja");
   assert.equal(workedInQuarter(span("2026-05-01", "2026-12-31"), 2026, 4), false, "berhenti 31 Des: Q4 tidak wajib");
   assert.equal(workedInQuarter(span("2026-05-01", "2027-01-01"), 2026, 4), true, "berhenti tepat 1 Jan = hari kerja terakhir di Q4 (inklusif)");
-  assert.equal(quarterState(2026, 3, [], "2027-02-01", span("2026-05-01", "2026-12-31")), "pending");
+  assert.equal(quarterState(2026, 3, [], "2027-02-01", span("2026-05-01", "2026-12-31")), "missed");
 });
 
-test("kuartal depan tidak ditagih; kuartal berjalan tanpa wawancara = Belum; kuartal berjalan dengan wawancara = Selesai", () => {
+test("kuartal depan tidak ditagih; kuartal BERJALAN tanpa wawancara = open (bukan merah) dari hari pertama sampai hari terakhir; sehari setelah berakhir = missed; dengan wawancara = Selesai", () => {
   const w = span("2025-06-01");
   assert.equal(quarterState(2026, 3, [], "2026-09-30", w), "notDue", "Q3 baru mulai 1 Okt");
-  assert.equal(quarterState(2026, 3, [], "2026-10-01", w), "pending", "hari pertama Q3 tanpa wawancara = Belum");
+  assert.equal(quarterState(2026, 3, [], "2026-10-01", w), "open", "hari pertama Q3 tanpa wawancara = open");
+  assert.equal(quarterState(2026, 3, [], "2026-12-31", w), "open", "hari terakhir Q3 masih open (tenggat = akhir kuartal)");
+  assert.equal(quarterState(2026, 3, [], "2027-01-01", w), "missed", "sehari setelah Q3 berakhir = missed");
+  assert.equal(quarterState(2026, 3, [done("2026-12-31")], "2027-01-05", w), "done", "wawancara di hari terakhir kuartal menyelamatkan kuartal");
   assert.equal(quarterState(2026, 3, [done("2026-10-03")], "2026-10-05", w), "done");
   assert.equal(quarterState(2026, 4, [], "2026-10-05", w), "notDue");
 });
@@ -53,8 +56,8 @@ test("kuartal depan tidak ditagih; kuartal berjalan tanpa wawancara = Belum; kua
 test("wawancara lebih dari satu per kuartal tidak masalah; yang berstatus 未実施 tidak dihitung; wawancara kuartal lain tidak menolong", () => {
   const w = span("2025-06-01");
   assert.equal(quarterState(2026, 2, [done("2026-07-05"), done("2026-08-10"), done("2026-09-12")], "2026-10-05", w), "done");
-  assert.equal(quarterState(2026, 2, [{ applicable: true, resultStatus: "not_done", date: "2026-08-01" }], "2026-10-05", w), "pending");
-  assert.equal(quarterState(2026, 2, [done("2026-06-30"), done("2026-10-01")], "2026-10-05", w), "pending", "batas kuartal: 30 Jun (Q1) dan 1 Okt (Q3) bukan Q2");
+  assert.equal(quarterState(2026, 2, [{ applicable: true, resultStatus: "not_done", date: "2026-08-01" }], "2026-10-05", w), "missed");
+  assert.equal(quarterState(2026, 2, [done("2026-06-30"), done("2026-10-01")], "2026-10-05", w), "missed", "batas kuartal: 30 Jun (Q1) dan 1 Okt (Q3) bukan Q2");
   assert.equal(quarterState(2026, 2, [done("2026-07-01")], "2026-10-05", w), "done", "hari pertama kuartal");
   assert.equal(quarterState(2026, 2, [done("2026-09-30")], "2026-10-05", w), "done", "hari terakhir kuartal");
 });
@@ -87,4 +90,16 @@ test("tanda bulan di grid: bulan tanpa wawancara bukan tanda merah (none); di lu
   assert.equal(monthMark("2026-07-01", row(null, false), today, w), "na");
   assert.equal(monthMark("2026-11-01", undefined, today, span("2025-01-01")), "notDue", "bulan depan");
   assert.equal(monthMark("2026-10-01", undefined, today, span("2025-01-01")), "none", "bulan berjalan belum ada wawancara");
+});
+
+test("14 hari terakhir kuartal berjalan = mendesak (kuning); konstanta tunggal QUARTER_URGENT_DAYS", () => {
+  assert.equal(QUARTER_URGENT_DAYS, 14);
+  assert.equal(daysToQuarterDeadline(2026, 3, "2026-12-31"), 0);
+  assert.equal(daysToQuarterDeadline(2026, 3, "2026-12-17"), 14);
+  assert.equal(daysToQuarterDeadline(2026, 3, "2027-01-02"), -2);
+  assert.equal(quarterUrgent(2026, 3, "2026-12-17"), false, "tersisa 14 hari: belum");
+  assert.equal(quarterUrgent(2026, 3, "2026-12-18"), true, "tersisa 13 hari: 14 hari terakhir dimulai");
+  assert.equal(quarterUrgent(2026, 3, "2026-12-31"), true, "hari terakhir");
+  assert.equal(quarterUrgent(2026, 3, "2026-10-01"), false, "awal kuartal");
+  assert.equal(daysToQuarterDeadline(2025, 4, "2026-03-01"), 30);
 });

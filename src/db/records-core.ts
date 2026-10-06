@@ -56,7 +56,9 @@ export function cellState(month: string, row: InterviewRow | undefined, today: s
 export type WorkSpan = { start: string; end: string | null };
 /** Wawancara berkala satu baris: `date` = tanggal wawancara bila diisi, jika tidak awal bulan periode. */
 export type QuarterInterview = { applicable: boolean; resultStatus: string | null; date: string };
-export type QuarterState = "done" | "pending" | "na" | "notDue" | "notRequired";
+export type QuarterState = "done" | "open" | "missed" | "na" | "notDue" | "notRequired";
+/** Kuartal berjalan tampil kuning tegas pada sekian hari TERAKHIR sebelum tenggat (akhir kuartal), termasuk hari terakhir. */
+export const QUARTER_URGENT_DAYS = 14;
 
 const lastDayOfMonth = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 /** Awal dan akhir (inklusif) kuartal 1-4 tahun fiskal `fy`: Q1 = Apr-Jun fy, ..., Q4 = Jan-Mar fy+1. */
@@ -85,7 +87,8 @@ export const workedInFiscalYear = (spans: WorkSpan[], fy: number): boolean => FI
  *  notDue      = kuartal belum dimulai (kuartal depan tidak ditagih);
  *  done        = ada >= 1 wawancara berlaku (status selain 未実施) bertanggal di kuartal itu;
  *  na          = tidak ada yang selesai tetapi ada baris "tidak berlaku" (対象外) di kuartal itu: tidak ditagih;
- *  pending     = kuartal sudah berjalan/lewat tanpa wawancara selesai.
+ *  open        = kuartal BERJALAN (hari pertama .. hari terakhir) belum ada wawancara selesai: masih bisa dikejar, tenggat = akhir kuartal (bukan tanda merah, masuk KPI);
+ *  missed      = kuartal SUDAH LEWAT tanpa wawancara selesai: tidak bisa diperbaiki, jadi bahan laporan ("bolong"; bukan KPI).
  * `today` YYYY-MM-DD menurut zona waktu TSK.
  */
 export function quarterState(fy: number, q: 1 | 2 | 3 | 4, interviews: QuarterInterview[], today: string, spans: WorkSpan[]): QuarterState {
@@ -95,8 +98,16 @@ export function quarterState(fy: number, q: 1 | 2 | 3 | 4, interviews: QuarterIn
   const inQ = interviews.filter((i) => i.date >= r.start && i.date <= r.end);
   if (inQ.some((i) => i.applicable && i.resultStatus && i.resultStatus !== "not_done")) return "done";
   if (inQ.some((i) => !i.applicable)) return "na";
-  return "pending";
+  return today <= r.end ? "open" : "missed";
 }
+
+/** Sisa hari sampai tenggat (akhir kuartal) dari `today`; 0 pada hari terakhir, negatif bila sudah lewat. */
+export function daysToQuarterDeadline(fy: number, q: 1 | 2 | 3 | 4, today: string): number {
+  const d = (iso: string) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
+  return Math.round((d(fiscalQuarterRange(fy, q).end) - d(today)) / 86_400_000);
+}
+/** Kuartal `open` yang tinggal <= QUARTER_URGENT_DAYS hari (kuning tegas). */
+export const quarterUrgent = (fy: number, q: 1 | 2 | 3 | 4, today: string): boolean => daysToQuarterDeadline(fy, q, today) < QUARTER_URGENT_DAYS;
 
 /** Penanda satu BULAN di grid (bulan tetap tampil karena wawancara boleh bulanan): done / na / none (belum ada, bukan tanda merah) / notDue (di luar masa kerja atau bulan depan). */
 export type MonthMark = "done" | "na" | "none" | "notDue";

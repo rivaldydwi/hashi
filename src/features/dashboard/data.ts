@@ -9,7 +9,7 @@ import { recentAudit } from "@/db/audit-history";
 import type { AuditView } from "@/db/audit-describe";
 import { and, asc, eq } from "drizzle-orm";
 import { activityFollowups } from "@/db/schema";
-import { followupIds, openCases, pendingInterviewQuarters, unreadRecordIds, unreadReportIds } from "@/db/records-queries";
+import { followupIds, openCases, openInterviewQuarters, unreadRecordIds, unreadReportIds } from "@/db/records-queries";
 import { safeTimezone, ymdIn } from "@/lib/org-time";
 import type { CurrentUser } from "@/lib/session";
 
@@ -74,7 +74,7 @@ export async function loadDashboard(user: CurrentUser, ids: Set<string>): Promis
         d.rec = {
           records: has("kpi-records-unread") ? (await unreadRecordIds(tx, user.id)).length : 0,
           reports: has("kpi-records-unread") ? (await unreadReportIds(tx, user.id)).length : 0,
-          interviews: has("kpi-interviews-pending") ? (await pendingInterviewQuarters(tx, today)).length : 0,
+          interviews: has("kpi-interviews-pending") ? (await openInterviewQuarters(tx, today)).length : 0,
           followups: has("kpi-followups-open") ? (await followupIds(tx, scope === "mine" ? { userId: user.id } : {})).length : 0,
           followupsScope: scope,
         };

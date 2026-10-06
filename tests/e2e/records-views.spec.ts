@@ -29,11 +29,14 @@ test.describe("wawancara berkala", () => {
     await expect(page.getByTestId("interview-legend")).toContainText("Belum");
     await expect(page.getByTestId("interview-legend")).toContainText("Tidak berlaku");
     await expect(page.getByTestId("interview-rule")).toContainText("minimal sekali per kuartal");
-    for (const state of ["done", "pending"]) {
+    for (const state of ["done", "open", "missed"]) {
       const q = page.locator(`[data-testid=quarter-state][data-state=${state}]`).first();
       await expect(q).toBeVisible();
-      await expect(q).toContainText({ done: "Selesai", pending: "Belum" }[state]!); // setiap keadaan punya teks, bukan hanya ikon/warna
+      await expect(q).toContainText({ done: "Selesai", open: "Belum, tenggat", missed: "Terlewat" }[state]!); // setiap keadaan punya teks, bukan hanya ikon/warna
     }
+    // kuartal berjalan (open) BUKAN merah; hanya yang sudah lewat (missed) merah
+    await expect(page.locator("[data-testid=quarter-state][data-state=open]").first()).not.toHaveClass(/text-rose/);
+    await expect(page.locator("[data-testid=quarter-state][data-state=missed]").first()).toHaveClass(/text-rose/);
     for (const state of ["done", "na"]) {
       const cell = page.locator(`[data-testid=interview-cell][data-state=${state}]`).first();
       await expect(cell).toBeVisible();
@@ -46,15 +49,15 @@ test.describe("wawancara berkala", () => {
     await expect(page.getByTestId("interview-grid").locator("thead")).toContainText("Catatan Q1");
     await expect(page.getByTestId("quarter-cell").first()).toBeVisible();
     // filter: hanya status tertentu
-    await page.goto("/records/interviews?status=pending");
+    await page.goto("/records/interviews?status=open");
     const cells = page.locator("[data-testid=interview-row]");
     expect(await cells.count()).toBeGreaterThan(0);
     await expect(page.getByTestId("filter-chips")).toBeVisible();
-    // filter status memakai status KUARTAL: setiap baris yang tampil punya >= 1 kuartal Belum
-    for (const r of await cells.all()) expect(await r.locator("[data-testid=quarter-state][data-state=pending]").count()).toBeGreaterThan(0);
+    // filter status memakai status KUARTAL: setiap baris yang tampil punya >= 1 kuartal berjalan belum diisi (open)
+    for (const r of await cells.all()) expect(await r.locator("[data-testid=quarter-state][data-state=open]").count()).toBeGreaterThan(0);
   });
 
-  test("KPI 'Wawancara berkala belum dilakukan' = jumlah KUARTAL Belum di grid tersaring; klik KPI membuka grid itu", async ({ page }) => {
+  test("KPI 'Wawancara berkala kuartal ini belum dilakukan' = jumlah kuartal BERJALAN (open) di grid tersaring; klik KPI membuka grid itu", async ({ page }) => {
     await login(page, "tsk.admin@hashi.test");
     await page.goto("/");
     const kpi = await num(page, "kpi-interviews-pending-value");
@@ -62,15 +65,15 @@ test.describe("wawancara berkala", () => {
     await page.getByTestId("kpi-interviews-pending").click();
     await expect(page).toHaveURL(/\/records\/interviews\?view=pending/);
     await expect(page.getByTestId("pending-cells-count")).toContainText(String(kpi));
-    expect(await page.locator("[data-testid=quarter-state][data-state=pending]").count()).toBe(kpi);
+    expect(await page.locator("[data-testid=quarter-state][data-state=open]").count()).toBe(kpi); // KPI = kuartal berjalan; kuartal terlewat tidak ikut
   });
 
-  test("isi wawancara di kuartal Belum: status + alasan, kuartal menjadi Selesai, KPI turun 1; edit -> riwayat; 問題あり menawarkan kasus dan tugas", async ({ page }) => {
+  test("isi wawancara di kuartal berjalan (open): status + alasan, kuartal menjadi Selesai, KPI turun 1; edit -> riwayat; 問題あり menawarkan kasus dan tugas", async ({ page }) => {
     await login(page, "tsk.staff@hashi.test");
     await page.goto("/");
     const before = await num(page, "kpi-interviews-pending-value");
     await page.goto("/records/interviews?view=pending");
-    const q = page.locator("[data-testid=quarter-state][data-state=pending]").first();
+    const q = page.locator("[data-testid=quarter-state][data-state=open]").first();
     await expect(q).toBeVisible();
     const row = q.locator("xpath=ancestor::tr");
     cid = (await row.getAttribute("data-worker"))!;

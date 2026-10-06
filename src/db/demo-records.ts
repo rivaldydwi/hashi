@@ -253,7 +253,10 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
   let pi = 0;
   for (const [wi, w] of [w0, w1, w2].entries()) {
     const start = `${String(w.startDate).slice(0, 7)}-01`;
-    const rowsMonths = months.filter((m) => m >= start && m < curMonth);
+    let rowsMonths = months.filter((m) => m >= start && m < curMonth);
+    // Pekerja ke-3 sengaja belum diwawancara di KUARTAL BERJALAN (kuartal "open": masih bisa dikejar sebelum tenggat), asal ia punya wawancara di kuartal sebelumnya
+    const beforeThisQuarter = rowsMonths.filter((m) => quarterOfMonth(m) !== quarterOfMonth(curMonth));
+    if (wi === 2 && beforeThisQuarter.length > 0) rowsMonths = beforeThisQuarter;
     if (rowsMonths.length === 0) notes.push(`Pekerja ${wi + 1} baru mulai bekerja bulan ini: belum ada wawancara berkala.`);
     for (const [mi, m] of rowsMonths.entries()) {
       const st = statuses[pi % statuses.length];

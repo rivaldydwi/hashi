@@ -12,7 +12,7 @@ import { tenantQuery } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ICON: Record<MonthMark | QuarterState, string> = { done: "✅", pending: "🔴", na: "➖", notDue: "", none: "", notRequired: "" };
+const ICON: Record<MonthMark | QuarterState, string> = { done: "✅", open: "⏳", missed: "🔴", na: "➖", notDue: "", none: "", notRequired: "" };
 
 /**
  * Tab Wawancara berkala (定期面談 / Teiki Mendan): grid pekerja x 12 bulan tahun fiskal (April-Maret) seperti lembar Excel TSK. Status UTAMA per KUARTAL (aturan staf TSK: minimal sekali per kuartal,
@@ -30,7 +30,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
   const fy = Number.isInteger(fyParam) && fyParam >= 2020 && fyParam <= 2100 ? fyParam : fiscalYearOf(today);
   const months = fiscalMonths(fy);
   const month = months.includes(one(sp.month)) ? one(sp.month) : "";
-  const status = (["done", "pending", "na"] as const).find((s) => s === one(sp.status)) ?? "";
+  const status = (["done", "open", "missed", "na"] as const).find((s) => s === one(sp.status)) ?? "";
   const staffF = UUID.test(one(sp.staff)) ? one(sp.staff) : "";
   const clientF = UUID.test(one(sp.client)) ? one(sp.client) : "";
   const fieldF = one(sp.field).slice(0, 100);
@@ -42,6 +42,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
   const byKey = new Map(rows.map((r) => [`${r.candidateId}|${r.periodMonth}`, r]));
   const markOf = (w: (typeof workers)[number], m: string) => monthMark(m, byKey.get(`${w.id}|${m}`), today, w.spans);
   const quarterStateOf = (cid: string, q: number): QuarterState => quartersOf.get(cid)?.find((c) => c.q === q)?.state ?? "notRequired";
+  const qcell = (cid: string, q: number) => quartersOf.get(cid)?.find((c) => c.q === q);
   const quarterCountOf = (cid: string, q: number) => quartersOf.get(cid)?.find((c) => c.q === q)?.count ?? 0;
 
   const shown = workers.filter((w) => {
@@ -49,14 +50,14 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
     if (fieldF && (locale === "ja" ? w.fieldNameJa : w.fieldNameId) !== fieldF) return false;
     if (staffF && !rows.some((r) => r.candidateId === w.id && r.staffId === staffF)) return false;
     const states = [1, 2, 3, 4].map((q) => quarterStateOf(w.id, q));
-    if (viewPending && !states.includes("pending")) return false;
+    if (viewPending && !states.includes("open")) return false; // sama dengan KPI: kuartal berjalan belum ada wawancara
     if (status) {
       if (month) return quarterStateOf(w.id, quarterOfMonth(month)) === status; // filter bulan: status kuartal bulan itu
       return states.includes(status);
     }
     return true;
   });
-  const pendingCells = shown.reduce((n, w) => n + [1, 2, 3, 4].filter((q) => quarterStateOf(w.id, q) === "pending").length, 0);
+  const pendingCells = shown.reduce((n, w) => n + [1, 2, 3, 4].filter((q) => quarterStateOf(w.id, q) === "open").length, 0);
   const fields = [...new Set(workers.map((w) => (locale === "ja" ? w.fieldNameJa : w.fieldNameId)).filter(Boolean))] as string[];
   const companies = [...new Map(workers.map((w) => [w.companyId, w.companyName])).entries()];
   const noteOf = (cid: string, q: number) => notes.find((n) => n.candidateId === cid && n.quarter === q)?.note ?? "";
@@ -88,7 +89,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
           <div className="space-y-1.5"><label htmlFor="month" className={labelClass}>{t("interviews.month")}</label>
             <select id="month" name="month" defaultValue={month} className={inputClass}><option value="">{t("filters.all")}</option>{months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}</select></div>
           <div className="space-y-1.5"><label htmlFor="status" className={labelClass}>{t("interviews.cellStatus")}</label>
-            <select id="status" name="status" defaultValue={status} className={inputClass}><option value="">{t("filters.all")}</option>{(["done", "pending", "na"] as const).map((s) => <option key={s} value={s}>{t(`interviews.state.${s}`)}</option>)}</select></div>
+            <select id="status" name="status" defaultValue={status} className={inputClass}><option value="">{t("filters.all")}</option>{(["done", "open", "missed", "na"] as const).map((s) => <option key={s} value={s}>{t(`interviews.legendState.${s}`)}</option>)}</select></div>
           <div className="space-y-1.5"><label htmlFor="staff" className={labelClass}>{t("filters.staffLabel")}</label>
             <select id="staff" name="staff" defaultValue={staffF} className={inputClass}><option value="">{t("filters.all")}</option>{staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
           <div className="space-y-1.5"><label htmlFor="client" className={labelClass}>{t("interviews.client")}</label>
@@ -104,13 +105,13 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
         <ul className="mb-3 flex flex-wrap gap-2" data-testid="filter-chips" aria-label={t("filters.active")}>
           {viewPending && <li data-testid="filter-chip" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-accent-soft pl-4 text-sm font-medium text-accent-text">{t("interviews.onlyPending")}<Link href={hrefFor({ view: "" })} aria-label={t("filters.remove", { name: t("interviews.onlyPending") })} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/10" data-testid="filter-chip-remove">×</Link></li>}
           {month && <li data-testid="filter-chip" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-accent-soft pl-4 text-sm font-medium text-accent-text">{t("interviews.month")}: {monthLabel(month)}<Link href={hrefFor({ month: "" })} aria-label={t("filters.remove", { name: monthLabel(month) })} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/10">×</Link></li>}
-          {status && <li data-testid="filter-chip" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-accent-soft pl-4 text-sm font-medium text-accent-text">{t(`interviews.state.${status}`)}<Link href={hrefFor({ status: "" })} aria-label={t("filters.remove", { name: status })} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/10">×</Link></li>}
+          {status && <li data-testid="filter-chip" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-accent-soft pl-4 text-sm font-medium text-accent-text">{t(`interviews.legendState.${status}`)}<Link href={hrefFor({ status: "" })} aria-label={t("filters.remove", { name: status })} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-accent/10">×</Link></li>}
         </ul>
       )}
 
       <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm" data-testid="interview-legend">
         <span className="font-semibold">{t("interviews.legend")}:</span>
-        {(["done", "pending", "na"] as const).map((s) => <span key={s}><span aria-hidden>{ICON[s]}</span> {t(`interviews.state.${s}`)}</span>)}
+        {(["done", "open", "missed", "na"] as const).map((s) => <span key={s}><span aria-hidden>{ICON[s]}</span> {t(`interviews.legendState.${s}`)}</span>)}
         <span className="text-ink-2" data-testid="pending-cells-count">{t("interviews.pendingCells", { n: pendingCells })}</span>
         <Link href={`/records/interviews/annual?fy=${fy}`} className="font-semibold text-accent-text hover:underline" data-testid="annual-link">{t("interviews.annualLink")}</Link>
       </div>
@@ -160,8 +161,8 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                     const qs = quarterStateOf(w.id, q);
                     return [cell, (
                       <td key={`q${i}`} className={tdc} data-testid="quarter-cell" data-quarter={q}>
-                        <p className="mb-1 text-sm font-semibold" data-testid="quarter-state" data-state={qs}>
-                          {qs === "notRequired" || qs === "notDue" ? <span className="font-normal text-ink-2">—</span> : <><span aria-hidden>{ICON[qs]}</span> {t(`interviews.qstate.${qs}`)}{qs === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: quarterCountOf(w.id, q) })})</span>}</>}
+                        <p className={`mb-1 text-sm font-semibold ${qs === "missed" ? "text-rose-800" : qcell(w.id, q)?.urgent ? "rounded bg-amber-50 px-1 text-amber-900" : ""}`} data-testid="quarter-state" data-state={qs} data-urgent={qcell(w.id, q)?.urgent ? "true" : undefined}>
+                          {qs === "notRequired" || qs === "notDue" ? <span className="font-normal text-ink-2">—</span> : <><span aria-hidden>{ICON[qs]}</span> {qs === "open" ? t("interviews.qstate.open", { date: (qcell(w.id, q)?.deadline ?? "").replace(/-/g, "/") }) : t(`interviews.qstate.${qs}`)}{qs === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: quarterCountOf(w.id, q) })})</span>}</>}
                         </p>
                         <p lang="ja" className="whitespace-pre-wrap break-words text-xs">{noteOf(w.id, q) || "—"}</p>
                         <details>

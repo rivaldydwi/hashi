@@ -25,8 +25,9 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
   const today = ymdIn(new Date(), tz);
   const fy = Number.isInteger(raw) && raw >= 2020 && raw <= 2100 ? raw : fiscalYearOf(today);
   const data = await tenantQuery((tx) => quartersOfFiscalYear(tx, fy, today));
-  const gaps = data.reduce((n, x) => n + x.quarters.filter((c) => c.state === "pending").length, 0);
-  const complete = data.filter((x) => x.quarters.every((c) => c.state !== "pending")).length;
+  const gaps = data.reduce((n, x) => n + x.quarters.filter((c) => c.state === "missed").length, 0); // bolong = kuartal yang sudah lewat tanpa wawancara
+  const openQ = data.reduce((n, x) => n + x.quarters.filter((c) => c.state === "open").length, 0); // kuartal berjalan yang masih bisa dikejar
+  const complete = data.filter((x) => x.quarters.every((c) => c.state !== "missed")).length;
   const th = "border border-line bg-page px-2 py-2 text-left text-xs font-semibold text-ink-2";
   const td = "border border-line px-2 py-2 align-top text-sm";
   const link = (y: number) => `/records/interviews/annual?fy=${y}`;
@@ -39,7 +40,7 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
         <Link href={`/records/interviews?fy=${fy}`} className={`${btnSecondary} ml-auto`} data-testid="annual-back">{t("annual.backToGrid")}</Link>
       </div>
       <p className="mb-3 text-sm text-ink-2">{t("annual.intro")}</p>
-      <p className="mb-3 text-sm" data-testid="annual-summary">{t("annual.summary", { workers: data.length, complete, gaps })}</p>
+      <p className="mb-3 text-sm" data-testid="annual-summary">{t("annual.summary", { workers: data.length, complete, gaps, open: openQ })}</p>
       {data.length === 0 ? (
         <EmptyState testId="annual-empty" title={t("annual.emptyTitle")} body={t("annual.emptyBody")} />
       ) : (
@@ -53,7 +54,7 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
             </tr></thead>
             <tbody>
               {data.map(({ worker: w, quarters }) => {
-                const missing = quarters.filter((c) => c.state === "pending").map((c) => c.q);
+                const missing = quarters.filter((c) => c.state === "missed").map((c) => c.q);
                 return (
                   <tr key={w.id} data-testid="annual-row" data-worker={w.id} data-status={w.status} data-gaps={missing.join(",")}>
                     <th scope="row" className={`${td} sticky left-0 bg-card font-medium`}>
@@ -68,7 +69,7 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
                     {quarters.map((c) => (
                       <td key={c.q} className={td} data-testid="annual-quarter" data-quarter={c.q} data-state={c.state} data-count={c.count}>
                         {c.state === "notRequired" || c.state === "notDue" ? <span className="text-ink-2">—</span> : (
-                          <span className="font-medium">{c.state === "done" ? "✅" : c.state === "pending" ? "🔴" : "➖"} {t(`interviews.qstate.${c.state}`)}
+                          <span className={`font-medium ${c.state === "missed" ? "text-rose-800" : ""}`}>{c.state === "done" ? "✅" : c.state === "missed" ? "🔴" : c.state === "open" ? "⏳" : "➖"} {c.state === "open" ? t("interviews.qstate.open", { date: c.deadline.replace(/-/g, "/") }) : t(`interviews.qstate.${c.state}`)}
                             {c.state === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: c.count })})</span>}</span>
                         )}
                       </td>

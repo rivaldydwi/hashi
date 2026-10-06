@@ -6,7 +6,7 @@ import {
   activityCases, activityDailyReportRecipients, activityDailyReports, activityFollowups, activityRecordReads, activityRecords, candidates,
   clientCompanies, clientSiteContacts, clientSites, periodicInterviews, placements, skillFields,
 } from "./schema";
-import { FISCAL_QUARTERS, fiscalQuarterRange, fiscalYearOf, quarterState, workedInFiscalYear, type QuarterState, type WorkSpan } from "./records-core";
+import { FISCAL_QUARTERS, fiscalQuarterRange, fiscalYearOf, quarterState, quarterUrgent, workedInFiscalYear, type QuarterState, type WorkSpan } from "./records-core";
 
 export type WorkerStatus = "ACTIVE" | "ENDED";
 export type ActiveWorker = {
@@ -97,7 +97,7 @@ export async function interviewsOfFiscalYear(tx: Tx, fy: number): Promise<Interv
   return rows.map((r) => ({ ...r, date: r.interviewDate ?? r.month }));
 }
 
-export type QuarterCell = { q: 1 | 2 | 3 | 4; state: QuarterState; /** wawancara selesai di kuartal ini */ count: number };
+export type QuarterCell = { q: 1 | 2 | 3 | 4; state: QuarterState; /** wawancara selesai di kuartal ini */ count: number; /** tenggat (akhir kuartal) YYYY-MM-DD */ deadline: string; /** open dan tinggal <= 14 hari */ urgent: boolean };
 export type WorkerQuarters = { worker: ActiveWorker; quarters: QuarterCell[] };
 
 /** Keadaan 4 kuartal untuk pekerja-pekerja pada tahun fiskal `fy` (hanya pekerja yang bekerja minimal satu hari di FY itu: ACTIVE dan ENDED). SATU sumber untuk grid, KPI, dan daftar laporan tahunan. */
@@ -114,20 +114,22 @@ export async function quartersOfFiscalYear(tx: Tx, fy: number, today: string): P
         quarters: FISCAL_QUARTERS.map((q) => {
           const range = fiscalQuarterRange(fy, q);
           const count = mine.filter((i) => i.applicable && i.resultStatus && i.resultStatus !== "not_done" && i.date >= range.start && i.date <= range.end).length;
-          return { q, state: quarterState(fy, q, mine, today, worker.spans), count };
+          const state = quarterState(fy, q, mine, today, worker.spans);
+          return { q, state, count, deadline: range.end, urgent: state === "open" && quarterUrgent(fy, q, today) };
         }),
       };
     });
 }
 
 /**
- * Kuartal "Belum" (🔴) pada tahun fiskal berjalan: pekerja yang bekerja di FY itu (termasuk yang sudah berhenti) x kuartal wajib yang sudah berjalan/lewat tanpa wawancara selesai.
+ * KPI "定期面談 kuartal ini belum dilakukan": kuartal `open` (kuartal BERJALAN tanpa wawancara selesai) pada tahun fiskal berjalan, per pekerja yang bekerja di kuartal itu (ACTIVE dan ENDED).
+ * Ini pekerja yang masih bisa diwawancara sebelum tenggat. Kuartal `missed` (sudah lewat) TIDAK masuk: sudah tidak bisa diperbaiki, hanya bahan laporan tahunan.
  * SATU fungsi dipakai KPI dashboard dan filter `?view=pending` pada grid (jumlah selalu sama).
  */
-export async function pendingInterviewQuarters(tx: Tx, today: string): Promise<Array<{ candidateId: string; fy: number; quarter: 1 | 2 | 3 | 4 }>> {
+export async function openInterviewQuarters(tx: Tx, today: string): Promise<Array<{ candidateId: string; fy: number; quarter: 1 | 2 | 3 | 4 }>> {
   const fy = fiscalYearOf(today);
   const out: Array<{ candidateId: string; fy: number; quarter: 1 | 2 | 3 | 4 }> = [];
-  for (const { worker, quarters } of await quartersOfFiscalYear(tx, fy, today)) for (const c of quarters) if (c.state === "pending") out.push({ candidateId: worker.id, fy, quarter: c.q });
+  for (const { worker, quarters } of await quartersOfFiscalYear(tx, fy, today)) for (const c of quarters) if (c.state === "open") out.push({ candidateId: worker.id, fy, quarter: c.q });
   return out;
 }
 
