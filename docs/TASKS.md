@@ -6,7 +6,7 @@ bagian "Peran dan aturan kerja".
 **Status:** `SIAP` (boleh diambil) · `DITAHAN` (menunggu keputusan Ipal/pihak luar, jangan diambil) · `SELESAI` (PR sudah di-merge).
 Ambil tugas `SIAP` **paling atas**. Satu tugas = satu branch `eng/<ID>-<slug>` = satu PR berjudul `[<ID>] …`.
 
-Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007, T-008, T-009).
+Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ---
 
@@ -88,7 +88,33 @@ Kerjakan:
 
 ---
 
-### T-009 · Form 定期面談報告書 (参考様式第5-5号) + halaman tahunan per pekerja · `SIAP` (setelah T-008)
+### T-010 · Penanggung jawab pekerja (担当/責任者) + batas 50 pekerja per staf · `SIAP` (setelah T-008)
+
+**Dari staf TSK (2026-10-06):** di divisi 支援部, tiap staf menjadi penanggung jawab (責任者) untuk **satu daerah atau satu/beberapa perusahaan klien**.
+Mulai **April 2027** (aturan pemerintah Jepang, menurut TSK) **satu staf TSK maksimal mendukung 50 pekerja**. Penanggung jawab juga dibutuhkan untuk pengingat 在留カード (T-004)
+dan sebagai bawaan kolom 対応者 di form 5-5 (T-009).
+
+Kerjakan:
+- **Data:** penanggung jawab ditetapkan **per perusahaan klien** (bawaan untuk semua pekerjanya), bisa **diganti per pekerja** (penempatan). Penanggung jawab efektif pekerja =
+  pilihan per pekerja bila ada, kalau tidak dari perusahaannya. Riwayat perubahan tercatat (audit + tanggal mulai berlaku), tanpa menghapus. Hanya staf TSK organisasi sama (trigger).
+  "Daerah" belum dimodelkan terpisah: cukup kelompokkan lewat perusahaan; catat di STATUS bila ternyata perlu.
+- **Beban kerja:** halaman/daftar staf dengan jumlah pekerja yang didukung (penempatan ACTIVE dengan penanggung jawab efektif = staf itu). Peringatan **≥ 45** (kuning) dan
+  **> 50** (merah) + KPI dashboard TSK_ADMIN "staf melebihi batas". Jangan memblokir penyimpanan (keputusan hukum; cukup peringatan jelas yang menyebut aturan April 2027).
+  Batas 50 dan tanggal berlaku ditaruh di SATU konstanta konfigurasi.
+- **Penggunaan:** tampil di detail pekerja sisi TSK, grid 定期面談, halaman riwayat pekerja (T-007); filter "pekerja saya".
+- Pekerja tanpa penanggung jawab efektif = daftar "belum ada penanggung jawab" (KPI juga).
+
+**Kriteria selesai**
+- [ ] Migration + RLS (hanya TSK organisasi sama; LPK/sensei tidak melihat) + bagian di `verify-rls`.
+- [ ] Tes unit fungsi murni "penanggung jawab efektif" dan hitungan beban (pekerja ENDED tidak dihitung; ganti per pekerja menimpa perusahaan).
+- [ ] KPI = jumlah di daftar (fungsi yang sama); seed demo memuat satu staf ≥ 45 dan pekerja tanpa penanggung jawab; `verify:seed` memeriksa.
+- [ ] Audit perubahan penanggung jawab (id saja, tanpa nama); label id/ja; e2e alur tetapkan per perusahaan → ganti per pekerja → angka beban berubah.
+- [ ] typecheck, test:unit, test:rls, build, e2e, CI hijau.
+- [ ] `BUTUH IPAL` di STATUS bila aturan 50 perlu definisi lebih rinci (mis. dihitung per 支援責任者 atau per 支援担当者); boleh jalan dengan definisi di atas dulu.
+
+---
+
+### T-009 · Form 定期面談報告書 (参考様式第5-5号) + halaman tahunan per pekerja · `SIAP` (setelah T-010)
 
 **Dari staf TSK:** tiap 定期面談 dilaporkan dengan form resmi imigrasi **参考様式第5-5号「定期面談報告書（1号特定技能外国人用）」**. Form ini diisi/dicetak saat
 akan melapor; terpisah dari catatan harian pekerja. Ada juga "form khusus per pekerja" berisi semua 面談 dia selama 1 tahun fiskal.
@@ -127,8 +153,8 @@ Kerjakan:
 - [ ] typecheck, test:unit, test:rls, build, e2e, CI hijau.
 - [ ] Pertanyaan terbuka dicatat di STATUS sebagai `BUTUH IPAL` (lihat di bawah).
 
-**Pertanyaan terbuka (PM sudah teruskan ke Ipal; boleh mulai tanpa menunggu):** apakah 定期面談 dengan **atasan/監督者** (参考様式第5-6号) juga dicatat;
-siapa yang biasanya menjadi 支援責任者 vs 支援担当者 di TSK (perlu kolom peran di data staf?).
+**Jawaban staf TSK (2026-10-06):** wawancara dengan atasan/監督者 **tidak** memakai form 5-6; cukup dicatat sebagai ② 議事録 (tidak ada pekerjaan tambahan).
+支援責任者/支援担当者: kolom 対応者 diisi bawaan dari penanggung jawab pekerja (T-010), bisa diganti per wawancara (staf + pilihan jabatan + 役職名).
 
 ---
 
