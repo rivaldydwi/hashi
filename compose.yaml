@@ -29,6 +29,8 @@ services:
     build:
       context: .
       target: tools
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
     environment:
       MIGRATE_DATABASE_URL: postgresql://hashi_owner:${DB_OWNER_PASSWORD}@db:5432/${DB_NAME:-hashi}
       DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/${DB_NAME:-hashi}
@@ -47,6 +49,8 @@ services:
     build:
       context: .
       target: runner
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/${DB_NAME:-hashi}

@@ -4,7 +4,7 @@
     "tagline": "LPKと登録支援機関をつなぐ候補者データの架け橋",
     "language": "言語",
     "logout": "ログアウト",
-    "version": "Hashi v0.2",
+    "version": "Hashi · {commit}",
     "save": "保存",
     "saving": "保存中...",
     "cancel": "キャンセル",

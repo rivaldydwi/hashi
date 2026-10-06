@@ -9,7 +9,8 @@ ENV_FILE="$ROOT/.env.demo"
 PROJECT="hashi-demo"
 
 dc() {
-  docker compose -p "$PROJECT" --env-file "$ENV_FILE" -f "$ROOT/compose.yaml" "$@"
+  # GIT_SHA ikut ke build image (label revision + /api/health); bila git tidak tersedia -> unknown
+  GIT_SHA="${GIT_SHA:-$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)}" docker compose -p "$PROJECT" --env-file "$ENV_FILE" -f "$ROOT/compose.yaml" "$@"
 }
 
 # Baca satu nilai dari .env.demo

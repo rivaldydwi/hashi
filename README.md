@@ -83,7 +83,7 @@ sed -i "s/^DB_APP_PASSWORD=.*/DB_APP_PASSWORD=$(openssl rand -hex 24)/" .env
 sed -i "s/^AUTH_SECRET=.*/AUTH_SECRET=$(openssl rand -hex 32)/" .env
 
 # 2. Build dan jalankan (migration otomatis jalan lebih dulu)
-docker compose up -d --build
+GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build
 
 # 3. Isi data demo (sekali saja)
 docker compose run --rm migrate npm run db:seed
@@ -125,7 +125,7 @@ npm run db:migrate && npm run db:seed -- --reset && npm run verify:seed
 scripts/demo-up.sh            # atau: docker compose -p hashi-demo --env-file .env.demo up -d --build && scripts/demo-reset.sh
 
 # Produksi demo `hashi` (nama database bukan _dev/_test/_demo, jadi pengaman perlu ALLOW_DESTRUCTIVE_DB=1)
-docker compose up -d --build                                                    # bangun image migrate terbaru + migration
+GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build                                                    # bangun image migrate terbaru + migration
 docker compose run --rm -e ALLOW_DESTRUCTIVE_DB=1 migrate npm run db:seed -- --reset
 docker compose run --rm migrate npm run verify:seed
 ```
@@ -188,7 +188,7 @@ meneruskannya, isi `AUTH_URL=https://alamat-demo` di `.env.demo` lalu `scripts/d
 ```bash
 cd ~/hashi
 git pull                      # atau: git am file.patch
-docker compose up -d --build  # migration baru otomatis dijalankan container `migrate`
+GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build  # migration baru otomatis dijalankan container `migrate`
 docker compose ps             # app dan db harus (healthy)
 curl -fsS http://127.0.0.1:3110/api/health
 ```
@@ -202,7 +202,7 @@ Verifikasi di produksi cukup lewat **CI hijau** (`gh run list`) dan cek `/api/he
 docker compose ps                         # status
 docker compose logs -f app                # log aplikasi
 docker stats --no-stream                  # pemakaian RAM
-git pull && docker compose up -d --build  # update ke versi terbaru
+git pull && GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build  # update ke versi terbaru
 docker compose down                       # hentikan (data tetap aman di volume)
 
 # Isi ulang data demo dari nol
