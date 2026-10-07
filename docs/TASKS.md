@@ -122,7 +122,7 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
 - 在留カード: koreksi tanggal kartu yang sudah `received` oleh Admin (usulan engineer T-017), hanya bila TSK memintanya setelah dipakai.
 - Email pengingat 在留カード **ke pekerja** (butuh kolom email pekerja + persetujuan; setelah T-022).
-- **T-021 · 在留カード: isi awal/massal mengikuti form imigrasi** (perorangan + grup, jawaban no. 8). DITAHAN sampai Ipal mengirim form PDF imigrasinya.
+- **T-021 · 在留カード: isi awal/massal mengikuti form imigrasi** (perorangan + grup, jawaban no. 8). Form diterima PM 7 Okt: halaman 1 申請人等作成用1 (umum) + halaman versi N + 記入例 留学 + 手数料納付書. Halaman 1 hampir semua bisa diisi dari data yang ada (nama, lahir, kelamin, status nikah, paspor, kartu, masa tinggal); belum ada: 住居地 + telepon di Jepang. DITAHAN sampai jelas: versi 特定技能 (halaman "V") yang dipakai TSK, arti "grup", dan apakah TSK mengajukan lewat kertas atau 在留申請オンラインシステム (menentukan bentuk keluaran: PDF terisi vs ringkasan untuk disalin).
 - Tampilan LPK: status visa + tanggal tiba (jawaban no. 9: hanya yang dibuat TSK). Setelah T-019.
 - Langkah 7 sisanya: checklist keberangkatan/kedatangan, bagian 管理・報告 di lembar 定期面談, profil pekerja lengkap, status visa + tanggal tiba untuk LPK (baca-saja), notifikasi email/LINE.
 - Catatan lanjutan: syarat "pekerja sama" hanya diperiksa saat dibuat; bila nanti perlu ketat, trigger di `activity_record_subjects` (temuan T-007, belum perlu).
