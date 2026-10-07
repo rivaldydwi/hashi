@@ -1,3 +1,4 @@
+import { Data } from "@/components/Data";
 import { getLocale, getTranslations } from "next-intl/server";
 import { describeAudit, type AuditLabels, type AuditView } from "@/db/audit-describe";
 import { dateTimeIn } from "@/lib/org-time";
@@ -29,7 +30,7 @@ export async function AuditList({ rows, timezone, emptyText, testId = "audit-lis
             <time dateTime={new Date(e.createdAt).toISOString()} className="shrink-0 text-xs tabular-nums text-ink-2 sm:w-40">{dateTimeIn(e.createdAt, locale, timezone)}</time>
             <div className="min-w-0 flex-1">
               <p className="text-sm text-ink" data-testid="audit-text">{d.text}</p>
-              <p className="text-xs text-ink-2">{t("by")} {d.actor}</p>
+              <p className="text-xs text-ink-2">{t("by")} <Data>{d.actor}</Data></p>
             </div>
           </li>
         );

@@ -34,6 +34,39 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-016 · Terjemahan peramban: label boleh, data jangan + hasil deploy T-012
+
+**PR:** (branch `eng/T-016-translate-data`; nomor PR di komentar pembuka)
+**Status:** siap direview, dengan SATU kriteria belum terpenuhi: uji manual Chrome "Terjemahkan" (lihat Pertanyaan)
+
+**Hasil deploy T-012 lewat `scripts/deploy.sh`** (PR #13 di-merge `9db2c21`, setelah `PM: DISETUJUI` bersyarat dan job e2e CI hijau di head `b2dc87a`; tanpa migrasi, jadi tanpa `--backup`)
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: 9db2c21 (label image: 9db2c21); health: {"status":"ok","commit":"9db2c21"}`. Demo tidak disentuh.
+
+**Yang dikerjakan**
+- Tidak ada `translate="no"` di `<html>`/`<body>`, tidak ada meta `notranslate` (dites). Komponen bersama `<Data>` (`src/components/Data.tsx`: `translate="no"` + kelas `notranslate`, `lang` opsional) dan `dataTag` untuk `t.rich`; pada elemen yang sudah ada dipasang atribut `translate="no"` langsung. `PageHeader` punya `titleIsData`/`introIsData` (intro = katakana, otomatis `lang="ja"`).
+- Pesan yang menyisipkan nama kini memakai tag: "Oleh <n>{name}</n>" (`records.list.by`, `history.by`, `tasks.assignee`, `annual.workerTitle`), jadi HANYA nama yang dilindungi, kata "Oleh"/"Penanggung jawab" tetap bisa diterjemahkan (id dan ja).
+- Data yang ditandai: daftar kandidat (nama, katakana `lang="ja"`, nama LPK); detail kandidat (judul, katakana, nilai isian bertipe teks/angka/tanggal, ringkasan baris); grid 定期面談, daftar tahunan, halaman tahunan per pekerja, sel wawancara (nama pekerja, perusahaan/lokasi, penanggung jawab, alamat, telepon, PIC, catatan kuartal, subjek kejadian); catatan kegiatan (daftar, detail, riwayat per pekerja, tindak lanjut, kode kasus, nama penulis/pekerja/pembaca, isi `Multiline`); klien (daftar, detail, lokasi, PIC), job order (daftar, detail, kecocokan kandidat); pengguna (nama, email); riwayat aktivitas (nama pelaku); shell (nama organisasi, nama dan email pengguna); widget dashboard (nama kandidat, judul job order, kode/judul kasus, nama organisasi).
+- TIDAK ditandai (tetap bisa diterjemahkan): judul halaman umum, judul kolom, tombol, status, legenda, teks bantuan, menu, kalimat riwayat aktivitas buatan aplikasi, label bidang kerja.
+- Aturan singkat di `CLAUDE.md` (data = `translate="no"`, label = boleh).
+
+**Verifikasi** (db-dev `hashi_dev`; produksi tidak disentuh)
+- `npm run typecheck` → lulus; `npm run build` → 0 peringatan; `npm run test:i18n` → lulus; `npm run test:unit` → 74 lulus
+- `db:seed -- --reset` + `npm run test:rls` → lulus; `npm run verify:seed` → lulus (tanpa perubahan skema/data)
+- `E2E_PORT=3120 npm run test:e2e` → 197 lulus (5 baru `translate-data.spec.ts`: `<html>`/`<body>` tanpa translate dan tanpa meta notranslate; sel nama/katakana/perusahaan/alamat/telepon/PIC di daftar kandidat dan grid 定期面談 = translate=no sedangkan judul kolom, judul halaman, menu, legenda bukan; detail kandidat (judul, katakana `lang=ja`, nilai isian ya, nama kolom `dt` bukan); shell (email); catatan kegiatan (baris penulis TIDAK seluruhnya ditandai, hanya namanya), klien, job order, pengguna)
+
+**Kondisi server:** produksi `9db2c21` (T-012). T-016 tidak meminta deploy (menunggu `PM: DISETUJUI`; tanpa migrasi).
+
+**Kendala / catatan**
+- **Uji manual Chrome "Terjemahkan" BELUM dilakukan** dan tangkapan layarnya belum ada: fitur Terjemahkan Chrome memakai layanan Google dan tidak tersedia di Chromium Playwright/server ini, jadi tidak bisa saya jalankan atau dipalsukan. Yang saya buktikan adalah atribut di DOM (tes e2e); perilaku di Chrome asli perlu dilihat orang.
+- Opsi `<option>` pada `<select>` (daftar pekerja/staf di form) dan nilai input/textarea tidak ditandai: Chrome tidak menerjemahkan nilai input; teks opsi kadang diterjemahkan. Tidak dikerjakan agar tetap dalam lingkup tugas; bisa jadi usulan.
+- Lembar PDF, ekspor CSV, dan toast tidak terpengaruh (bukan DOM halaman yang diterjemahkan).
+
+**Pertanyaan**
+- BUTUH IPAL: tolong cek manual di Chrome (setelah T-016 di-deploy, atau jalankan instance lokal): buka daftar kandidat dan grid 定期面談, klik "Terjemahkan" (id→en atau ja→en). Yang diharapkan: judul kolom, menu, tombol, dan teks bantuan diterjemahkan; nama, katakana, perusahaan, alamat, telepon, email, kode, dan isi catatan tetap asli. Mohon tangkapan layarnya (atau kabari bila masih ada data yang berubah, sebutkan halamannya).
+
+**Usulan berikutnya** (bukan tugas)
+- Tandai teks `<option>` berisi nama (pemilih pekerja/staf) bila ternyata terjemahan memengaruhinya.
+
 ## 2026-10-07 · T-012 · Kartu KPI dashboard: lebih ringkas dan bervariasi + hasil deploy T-011
 
 **PR:** #13 (branch `eng/T-012-kpi-dashboard`)

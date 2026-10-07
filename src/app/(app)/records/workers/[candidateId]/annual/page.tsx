@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
+import { Data } from "@/components/Data";
 import { EmptyState } from "@/components/EmptyState";
 import { btnPrimary, btnSecondary, cardClass, gridTd, gridTh } from "@/components/styles";
 import { FORM55_ITEM_CODES, summarizeForm55 } from "@/db/form55";
@@ -46,7 +47,7 @@ export default async function WorkerAnnualPage({ params, searchParams }: { param
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
         <Link href={`${base}?fy=${fy - 1}`} className={btnSecondary} data-testid="wannual-prev">← {fiscalTitle(fy - 1)}</Link>
-        <h2 className="px-2 text-[19px] font-semibold" data-testid="wannual-title">{t("annual.workerTitle", { name: w.name })} · {fiscalTitle(fy)}</h2>
+        <h2 className="px-2 text-[19px] font-semibold" data-testid="wannual-title">{t.rich("annual.workerTitle", { name: w.name, n: (chunks) => <Data>{chunks}</Data> })} · {fiscalTitle(fy)}</h2>
         <Link href={`${base}?fy=${fy + 1}`} className={btnSecondary}>{fiscalTitle(fy + 1)} →</Link>
         <Link href={`/records/workers/${candidateId}`} className={`${btnSecondary} ml-auto`}>{t("whistory.historyLink")}</Link>
       </div>
@@ -103,8 +104,8 @@ export default async function WorkerAnnualPage({ params, searchParams }: { param
               <li key={e.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-line p-3 text-sm" data-testid="wannual-event">
                 <Badge tone="neutral">{t("annual.eventBadge")}</Badge>
                 <span>{dateLabelSync(e.recordDate, locale)}</span>
-                <Link href={`/records/${e.id}`} className="text-accent-text hover:underline">{e.subject ?? t("annual.eventNoSubject")}</Link>
-                <span className="text-xs text-ink-2">{e.authorName}</span>
+                <Link href={`/records/${e.id}`} className="text-accent-text hover:underline">{e.subject ? <Data>{e.subject}</Data> : t("annual.eventNoSubject")}</Link>
+                <Data className="text-xs text-ink-2">{e.authorName}</Data>
               </li>
             ))}
           </ul>

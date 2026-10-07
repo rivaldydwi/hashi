@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
+import { Data } from "@/components/Data";
 import { btnPrimary, btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
 import { MAX_ATTACHMENTS_PER_RECORD, SECTION_KEYS, cleanSections } from "@/db/records-core";
 import { addRecordToTimeline, createCaseFromRecord, markRecordRead, voidRecord } from "@/features/records/actions";
@@ -71,7 +72,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
 
       <section className={`${cardClass} p-4 sm:p-5`} data-testid="record-detail" data-status={r.status}>
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className={`text-[19px] font-semibold ${isVoid ? "line-through" : ""}`} data-testid="record-title">
+          <h2 translate={r.kind === "meeting" || (r.workType === "other" && r.workTypeOther) ? "no" : undefined} className={`text-[19px] font-semibold ${isVoid ? "line-through" : ""}`} data-testid="record-title">
             {r.kind === "meeting" ? r.subject : r.workType === "other" && r.workTypeOther ? r.workTypeOther : t(`workTypes.${r.workType ?? "other"}`)}
           </h2>
           <Badge>{r.kind === "meeting" ? t("kinds.meeting") : t("kinds.daily_work")}</Badge>
@@ -79,16 +80,16 @@ export default async function RecordDetailPage({ params, searchParams }: { param
           {!isVoid && r.versionNo > 1 && <Badge testId="badge-version">{t("badge.version", { n: r.versionNo })}</Badge>}
           {!isVoid && !iRead && r.authorId !== me.id && <Badge tone="accent">{myRead ? t("badge.updatedSinceRead") : t("badge.unread")}</Badge>}
         </div>
-        {isVoid && <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-900" data-testid="void-reason">{t("detail.voidedBecause")}: <span lang="ja">{r.voidReason}</span></p>}
+        {isVoid && <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-900" data-testid="void-reason">{t("detail.voidedBecause")}: <span lang="ja" translate="no">{r.voidReason}</span></p>}
 
         <dl className="mt-3 divide-y divide-line">
           {dl(t("f.date"), dateLabelSync(r.recordDate, locale))}
           {dl(t("f.author"), rec.authorName)}
           {dl(t("f.subjects"), rec.subjects.length ? (
-            <ul className="flex flex-wrap gap-2">{rec.subjects.map((s) => <li key={s.id} className="flex flex-wrap items-center gap-2"><Link href={`/candidates/${s.id}`} className="text-sm font-medium text-accent-text hover:underline">{s.name}</Link><Link href={`/records/workers/${s.id}`} className="inline-flex min-h-11 items-center text-xs font-medium text-accent-text hover:underline" data-testid="worker-history-link">{t("whistory.historyLink")}</Link></li>)}</ul>
+            <ul className="flex flex-wrap gap-2">{rec.subjects.map((s) => <li key={s.id} className="flex flex-wrap items-center gap-2"><Link href={`/candidates/${s.id}`} translate="no" className="text-sm font-medium text-accent-text hover:underline">{s.name}</Link><Link href={`/records/workers/${s.id}`} className="inline-flex min-h-11 items-center text-xs font-medium text-accent-text hover:underline" data-testid="worker-history-link">{t("whistory.historyLink")}</Link></li>)}</ul>
           ) : <span className="text-ink-2">—</span>)}
-          {dl(t("f.site"), rec.siteName ? `${rec.companyName} / ${rec.siteName}` : "—")}
-          {dl(t("f.case"), r.caseId ? <Link href={`/records/cases/${r.caseId}`} className="text-sm font-medium text-accent-text hover:underline">{rec.caseCode} {rec.caseTitle}</Link> : "—")}
+          {dl(t("f.site"), rec.siteName ? <Data>{`${rec.companyName} / ${rec.siteName}`}</Data> : "—")}
+          {dl(t("f.case"), r.caseId ? <Link href={`/records/cases/${r.caseId}`} translate="no" className="text-sm font-medium text-accent-text hover:underline">{rec.caseCode} {rec.caseTitle}</Link> : "—")}
           {r.kind === "daily_work" ? (
             <>
               {dl(t("f.actionTaken"), <Multiline text={r.actionTaken} />)}
@@ -184,9 +185,9 @@ export default async function RecordDetailPage({ params, searchParams }: { param
         {rec.reads.length === 0 && pendingRecipients.length === 0 ? <p className="mt-2 text-sm text-ink-2">{t("detail.noReaders")}</p> : (
           <ul className="mt-2 space-y-1 text-sm">
             {rec.reads.map((x) => (
-              <li key={x.userId} data-testid="reader">{x.name}: {dateTimeIn(x.readAt, locale, tz)}{x.versionNoRead < r.versionNo && <> <Badge tone="warn">{t("badge.updatedSinceRead")}</Badge></>}</li>
+              <li key={x.userId} data-testid="reader"><Data>{x.name}</Data>: {dateTimeIn(x.readAt, locale, tz)}{x.versionNoRead < r.versionNo && <> <Badge tone="warn">{t("badge.updatedSinceRead")}</Badge></>}</li>
             ))}
-            {pendingRecipients.map((x) => <li key={x.id} data-testid="reader-pending">{x.name}: <Badge tone="warn">{t("detail.notRead")}</Badge></li>)}
+            {pendingRecipients.map((x) => <li key={x.id} data-testid="reader-pending"><Data>{x.name}</Data>: <Badge tone="warn">{t("detail.notRead")}</Badge></li>)}
           </ul>
         )}
       </section>

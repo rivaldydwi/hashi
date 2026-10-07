@@ -144,14 +144,14 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
             <tbody>
               {shown.map((w) => (
                 <tr key={w.id} data-testid="interview-row" data-worker={w.id} data-status={w.status}>
-                  <th scope="row" className={`${tdc} cjk-phrase sticky left-0 z-10 min-w-48 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>{w.status === "ENDED" && w.endDate && <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800" data-testid="worker-ended">{t("interviews.endedOn", { date: w.endDate.replace(/-/g, "/") })}</span>} <Link href={`/records/workers/${w.id}`} className="ml-1 inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text" data-testid="interview-worker-history">{t("whistory.historyLink")}</Link></th>
+                  <th scope="row" translate="no" className={`${tdc} cjk-phrase sticky left-0 z-10 min-w-48 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>{w.status === "ENDED" && w.endDate && <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800" data-testid="worker-ended">{t("interviews.endedOn", { date: w.endDate.replace(/-/g, "/") })}</span>} <Link href={`/records/workers/${w.id}`} className="ml-1 inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text" data-testid="interview-worker-history">{t("whistory.historyLink")}</Link></th>
                   <td className={`${gridTdText} min-w-28`}>{(locale === "ja" ? w.fieldNameJa : w.fieldNameId) ?? "—"}</td>
                   <td className={`${tdc} whitespace-nowrap`}>{w.startDate.replace(/-/g, "/")}</td>
-                  <td className={`${gridTdText} min-w-44`}>{w.companyName}<div className="text-xs text-ink-2">{w.siteName}</div></td>
-                  <td className={`${gridTdText} min-w-28`} data-testid="grid-responsible" data-staff={respOf.get(w.id)?.staffId ?? ""}>{respOf.get(w.id)?.staffId ? respName.get(respOf.get(w.id)!.staffId!) ?? "—" : <span className="text-ink-2">—</span>}</td>
-                  <td className={`${gridTdText} min-w-64`}>{w.siteAddress ?? "—"}</td>
-                  <td className={`${tdc} whitespace-nowrap`}>{w.sitePhone ?? "—"}</td>
-                  <td className={`${gridTdText} min-w-32`}>{w.contacts[0] ? <>{w.contacts[0].name}<div className="whitespace-nowrap text-xs text-ink-2">{w.contacts[0].phone ?? ""}</div></> : "—"}</td>
+                  <td translate="no" className={`${gridTdText} min-w-44`}>{w.companyName}<div className="text-xs text-ink-2">{w.siteName}</div></td>
+                  <td translate="no" className={`${gridTdText} min-w-28`} data-testid="grid-responsible" data-staff={respOf.get(w.id)?.staffId ?? ""}>{respOf.get(w.id)?.staffId ? respName.get(respOf.get(w.id)!.staffId!) ?? "—" : <span className="text-ink-2">—</span>}</td>
+                  <td translate="no" className={`${gridTdText} min-w-64`}>{w.siteAddress ?? "—"}</td>
+                  <td translate="no" className={`${tdc} whitespace-nowrap`}>{w.sitePhone ?? "—"}</td>
+                  <td translate="no" className={`${gridTdText} min-w-32`}>{w.contacts[0] ? <>{w.contacts[0].name}<div className="whitespace-nowrap text-xs text-ink-2">{w.contacts[0].phone ?? ""}</div></> : "—"}</td>
                   {months.flatMap((m, i) => {
                     const st = markOf(w, m);
                     const cell = (
@@ -174,7 +174,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                         </p>
                         <details>
                           <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs">
-                            <span lang="ja" className="min-w-0 flex-1 whitespace-pre-wrap break-words">{noteOf(w.id, q) || "—"}</span>
+                            <span lang="ja" translate="no" className="min-w-0 flex-1 whitespace-pre-wrap break-words">{noteOf(w.id, q) || "—"}</span>
                             <span className="shrink-0 whitespace-nowrap font-semibold text-accent-text">{t("interviews.editQuarter")}</span>
                           </summary>
                           <ActionForm action={saveQuarterNote} hidden={{ candidateId: w.id, fiscalYear: String(fy), quarter: String(q) }} submitLabel={t("f.save")} submitTone="secondary" className="w-52 space-y-1">

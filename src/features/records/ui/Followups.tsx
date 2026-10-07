@@ -1,4 +1,5 @@
 import { getLocale, getTranslations } from "next-intl/server";
+import { dataTag } from "@/components/Data";
 import { cardClass, inputClass, labelClass } from "@/components/styles";
 import { createFollowup, setFollowupStatus } from "../actions";
 import type { StaffUser } from "../queries";
@@ -20,9 +21,9 @@ export async function FollowupList({ items, me, today, empty }: { items: Followu
         return (
           <li key={f.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3" data-testid="followup-item" data-status={f.status}>
             <div className="min-w-0 flex-1">
-              <p lang="ja" className={`whitespace-pre-wrap break-words text-sm ${f.status !== "open" ? "text-ink-2 line-through" : ""}`}>{f.description}</p>
+              <p lang="ja" translate="no" className={`whitespace-pre-wrap break-words text-sm ${f.status !== "open" ? "text-ink-2 line-through" : ""}`}>{f.description}</p>
               <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-2">
-                <span>{t("tasks.assignee", { name: f.assigneeName })}</span>
+                <span>{t.rich("tasks.assignee", { name: f.assigneeName, n: dataTag })}</span>
                 {f.dueDate && <span>{t("tasks.due", { date: dateLabelSync(f.dueDate, locale) })}</span>}
                 <Badge tone={f.status === "done" ? "ok" : f.status === "cancelled" ? "neutral" : "info"}>{t(`tasks.status.${f.status}`)}</Badge>
                 {overdue && <Badge tone="danger" testId="badge-overdue">⚠ {t("tasks.overdue")}</Badge>}

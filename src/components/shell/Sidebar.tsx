@@ -40,7 +40,7 @@ export function Sidebar({
       </div>
 
       <div className="mb-4 rounded-xl border border-line bg-page px-3 py-2.5" data-testid="org-card">
-        <div className="truncate text-[13px] font-semibold" title={org.name}>{org.name}</div>
+        <div translate="no" className="truncate text-[13px] font-semibold" title={org.name}>{org.name}</div>
         <span className="mt-1 inline-block rounded-full bg-role-bg px-2 py-0.5 text-[11px] font-semibold text-role-text">{org.roleLabel}</span>
       </div>
 
@@ -91,8 +91,8 @@ export function Sidebar({
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 rounded-xl px-2 hover:bg-hover [&::-webkit-details-marker]:hidden" aria-label={t("accountMenu")}>
             <span aria-hidden="true" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[13px] font-bold text-accent-text">{initials}</span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-semibold">{user.name}</span>
-              <span className="block truncate text-[11px] text-ink-2">{user.email}</span>
+              <span translate="no" className="block truncate text-[13px] font-semibold">{user.name}</span>
+              <span translate="no" className="block truncate text-[11px] text-ink-2">{user.email}</span>
             </span>
             <Icon name="chevron" className="h-4 w-4 text-ink-2" />
           </summary>

@@ -32,5 +32,5 @@ export async function roleLabelMap(): Promise<Record<string, string>> {
 /** Teks ber-baris-baru (isi catatan) tampil apa adanya, aman: React meng-escape. */
 export function Multiline({ text, lang = "ja" }: { text: string | null | undefined; lang?: string }) {
   if (!text) return <span className="text-ink-2">—</span>;
-  return <p lang={lang} className="whitespace-pre-wrap break-words text-sm text-ink">{text}</p>;
+  return <p lang={lang} translate="no" className="whitespace-pre-wrap break-words text-sm text-ink">{text}</p>; // isi tulisan pengguna = data (T-016)
 }

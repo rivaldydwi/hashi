@@ -65,10 +65,10 @@ export default async function JobOrdersPage({ searchParams }: { searchParams: Se
                 {rows.map((r) => (
                   <tr key={r.id} data-testid="job-order-row" data-status={r.status}>
                     <td className="cjk-phrase min-w-48 px-5 py-3">
-                      <Link href={`/job-orders/${r.id}`} className="font-medium text-brand-700 hover:underline">{r.title}</Link>
+                      <Link href={`/job-orders/${r.id}`} translate="no" className="font-medium text-brand-700 hover:underline">{r.title}</Link>
                       {r.applicationDeadline && <div className="text-xs text-stone-500">{t("deadline")}: {r.applicationDeadline}</div>}
                     </td>
-                    <td className="cjk-phrase min-w-44 px-5 py-3"><div>{r.companyName}</div><div className="text-xs text-stone-500">{r.siteName}</div></td>
+                    <td translate="no" className="cjk-phrase min-w-44 px-5 py-3"><div>{r.companyName}</div><div className="text-xs text-stone-500">{r.siteName}</div></td>
                     <td className="cjk-phrase min-w-28 px-5 py-3">{locale === "ja" ? r.fieldNameJa : r.fieldNameId}</td>
                     <td className="px-5 py-3 tabular-nums" data-testid="job-order-selected">{r.selected} / {r.positions}</td>
                     <td className="px-5 py-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[r.status]}`}>{t(`status.${r.status}`)}</span></td>

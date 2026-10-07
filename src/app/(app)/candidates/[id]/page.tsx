@@ -70,6 +70,8 @@ export default async function CandidateDetailPage({
       <PageHeader
         title={candidate.fullName}
         intro={candidate.nameKatakana ?? undefined}
+        titleIsData
+        introIsData
         backHref="/candidates"
         backLabel={t("backToList")}
         action={<StageBadge stage={candidate.stage} />}

@@ -37,7 +37,9 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
     <>
       <PageHeader
         title={site.name}
+        titleIsData
         intro={company.name}
+        introIsData
         backHref={`/clients/${company.id}`}
         backLabel={company.name}
         action={
@@ -69,8 +71,8 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span>
                       {c.roleTitle && <span className="mr-2 rounded bg-stone-100 px-1.5 py-0.5 text-xs">{c.roleTitle}</span>}
-                      <span className="font-medium" data-testid="contact-name">{c.name}</span>
-                      {c.phone && <span className="ml-2 text-stone-600">{c.phone}</span>}
+                      <span translate="no" className="font-medium" data-testid="contact-name">{c.name}</span>
+                      {c.phone && <span translate="no" className="ml-2 text-stone-600">{c.phone}</span>}
                       {!c.active && <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">{t("inactive")}</span>}
                     </span>
                   </div>
