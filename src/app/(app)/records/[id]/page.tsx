@@ -72,7 +72,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
 
       <section className={`${cardClass} p-4 sm:p-5`} data-testid="record-detail" data-status={r.status}>
         <div className="flex flex-wrap items-center gap-2">
-          <h2 translate={r.kind === "meeting" || (r.workType === "other" && r.workTypeOther) ? "no" : undefined} className={`text-[19px] font-semibold ${isVoid ? "line-through" : ""}`} data-testid="record-title">
+          <h2 className={`text-[19px] font-semibold ${isVoid ? "line-through" : ""}`} data-testid="record-title">
             {r.kind === "meeting" ? r.subject : r.workType === "other" && r.workTypeOther ? r.workTypeOther : t(`workTypes.${r.workType ?? "other"}`)}
           </h2>
           <Badge>{r.kind === "meeting" ? t("kinds.meeting") : t("kinds.daily_work")}</Badge>
@@ -80,7 +80,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
           {!isVoid && r.versionNo > 1 && <Badge testId="badge-version">{t("badge.version", { n: r.versionNo })}</Badge>}
           {!isVoid && !iRead && r.authorId !== me.id && <Badge tone="accent">{myRead ? t("badge.updatedSinceRead") : t("badge.unread")}</Badge>}
         </div>
-        {isVoid && <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-900" data-testid="void-reason">{t("detail.voidedBecause")}: <span lang="ja" translate="no">{r.voidReason}</span></p>}
+        {isVoid && <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-900" data-testid="void-reason">{t("detail.voidedBecause")}: <span>{r.voidReason}</span></p>}
 
         <dl className="mt-3 divide-y divide-line">
           {dl(t("f.date"), dateLabelSync(r.recordDate, locale))}
@@ -96,7 +96,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
               {dl(t("f.result"), <Multiline text={r.result} />)}
               {dl(t("f.pending"), <Multiline text={r.pending} />)}
               {dl(t("f.nextAction"), <Multiline text={r.nextAction} />)}
-              {dl(t("f.reportTo"), <div className="space-y-1"><Multiline text={r.reportToText} />{rec.recipients.length > 0 && <p className="text-xs text-ink-2">{t("f.reportToApp")}: {rec.recipients.map((x) => x.name).join(", ")}</p>}</div>)}
+              {dl(t("f.reportTo"), <div className="space-y-1"><Multiline text={r.reportToText} identity />{rec.recipients.length > 0 && <p className="text-xs text-ink-2">{t("f.reportToApp")}: {rec.recipients.map((x) => x.name).join(", ")}</p>}</div>)}
               {dl(t("f.note"), <Multiline text={r.note} />)}
             </>
           ) : (
@@ -114,7 +114,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
             {SECTION_KEYS.filter((k) => sections[k]?.length).map((k, i) => (
               <div key={k}>
                 <h3 className="text-sm font-semibold">{i + 1}. {t(`sections.${k}`)}</h3>
-                <ul className="mt-1 list-disc space-y-1 pl-5">{sections[k]!.map((p, j) => <li key={j} lang="ja" className="whitespace-pre-wrap break-words text-sm">{p}</li>)}</ul>
+                <ul className="mt-1 list-disc space-y-1 pl-5">{sections[k]!.map((p, j) => <li key={j} className="whitespace-pre-wrap break-words text-sm">{p}</li>)}</ul>
               </div>
             ))}
           </div>
@@ -122,10 +122,10 @@ export default async function RecordDetailPage({ params, searchParams }: { param
         {(chain.from || chain.by.length > 0) && (
           <div className="mt-3 space-y-1 border-t border-line pt-3 text-sm" data-testid="continuation-chain">
             {chain.from && (
-              <p data-testid="continued-from">{t("continue.from")}: <Link href={`/records/${chain.from.id}`} className="font-medium text-accent-text hover:underline" lang="ja">{dateLabelSync(chain.from.recordDate, locale)} {chain.from.summary ? `· ${chain.from.summary}` : ""}</Link>{chain.from.status === "void" && <> <Badge tone="danger">{t("badge.void")}</Badge></>}</p>
+              <p data-testid="continued-from">{t("continue.from")}: <Link href={`/records/${chain.from.id}`} className="font-medium text-accent-text hover:underline">{dateLabelSync(chain.from.recordDate, locale)} {chain.from.summary ? `· ${chain.from.summary}` : ""}</Link>{chain.from.status === "void" && <> <Badge tone="danger">{t("badge.void")}</Badge></>}</p>
             )}
             {chain.by.map((c) => (
-              <p key={c.id} data-testid="continued-by">{t("continue.by")}: <Link href={`/records/${c.id}`} className="font-medium text-accent-text hover:underline" lang="ja">{dateLabelSync(c.recordDate, locale)} {c.summary ? `· ${c.summary}` : ""}</Link>{c.status === "void" && <> <Badge tone="danger">{t("badge.void")}</Badge></>}</p>
+              <p key={c.id} data-testid="continued-by">{t("continue.by")}: <Link href={`/records/${c.id}`} className="font-medium text-accent-text hover:underline">{dateLabelSync(c.recordDate, locale)} {c.summary ? `· ${c.summary}` : ""}</Link>{c.status === "void" && <> <Badge tone="danger">{t("badge.void")}</Badge></>}</p>
             ))}
           </div>
         )}

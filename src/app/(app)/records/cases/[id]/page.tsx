@@ -52,7 +52,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
       <section className={`${cardClass} p-4 sm:p-5`} data-testid="case-detail" data-status={k.status}>
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-sm text-ink-2" data-testid="case-code">{k.code}</span>
-          <h2 lang="ja" className="text-[19px] font-semibold" data-testid="case-title">{k.title}</h2>
+          <h2 className="text-[19px] font-semibold" data-testid="case-title">{k.title}</h2>
           <Badge tone={k.status === "open" ? "warn" : "ok"} testId="case-status">{k.status === "open" ? "● " : "✓ "}{t(`cases.status.${k.status}`)}</Badge>
           <Badge>{t(`categories.${k.category}`)}</Badge>
           {k.versionNo > 1 && <Badge>{t("badge.version", { n: k.versionNo })}</Badge>}
@@ -100,10 +100,10 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                 return (
                   <tr key={e.id} className={isVoid ? "opacity-60" : ""} data-testid="timeline-row" data-status={e.status}>
                     <td className={`${td} whitespace-nowrap`}>{when}{e.sourceRecordId && <div><Link href={`/records/${e.sourceRecordId}`} className="text-xs text-accent-text underline">{t("cases.fromRecord")}</Link></div>}</td>
-                    <td className={`${td} ${isVoid ? "line-through" : ""}`} lang="ja"><span className="whitespace-pre-wrap break-words">{e.event}</span>{isVoid && <div className="no-underline"><Badge tone="danger">{t("badge.void")}</Badge> <span className="text-xs">{e.voidReason}</span></div>}</td>
-                    <td className={td} lang="ja"><span className="whitespace-pre-wrap break-words">{e.subjectStatement ?? "—"}</span></td>
-                    <td className={td} lang="ja"><span className="whitespace-pre-wrap break-words">{e.companyResponse ?? "—"}</span></td>
-                    <td className={td} lang="ja"><span className="whitespace-pre-wrap break-words">{e.note ?? "—"}</span>{!e.includeInClientExport && <div><Badge>{t("cases.internalOnly")}</Badge></div>}</td>
+                    <td className={`${td} ${isVoid ? "line-through" : ""}`}><span className="whitespace-pre-wrap break-words">{e.event}</span>{isVoid && <div className="no-underline"><Badge tone="danger">{t("badge.void")}</Badge> <span className="text-xs">{e.voidReason}</span></div>}</td>
+                    <td className={td}><span className="whitespace-pre-wrap break-words">{e.subjectStatement ?? "—"}</span></td>
+                    <td className={td}><span className="whitespace-pre-wrap break-words">{e.companyResponse ?? "—"}</span></td>
+                    <td className={td}><span className="whitespace-pre-wrap break-words">{e.note ?? "—"}</span>{!e.includeInClientExport && <div><Badge>{t("cases.internalOnly")}</Badge></div>}</td>
                     <td className={`${td} whitespace-nowrap`}>
                       <p className="mb-1 text-xs text-ink-2">{t("cases.writtenBy", { name: creatorName })}{e.versionNo > 1 && ` · ${t("badge.version", { n: e.versionNo })}`}</p>
                       {canEdit && (

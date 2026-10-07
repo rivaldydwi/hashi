@@ -174,7 +174,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                         </p>
                         <details>
                           <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs">
-                            <span lang="ja" translate="no" className="min-w-0 flex-1 whitespace-pre-wrap break-words">{noteOf(w.id, q) || "—"}</span>
+                            <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">{noteOf(w.id, q) || "—"}</span>
                             <span className="shrink-0 whitespace-nowrap font-semibold text-accent-text">{t("interviews.editQuarter")}</span>
                           </summary>
                           <ActionForm action={saveQuarterNote} hidden={{ candidateId: w.id, fiscalYear: String(fy), quarter: String(q) }} submitLabel={t("f.save")} submitTone="secondary" className="w-52 space-y-1">

@@ -103,7 +103,7 @@ export function Sidebar({
             </form>
           </div>
         </details>
-        <p className="px-2 pb-1 text-[11px] text-ink-2" data-testid="build-version">{tc("version", { commit })}</p>
+        <p translate="no" className="px-2 pb-1 text-[11px] text-ink-2" data-testid="build-version">{tc("version", { commit })}</p>
       </div>
     </div>
   );

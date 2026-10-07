@@ -34,6 +34,43 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-023 · Terjemahan peramban: teks bebas boleh diterjemahkan, yang dikunci hanya identitas + hasil deploy T-013
+
+**PR:** (diisi setelah dibuka) (branch `eng/T-023-translate-free-text`)
+**Status:** siap direview
+
+**Hasil deploy T-013** (PR #18 di-merge `4e4702b`, setelah `PM: DISETUJUI` dan CI hijau di head `c2a99b8`; tanpa migrasi, jadi tanpa `--backup`)
+- Keluaran akhir `scripts/deploy.sh`: commit berjalan `4e4702b`, health ok. Demo tidak disentuh.
+
+**Yang dikerjakan**
+- Aturan sekarang ditentukan DEFINISI KOLOM, bukan per halaman: `FieldDef.data: "identity" | "prose"` di `src/db/candidate-sections.ts` (wajib untuk text/textarea/email) + `fieldNature()` (pilihan/boolean/bidang kerja = label, boleh diterjemahkan; tanggal/angka = identity).
+- `DetailSections`: nilai tunggal memakai `fieldNature`; ringkasan baris berulang dipecah per nilai (`<span translate>` per kolom), bukan satu `translate="no"` untuk seluruh baris.
+- Dihapus `translate="no"` dan `lang="ja"` pada teks bebas: `Multiline` (isi catatan kegiatan; parameter `identity` hanya untuk "lapor ke" yang berisi nama), tindak lanjut (halaman, dashboard, riwayat pekerja, panel Lanjutkan), catatan kartu + alasan batal, masa berlaku/bidang kartu (label), catatan kuartal 定期面談, judul + isi kasus, kronologi kasus, judul/subjek catatan (termasuk "lainnya"), tindakan di daftar catatan, alasan batal catatan, bagian isi notulen, ringkasan "dilanjutkan dari/oleh", riwayat edit (sebelum/sesudah), keterangan foto, ringkasan di timeline pekerja.
+- Merek: baris "Hashi · <commit>" di sidebar `translate="no"`. Nama penanggung tugas di tugas pekerja dibungkus `<Data>`.
+- Sengaja TIDAK diubah: `lang="ja"` pada pratinjau dokumen klien (`ClientExportPreview`, `SheetPreview`; isi dokumen memang Jepang) dan pada textarea input.
+- `CLAUDE.md` (butir "Terjemahan peramban") dan komentar `Data.tsx` diperbarui. `docs/glossary.md`/README tidak memuat aturan ini, jadi tidak diubah.
+
+**Daftar kolom profil kandidat, untuk dicek Ipal**
+- IDENTITAS (dikunci): nama lengkap, nama katakana, tempat lahir, alamat, telepon, WhatsApp, email, NIK, nomor KK, nomor paspor; keluarga: nama, telepon, alamat; sekolah (nama); perusahaan kerja (nama); nomor sertifikat. Tanggal dan angka juga tetap.
+- TEKS BEBAS (boleh diterjemahkan): motivasi, PR diri, hobi, keahlian khusus, catatan riwayat Jepang, catatan penglihatan, catatan medis; keluarga: pekerjaan; sekolah: jurusan; kerja: jabatan; sertifikat: level/bidang. Pilihan (jenis kelamin, status nikah, hubungan keluarga, jenis sertifikat, bidang kerja, ya/tidak) = label, boleh diterjemahkan.
+- Tetap dikunci di luar profil: judul job order, kode kasus/kandidat, nama organisasi/perusahaan/lokasi/PIC, nama pengguna dan email.
+
+**Verifikasi** (database dev `hashi_dev`)
+- `npm run typecheck` → lulus; `npm run test:i18n` → lulus (1636 kunci); `npm run test:unit` → 115/115 (termasuk `field-nature.test.ts` baru: tiap kolom teks punya sifat, daftar identity vs prose dikunci).
+- `npm run build` → 0 peringatan; `db:migrate` + `db:seed -- --reset` → lulus; `npm run test:rls` → semua lulus; `npm run verify:seed` → lulus.
+- `E2E_PORT=3120 npm run test:e2e` → 215 lulus (termasuk 3 tes T-023 baru di `translate-data.spec.ts`; penjaga pg tidak memicu)
+
+**Kendala / catatan**
+- Judul kasus (`activity_cases.title`) saya anggap kalimat bebas, jadi kini boleh diterjemahkan (kode kasus tetap dikunci). Judul/subjek catatan juga. Bila Ipal ingin judul kasus dikunci, cukup 1 baris.
+- PDF tidak terkait (tidak diterjemahkan peramban); tidak diubah.
+
+**Pertanyaan**
+- BUTUH IPAL: uji manual Chrome "Terjemahkan" setelah deploy (id → ja pada catatan LPK; ja → en pada catatan kegiatan): nama/merek tidak berubah, kalimatnya berubah.
+
+**Usulan berikutnya**
+- Tidak ada.
+
+
 ## 2026-10-07 · T-013 · Peringatan `pg` "client.query() ... already executing" dilacak dan diperbaiki + hasil deploy T-019
 
 **PR:** #18 (branch `eng/T-013-pg-warning`)

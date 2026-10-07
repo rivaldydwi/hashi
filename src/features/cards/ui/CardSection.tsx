@@ -12,7 +12,7 @@ const slash = (ymd: string | null | undefined) => (ymd ? ymd.replace(/-/g, "/") 
 
 /**
  * Bagian "在留カード" di halaman pekerja (T-018): kartu terkini + tahap pengingat (cardStage), form ubah/terima/batalkan HANYA bila boleh (担当 efektif atau TSK_ADMIN),
- * selain itu baca-saja dengan penjelasan siapa yang boleh mengubah; riwayat kartu dan riwayat edit. Data pengguna (tanggal, bidang, catatan) ditandai `translate="no"` (T-016).
+ * selain itu baca-saja dengan penjelasan siapa yang boleh mengubah; riwayat kartu dan riwayat edit. Tanggal ditandai `translate="no"`; catatan, alasan batal, dan label (bidang, masa berlaku) boleh diterjemahkan (T-023).
  */
 export async function CardSection({ candidateId, data, fieldOptions, today, tz }: { candidateId: string; data: CardSectionData; fieldOptions: FieldOption[]; today: string; tz: string }) {
   const t = await getTranslations("cards");
@@ -66,15 +66,15 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
             <p className="text-xs text-ink-2" data-testid="card-stage-help">{t(`stageHelp.${stage!.stage}`)}</p>
             <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
               <div><dt className="inline text-ink-2">{t("form.expiry")}: </dt><dd className="inline font-medium" translate="no" data-testid="card-expiry">{slash(current.expiryDate)}</dd> <span className="text-xs text-ink-2" data-testid="card-days">({daysText})</span></div>
-              <div><dt className="inline text-ink-2">{t("form.period")}: </dt><dd className="inline" translate="no">{current.periodMonths ? t("periodMonths", { n: current.periodMonths }) : "—"}</dd></div>
-              <div><dt className="inline text-ink-2">{t("form.skillField")}: </dt><dd className="inline" translate="no">{fieldName(current.skillFieldId)}</dd></div>
+              <div><dt className="inline text-ink-2">{t("form.period")}: </dt><dd className="inline">{current.periodMonths ? t("periodMonths", { n: current.periodMonths }) : "—"}</dd></div>
+              <div><dt className="inline text-ink-2">{t("form.skillField")}: </dt><dd className="inline">{fieldName(current.skillFieldId)}</dd></div>
               {current.appliedOn && <div><dt className="inline text-ink-2">{t("form.appliedOn")}: </dt><dd className="inline" translate="no" data-testid="card-applied">{slash(current.appliedOn)}</dd></div>}
               {current.additionalDocsOn && <div><dt className="inline text-ink-2">{t("form.additionalDocsOn")}: </dt><dd className="inline" translate="no">{slash(current.additionalDocsOn)}</dd></div>}
               {current.rejectedOn && <div><dt className="inline text-ink-2">{t("form.rejectedOn")}: </dt><dd className="inline" translate="no">{slash(current.rejectedOn)}</dd></div>}
               {current.receivedOn && <div><dt className="inline text-ink-2">{t("form.receivedOn")}: </dt><dd className="inline" translate="no">{slash(current.receivedOn)}</dd></div>}
             </dl>
             {stage!.specialUntil && <p className="text-sm text-amber-900" data-testid="card-special">{t("flags.special", { date: slash(stage!.specialUntil) })}</p>}
-            {current.note && <p lang="ja" translate="no" className="whitespace-pre-wrap break-words text-sm text-ink-menu" data-testid="card-note">{current.note}</p>}
+            {current.note && <p className="whitespace-pre-wrap break-words text-sm text-ink-menu" data-testid="card-note">{current.note}</p>}
           </div>
 
           {editable && (
@@ -109,7 +109,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
                   <Badge tone="neutral">{t(`renewal.${c.renewalStatus}`)}</Badge>
                   {c.status === "void" && <Badge tone="danger">{t("history.void")}</Badge>}
                   {current && c.id === current.id && c.status === "active" && <Badge tone="accent">{t("history.currentBadge")}</Badge>}
-                  <span className="text-xs text-ink-2" translate="no">{c.periodMonths ? t("periodMonths", { n: c.periodMonths }) : ""}</span>
+                  <span className="text-xs text-ink-2">{c.periodMonths ? t("periodMonths", { n: c.periodMonths }) : ""}</span>
                 </div>
                 {c.renewalStatus === "received" && (
                   <p className="text-xs text-ink-2" data-testid="card-history-received">
@@ -117,7 +117,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
                     {c.receivedBy === "staff" && (c.handedOverOn ? ` · ${t("history.handedOver", { date: slash(c.handedOverOn) })}` : ` · ${t("history.notHandedOver")}`)}
                   </p>
                 )}
-                {c.status === "void" && c.voidReason && <p lang="ja" translate="no" className="text-xs text-rose-900">{t("history.voidedBecause")}: {c.voidReason}</p>}
+                {c.status === "void" && c.voidReason && <p className="text-xs text-rose-900">{t("history.voidedBecause")}: {c.voidReason}</p>}
                 {access.canEdit && c.status === "active" && c.renewalStatus === "received" && c.receivedBy === "staff" && !c.handedOverOn && c.receivedOn && (
                   <details className="mt-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-accent-text" data-testid="card-handover-toggle">{t("form.handOverTitle")}</summary><div className="mt-1"><HandOverForm id={c.id} today={today} receivedOn={c.receivedOn} /></div></details>
                 )}

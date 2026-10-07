@@ -29,8 +29,11 @@ export async function roleLabelMap(): Promise<Record<string, string>> {
   return { TSK_ADMIN: t("TSK_ADMIN"), TSK_STAFF: t("TSK_STAFF") };
 }
 
-/** Teks ber-baris-baru (isi catatan) tampil apa adanya, aman: React meng-escape. */
-export function Multiline({ text, lang = "ja" }: { text: string | null | undefined; lang?: string }) {
+/**
+ * Teks ber-baris-baru (isi catatan) tampil apa adanya, aman: React meng-escape. Teks bebas BOLEH diterjemahkan peramban (T-023) dan tanpa `lang`
+ * (peramban menebak sendiri); `identity` dipakai hanya untuk isian yang berisi nama orang/organisasi (mis. "lapor ke") supaya dikunci `translate="no"`.
+ */
+export function Multiline({ text, identity = false }: { text: string | null | undefined; identity?: boolean }) {
   if (!text) return <span className="text-ink-2">—</span>;
-  return <p lang={lang} translate="no" className="whitespace-pre-wrap break-words text-sm text-ink">{text}</p>; // isi tulisan pengguna = data (T-016)
+  return <p translate={identity ? "no" : undefined} className="whitespace-pre-wrap break-words text-sm text-ink">{text}</p>;
 }

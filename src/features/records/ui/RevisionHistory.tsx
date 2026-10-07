@@ -50,8 +50,8 @@ export async function RevisionHistory({ revisions, current, fields, names, tz, t
                 <div key={f.key} data-testid="revision-diff">
                   <dt className="text-xs font-semibold text-ink-menu">{f.label}</dt>
                   <dd className="grid gap-2 sm:grid-cols-2">
-                    <span className="rounded-lg bg-rose-50 px-2 py-1 text-sm text-rose-900"><span className="mr-1 text-xs font-semibold">{t("history.before")}:</span><span lang="ja" className="whitespace-pre-wrap break-words" data-testid="rev-before">{b}</span></span>
-                    <span className="rounded-lg bg-emerald-50 px-2 py-1 text-sm text-emerald-900"><span className="mr-1 text-xs font-semibold">{t("history.after")}:</span><span lang="ja" className="whitespace-pre-wrap break-words" data-testid="rev-after">{a}</span></span>
+                    <span className="rounded-lg bg-rose-50 px-2 py-1 text-sm text-rose-900"><span className="mr-1 text-xs font-semibold">{t("history.before")}:</span><span className="whitespace-pre-wrap break-words" data-testid="rev-before">{b}</span></span>
+                    <span className="rounded-lg bg-emerald-50 px-2 py-1 text-sm text-emerald-900"><span className="mr-1 text-xs font-semibold">{t("history.after")}:</span><span className="whitespace-pre-wrap break-words" data-testid="rev-after">{a}</span></span>
                   </dd>
                 </div>
               ))}
