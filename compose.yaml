@@ -45,6 +45,27 @@ services:
     mem_limit: 384m
     networks: [internal]
 
+  # Pengingat email 在留カード (T-022): berjalan terus, tiap hari 08:00 Asia/Tokyo. Memakai image `tools` (hanya src/db + scripts). TANPA SMTP_URL = MODE KERING (tidak ada email terkirim,
+  # hanya log "akan dikirim"); produksi tetap kering sampai akun SMTP disiapkan (BUTUH IPAL). Role aplikasi biasa (hashi_app) lewat withSystem/withTenant, bukan OWNER.
+  worker:
+    build:
+      context: .
+      target: tools
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+    command: ["node", "--import", "tsx", "scripts/reminder-worker.ts"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/${DB_NAME:-hashi}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      APP_URL: ${APP_URL:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    mem_limit: 256m
+    networks: [internal]
+
   app:
     build:
       context: .

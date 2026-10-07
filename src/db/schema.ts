@@ -1183,3 +1183,26 @@ export const residenceCardPhotos = pgTable(
     check("residence_card_photos_removed_check", sql`(${t.removedAt} is null) = (${t.removedBy} is null)`),
   ],
 );
+
+// ---------------------------------------------------------------------------------------------
+// Log pengiriman email pengingat 在留カード (T-022, migration 0028): SATU baris = satu pengingat untuk (kartu, tahap, penerima) yang SUDAH terkirim; unik, jadi pengingat tidak pernah terkirim dua kali
+// (juga bila penjadwal dijalankan ulang). TANPA isi email, alamat, atau nomor kartu. Hanya jalur sistem (worker) yang membaca/menulis: tidak ada policy untuk peran aplikasi mana pun.
+// `stage` = tahap kartu (src/db/zairyu.ts) atau `additional_docs` (imigrasi meminta 追加資料).
+// ---------------------------------------------------------------------------------------------
+export const cardReminderLog = pgTable(
+  "card_reminder_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    cardId: uuid("card_id").notNull().references(() => residenceCards.id, { onDelete: "cascade" }),
+    stage: text("stage").notNull(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    sentOn: date("sent_on").notNull(), // tanggal kirim (zona Tokyo)
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("card_reminder_log_once_key").on(t.cardId, t.stage, t.userId),
+    index("card_reminder_log_org_idx").on(t.organizationId, t.sentOn),
+    check("card_reminder_log_stage_check", sql`${t.stage} in ('prepare','can_apply','h30','h14','h7','expired','special_overdue','rejected','additional_docs')`),
+  ],
+);

@@ -127,6 +127,7 @@ export const ACTIONS: Record<string, Def> = {
   "residence_card.photo_set": d("records", () => "Menyimpan foto kartu izin tinggal", () => "在留カードの画像を保存しました"),
   "residence_card.photo_view": d("records", () => "Membuka foto kartu izin tinggal", () => "在留カードの画像を開きました"),
   "residence_card.photo_remove": d("records", () => "Menghapus foto kartu izin tinggal", () => "在留カードの画像を削除しました"),
+  "residence_card.reminder_sent": d("records", () => "Email pengingat kartu izin tinggal terkirim (otomatis)", () => "在留カードのリマインダーメールを送信しました（自動）"),
   "residence_card.void": d("records", () => "Membatalkan data kartu izin tinggal", () => "在留カード情報を取り消しました"),
   "activity_export": d("records", (v) => `Mengekspor catatan kegiatan ke PDF (${v.value})`, (v) => `活動記録をPDFに書き出しました（${v.value}）`),
   "audit.export": d("system", (v) => `Mengekspor riwayat aktivitas ke CSV (${v.value})`, (v) => `アクティビティ履歴をCSVに書き出しました（${v.value}）`),
