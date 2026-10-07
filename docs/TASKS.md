@@ -30,7 +30,33 @@ Kerjakan:
 
 ---
 
-### T-020 · 在留カード: nomor + foto kartu (terenkripsi) · `SIAP` (setelah T-013)
+### T-023 · Terjemahan peramban: teks bebas BOLEH diterjemahkan, yang dikunci hanya identitas · `SIAP` (setelah T-013, sebelum T-020)
+
+Masukan Ipal (2026-10-07, tangkapan layar detail kandidat dengan Chrome "Terjemahkan" id→ja): catatan LPK berbahasa Indonesia (motivasi, PR diri, hobi, keahlian, catatan riwayat Jepang, dst.)
+**tidak ikut diterjemahkan**. Staf TSK orang Jepang/Myanmar/Vietnam justru perlu membaca isi itu. **Keputusan Ipal: teks bebas harus bisa diterjemahkan.** Ini mengoreksi aturan T-016,
+yang dulu ikut mengunci "isi catatan dan teks bebas".
+
+Aturan baru (satu tempat, berlaku di seluruh aplikasi):
+- **TETAP `translate="no"` (identitas, jangan diubah mesin):** nama orang + katakana, nama organisasi/LPK/perusahaan/lokasi/PIC, alamat, telepon, email, kode (kandidat, kasus), nomor dokumen,
+  nama merek "Hashi" (termasuk "Hashi · <commit>" di sidebar). Judul/nama job order juga tetap.
+- **BOLEH diterjemahkan (hapus `translate="no"`):** semua teks bebas/kalimat. Contohnya kolom panjang profil kandidat (motivasi, PR diri, hobi, keahlian khusus, catatan riwayat Jepang, alasan, dst.),
+  catatan TSK, catatan/tindak lanjut penilaian, isi catatan kegiatan/notulen/kronologi/tindak lanjut/laporan harian, catatan kuartal 定期面談, catatan kartu 在留カード, isian teks form 5-5, dan alasan pembatalan.
+  Nilai pilihan (status, jenis kelamin, ya/tidak, bidang) sudah label, jadi boleh diterjemahkan.
+- **Jangan memasang `lang`** pada teks bebas: bahasanya bisa Indonesia atau Jepang, jadi biarkan peramban menebak.
+- Tentukan dari **definisi kolom**, bukan per halaman. Misalnya di `sections.ts`, tiap field punya sifat `data: "identity" | "prose"` (atau turunan dari jenis kolom). Ringkasan baris berulang
+  (`DetailSections` → `section.summary`) dipecah per nilai sesuai sifat kolomnya, bukan satu `translate="no"` untuk seluruh baris.
+- Perbarui aturan di `CLAUDE.md` (butir "Terjemahan peramban") dan `docs/glossary.md`/README bila ada.
+
+**Kriteria selesai**
+- [ ] e2e `translate-data.spec.ts` diperluas: nama/katakana/perusahaan/alamat/telepon/kode tetap `translate="no"`, sedangkan kolom teks bebas (minimal: motivasi kandidat, catatan TSK,
+  isi catatan kegiatan, catatan kuartal) TIDAK berada di dalam `[translate="no"]`; merek "Hashi" `translate="no"`.
+- [ ] Tes unit: setiap field di `sections.ts` punya sifat yang jelas (identity/prose), tidak ada yang terlewat.
+- [ ] Uji manual Chrome "Terjemahkan" (id→ja dan ja→en) oleh Ipal setelah deploy; engineer melampirkan daftar kolom identity vs prose di PR untuk dicek.
+- [ ] typecheck, build, e2e, CI hijau.
+
+---
+
+### T-020 · 在留カード: nomor + foto kartu (terenkripsi) · `SIAP` (setelah T-023)
 
 Jawaban TSK no. 6: nomor dan foto kartu **harus disimpan**. Data paling sensitif di Hashi, jadi aturannya ketat.
 
