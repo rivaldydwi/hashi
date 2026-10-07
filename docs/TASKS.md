@@ -12,32 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-004 · Pelacak zairyū kādo (在留カード): desain · `SIAP`
-
-Hanya dokumen desain `docs/zairyu-card.md`, **belum ada kode atau migrasi**. Tujuannya supaya Ipal bisa menanyakan hal yang tepat ke staf TSK
-sebelum skema dibuat. Bahan: `CLAUDE.md` bagian "Keputusan untuk langkah 7", model `placements`, catatan kegiatan (7A), dashboard.
-
-Isi dokumen:
-- **Data:** tabel usulan (kolom, tipe, wajib/opsional), relasi ke `candidates`/`placements`, riwayat kartu (perpanjangan berulang = baris baru, bukan menimpa).
-  Kolom: tanggal habis, jenis status tinggal (在留資格), status proses perpanjangan, tanggal pengajuan ke 入管, tanggal terima kartu baru, penanggung jawab (担当).
-  Nomor kartu dan foto kartu: tulis pro/kontra + rekomendasi (bawaan: TIDAK disimpan sampai terbukti perlu).
-- **Hak akses:** RLS hanya TSK (pola `activity_member()` / `client_owner`), siapa boleh mengubah, tidak ada DELETE, audit tanpa isi; LPK tidak melihat apa pun
-  (status visa + tanggal tiba untuk LPK adalah tugas terpisah, sebutkan batasnya saja).
-- **Pengingat:** tabel tahap per tanggal (H-4 bulan persiapan, H-3 bulan bisa mengajukan, H-30, H-14, H-7, lewat; berhenti saat kartu baru diterima) sebagai
-  fungsi murni (input: tanggal habis, tanggal terima, hari ini menurut zona organisasi; output: tahap). Sertakan contoh kasus tepi (tanggal sudah lewat saat
-  data dimasukkan, kartu diterima sebelum habis, akhir bulan, zona Tokyo vs Jakarta).
-- **Tampilan:** KPI dashboard + daftar "perlu tindakan" + bagian di detail pekerja; tidak ada email/LINE dulu (dalam aplikasi saja).
-- **Rencana pemecahan** jadi 2-4 tugas implementasi kecil, masing-masing dengan kriteria selesai.
-- **Pertanyaan untuk staf TSK** (bernomor, bisa langsung diteruskan Ipal), termasuk penerima pengingat (担当 + salinan Admin TSK) yang belum dikonfirmasi.
-
-**Kriteria selesai**
-- [ ] `docs/zairyu-card.md` memuat semua bagian di atas; istilah sesuai `docs/glossary.md` (tambahkan istilah baru ke glosarium).
-- [ ] Tidak ada perubahan kode, skema, atau migrasi.
-- [ ] Daftar pertanyaan TSK juga disalin ke STATUS dengan label `BUTUH IPAL` (untuk diteruskan ke TSK).
-
----
-
-### T-011 · Tabel lebar rapi dalam bahasa Jepang · `SIAP` (setelah T-004)
+### T-011 · Tabel lebar rapi dalam bahasa Jepang · `SIAP`
 
 Masukan Ipal (2026-10-06, tangkapan layar `/records/interviews` dalam bahasa Jepang): kolom sempit membuat teks Jepang patah **per huruf** dan
 menjadi menurun (header `特定技能分野` dan `配属先企業名` tersusun vertikal, nama perusahaan `さくらフーズ株式会社` satu huruf per baris), sehingga satu baris setinggi
@@ -81,7 +56,7 @@ Kerjakan:
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
-- Pelacak 在留カード: implementasi (setelah desain T-004 disetujui).
+- Pelacak 在留カード: implementasi = T-A (skema + `cardStage` + RLS), T-B (bagian di detail pekerja), T-C (daftar, KPI, seed), T-D opsional (isi awal), persis seperti `docs/zairyu-card.md` §6. **DITAHAN** sampai TSK menjawab pertanyaan §9 no. 1, 2, 4, 5, 7 (memengaruhi skema); PM memindahkannya ke antrean setelah jawaban masuk.
 - Langkah 8 siap pilot: seed 200 siswa dummy (sekaligus memunculkan satu staf ≥ 45 pekerja untuk tampilan beban T-010), cek kecepatan halaman daftar/detail, `SHOW_DEMO_ACCOUNTS=false`, daftar periksa sebelum data nyata.
 - Langkah 7 sisanya: checklist keberangkatan/kedatangan, bagian 管理・報告 di lembar 定期面談, profil pekerja lengkap, status visa + tanggal tiba untuk LPK (baca-saja), notifikasi email/LINE.
 - `scripts/deploy.sh`: log build ke berkas (mis. `~/hashi-backups/deploy.log`), terminal hanya ringkasan (usulan engineer, T-007).
@@ -91,6 +66,7 @@ Kerjakan:
 
 ## Selesai
 
+- **T-004** Desain pelacak 在留カード (PR #11): `docs/zairyu-card.md` (tabel `residence_cards` berbaris per kartu, 担当 diturunkan dari T-010, nomor/foto kartu TIDAK disimpan, RLS hanya TSK, `cardStage` fungsi murni + 12 kasus tepi, tampilan, rencana T-A..T-D, 12 pertanyaan TSK). Tanpa kode.
 - **T-009** Form 定期面談報告書 参考様式第5－5号 (PR #10): kolom form55 di `periodic_interviews` (migration 0024), konfigurasi tunggal `src/db/form55.ts` (teks butir resmi, isian kurung ⑤(2)), bagian 4 hanya bila ⑥ = 有, 作成年月日 bawaan = tanggal simpan terakhir (zona TSK), PDF per wawancara + gabungan setahun, halaman tahunan per pekerja (wawancara karena kejadian dipisah). 面談実施者 = 対応者 (keputusan PM). Status DRAFT sampai dicek staf TSK; deploy produksi setelah merge.
 - **T-010** Penanggung jawab pekerja (PR #9): `responsible_assignments` (migration 0023, per perusahaan atau per penempatan, append-only, tulis hanya TSK_ADMIN),
   beban per staf `WORKLOAD` (50, kuning ≥ 45, merah > 50, berlaku 2027-04-01, tidak memblokir), `/records/responsible`, 2 KPI TSK_ADMIN. Seed ≥ 45 ditunda ke langkah 8
