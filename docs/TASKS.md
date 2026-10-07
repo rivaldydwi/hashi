@@ -12,29 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-011 · Tabel lebar rapi dalam bahasa Jepang · `SIAP`
-
-Masukan Ipal (2026-10-06, tangkapan layar `/records/interviews` dalam bahasa Jepang): kolom sempit membuat teks Jepang patah **per huruf** dan
-menjadi menurun (header `特定技能分野` dan `配属先企業名` tersusun vertikal, nama perusahaan `さくらフーズ株式会社` satu huruf per baris), sehingga satu baris setinggi
-setengah layar. Teks Jepang tidak punya spasi, jadi browser bebas memotong di mana saja.
-
-Kerjakan:
-- **Grid 定期面談** (`src/app/(app)/records/interviews/page.tsx`): lebar minimum per kolom (atau `table-layout` + `<colgroup>`), header dan nilai pendek
-  (bidang, tanggal, telepon, bulan) tidak boleh patah (`whitespace-nowrap` / `break-keep`), kolom nama menempel di kiri saat digulir horizontal. Usulan yang boleh dipilih
-  engineer: gabungkan data perusahaan (企業名, 住所, 電話, 担当者) menjadi satu sel "配属先" bertingkat supaya tabel tidak terlalu lebar; jelaskan pilihannya di PR.
-- **Sisir tabel lain** yang punya masalah sama dalam bahasa Jepang (minimal: daftar kandidat, `/records/interviews/annual`, `/records/responsible`, daftar job order, klien,
-  pengguna, riwayat aktivitas). Perbaiki dengan pola yang SAMA (utilitas/kelas bersama, bukan tambalan per halaman). Tampilan kartu di ponsel tetap berfungsi.
-- Bahasa Indonesia tidak boleh jadi lebih buruk.
-
-**Kriteria selesai**
-- [ ] Di lebar 1280 px dan 1440 px, bahasa Jepang: tidak ada header atau nilai pendek yang patah per huruf; tinggi baris grid 定期面談 dengan data seed ≤ ~3 baris teks.
-- [ ] Tangkapan layar sebelum/sesudah (ja, 1280 px) untuk grid 定期面談 dan setiap tabel lain yang diubah dilampirkan di PR; satu tangkapan id dan satu ponsel (390 px).
-- [ ] Tes e2e: minimal satu cek bahwa sel header grid 定期面談 dalam ja tidak lebih tinggi dari ~2 baris (mis. `boundingBox().height`), supaya tidak mundur lagi.
-- [ ] `typecheck`, `build` (0 peringatan), `test:e2e` hijau.
-
----
-
-### T-012 · Variasi kartu KPI di dashboard · `SIAP` (setelah T-011)
+### T-012 · Variasi kartu KPI di dashboard · `SIAP`
 
 Masukan Ipal (2026-10-06): kartu KPI dashboard (`Kpi` di `src/features/dashboard/Widgets.tsx`) terlihat sama semua (putih, angka besar hitam), jadi sulit dipindai.
 
@@ -115,6 +93,7 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 
 ## Selesai
 
+- **T-011** Tabel lebar rapi dalam bahasa Jepang (PR #12): header `:lang(ja)` tidak patah, utilitas `cjk-phrase` (word-break auto-phrase / keep-all) + `min-w-*` lewat `gridTh/gridTd/gridTdText/gridTdShort`, diterapkan ke grid 定期面談, daftar tahunan, kandidat, job order, pengguna, organisasi; e2e `table-ja.spec.ts` menjaga tinggi header/baris.
 - **T-004** Desain pelacak 在留カード (PR #11): `docs/zairyu-card.md` (tabel `residence_cards` berbaris per kartu, 担当 diturunkan dari T-010, nomor/foto kartu TIDAK disimpan, RLS hanya TSK, `cardStage` fungsi murni + 12 kasus tepi, tampilan, rencana T-A..T-D, 12 pertanyaan TSK). Tanpa kode.
 - **T-009** Form 定期面談報告書 参考様式第5－5号 (PR #10): kolom form55 di `periodic_interviews` (migration 0024), konfigurasi tunggal `src/db/form55.ts` (teks butir resmi, isian kurung ⑤(2)), bagian 4 hanya bila ⑥ = 有, 作成年月日 bawaan = tanggal simpan terakhir (zona TSK), PDF per wawancara + gabungan setahun, halaman tahunan per pekerja (wawancara karena kejadian dipisah). 面談実施者 = 対応者 (keputusan PM). Status DRAFT sampai dicek staf TSK; deploy produksi setelah merge.
 - **T-010** Penanggung jawab pekerja (PR #9): `responsible_assignments` (migration 0023, per perusahaan atau per penempatan, append-only, tulis hanya TSK_ADMIN),
