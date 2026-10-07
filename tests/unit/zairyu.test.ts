@@ -177,3 +177,62 @@ test("konfigurasi: status proses (6 nilai), pilihan 在留期間 4/6/12 bulan", 
   assert.equal(isPeriodOption(6), true);
   assert.equal(isPeriodOption(5), false);
 });
+
+// ---------------------------------------------------------------------------------------------------- daftar dan KPI (T-019)
+import { CARD_VIEWS, compareCardItems, countViews, isActionNeeded, isCardView, matchesView, type CardListItem } from "../../src/db/zairyu";
+
+const item = (expiryDate: string, status: RenewalStatus, today = "2026-10-07", hasCard = true): CardListItem => {
+  if (!hasCard) return { hasCard: false, stage: null, additionalDocs: false };
+  const r = cardStage({ expiryDate, renewalStatus: status, today });
+  return { hasCard: true, stage: r.stage, additionalDocs: r.additionalDocs };
+};
+
+test("isActionNeeded: h30/h14/h7/expired/rejected/special_overdue dan waiting_result DENGAN 追加資料 = tindakan; waiting_result biasa, prepare, can_apply, none, done = bukan", () => {
+  const need = (stage: CardStage, additionalDocs = false) => isActionNeeded({ stage, additionalDocs });
+  for (const s of ["h30", "h14", "h7", "expired", "rejected", "special_overdue"] as const) assert.equal(need(s), true, s);
+  assert.equal(need("waiting_result", true), true);
+  for (const s of ["waiting_result", "prepare", "can_apply", "none", "done"] as const) assert.equal(need(s), false, s);
+  assert.equal(need("prepare", true), false); // tanda 追加資料 hanya bermakna pada waiting_result
+});
+
+test("kelompok daftar/KPI dari data nyata: urgent, prepare, waiting (tanpa 追加資料), missing; tidak tumpang tindih", () => {
+  const items: Record<string, CardListItem> = {
+    h14: item("2026-10-17", "preparing"), // 10 hari
+    expired: item("2026-10-01", "not_started"),
+    rejected: item("2027-12-31", "rejected"),
+    specialOver: item("2026-07-31", "applied"), // lewat habis + 2 bulan
+    waitingDocs: item("2026-10-27", "additional_docs"),
+    waitingPlain: item("2026-10-27", "applied"),
+    waitingSpecial: item("2026-10-01", "applied"), // 特例期間
+    prepare: item("2027-02-07", "not_started"), // 4 bulan
+    canApply: item("2027-01-07", "preparing"), // 3 bulan
+    none: item("2028-10-07", "not_started"),
+    missing: item("", "not_started", "2026-10-07", false),
+  };
+  const view = (v: Exclude<(typeof CARD_VIEWS)[number], "all">) => Object.entries(items).filter(([, i]) => matchesView(i, v)).map(([k]) => k).sort();
+  assert.deepEqual(view("urgent"), ["expired", "h14", "rejected", "specialOver", "waitingDocs"]);
+  assert.deepEqual(view("prepare"), ["canApply", "prepare"]);
+  assert.deepEqual(view("waiting"), ["waitingPlain", "waitingSpecial"]);
+  assert.deepEqual(view("missing"), ["missing"]);
+  assert.equal(Object.values(items).filter((i) => matchesView(i, "all")).length, 11);
+  assert.deepEqual(countViews(Object.values(items)), { urgent: 5, prepare: 2, waiting: 2, missing: 1 });
+  // tidak ada pekerja yang masuk dua kelompok
+  const seen = new Set<string>();
+  for (const v of ["urgent", "prepare", "waiting", "missing"] as const) for (const k of view(v)) { assert.equal(seen.has(k), false, `${k} ganda`); seen.add(k); }
+  assert.equal(isCardView("urgent"), true);
+  assert.equal(isCardView("bogus"), false);
+});
+
+test("urutan daftar: tahap paling mendesak dulu, lalu sisa hari naik, lalu nama; tanpa kartu paling akhir", () => {
+  const rows = [
+    { name: "Z tanpa", stage: null, daysLeft: null },
+    { name: "B h30", stage: "h30" as const, daysLeft: 20 },
+    { name: "A h30", stage: "h30" as const, daysLeft: 20 },
+    { name: "C h30", stage: "h30" as const, daysLeft: 5 + 10 },
+    { name: "D expired", stage: "expired" as const, daysLeft: -3 },
+    { name: "E special", stage: "special_overdue" as const, daysLeft: -70 },
+    { name: "F waiting", stage: "waiting_result" as const, daysLeft: 3 },
+    { name: "G none", stage: "none" as const, daysLeft: 400 },
+  ];
+  assert.deepEqual([...rows].sort(compareCardItems).map((r) => r.name), ["E special", "D expired", "C h30", "A h30", "B h30", "F waiting", "G none", "Z tanpa"]);
+});

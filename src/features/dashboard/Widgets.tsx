@@ -258,6 +258,10 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
     case "kpi-records-unread": return <Kpi id="kpi-records-unread" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/records?view=unread" label={t("kpiRecordsUnread")} value={data.rec!.records + data.rec!.reports} hint={t("kpiRecordsUnreadHint", { r: data.rec!.records, l: data.rec!.reports })} />;
     case "kpi-interviews-pending": return <Kpi id="kpi-interviews-pending" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/records/interviews?view=pending" label={t("kpiInterviewsPending")} value={data.rec!.interviews} hint={t("kpiInterviewsPendingHint")} />;
     case "kpi-followups-open": return <Kpi id="kpi-followups-open" calm={t("kpiCalm")} attention={t("kpiAttention")} href={`/records/tasks?scope=${data.rec!.followupsScope}&status=open`} label={t("kpiFollowupsOpen")} value={data.rec!.followups} hint={t(data.rec!.followupsScope === "all" ? "kpiFollowupsOpenAll" : "kpiFollowupsOpenMine")} />;
+    case "kpi-card-urgent": return <Kpi id="kpi-card-urgent" calm={t("kpiCalm")} attention={t("kpiAttention")} href={`/records/cards?view=urgent${data.cards!.mine ? "&mine=1" : ""}`} label={t("kpiCardUrgent")} value={data.cards!.urgent} hint={t(data.cards!.mine ? "kpiCardScopeMine" : "kpiCardScopeAll")} />;
+    case "kpi-card-prepare": return <Kpi id="kpi-card-prepare" calm={t("kpiCalm")} attention={t("kpiAttention")} href={`/records/cards?view=prepare${data.cards!.mine ? "&mine=1" : ""}`} label={t("kpiCardPrepare")} value={data.cards!.prepare} hint={t("kpiCardPrepareHint")} />;
+    case "kpi-card-waiting": return <Kpi id="kpi-card-waiting" calm={t("kpiCalm")} attention={t("kpiAttention")} href={`/records/cards?view=waiting${data.cards!.mine ? "&mine=1" : ""}`} label={t("kpiCardWaiting")} value={data.cards!.waiting} hint={t("kpiCardWaitingHint")} />;
+    case "kpi-card-missing": return <Kpi id="kpi-card-missing" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/records/cards?view=missing" label={t("kpiCardMissing")} value={data.cards!.missing} hint={t("kpiCardMissingHint")} />;
     case "kpi-staff-over": return <Kpi id="kpi-staff-over" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/records/responsible?view=over" label={t("kpiStaffOver")} value={data.resp!.over} hint={t("kpiStaffOverHint")} />;
     case "kpi-unassigned": return <Kpi id="kpi-unassigned" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/records/responsible?view=unassigned" label={t("kpiUnassigned")} value={data.resp!.unassigned} hint={t("kpiUnassignedHint")} />;
     case "my-followups":
@@ -281,14 +285,6 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
               <Link href={`/records/cases/${c.id}`} className="flex min-h-11 items-center gap-3 py-2 hover:bg-hover"><span translate="no" className="font-mono text-xs text-ink-2">{c.code}</span><span lang="ja" translate="no" className="text-sm font-medium">{c.title}</span></Link>
             </li>
           )), t("emptyOpenCases"))}
-        </Card>
-      );
-    case "coming-soon":
-      return (
-        <Card testid="w-coming-soon" title={t("wSoon")}>
-          <ul className="space-y-2 text-sm text-ink-menu">
-            <li className="flex min-h-11 items-center justify-between"><span>{t("soonResidence")}</span><span className="rounded-full bg-hover px-2.5 py-0.5 text-xs text-ink-2">{t("soonBadge")}</span></li>
-          </ul>
         </Card>
       );
     case "activity":

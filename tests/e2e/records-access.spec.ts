@@ -8,7 +8,7 @@ const ROOT = path.resolve(process.env.E2E_STORAGE_DIR ?? `${process.cwd()}/.e2e-
 
 // Catatan kegiatan (langkah 7A): khusus staf TSK. LPK, sensei, dan super admin tidak melihat apa pun (menu, rute, data, lampiran, ekspor).
 
-const ROUTES = ["/records", "/records/meetings", "/records/cases", "/records/interviews", "/records/tasks", "/records/reports", "/records/new?kind=daily_work", "/records/cases/new"];
+const ROUTES = ["/records", "/records/meetings", "/records/cases", "/records/interviews", "/records/cards", "/records/tasks", "/records/reports", "/records/new?kind=daily_work", "/records/cases/new"];
 const sidebarLink = (page: Page, href: string) => page.locator(`[data-testid=sidebar] a[href="${href}"]`);
 
 for (const email of ["lpk1.admin@hashi.test", "lpk1.sensei@hashi.test", "lpk2.admin@hashi.test", "admin@hashi.test"]) {
@@ -31,12 +31,13 @@ for (const email of ["lpk1.admin@hashi.test", "lpk1.sensei@hashi.test", "lpk2.ad
   });
 }
 
-test("TSK_ADMIN dan TSK_STAFF: menu Catatan kegiatan ada, 'Segera hadir' hanya Residence Card; semua rute 200", async ({ browser }) => {
+test("TSK_ADMIN dan TSK_STAFF: menu Catatan kegiatan dan Kartu izin tinggal ada, tidak ada 'Segera hadir'; semua rute 200", async ({ browser }) => {
   for (const email of ["tsk.admin@hashi.test", "tsk.staff@hashi.test"]) {
     const page = await (await browser.newContext()).newPage();
     await login(page, email);
     await expect(sidebarLink(page, "/records")).toHaveCount(1);
-    await expect(page.getByTestId("nav-soon").locator("li")).toHaveCount(1); // Wawancara berkala tidak lagi "segera hadir"
+    await expect(sidebarLink(page, "/records/cards")).toHaveCount(1);
+    await expect(page.getByTestId("nav-soon")).toHaveCount(0); // Wawancara berkala dan Kartu izin tinggal bukan lagi "segera hadir"
     for (const r of ROUTES) expect((await page.goto(r))?.status(), `${email} ${r}`).toBe(200);
     await expect(page.getByTestId("topbar-title")).toBeVisible();
     await page.context().close();

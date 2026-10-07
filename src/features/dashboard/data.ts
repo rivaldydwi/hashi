@@ -1,3 +1,4 @@
+import { cardKpiCounts, loadCardRows } from "@/db/zairyu-queries";
 import { withSystem, withTenant } from "@/db";
 import { platformOverview } from "@/db/queries";
 import { skillFields } from "@/db/schema";
@@ -28,6 +29,7 @@ export type DashboardData = {
   newCands?: Awaited<ReturnType<typeof newCandidatesTop>>;
   activity?: AuditView[];
   resp?: { over: number; unassigned: number };
+  cards?: { urgent: number; prepare: number; waiting: number; missing: number; mine: boolean };
   rec?: { records: number; reports: number; interviews: number; followups: number; followupsScope: "all" | "mine" };
   myTasks?: Array<{ id: string; description: string; dueDate: string | null; recordId: string | null; caseId: string | null; interviewId: string | null }>;
   casesOpen?: Awaited<ReturnType<typeof openCases>>;
@@ -80,6 +82,11 @@ export async function loadDashboard(user: CurrentUser, ids: Set<string>): Promis
           followups: has("kpi-followups-open") ? (await followupIds(tx, scope === "mine" ? { userId: user.id } : {})).length : 0,
           followupsScope: scope,
         };
+      }
+      if (has("kpi-card-urgent", "kpi-card-prepare", "kpi-card-waiting", "kpi-card-missing")) {
+        // sama dengan daftar /records/cards (satu sumber: loadCardRows + cardKpiCounts; staf = pekerja yang ia 担当, Admin = semua)
+        const { counts, mine } = cardKpiCounts(await loadCardRows(tx, today), { role: user.role, userId: user.id });
+        d.cards = { ...counts, mine };
       }
       if (has("kpi-staff-over", "kpi-unassigned")) {
         // sama dengan daftar di /records/responsible (satu fungsi: responsibilityOverview)

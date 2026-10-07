@@ -105,3 +105,46 @@ export function cardRecipients(p: { responsibleStaffId: string | null; adminIds:
   for (const id of p.adminIds) if (!out.includes(id)) out.push(id);
   return out;
 }
+
+// ---------------------------------------------------------------------------------------------------- daftar dan KPI (T-019)
+/**
+ * Tahap yang MENUNTUT TINDAKAN staf (KPI "perlu tindakan segera" dan daftar "urgent"): `ATTENTION_STAGES` + `waiting_result` dengan tanda 追加資料 (imigrasi meminta dokumen tambahan).
+ * SATU fungsi untuk KPI dan daftar: jangan menghitung ulang di tempat lain.
+ */
+export const isActionNeeded = (r: Pick<CardStageResult, "stage" | "additionalDocs">): boolean => isAttentionStage(r.stage) || (r.stage === "waiting_result" && r.additionalDocs);
+
+/** Kelompok tampilan daftar kartu / KPI. `urgent` ⊃ tindakan; `waiting` = menunggu hasil TANPA 追加資料 (yang punya 追加資料 sudah di `urgent`, tidak dihitung dua kali); `missing` = pekerja aktif tanpa data kartu. */
+export const CARD_VIEWS = ["all", "urgent", "prepare", "waiting", "missing"] as const;
+export type CardView = (typeof CARD_VIEWS)[number];
+export const isCardView = (v: string): v is CardView => (CARD_VIEWS as readonly string[]).includes(v);
+
+/** Satu pekerja aktif untuk daftar/KPI: `stage` null = belum ada data kartu. */
+export type CardListItem = { hasCard: boolean; stage: CardStage | null; additionalDocs: boolean };
+
+export function matchesView(item: CardListItem, view: CardView): boolean {
+  if (view === "all") return true;
+  if (view === "missing") return !item.hasCard;
+  if (!item.hasCard || !item.stage) return false;
+  if (view === "urgent") return isActionNeeded({ stage: item.stage, additionalDocs: item.additionalDocs });
+  if (view === "prepare") return item.stage === "prepare" || item.stage === "can_apply";
+  return item.stage === "waiting_result" && !item.additionalDocs; // waiting
+}
+
+export type CardCounts = Record<Exclude<CardView, "all">, number>;
+export const countViews = (items: readonly CardListItem[]): CardCounts => ({
+  urgent: items.filter((i) => matchesView(i, "urgent")).length,
+  prepare: items.filter((i) => matchesView(i, "prepare")).length,
+  waiting: items.filter((i) => matchesView(i, "waiting")).length,
+  missing: items.filter((i) => matchesView(i, "missing")).length,
+});
+
+/** Urutan daftar: yang paling mendesak dulu (STAGE_URGENCY turun), lalu sisa hari naik, lalu nama; yang belum punya kartu paling akhir. */
+export function compareCardItems(a: { stage: CardStage | null; daysLeft: number | null; name: string }, b: { stage: CardStage | null; daysLeft: number | null; name: string }): number {
+  const ua = a.stage === null ? -1 : STAGE_URGENCY[a.stage];
+  const ub = b.stage === null ? -1 : STAGE_URGENCY[b.stage];
+  if (ua !== ub) return ub - ua;
+  const da = a.daysLeft ?? Number.MAX_SAFE_INTEGER;
+  const db = b.daysLeft ?? Number.MAX_SAFE_INTEGER;
+  if (da !== db) return da - db;
+  return a.name.localeCompare(b.name);
+}

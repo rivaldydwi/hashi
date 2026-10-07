@@ -11,13 +11,15 @@ async function pageFor(browser: Browser, email: string, width: number, height = 
 const cards = (page: Page) => page.locator("[data-testid=kpi-row] > a");
 const boxes = (page: Page) => cards(page).evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), h: Math.round(r.height), id: e.getAttribute("data-testid") }; }));
 
-test("TSK_ADMIN 1280px: semua KPI muat dalam <= 2 baris, tiap kartu <= 110 px dan sama tinggi dalam satu baris, widget berikutnya terlihat tanpa menggulir", async ({ browser }) => {
+test("TSK_ADMIN 1280px: semua KPI muat dalam <= 3 baris (13 KPI sejak T-019; sebelumnya 9 = 2 baris), tiap kartu <= 110 px dan sama tinggi dalam satu baris, widget berikutnya terlihat tanpa menggulir", async ({ browser }) => {
   const page = await pageFor(browser, "tsk.admin@hashi.test", 1280);
   await expect(page.getByTestId("kpi-staff-over")).toBeVisible();
   const b = await boxes(page);
   expect(b.length).toBeGreaterThanOrEqual(7);
   const rows = [...new Set(b.map((x) => x.top))];
-  expect(rows.length, JSON.stringify(b)).toBeLessThanOrEqual(2);
+  // T-019 menambah 4 KPI kartu izin tinggal (urgent, prepare, waiting, missing): 13 KPI pada 5 kolom = 3 baris. Tinggi kartu, kesamaan tinggi per baris, dan "widget terlihat tanpa menggulir" tetap dijaga.
+  expect(rows.length, JSON.stringify(b)).toBeLessThanOrEqual(3);
+  expect(b.length).toBeLessThanOrEqual(13);
   for (const x of b) { expect(x.h, x.id!).toBeLessThanOrEqual(110); expect(x.h, x.id!).toBeGreaterThanOrEqual(44); }
   for (const top of rows) expect(new Set(b.filter((x) => x.top === top).map((x) => x.h)).size, `tinggi sebaris ${top}`).toBe(1);
   const first = await page.locator("[data-testid=widget-grid] > *").first().boundingBox();

@@ -100,7 +100,6 @@
     "wPipeline": "選考の流れ",
     "wJobs": "募集中の求人",
     "wNewCands": "LPKからの新規候補者",
-    "wSoon": "近日公開",
     "wOrgs": "すべての組織",
     "latestAvg": "直近の平均",
     "emptyUnrated": "今月はすべての学生を評価済みです。",
@@ -117,8 +116,6 @@
     "aspectAttitude": "態度",
     "aspectFitness": "体力",
     "aspectMotivation": "意欲",
-    "soonResidence": "在留カードの通知",
-    "soonBadge": "近日",
     "onboarding": {
       "title": "ようこそ、{name}さん",
       "intro": "Hashiをすぐ使い始めるための3ステップです。",
@@ -170,7 +167,16 @@
     "kpiUnassigned": "担当者が未設定の就労者",
     "kpiUnassignedHint": "担当する職員が未定",
     "kpiCalm": "問題なし",
-    "kpiAttention": "要対応"
+    "kpiAttention": "要対応",
+    "kpiCardUrgent": "要対応の在留カード",
+    "kpiCardScopeMine": "自分の担当",
+    "kpiCardScopeAll": "組織全体",
+    "kpiCardPrepare": "在留カードの準備開始",
+    "kpiCardPrepareHint": "準備中または申請が可能",
+    "kpiCardWaiting": "在留カードの結果待ち",
+    "kpiCardWaitingHint": "入管に申請済み",
+    "kpiCardMissing": "カード情報が未登録の就労者",
+    "kpiCardMissingHint": "カード情報が未入力"
   },
   "users": {
     "title": "ユーザー管理",
@@ -1154,7 +1160,8 @@
       "cases": "ケース（時系列）",
       "interviews": "定期面談",
       "tasks": "フォローアップ",
-      "responsible": "担当者"
+      "responsible": "担当者",
+      "cards": "在留カード"
     },
     "kinds": {
       "daily_work": "業務記録",
@@ -1919,7 +1926,8 @@
     },
     "flags": {
       "additionalDocs": "追加資料の要求あり",
-      "special": "特例期間が{date}まで適用されます。"
+      "special": "特例期間が{date}まで適用されます。",
+      "additionalDocsShort": "追加資料"
     },
     "history": {
       "title": "カードの履歴",
@@ -1968,6 +1976,41 @@
     },
     "saved": "カード情報を保存しました。",
     "received": "新カードの受領と新しいカード情報を登録しました。",
-    "voided": "カード情報を取り消しました。"
+    "voided": "カード情報を取り消しました。",
+    "list": {
+      "title": "就労中の在留カード一覧",
+      "intro": "就労中の全員の在留カードの状況を、緊急度の高い順に表示します。変更は各就労者のページから行います。",
+      "viewsLabel": "グループ",
+      "views": {
+        "all": "すべて",
+        "urgent": "要対応",
+        "prepare": "準備開始",
+        "waiting": "結果待ち",
+        "missing": "未登録"
+      },
+      "mine": "自分の担当のみ",
+      "company": "配属先",
+      "stage": "状況",
+      "all": "すべて",
+      "apply": "絞り込む",
+      "reset": "条件をクリア",
+      "count": "{n}名",
+      "cols": {
+        "worker": "就労者",
+        "company": "配属先／事業所",
+        "expiry": "在留期限",
+        "stage": "状況",
+        "renewal": "手続きの状況",
+        "responsible": "担当者",
+        "open": "開く"
+      },
+      "none": "カード情報なし",
+      "open": "開く",
+      "emptyTitle": "就労中の方がまだいません",
+      "emptyBody": "出発して有効な配属がある就労者がここに表示されます。",
+      "noMatchTitle": "該当する人がいません",
+      "noMatchBody": "この条件に合う就労者はいません。",
+      "note": "要対応＝期限30日以内、期限切れ、不許可、特例期間超過、または追加資料の要求あり。追加資料の要求がある人は「要対応」に入るため、「結果待ち」には含みません。"
+    }
   }
 }
