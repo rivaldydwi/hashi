@@ -1,8 +1,6 @@
 # Pelacak kartu izin tinggal (在留カード, Zairyū Kādo): desain
 
-Status: **DESAIN (T-004)**. Belum ada kode, skema, atau migrasi. Tujuan dokumen ini: Ipal bisa menanyakan hal yang tepat ke staf TSK **sebelum** tabel dibuat
-(daftar pertanyaan ada di bagian 9 dan disalin ke `docs/STATUS.md`). Bahan: `CLAUDE.md` ("Keputusan untuk langkah 7"), tabel `placements`, catatan kegiatan (7A),
-penanggung jawab pekerja (T-010), dan dashboard yang bisa diatur.
+Status: **DESAIN (T-004), diperbarui di T-017**: skema, aturan hak tulis, audit, dan fungsi `cardStage` SUDAH terimplementasi (migrasi 0025, `src/db/zairyu.ts`); **UI belum ada** (T-018 dst.). Bagian bertanda *(T-017)* mencatat jawaban staf TSK (Ghulam, 2026-10-07) dan apa yang berubah dari desain awal; bagian 9 memuat pertanyaan awal beserta jawabannya.
 
 Istilah mengikuti `docs/glossary.md` (istilah baru ditambahkan di sana). Semua yang berlabel **usulan** menunggu jawaban TSK; yang berlabel **tetap** sudah diputuskan
 (`CLAUDE.md` atau jawaban staf TSK sebelumnya).
@@ -25,36 +23,40 @@ kartu tetap sama bila pekerja pindah perusahaan di tengah masa berlaku.
 
 ## 2. Data
 
-### 2.1 Tabel usulan `residence_cards` (satu baris = satu kartu; riwayat = baris berurutan)
+### 2.1 Tabel `residence_cards` (satu baris = satu kartu; riwayat = baris berurutan) *(T-017: terimplementasi, migrasi 0025)*
 
-Perpanjangan berulang = **baris baru**, bukan menimpa. Baris lama tetap sebagai riwayat.
+Perpanjangan berulang = **baris baru**, bukan menimpa. Baris lama tetap sebagai riwayat. Skema di `src/db/schema.ts` (`residenceCards`), aturan di migrasi `drizzle/0025_residence_cards.sql`.
 
 | Kolom | Tipe | Wajib | Keterangan |
 |---|---|---|---|
 | `id` | uuid PK | ya | |
 | `organization_id` | uuid → organizations | ya | org TSK pemilik (RLS), tetap setelah dibuat |
-| `candidate_id` | uuid → candidates (**RESTRICT**) | ya | pekerja; tetap setelah dibuat. RESTRICT seperti tabel catatan kegiatan (menghapus kandidat yang punya kartu ditolak; ringkasan `candidate_delete_summary().blocked` ikut) |
-| `previous_card_id` | uuid → residence_cards | tidak | kartu yang digantikan; diisi saat dibuat, terkunci sesudahnya (pola `continues_record_id`, T-007) |
-| `residence_status` | text + CHECK | ya | 在留資格. Usulan nilai: `ssw1` (特定技能1号), `ssw2` (特定技能2号), `other` (+ `residence_status_other`). Daftar final = pertanyaan 4 |
-| `residence_status_other` | text ≤ 100 | bila `other` | |
+| `candidate_id` | uuid → candidates (**RESTRICT**) | ya | pekerja; tetap setelah dibuat. RESTRICT (menghapus kandidat yang punya kartu ditolak; `candidates_block_delete` dan ringkasan `candidate_delete_summary().blocked` ikut) |
+| `previous_card_id` | uuid → residence_cards | tidak | kartu yang digantikan; diisi saat dibuat, terkunci sesudahnya; paling banyak SATU pengganti aktif per kartu (indeks unik parsial) |
+| `residence_status` | text + CHECK | ya, bawaan `ssw1` | 在留資格. Hanya `ssw1` (特定技能1号; jawaban TSK no. 4); kolom tetap ada untuk masa depan |
+| `skill_field_id` | uuid → skill_fields (**RESTRICT**) | ya | bidang (介護, 飲食 dll). Bawaan UI = `candidates.field_id`, bisa diubah |
+| `period_months` | integer 1-60 | tidak | 在留期間 dalam bulan; pilihan di SATU konfigurasi `PERIOD_OPTIONS` (`src/db/zairyu.ts`: 4, 6, 12) |
 | `expiry_date` | date | ya | 在留期限 (tanggal kalender Jepang, tanpa jam; berlaku **sampai akhir hari itu**) |
-| `renewal_status` | text + CHECK | ya, bawaan `not_started` | `not_started` (belum mulai) · `preparing` (persiapan berkas) · `applied` (sudah diajukan ke 入管) · `received` (kartu baru diterima). Daftar final = pertanyaan 5 |
-| `applied_on` | date | bila `applied`/`received` | tanggal pengajuan ke 入管. CHECK: `applied_on <= received_on` |
-| `received_on` | date | bila `received` | tanggal menerima kartu baru. CHECK: `received_on is not null <=> renewal_status = 'received'`; tidak boleh di masa depan (trigger, tanggal Tokyo) |
+| `renewal_status` | text + CHECK | ya, bawaan `not_started` | `not_started` (belum mulai) · `preparing` (persiapan berkas) · `applied` (申請中, sudah diajukan) · `additional_docs` (追加資料, diajukan dan diminta dokumen tambahan) · `received` (kartu baru diterima) · `rejected` (不許可, ditolak) |
+| `applied_on` | date | bila status bukan `not_started`/`preparing` | tanggal pengajuan ke 入管. CHECK: `applied_on <= received_on`; tidak boleh di masa depan (trigger, tanggal Tokyo) |
+| `received_on` | date | bila `received` | tanggal menerima kartu baru. CHECK: `(renewal_status = 'received') = (received_on is not null)`; tidak boleh di masa depan |
+| `received_by` | `staff`/`worker` | bila `received` | kartu diambil **staf** lalu diserahkan ke pekerja, atau **pekerja mengambil sendiri** (jawaban no. 10). CHECK: terisi ⇔ `received` |
+| `handed_over_on` | date | tidak | tanggal diserahkan ke pekerja; hanya bila `received_by = staff`, tidak lebih awal dari `received_on`, tidak di masa depan |
 | `note` | text ≤ 2000 | tidak | catatan internal. Dilarang berisi nomor kartu atau data medis (teks bantuan di form) |
-| `status` | text `active`/`void` | ya | pembatalan = `void` + `void_reason` (final), TANPA DELETE (pola catatan kegiatan) |
+| `status` | text `active`/`void` | ya | pembatalan = `void` + `void_reason` (final), TANPA DELETE |
 | `void_reason`, `voided_at`, `voided_by` | | bila void | |
 | `version_no`, `updated_at`, `updated_by`, `created_at`, `created_by` | | ya | `created_by` diisi trigger dari `app.user_id` (tidak bisa dipalsukan) |
 
-Aturan data (CHECK + trigger penjaga, bukan hanya aplikasi):
-- **Satu kartu aktif "terkini" per pekerja** = baris `active` dengan `expiry_date` terbesar (seri: `created_at` terbaru). Hanya kartu terkini yang menghasilkan pengingat.
-- Kartu baru (`previous_card_id` terisi) harus untuk pekerja yang sama, org yang sama, kartu asal `active` dan berstatus `received`, dan `expiry_date` baru > `expiry_date` lama.
-- Aksi **"Terima kartu baru"** adalah SATU transaksi: baris lama jadi `received` (+ `received_on`) **dan** baris baru dibuat dengan tanggal habis baru. Dengan begitu tidak pernah ada
-  celah "kartu diterima tetapi kartu baru belum dicatat". Bila staf hanya tahu kartu sudah diterima tetapi belum membaca tanggal barunya, tanggal baru **wajib** diisi (tidak ada jalan pintas).
-- Riwayat edit: pakai pola yang sudah ada (`activity_versioned_before_update` + `activity_write_revision`, `activity_revisions`; CHECK `entity_type` diperluas dengan `residence_card`).
-  Tanpa tabel riwayat baru.
+Aturan data (CHECK + trigger penjaga + RLS, bukan hanya aplikasi):
+- **Satu kartu aktif "terkini" per pekerja** = baris `active` dengan `expiry_date` terbesar (seri: `created_at` terbaru): `currentCard()`. Hanya kartu terkini yang menghasilkan pengingat.
+- INSERT: pekerja harus punya (atau pernah punya) penempatan di organisasi itu; kartu pengganti (`previous_card_id`) harus untuk pekerja/organisasi yang sama, asalnya `active` dan sudah `received`, dan `expiry_date` baru > lama.
+- **"Terima kartu baru" = SATU transaksi**: baris lama jadi `received` **dan** baris baru (tanggal habis baru) dibuat. Ditegakkan DB lewat constraint trigger TERTUNDA: kartu `received` yang `active` WAJIB punya pengganti `active` saat commit.
+- Kartu yang sudah `received` final: hanya `handed_over_on`, `received_by`, dan `note` yang bisa diubah. Kartu yang sudah punya pengganti, dan kartu pengganti dari kartu yang sudah diterima, **tidak bisa dibatalkan** (kartu pengganti masih bisa DIPERBAIKI datanya). Salah pada kartu yang diterima = perbaikan oleh admin database (jarang; dicatat di STATUS bila terjadi).
+- `rejected` bukan akhir: staf bisa mengembalikan ke `preparing` bila mengajukan lagi (tahap `rejected` berhenti, pengingat berjalan lagi menurut tanggal).
+- Riwayat edit: `activity_versioned_before_update('candidate_id,previous_card_id')` + `activity_write_revision('residence_card')` (`activity_revisions`; CHECK `entity_type` diperluas). Tanpa tabel riwayat baru.
+- Nomor kartu dan foto kartu TIDAK disimpan di tabel ini (tugas terpisah T-020, lihat §2.3).
 
-### 2.2 Penanggung jawab (担当): TIDAK disimpan di tabel kartu (usulan)
+### 2.2 Penanggung jawab (担当): TIDAK disimpan di tabel kartu *(keputusan, T-017)*
 
 Kebutuhan awal menyebut kolom 担当. **Rekomendasi: jangan membuat kolom**, turunkan dari penanggung jawab efektif T-010 (`effectiveResponsible`: per pekerja > per perusahaan > tidak ada).
 Alasan: satu sumber kebenaran (pekerja pindah perusahaan atau 担当 diganti = pengingat ikut otomatis), tanpa dua daftar yang bisa berbeda, dan beban kerja per staf (batas 50) tetap konsisten.
@@ -67,7 +69,7 @@ Kekurangan: staf yang mengurus perpanjangan tidak bisa berbeda dari 担当 peker
 | **Nomor kartu** (12 karakter) | Mempermudah cek keabsahan kartu di situs imigrasi; mungkin dibutuhkan pengisian aplikasi online | Data pribadi sensitif; pengingat TIDAK membutuhkannya; dampak kebocoran tinggi (dipakai untuk pemalsuan/pemantauan); wajib enkripsi + audit akses seperti My Number |
 | **Foto/pindaian kartu** | Bukti fisik, memudahkan pengisian berkas | Memuat foto wajah, alamat, nomor; harus memakai pola dokumen terenkripsi, batas akses, kebijakan retensi; "hapus" tidak mungkin pada catatan 5 tahun |
 
-**Rekomendasi (bawaan, tetap sampai terbukti perlu): TIDAK menyimpan nomor kartu maupun foto kartu.** Dokumen kandidat yang sudah ada (paspor dll., `candidate_documents`) tidak diubah.
+**Rekomendasi awal: TIDAK menyimpan nomor kartu maupun foto kartu.** *(T-017: staf TSK menjawab bahwa keduanya HARUS disimpan (no. 6). Karena itu menjadi tugas T-020 dengan enkripsi dan akses terbatas; tabel `residence_cards` T-017 sengaja tidak memuatnya.)* Dokumen kandidat yang sudah ada (paspor dll., `candidate_documents`) tidak diubah.
 Bila kelak terbukti sah dan perlu: kolom dienkripsi, opsional, hanya Admin TSK, setiap akses tercatat di audit, tidak masuk daftar/ekspor/PDF/log (sama dengan aturan My Number di `CLAUDE.md`),
 dan dicek ke gyōsei shoshi dulu (pertanyaan 6).
 
@@ -75,23 +77,25 @@ dan dicek ke gyōsei shoshi dulu (pertanyaan 6).
 
 ## 3. Hak akses
 
-### 3.1 RLS (pola `activity_member()` / `client_owner`)
+### 3.1 RLS (pola `activity_member()`; hak tulis lewat `card_editor`) *(T-017: terimplementasi)*
 
 | Peran | Baca | Tulis |
 |---|---|---|
-| TSK_ADMIN, TSK_STAFF org pemilik | semua kartu org-nya | INSERT/UPDATE (usulan: **semua staf TSK**, seperti wawancara berkala; alternatif 担当 + Admin = pertanyaan 7). `void`: pembuat atau TSK_ADMIN |
+| TSK_ADMIN org pemilik | semua kartu org-nya | INSERT/UPDATE semua pekerja org-nya |
+| TSK_STAFF org pemilik | semua kartu org-nya | INSERT/UPDATE **hanya untuk pekerja yang ia 担当** (penanggung jawab EFEKTIF, T-010); selain itu ditolak RLS (jawaban TSK no. 7) |
 | LPK_ADMIN, LPK_SENSEI, super admin (jalur aplikasi), peran `null`, TSK lain | **0 baris** | ditolak |
 
-- `ENABLE` + `FORCE ROW LEVEL SECURITY`; `GRANT SELECT, INSERT, UPDATE` saja ke `hashi_app` (**tanpa DELETE**; tidak ada GRANT otomatis, seperti aturan "Tabel baru").
-- Trigger penjaga: `organization_id`/`candidate_id`/`previous_card_id` terkunci; pekerja harus kandidat yang terlihat TSK dan punya (atau pernah punya) penempatan di org itu (`assertWorkers` di sisi aplikasi
-  + trigger di DB); `created_by` dari sesi; hanya kolom yang boleh diubah (status proses, tanggal, catatan, void); `received` final kecuali `void`.
-- UI: menu "Kartu" dan rute `/records/cards` hanya untuk TSK (staf lain 404, menu tidak ada di DOM). LPK/sensei/super admin: 404.
-- `verify-rls`: bagian baru (pola S/V): tulis oleh staf TSK, UPDATE tanpa `WHERE` hanya org sendiri, CHECK/trigger (status, tanggal, kartu baru), TSK lain/LPK/sensei/super admin/null membaca 0 baris, tanpa DELETE, dan `information_schema` (tabel ber-`candidate_id` wajib masuk bagian I).
+- `card_editor(candidate_id)` (SQL, `SECURITY DEFINER` sempit, hanya mengembalikan boolean): penetapan per PENEMPATAN terbaru yang berlaku (`effective_from` ≤ hari ini menurut zona organisasi; seri: dibuat terakhir) bila terisi, kalau tidak (tidak ada atau dikosongkan = "ikut perusahaan") penetapan per PERUSAHAAN. Hanya penempatan AKTIF di organisasi sesi.
+  Logikanya SAMA dengan `effectiveResponsible` (TS); `verify-rls` membandingkan keduanya pada semua penempatan aktif seed. Pergantian 担当 berlaku seketika: 担当 lama tidak bisa menulis lagi.
+- `void` dihitung sebagai penulisan (UPDATE), jadi mengikuti aturan yang sama (bukan "pembuat atau TSK_ADMIN" seperti rancangan awal).
+- `ENABLE` + `FORCE ROW LEVEL SECURITY`; `GRANT SELECT, INSERT, UPDATE` saja ke `hashi_app` (**tanpa DELETE**).
+- UI (T-018 dst.): menu "Kartu" dan rute `/records/cards` hanya untuk TSK (peran lain 404, menu tidak ada di DOM).
+- `verify-rls` bagian X: tulis oleh 担当 dan Admin, staf lain ditolak (INSERT, UPDATE dengan/tanpa WHERE), pergantian 担当, perusahaan sebagai cadangan, kesetaraan SQL vs TS, tanpa DELETE, CHECK/trigger, atomik, final, riwayat, peran lain 0 baris; tabel ber-`candidate_id` masuk bagian I dan uji RESTRICT.
 
-### 3.2 Audit (tanpa isi)
+### 3.2 Audit (tanpa isi) *(T-017: aksi dan nilai terdaftar)*
 
-`residence_card.create`, `residence_card.update`, `residence_card.receive` ("Terima kartu baru"), `residence_card.void`, di log org TSK saja. Entri baru di `ACTIONS` (`audit-describe.ts`, kalimat id + ja) dan `verify:audit-coverage`.
-Nilai yang boleh dicatat (`AUDIT_VALUE_FIELDS.residence_card`): `residenceStatus` (kode), `renewalStatus`, `status`, `period` bila perlu (bulan tanggal habis). **Tidak** dicatat: tanggal (habis/ajukan/terima), catatan,
+`residence_card.create`, `residence_card.update`, `residence_card.receive` ("Terima kartu baru"), `residence_card.void`, di log org TSK saja. Sudah ada di `ACTIONS` (`audit-describe.ts`, kalimat id + ja, dites); server action pemanggilnya ada di T-018 dan WAJIB lolos `verify:audit-coverage`.
+Nilai yang boleh dicatat (`AUDIT_VALUE_FIELDS.residence_card`): `residenceStatus` (kode), `renewalStatus`, `stage` (kode tahap), `receivedBy`, `status`. **Tidak** dicatat: tanggal (habis/ajukan/terima), catatan,
 nama pekerja, nomor kartu. Kunci struktural `fields` memuat NAMA kolom yang berubah. Tanda baca/lihat tidak diaudit.
 
 ### 3.3 LPK: batas saja (tugas terpisah)
@@ -111,19 +115,21 @@ Karena itu **tabel `residence_cards` tidak boleh dibuka ke LPK** (tanpa policy b
 - Penerima: 担当 pekerja, salinan ke Admin TSK sebagai cadangan (belum dikonfirmasi TSK: pertanyaan 1).
 - Tahap **dihitung saat ditampilkan**, tidak disimpan dan tidak memerlukan cron/pekerja latar. (Bila kelak ada email/LINE: tabel log pengiriman per (kartu, tahap) supaya sekali kirim; bukan sekarang.)
 
-### 4.2 Fungsi murni (usulan: `src/db/zairyu.ts`, tanpa DB/React/zona waktu di dalamnya)
+### 4.2 Fungsi murni *(T-017: `src/db/zairyu.ts`, tanpa DB/React/zona waktu di dalamnya)*
 
 ```ts
-type CardStage = "none" | "prepare" | "can_apply" | "h30" | "h14" | "h7" | "expired" | "done";
-cardStage(input: { expiryDate: string; receivedOn: string | null; today: string }): { stage: CardStage; daysLeft: number }
+cardStage({ expiryDate, renewalStatus, receivedOn?, today }): { stage: CardStage; daysLeft: number; additionalDocs: boolean; specialUntil: string | null }
 ```
 
-`today` = tanggal hari ini menurut zona organisasi (`organizations.timezone`, lewat `ymdIn(now, tz)`; TSK = Asia/Tokyo), dihitung PEMANGGIL, bukan fungsinya. `daysLeft = expiryDate - today` (hari kalender, bisa negatif).
+`today` = tanggal hari ini menurut zona organisasi (`organizations.timezone`, lewat `ymdIn(now, tz)`; TSK = Asia/Tokyo), dihitung PEMANGGIL. `daysLeft = expiryDate − today` (hari kalender, bisa negatif).
 
 | Syarat (urut dari atas, yang pertama cocok) | Tahap | Arti untuk staf |
 |---|---|---|
-| `receivedOn` terisi | `done` | selesai; tidak ada pengingat (kartu baru = baris baru) |
-| `daysLeft < 0` | `expired` | sudah lewat; paling mendesak |
+| `renewalStatus = received` (atau `receivedOn` terisi) | `done` | selesai; tidak ada pengingat (kartu baru = baris baru) |
+| `renewalStatus = rejected` (不許可) | `rejected` | **perhatian**; menghentikan pengingat biasa |
+| `applied` / `additional_docs` dan `today > expiry + 2 bulan` | `special_overdue` | **perhatian**: lewat batas 特例期間 dan belum ada hasil (`specialUntil` = batas itu) |
+| `applied` / `additional_docs` (selain di atas) | `waiting_result` (結果待ち) | menunggu hasil; **tahap TIDAK naik lagi** (H-30/H-14/H-7 tidak berlaku); `additionalDocs = true` bila 追加資料; bila tanggal habis sudah lewat, `specialUntil` = habis + 2 bulan (特例期間 ditampilkan) |
+| `daysLeft < 0` | `expired` | sudah lewat, belum diajukan; mendesak |
 | `daysLeft <= 7` (0 s.d. 7; **hari terakhir masih berlaku**) | `h7` | |
 | `daysLeft <= 14` | `h14` | |
 | `daysLeft <= 30` | `h30` | |
@@ -131,27 +137,31 @@ cardStage(input: { expiryDate: string; receivedOn: string | null; today: string 
 | `today >= expiryDate − 4 bulan` | `prepare` | mulai menyiapkan berkas |
 | selain itu | `none` | belum ada tindakan |
 
-Pengurangan bulan = hari yang sama di bulan tujuan; bila tidak ada, **hari terakhir bulan itu** (31 Mei − 3 bulan = 28 Februari). Hanya kartu terkini dari pekerja ber-penempatan ACTIVE dan `status = active` yang dinilai.
-Tahap tidak turun; urutan "naik" hanya karena waktu berjalan (tidak ada "mundur" kecuali kartu diganti `receivedOn`/baris baru).
+Pengurangan/penambahan bulan = hari yang sama di bulan tujuan; bila tidak ada, **hari terakhir bulan itu** (31 Mei − 3 bulan = 28 Februari; 31 Desember + 2 bulan = 28 Februari). Batas 特例期間 inklusif (hari ke-habis+2 bulan masih `waiting_result`).
+Hanya kartu terkini dari pekerja ber-penempatan ACTIVE dan `status = active` yang dinilai. Status `not_started`/`preparing` memakai jadwal yang sama.
+Pembantu lain di berkas yang sama: `addMonths`/`addDays`/`daysBetween`, `currentCard`, `cardRecipients` (担当 efektif + semua TSK_ADMIN, tanpa duplikat), `PERIOD_OPTIONS`, `RENEWAL_STATUSES`, `STAGE_URGENCY` (urutan daftar), `ATTENTION_STAGES` (h30, h14, h7, expired, rejected, special_overdue; `waiting_result` bukan tindakan).
 
-### 4.3 Contoh kasus tepi (menjadi tes unit nanti)
+### 4.3 Contoh kasus tepi (semuanya menjadi tes unit `tests/unit/zairyu.test.ts`, dengan angka)
 
 | # | Kasus | Masukan | Hasil |
 |---|---|---|---|
 | 1 | Sudah lewat saat data dimasukkan | habis 2026-09-30, today 2026-10-06 | `expired`, daysLeft −6 (langsung teratas daftar; tidak ada "tahap yang terlewat" yang dikejar) |
 | 2 | Pertama kali dimasukkan sudah dekat | habis 2026-10-14, today 2026-10-06 | `h14` (daysLeft 8); tahap `prepare`/`can_apply`/`h30` tidak diulang |
-| 3 | Kartu diterima sebelum habis | habis 2027-03-31, `receivedOn` 2027-02-10, today 2027-03-01 | `done`; baris kartu baru (tanggal habis baru) membawa pengingat berikutnya |
+| 3 | Kartu diterima sebelum habis | habis 2027-03-31, `received`, `receivedOn` 2027-02-10, today 2027-03-01 | `done`; baris kartu baru (tanggal habis baru) membawa pengingat berikutnya |
 | 4 | Hari terakhir | habis 2026-10-14, today 2026-10-14 | `h7` (daysLeft 0, masih berlaku); today 2026-10-15 → `expired` |
 | 5 | Batas H-30 / H-14 / H-7 | habis 2027-05-31: today 2027-05-01 → `h30`; 05-17 → `h14`; 05-24 → `h7`; 04-30 → `can_apply` | batas inklusif |
 | 6 | Akhir bulan (3 bln) | habis 2027-05-31 | `can_apply` mulai **2027-02-28**; `prepare` mulai **2027-01-31** |
 | 7 | Akhir bulan (4 bln, hari ke-31) | habis 2027-03-31 | `prepare` mulai **2026-11-30** (bukan 12-01); `can_apply` mulai 2026-12-31 |
 | 8 | Februari kabisat | habis 2028-02-29 | `prepare` 2027-10-29; `can_apply` 2027-11-29; `h30` 2028-01-30 |
 | 9 | **Zona Tokyo vs Jakarta** | habis 2026-10-14; instan 2026-10-06 16:00 UTC = 10-07 01:00 Tokyo = 10-06 23:00 Jakarta | Tokyo: today 10-07 → `h7`. Jakarta: 10-06 → `h14`. **Pakai zona TSK** (tanggal kartu adalah tanggal Jepang); LPK bukan penerima pengingat |
-| 10 | Pekerja berhenti | penempatan ENDED | tidak dinilai (tidak masuk KPI/daftar); kartu tetap tersimpan sebagai riwayat |
-| 11 | Sudah diajukan tetapi belum diterima | `renewal_status = applied`, tanpa `receivedOn` | tahap tetap menurut tanggal (aturan TSK: berhenti hanya saat diterima); lencana "sudah diajukan" di daftar. Pertanyaan 2 menanyakan apakah pengingat perlu diturunkan |
-| 12 | Tanggal terima di masa depan / sebelum tanggal ajukan | | ditolak (validasi + trigger) |
-
----
+| 10 | Pekerja berhenti | penempatan ENDED | tidak dinilai (di luar fungsi: pemanggil hanya memberi kartu pekerja berpenempatan ACTIVE) |
+| 11 | **Sudah diajukan (revisi T-017)** | habis 2026-10-14, `applied`, today 2026-10-06 / 10-13 / 10-14 | `waiting_result` di semuanya (tahap tidak naik); sebelumnya (rancangan awal) naik ke H-14/H-7 |
+| 12 | **Diajukan lalu lewat tanggal habis = 特例期間** | habis 2026-09-30, `applied`, today 2026-10-06 | `waiting_result`, daysLeft −6, `specialUntil` 2026-11-30; habis 2026-12-31 → `specialUntil` 2027-02-28 (clamp) |
+| 13 | **Lewat batas 特例期間** | habis 2026-09-30, `applied`: today 2026-11-30 → `waiting_result`; 2026-12-01 → `special_overdue` | batas inklusif; `specialUntil` 2026-11-30 |
+| 14 | **追加資料** | habis 2026-10-14, `additional_docs`, today 2026-10-06 | `waiting_result` + `additionalDocs = true`; tetap berlaku di 特例期間 dan `special_overdue` |
+| 15 | **不許可** | `rejected`: habis 2027-12-31/today 2026-10-06, atau habis 2026-09-30/today 2027-06-01 | `rejected` di semuanya (perhatian, pengingat biasa berhenti) |
+| 16 | **Diambil pekerja sendiri** | `received`, `received_by = worker` | `done` sama dengan diambil staf; `received_by` tidak memengaruhi tahap (hanya mencatat; `handed_over_on` hanya untuk `staff`) |
+| 17 | Terima sesudah lewat 特例期間 | `received`, receivedOn 2026-12-20, today 2026-12-31 | `done` |
 
 ## 5. Tampilan (dalam aplikasi saja)
 
@@ -165,27 +175,14 @@ Tahap tidak turun; urutan "naik" hanya karena waktu berjalan (tidak ada "mundur"
 
 ---
 
-## 6. Rencana pemecahan (3 tugas implementasi + 1 opsional)
+## 6. Rencana pemecahan *(diperbarui T-017)*
 
-**T-A · Skema, aturan, dan jaga data** (tanpa UI)
-- Migrasi `residence_cards` (+ migrasi SQL manual: GRANT, RLS, trigger penjaga, perluasan CHECK `activity_revisions.entity_type`), `src/db/zairyu.ts` (`cardStage`, `addMonths`, pemilihan kartu terkini), `ACTIONS` audit + `AUDIT_VALUE_FIELDS`, bagian baru `verify-rls`, bagian tabel di `verify:audit-coverage`.
-- Selesai bila: tes unit mencakup SEMUA 12 kasus di 4.3 (isi angka, bukan hanya "tidak error"); `verify-rls` hijau (peran, UPDATE tanpa WHERE, tanpa DELETE, CHECK/trigger, kandidat tak terlihat ditolak); tabel ber-`candidate_id` lulus uji cascade/RESTRICT;
-  tidak ada perubahan UI; `docs/zairyu-card.md` dimutakhirkan.
-
-**T-B · Bagian di detail pekerja**
-- Form kartu pertama, ubah status/tanggal ajukan, "Terima kartu baru" (SATU transaksi), void dengan alasan, riwayat kartu + riwayat edit, server action (zod + `ActionError` + audit), teks id/ja.
-- Selesai bila: semua alur disimpan/diedit/dibatalkan; "Terima kartu baru" menghasilkan baris baru dan menghentikan pengingat lama; audit tanpa isi (dites); LPK/sensei 404; e2e (alur lengkap, ponsel 390px, bahasa); typecheck, build 0 peringatan, test:unit, test:rls, e2e, CI hijau.
-
-**T-C · Daftar, KPI, dan data demo**
-- `/records/cards`, widget `kpi-card-*` (satu fungsi untuk angka dan daftar), `seed:records` additive + `verify:seed` (campuran semua tahap + satu pekerja tanpa kartu), penerima = 担当 + Admin.
-- Selesai bila: angka KPI = jumlah baris daftar (dites); filter tahap/milikku bekerja; staf tidak melihat milik orang lain di "milikku" tetapi Admin melihat salinan; menu per peran (LPK tidak ada di DOM); e2e + CI hijau.
-
-**T-D (opsional, menunggu jawaban) · Isi awal data**
-- Cara memasukkan kartu pekerja yang sudah bekerja (isi cepat per baris di daftar "tanpa data", atau tempel dari spreadsheet), bergantung pertanyaan 8.
-
-Terpisah dan **tidak** dijadwalkan di sini: tampilan LPK (3.3), notifikasi email/LINE.
-
----
+- **T-017 · A: skema, aturan, `cardStage`, audit, `verify-rls`: SELESAI (tanpa UI).** Migrasi 0025, `src/db/zairyu.ts`, entri audit `residence_card.*`, bagian X `verify-rls`, tes unit semua kasus §4.3.
+- **T-018 · B: bagian di detail pekerja** (form kartu pertama, ubah status/tanggal, "Terima kartu baru" atomik, void dengan alasan, riwayat kartu + edit, bidang bawaan dari `candidates.field_id`, 在留期間 dari `PERIOD_OPTIONS`, tanda 追加資料/特例期間).
+- **T-019 · C: daftar `/records/cards`, KPI, data demo** (`kpi-card-*`, penerima = 担当 + Admin lewat `cardRecipients`, `seed:records` additive + `verify:seed`).
+- **T-020: nomor dan foto kartu** (jawaban TSK no. 6: HARUS disimpan): kolom dienkripsi, hanya yang berhak, akses tercatat, tidak masuk daftar/ekspor/log; desain enkripsi dan siapa yang berhak dikerjakan di tugas itu.
+- **T-021: isi awal/massal** mengikuti form PDF imigrasi (perorangan + grup), DITAHAN sampai Ipal mengirim form PDF-nya.
+- Terpisah dan belum dijadwalkan: tampilan LPK (§3.3), email pengingat (jawaban no. 12: hanya untuk pengingat daftar/perbarui kartu ke staf, Admin, pekerja; menunggu keputusan Ipal soal layanan email berbiaya dan email pekerja sebagai data pribadi).
 
 ## 7. Risiko dan keputusan yang perlu dijaga
 
@@ -195,7 +192,7 @@ Terpisah dan **tidak** dijadwalkan di sini: tampilan LPK (3.3), notifikasi email
 
 ## 8. Perubahan glosarium
 
-Ditambahkan ke `docs/glossary.md`: 在留資格, 在留期間, 在留期限, 在留期間更新許可申請, 特例期間, 担当 (penanggung jawab pekerja).
+Ditambahkan ke `docs/glossary.md`: 在留資格, 在留期間, 在留期限, 在留期間更新許可申請, 特例期間, 担当 (penanggung jawab pekerja); T-017: 結果待ち, 追加資料, 不許可.
 
 ## 9. Pertanyaan untuk staf TSK (bernomor; bisa langsung diteruskan)
 
@@ -213,3 +210,20 @@ Ditambahkan ke `docs/glossary.md`: 在留資格, 在留期間, 在留期限, 在
 10. **Tanggal terima kartu baru** = tanggal kartu fisik diambil/diterima pekerja atau staf? Dan siapa yang mencatatnya?
 11. **Zona waktu.** Perhitungan H-30/H-14/H-7 memakai tanggal Jepang (Tokyo). Setuju?
 12. **Notifikasi di luar aplikasi** (email/LINE): perlu di tahap berikutnya? Bila ya, kepada siapa dan di jam berapa?
+
+### 9.1 Jawaban staf TSK (Ghulam, 2026-10-07) dan akibatnya *(T-017)*
+
+| No | Jawaban | Akibat |
+|---|---|---|
+| 1 | Pengingat ke 担当 **wajib**; salinan ke manajer/Admin | Penerima = 担当 efektif + semua TSK_ADMIN (`cardRecipients`) |
+| 2 | Setelah diajukan cukup tampil **結果待ち** | Tahap `waiting_result` (tidak naik lagi) |
+| 3 | 特例期間 ditampilkan bila diperlukan (tafsiran PM) | `specialUntil` bila tanggal habis lewat; lewat batas = `special_overdue` |
+| 4 | Hanya **特定技能1号** + bidangnya; **在留期間 dicatat** | `residence_status = ssw1`, `skill_field_id`, `period_months` |
+| 5 | Status: belum mulai, persiapan, diajukan, **追加資料**, diterima, **ditolak** | Enam nilai `renewal_status` |
+| 6 | Nomor dan foto kartu **harus disimpan** | T-020 (enkripsi + akses terbatas); T-017 TIDAK menyimpannya |
+| 7 | Yang boleh mengubah: **担当 + Admin** | RLS lewat `card_editor` |
+| 8 | Isian mengikuti form PDF imigrasi (perorangan + grup) | T-021 (ditahan, menunggu form PDF dari Ipal) |
+| 9 | LPK hanya melihat yang dibuat TSK | Tetap §3.3 (belum dijadwalkan) |
+| 10 | Kartu diambil **staf** lalu diserahkan; opsi **pekerja mengambil sendiri** | `received_by`, `handed_over_on` |
+| 11 | Tanggal Jepang | Zona organisasi TSK (Tokyo) |
+| 12 | Email hanya untuk pengingat daftar/perbarui kartu; progres cukup di Hashi | Tugas email terpisah, menunggu keputusan Ipal; T-017 s.d. T-019 hanya dalam aplikasi |

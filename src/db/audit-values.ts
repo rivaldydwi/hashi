@@ -40,6 +40,8 @@ export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
   activity_daily_report: [],
   periodic_interview: ["resultStatus", "reason", "period", "status", "method", "form55", "nonconformity"], // form55 = "filled"; nonconformity = yes|no (TANPA isi form)
   activity_export: ["exportKind", "rows", "clientVersion"],
+  // Kartu izin tinggal 在留カード (T-017): hanya kode status/tahap dan diterima-oleh; TANPA tanggal, nomor kartu, catatan, nama pekerja
+  residence_card: ["residenceStatus", "renewalStatus", "stage", "receivedBy", "status"],
   // Penanggung jawab pekerja (T-010): hanya cakupan (company | placement); id staf/pekerja/perusahaan tidak dicatat di nilai
   responsible_assignment: ["scope"],
   // Lembar klien (langkah 6): jenis dokumen, mode, bahasa label, jumlah halaman; TANPA nama perusahaan dan isi

@@ -118,6 +118,10 @@ export const ACTIONS: Record<string, Def> = {
   "periodic_interview.create": d("records", (v) => `Mengisi wawancara berkala (${v.value})`, (v) => `定期面談を記録しました（${v.value}）`),
   "periodic_interview.update": d("records", (v) => `Mengubah wawancara berkala (${v.value})`, (v) => `定期面談を変更しました（${v.value}）`),
   "periodic_interview.void": d("records", () => "Membatalkan wawancara berkala", () => "定期面談を取り消しました"),
+  "residence_card.create": d("records", () => "Mencatat kartu izin tinggal pekerja", () => "在留カード情報を登録しました"),
+  "residence_card.update": d("records", (v) => `Mengubah data kartu izin tinggal${v.fields ? ` (${v.fields})` : ""}`, (v) => `在留カード情報を変更しました${v.fields ? `（${v.fields}）` : ""}`),
+  "residence_card.receive": d("records", () => "Mencatat kartu izin tinggal baru diterima", () => "新しい在留カードの受領を記録しました"),
+  "residence_card.void": d("records", () => "Membatalkan data kartu izin tinggal", () => "在留カード情報を取り消しました"),
   "activity_export": d("records", (v) => `Mengekspor catatan kegiatan ke PDF (${v.value})`, (v) => `活動記録をPDFに書き出しました（${v.value}）`),
   "audit.export": d("system", (v) => `Mengekspor riwayat aktivitas ke CSV (${v.value})`, (v) => `アクティビティ履歴をCSVに書き出しました（${v.value}）`),
 };

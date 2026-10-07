@@ -1052,7 +1052,7 @@ export const activityRevisions = pgTable(
   },
   (t) => [
     index("activity_revisions_entity_idx").on(t.entityType, t.entityId, t.versionNo),
-    check("activity_revisions_type_check", sql`${t.entityType} in ('record','timeline_event','case','periodic_interview')`),
+    check("activity_revisions_type_check", sql`${t.entityType} in ('record','timeline_event','case','periodic_interview','residence_card')`),
   ],
 );
 
@@ -1078,5 +1078,52 @@ export const responsibleAssignments = pgTable(
     index("responsible_assignments_placement_idx").on(t.placementId, t.effectiveFrom),
     index("responsible_assignments_staff_idx").on(t.staffId),
     check("responsible_assignments_scope_check", sql`num_nonnulls(${t.companyId}, ${t.placementId}) = 1`),
+  ],
+);
+
+// ---------------------------------------------------------------------------------------------
+// Pelacak kartu izin tinggal 在留カード (T-017, migration 0025; desain docs/zairyu-card.md): satu baris = satu kartu; perpanjangan = baris BARU (previous_card_id),
+// bukan menimpa. Hanya TSK organisasi sama (RLS) membaca; menulis = 担当 efektif pekerja (T-010) atau TSK_ADMIN (fungsi `card_editor`). Tanpa DELETE (void + alasan).
+// TIDAK menyimpan nomor/foto kartu (tugas terpisah T-020). `received` final kecuali tanggal serah/catatan/void; "terima kartu baru" = satu transaksi (kartu pengganti wajib).
+// ---------------------------------------------------------------------------------------------
+export const residenceCards = pgTable(
+  "residence_cards",
+  {
+    ...actBase,
+    candidateId: uuid("candidate_id").notNull().references(() => candidates.id, { onDelete: "restrict" }),
+    previousCardId: uuid("previous_card_id").references((): AnyPgColumn => residenceCards.id),
+    residenceStatus: text("residence_status").notNull().default("ssw1"), // 在留資格: hanya ssw1 (特定技能1号)
+    skillFieldId: uuid("skill_field_id").notNull().references(() => skillFields.id, { onDelete: "restrict" }), // bidang (bawaan candidates.field_id)
+    periodMonths: integer("period_months"), // 在留期間 (bulan); pilihan di src/db/zairyu.ts PERIOD_OPTIONS
+    expiryDate: date("expiry_date").notNull(), // 在留期限 (tanggal kalender Jepang; hari itu masih berlaku)
+    renewalStatus: text("renewal_status").notNull().default("not_started"),
+    appliedOn: date("applied_on"), // tanggal pengajuan ke 入管
+    receivedOn: date("received_on"), // tanggal kartu baru diterima
+    receivedBy: text("received_by"), // staff | worker (diambil staf lalu diserahkan, atau pekerja mengambil sendiri)
+    handedOverOn: date("handed_over_on"), // tanggal diserahkan ke pekerja (hanya bila received_by = staff)
+    note: text("note"), // dilarang berisi nomor kartu atau data medis
+    status: text("status").notNull().default("active"),
+    voidReason: text("void_reason"),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedBy: uuid("voided_by").references(() => users.id),
+    versionNo: integer("version_no").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => users.id),
+  },
+  (t) => [
+    index("residence_cards_candidate_idx").on(t.candidateId),
+    index("residence_cards_org_expiry_idx").on(t.organizationId, t.expiryDate),
+    uniqueIndex("residence_cards_one_successor_key").on(t.previousCardId).where(sql`${t.previousCardId} is not null and ${t.status} = 'active'`),
+    check("residence_cards_residence_status_check", sql`${t.residenceStatus} in ('ssw1')`),
+    check("residence_cards_period_check", sql`${t.periodMonths} is null or ${t.periodMonths} between 1 and 60`),
+    check("residence_cards_renewal_status_check", sql`${t.renewalStatus} in ('not_started','preparing','applied','additional_docs','received','rejected')`),
+    check("residence_cards_applied_check", sql`${t.renewalStatus} in ('not_started','preparing') or ${t.appliedOn} is not null`),
+    check("residence_cards_received_check", sql`(${t.renewalStatus} = 'received') = (${t.receivedOn} is not null)`),
+    check("residence_cards_received_by_check", sql`(${t.renewalStatus} = 'received') = (${t.receivedBy} is not null) and (${t.receivedBy} is null or ${t.receivedBy} in ('staff','worker'))`),
+    check("residence_cards_dates_check", sql`${t.appliedOn} is null or ${t.receivedOn} is null or ${t.appliedOn} <= ${t.receivedOn}`),
+    check("residence_cards_handover_check", sql`${t.handedOverOn} is null or (${t.receivedBy} = 'staff' and ${t.receivedOn} is not null and ${t.handedOverOn} >= ${t.receivedOn})`),
+    check("residence_cards_note_check", sql`${t.note} is null or length(${t.note}) <= 2000`),
+    check("residence_cards_status_check", sql`${t.status} in ('active','void')`),
+    check("residence_cards_void_check", sql`${t.status} = 'active' or (${t.voidReason} is not null and length(btrim(${t.voidReason})) > 0)`),
   ],
 );
