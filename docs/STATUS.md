@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-017 · 在留カード (A): skema, aturan, `cardStage`, dokumen desain mengikuti jawaban TSK + hasil deploy T-016
 
-**PR:** (branch `eng/T-017-zairyu-card-a`; nomor PR di komentar pembuka)
+**PR:** #15 (branch `eng/T-017-zairyu-card-a`)
 **Status:** siap direview (tidak ada UI baru)
 
 **Hasil deploy T-016 lewat `scripts/deploy.sh`** (PR #14 di-merge `704dfc7`, setelah `PM: DISETUJUI` dan CI hijau di head `27e9527`; tanpa migrasi, jadi tanpa `--backup`)
