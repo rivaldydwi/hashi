@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-012 · Kartu KPI dashboard: lebih ringkas dan bervariasi + hasil deploy T-011
 
-**PR:** (branch `eng/T-012-kpi-dashboard`; nomor PR di komentar pembuka)
+**PR:** #13 (branch `eng/T-012-kpi-dashboard`)
 **Status:** siap direview
 
 **Hasil deploy T-011 lewat `scripts/deploy.sh`** (PR #12 di-merge `8b5fa6d`, setelah `PM: DISETUJUI` dan CI hijau di head `49abed0`; tanpa migrasi, jadi tanpa `--backup`)
