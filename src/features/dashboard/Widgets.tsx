@@ -5,16 +5,41 @@ import { DecisionBadge } from "@/components/DecisionBadge";
 import { selectionDecision, candidateStage } from "@/db/schema";
 import { AuditList } from "@/features/audit/AuditList";
 import type { DashboardData } from "./data";
+import { Icon } from "@/components/shell/Icon";
+import { kpiLook, type KpiLook } from "@/db/dashboard-kpi";
 import { widgetById } from "./catalog";
 
 const num = (n: number) => String(n);
 
-function Kpi({ href, label, value, hint, testid }: { href: string; label: string; value: number; hint?: string; testid: string }) {
+const LOOK_STYLE: Record<KpiLook, { box: string; icon: string; label: string; value: string }> = {
+  neutral: { box: "border-line bg-card hover:bg-hover", icon: "text-ink-2", label: "text-ink-menu", value: "text-ink" },
+  info: { box: "border-info-line bg-info-bg hover:brightness-95", icon: "text-info-text", label: "text-info-text", value: "text-info-text" },
+  attention: { box: "border-attn-line bg-attn-bg hover:brightness-95", icon: "text-attn-icon", label: "text-attn-text", value: "text-attn-text" },
+  calm: { box: "border-ok-line bg-ok-bg hover:brightness-95", icon: "text-ok-text", label: "text-ok-text", value: "text-ink-2" },
+};
+
+/**
+ * Kartu KPI ringkas (T-012): ikon + label (maks 2 baris) di atas, angka + keterangan satu baris di bawah; ±96 px tinggi, semua kartu satu baris grid sama tinggi.
+ * Nada mengikuti makna dan nilai (`kpiLook`): KPI "perlu tindakan" menyala HANYA bila nilainya > 0, bila 0 tampil tenang (ikon centang + "beres").
+ * Warna bukan satu-satunya pembeda: ikon (centang vs ikon KPI), teks "beres", dan teks tersembunyi "perlu tindakan" untuk pembaca layar.
+ */
+function Kpi({ id, href, label, value, hint, calm, attention }: { id: string; href: string; label: string; value: number; hint?: string; calm: string; attention: string }) {
+  const def = widgetById(id);
+  const look = kpiLook(def?.tone ?? "neutral", value);
+  const st = LOOK_STYLE[look];
   return (
-    <Link href={href} data-testid={testid} className={`${cardClass} block min-h-11 p-5 hover:bg-hover`}>
-      <p className="text-sm text-ink-2">{label}</p>
-      <p className="mt-2 text-4xl font-bold tabular-nums text-ink" data-testid={`${testid}-value`}>{num(value)}</p>
-      {hint && <p className="mt-1 text-xs text-ink-2">{hint}</p>}
+    <Link href={href} data-testid={id} data-look={look} title={hint ? `${label}: ${hint}` : label} className={`flex h-full min-h-[5.5rem] flex-col justify-between gap-1 rounded-2xl border px-3 py-2.5 transition ${st.box}`}>
+      <span className={`flex items-start gap-1.5 text-[13px] font-medium leading-4 ${st.label}`}>
+        <Icon name={look === "calm" ? "check" : (def?.icon ?? "dashboard")} className={`mt-px h-4 w-4 shrink-0 ${st.icon}`} />
+        <span className="line-clamp-2">{label}</span>
+      </span>
+      <span className="flex items-baseline gap-2">
+        <span className={`text-3xl font-bold leading-9 tabular-nums ${st.value}`} data-testid={`${id}-value`}>{num(value)}</span>
+        <span className="line-clamp-2 text-xs leading-4 text-ink-menu">
+          {look === "attention" && <span className="sr-only">{attention}. </span>}
+          {look === "calm" ? calm : hint}
+        </span>
+      </span>
     </Link>
   );
 }
@@ -101,19 +126,19 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
 
   switch (id) {
     // ---- KPI LPK
-    case "kpi-unrated": return <Kpi testid="kpi-unrated" href="/candidates?view=unrated" label={t("kpiUnrated")} value={data.lpk!.unrated} hint={t("kpiUnratedHint")} />;
-    case "kpi-unshared": return <Kpi testid="kpi-unshared" href="/candidates?view=unshared" label={t("kpiUnshared")} value={data.lpk!.unshared} hint={t("kpiUnsharedHint")} />;
-    case "kpi-passport": return <Kpi testid="kpi-passport" href="/candidates?view=passport" label={t("kpiPassport")} value={data.lpk!.passportSoon} hint={t("kpiPassportHint", { n: data.lpk!.passportExpired })} />;
-    case "kpi-incomplete": return <Kpi testid="kpi-incomplete" href="/candidates?view=incomplete" label={t("kpiIncomplete")} value={data.lpk!.incomplete} hint={t("kpiIncompleteHint")} />;
+    case "kpi-unrated": return <Kpi id="kpi-unrated" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/candidates?view=unrated" label={t("kpiUnrated")} value={data.lpk!.unrated} hint={t("kpiUnratedHint")} />;
+    case "kpi-unshared": return <Kpi id="kpi-unshared" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/candidates?view=unshared" label={t("kpiUnshared")} value={data.lpk!.unshared} hint={t("kpiUnsharedHint")} />;
+    case "kpi-passport": return <Kpi id="kpi-passport" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/candidates?view=passport" label={t("kpiPassport")} value={data.lpk!.passportSoon} hint={t("kpiPassportHint", { n: data.lpk!.passportExpired })} />;
+    case "kpi-incomplete": return <Kpi id="kpi-incomplete" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/candidates?view=incomplete" label={t("kpiIncomplete")} value={data.lpk!.incomplete} hint={t("kpiIncompleteHint")} />;
     // ---- KPI TSK
-    case "kpi-new-shared": return <Kpi testid="kpi-new-shared" href="/candidates?view=new-shared" label={t("kpiNewShared")} value={data.tsk!.newShared} hint={t("kpiNewSharedHint")} />;
-    case "kpi-awaiting": return <Kpi testid="kpi-awaiting" href="/candidates?view=awaiting" label={t("kpiAwaiting")} value={data.tsk!.awaiting} hint={t("kpiAwaitingHint")} />;
-    case "kpi-open-jobs": return <Kpi testid="kpi-open-jobs" href="/job-orders?status=OPEN" label={t("kpiOpenJobs")} value={data.tsk!.openJobs} hint={t("kpiOpenJobsHint", { n: data.tsk!.openPositionsLeft })} />;
-    case "kpi-placed": return <Kpi testid="kpi-placed" href="/candidates?view=placed" label={t("kpiPlaced")} value={data.tsk!.placed} hint={t("kpiPlacedHint")} />;
+    case "kpi-new-shared": return <Kpi id="kpi-new-shared" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/candidates?view=new-shared" label={t("kpiNewShared")} value={data.tsk!.newShared} hint={t("kpiNewSharedHint")} />;
+    case "kpi-awaiting": return <Kpi id="kpi-awaiting" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/candidates?view=awaiting" label={t("kpiAwaiting")} value={data.tsk!.awaiting} hint={t("kpiAwaitingHint")} />;
+    case "kpi-open-jobs": return <Kpi id="kpi-open-jobs" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/job-orders?status=OPEN" label={t("kpiOpenJobs")} value={data.tsk!.openJobs} hint={t("kpiOpenJobsHint", { n: data.tsk!.openPositionsLeft })} />;
+    case "kpi-placed": return <Kpi id="kpi-placed" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/candidates?view=placed" label={t("kpiPlaced")} value={data.tsk!.placed} hint={t("kpiPlacedHint")} />;
     // ---- KPI super admin
-    case "kpi-orgs": return <Kpi testid="kpi-orgs" href="/organizations" label={t("kpiOrgs")} value={data.platformCounts!.orgs} />;
-    case "kpi-users": return <Kpi testid="kpi-users" href="/organizations" label={t("kpiUsers")} value={data.platformCounts!.users} />;
-    case "kpi-fields": return <Kpi testid="kpi-fields" href="/admin/skill-fields" label={t("kpiFields")} value={data.platformCounts!.fields} />;
+    case "kpi-orgs": return <Kpi id="kpi-orgs" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/organizations" label={t("kpiOrgs")} value={data.platformCounts!.orgs} />;
+    case "kpi-users": return <Kpi id="kpi-users" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/organizations" label={t("kpiUsers")} value={data.platformCounts!.users} />;
+    case "kpi-fields": return <Kpi id="kpi-fields" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/admin/skill-fields" label={t("kpiFields")} value={data.platformCounts!.fields} />;
 
     case "unrated-list":
       return (
@@ -230,11 +255,11 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
           )), t("emptyNewCands"))}
         </Card>
       );
-    case "kpi-records-unread": return <Kpi testid="kpi-records-unread" href="/records?view=unread" label={t("kpiRecordsUnread")} value={data.rec!.records + data.rec!.reports} hint={t("kpiRecordsUnreadHint", { r: data.rec!.records, l: data.rec!.reports })} />;
-    case "kpi-interviews-pending": return <Kpi testid="kpi-interviews-pending" href="/records/interviews?view=pending" label={t("kpiInterviewsPending")} value={data.rec!.interviews} hint={t("kpiInterviewsPendingHint")} />;
-    case "kpi-followups-open": return <Kpi testid="kpi-followups-open" href={`/records/tasks?scope=${data.rec!.followupsScope}&status=open`} label={t("kpiFollowupsOpen")} value={data.rec!.followups} hint={t(data.rec!.followupsScope === "all" ? "kpiFollowupsOpenAll" : "kpiFollowupsOpenMine")} />;
-    case "kpi-staff-over": return <Kpi testid="kpi-staff-over" href="/records/responsible?view=over" label={t("kpiStaffOver")} value={data.resp!.over} hint={t("kpiStaffOverHint")} />;
-    case "kpi-unassigned": return <Kpi testid="kpi-unassigned" href="/records/responsible?view=unassigned" label={t("kpiUnassigned")} value={data.resp!.unassigned} hint={t("kpiUnassignedHint")} />;
+    case "kpi-records-unread": return <Kpi id="kpi-records-unread" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/records?view=unread" label={t("kpiRecordsUnread")} value={data.rec!.records + data.rec!.reports} hint={t("kpiRecordsUnreadHint", { r: data.rec!.records, l: data.rec!.reports })} />;
+    case "kpi-interviews-pending": return <Kpi id="kpi-interviews-pending" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/records/interviews?view=pending" label={t("kpiInterviewsPending")} value={data.rec!.interviews} hint={t("kpiInterviewsPendingHint")} />;
+    case "kpi-followups-open": return <Kpi id="kpi-followups-open" calm={t("kpiCalm")} attention={t("kpiAttention")} href={`/records/tasks?scope=${data.rec!.followupsScope}&status=open`} label={t("kpiFollowupsOpen")} value={data.rec!.followups} hint={t(data.rec!.followupsScope === "all" ? "kpiFollowupsOpenAll" : "kpiFollowupsOpenMine")} />;
+    case "kpi-staff-over": return <Kpi id="kpi-staff-over" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/records/responsible?view=over" label={t("kpiStaffOver")} value={data.resp!.over} hint={t("kpiStaffOverHint")} />;
+    case "kpi-unassigned": return <Kpi id="kpi-unassigned" calm={t("kpiCalm")} attention={t("kpiAttention")} href="/records/responsible?view=unassigned" label={t("kpiUnassigned")} value={data.resp!.unassigned} hint={t("kpiUnassignedHint")} />;
     case "my-followups":
       return (
         <Card testid="w-my-followups" title={t("wMyFollowups")} href="/records/tasks?scope=mine&status=open" linkLabel={t("viewAll")}>

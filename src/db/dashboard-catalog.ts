@@ -1,9 +1,10 @@
+import type { KpiTone } from "./dashboard-kpi";
 import type { Role } from "./schema";
 
 export type WidgetSize = "half" | "full";
 export type WidgetDef = {
   id: string;
-  /** kpi = kartu angka (selalu 3 kolom, hanya bisa disembunyikan); widget = 6 kolom (setengah) atau 12 kolom (penuh). */
+  /** kpi = kartu angka (grid otomatis menurut lebar, hanya bisa disembunyikan); widget = 6 kolom (setengah) atau 12 kolom (penuh). */
   kind: "kpi" | "widget";
   roles: readonly Role[];
   /** Ukuran yang diizinkan (kosong untuk KPI). */
@@ -11,6 +12,9 @@ export type WidgetDef = {
   defaultSize: WidgetSize;
   /** Kunci pesan label (namespace dashboard), dipakai mode atur. */
   label: string;
+  /** Hanya KPI: nada dasar (lihat `kpiLook`) dan nama ikon (`Icon`); wajib untuk setiap KPI (dites unit). */
+  tone?: KpiTone;
+  icon?: string;
 };
 
 const LPK_A: Role[] = ["LPK_ADMIN"];
@@ -27,23 +31,23 @@ const HALF_FULL: WidgetSize[] = ["half", "full"];
  */
 export const WIDGETS: readonly WidgetDef[] = [
   // ---- KPI
-  { id: "kpi-unrated", kind: "kpi", roles: LPK_BOTH, sizes: [], defaultSize: "half", label: "kpiUnrated" },
-  { id: "kpi-unshared", kind: "kpi", roles: LPK_A, sizes: [], defaultSize: "half", label: "kpiUnshared" },
-  { id: "kpi-passport", kind: "kpi", roles: LPK_A, sizes: [], defaultSize: "half", label: "kpiPassport" },
-  { id: "kpi-incomplete", kind: "kpi", roles: LPK_A, sizes: [], defaultSize: "half", label: "kpiIncomplete" },
-  { id: "kpi-new-shared", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiNewShared" },
-  { id: "kpi-awaiting", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiAwaiting" },
-  { id: "kpi-open-jobs", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiOpenJobs" },
-  { id: "kpi-placed", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiPlaced" },
-  { id: "kpi-records-unread", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiRecordsUnread" },
-  { id: "kpi-interviews-pending", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiInterviewsPending" },
-  { id: "kpi-followups-open", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiFollowupsOpen" },
+  { id: "kpi-unrated", kind: "kpi", roles: LPK_BOTH, sizes: [], defaultSize: "half", label: "kpiUnrated", tone: "attention", icon: "assessments" },
+  { id: "kpi-unshared", kind: "kpi", roles: LPK_A, sizes: [], defaultSize: "half", label: "kpiUnshared", tone: "attention", icon: "share" },
+  { id: "kpi-passport", kind: "kpi", roles: LPK_A, sizes: [], defaultSize: "half", label: "kpiPassport", tone: "attention", icon: "residence" },
+  { id: "kpi-incomplete", kind: "kpi", roles: LPK_A, sizes: [], defaultSize: "half", label: "kpiIncomplete", tone: "attention", icon: "records" },
+  { id: "kpi-new-shared", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiNewShared", tone: "info", icon: "candidates" },
+  { id: "kpi-awaiting", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiAwaiting", tone: "attention", icon: "clock" },
+  { id: "kpi-open-jobs", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiOpenJobs", tone: "info", icon: "jobOrders" },
+  { id: "kpi-placed", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiPlaced", tone: "info", icon: "clients" },
+  { id: "kpi-records-unread", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiRecordsUnread", tone: "attention", icon: "records" },
+  { id: "kpi-interviews-pending", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiInterviewsPending", tone: "attention", icon: "periodic" },
+  { id: "kpi-followups-open", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiFollowupsOpen", tone: "attention", icon: "tasks" },
   // Penanggung jawab pekerja (T-010): hanya TSK_ADMIN
-  { id: "kpi-staff-over", kind: "kpi", roles: TSK_A, sizes: [], defaultSize: "half", label: "kpiStaffOver" },
-  { id: "kpi-unassigned", kind: "kpi", roles: TSK_A, sizes: [], defaultSize: "half", label: "kpiUnassigned" },
-  { id: "kpi-orgs", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiOrgs" },
-  { id: "kpi-users", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiUsers" },
-  { id: "kpi-fields", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiFields" },
+  { id: "kpi-staff-over", kind: "kpi", roles: TSK_A, sizes: [], defaultSize: "half", label: "kpiStaffOver", tone: "attention", icon: "users" },
+  { id: "kpi-unassigned", kind: "kpi", roles: TSK_A, sizes: [], defaultSize: "half", label: "kpiUnassigned", tone: "attention", icon: "alert" },
+  { id: "kpi-orgs", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiOrgs", tone: "neutral", icon: "organizations" },
+  { id: "kpi-users", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiUsers", tone: "neutral", icon: "users" },
+  { id: "kpi-fields", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiFields", tone: "neutral", icon: "skillFields" },
   // ---- Widget
   { id: "unrated-list", kind: "widget", roles: LPK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wUnrated" },
   { id: "tsk-decisions", kind: "widget", roles: LPK_A, sizes: HALF_FULL, defaultSize: "half", label: "wDecisions" },

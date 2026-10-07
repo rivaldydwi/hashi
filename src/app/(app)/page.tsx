@@ -5,6 +5,7 @@ import type { CurrentUser } from "@/lib/session";
 import { loadDashboard } from "@/features/dashboard/data";
 import { loadLayout } from "@/features/dashboard/queries";
 import { widgetById } from "@/features/dashboard/catalog";
+import { kpiGridClass } from "@/components/styles";
 import { Widget } from "@/features/dashboard/Widgets";
 import { LayoutEditor } from "@/features/dashboard/LayoutEditor";
 import { Onboarding } from "@/features/dashboard/Onboarding";
@@ -60,7 +61,7 @@ async function DashboardBody({ user, editing }: { user: CurrentUser; editing: bo
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight text-ink">{t("greeting", { name: user.name ?? "" })}</h1>
       {kpis.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="kpi-row">
+        <div className={kpiGridClass} data-testid="kpi-row">
           {kpis.map((k) => <Widget key={k.id} id={k.id} data={data} timezone={tz} />)}
         </div>
       )}

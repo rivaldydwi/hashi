@@ -26,3 +26,6 @@ export const gridTd = "border border-line px-2 py-2 align-top text-sm";
 export const gridTdText = `${gridTd} cjk-phrase`;
 /** Sel nilai pendek yang tidak boleh patah (tanggal, telepon, jumlah). */
 export const gridTdShort = `${gridTd} whitespace-nowrap`;
+
+/** Grid kartu KPI dashboard (T-012): jumlah kolom dari lebar (2 di ponsel, 5-6 di desktop lebar), dipakai halaman dan mode atur. */
+export const kpiGridClass = "grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-3";

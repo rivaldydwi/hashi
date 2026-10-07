@@ -17,6 +17,17 @@
   --color-blue: #2f5d8a;
   --color-role-bg: #e6eef5;
   --color-role-text: #1f4a73;
+  /* Kartu KPI dashboard (T-012). Teks pada latarnya: kontras >= 4,5:1 (WCAG AA). */
+  --color-attn-bg: #fff1e3;
+  --color-attn-line: #f2b98a;
+  --color-attn-text: #7c2d12;
+  --color-attn-icon: #c2410c;
+  --color-info-bg: #eaf2f9;
+  --color-info-line: #bdd3e6;
+  --color-info-text: #1f4a73;
+  --color-ok-bg: #f0f7f1;
+  --color-ok-line: #cde2d1;
+  --color-ok-text: #1f5f36;
   --color-data-1: #8c8378;
   --color-data-2: #a39b90;
 

@@ -18,7 +18,16 @@ const PATHS: Record<string, string> = {
   search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3",
   plus: "M12 5v14M5 12h14",
   chevron: "M6 9l6 6 6-6",
+  // Ikon kartu KPI dashboard (T-012)
+  check: "M5 13l4 4L19 7",
+  alert: "M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z",
+  share: "M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13",
+  clock: "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
+  tasks: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01",
 };
+
+/** Semua nama ikon yang tersedia (dites: ikon setiap KPI di katalog harus ada di sini). */
+export const ICON_NAMES = Object.keys(PATHS);
 
 export function Icon({ name, className = "h-[18px] w-[18px]" }: { name: keyof typeof PATHS | string; className?: string }) {
   return (

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { defaultLayout, toStored, type ResolvedItem } from "@/db/dashboard-layout";
 import type { Role } from "@/db/schema";
-import { btnSecondary } from "@/components/styles";
+import { btnSecondary, kpiGridClass } from "@/components/styles";
 import { useToast } from "@/components/Toast";
 import { saveDashboardLayout, resetDashboardLayout } from "./actions";
 
@@ -107,7 +107,7 @@ export function LayoutEditor({ role, initial, slots, labels }: { role: Role; ini
       </div>
 
       {kpis.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="kpi-row">
+        <div className={kpiGridClass} data-testid="kpi-row">
           {kpis.map((x) => (
             <div key={x.id} className="flex flex-col">
               {controls(x)}

@@ -34,6 +34,37 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-012 · Kartu KPI dashboard: lebih ringkas dan bervariasi + hasil deploy T-011
+
+**PR:** (branch `eng/T-012-kpi-dashboard`; nomor PR di komentar pembuka)
+**Status:** siap direview
+
+**Hasil deploy T-011 lewat `scripts/deploy.sh`** (PR #12 di-merge `8b5fa6d`, setelah `PM: DISETUJUI` dan CI hijau di head `49abed0`; tanpa migrasi, jadi tanpa `--backup`)
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: 8b5fa6d (label image: 8b5fa6d); health: {"status":"ok","commit":"8b5fa6d"}`. Demo tidak disentuh (Up, healthy).
+
+**Yang dikerjakan**
+- **Ringkas:** `Kpi` ditulis ulang: ikon + label (maks 2 baris) di atas, angka `text-3xl` + keterangan di bawah, padding kecil. Tinggi kartu 130-182 px → **88-106 px**. Grid otomatis menurut lebar (`repeat(auto-fill, minmax(10rem, 1fr))`, `kpiGridClass`): 2 kolom di ponsel (390 px), 5 di 1280 px, 6 di 1440 px; semua kartu satu baris sama tinggi. Di 1280 px 9 KPI TSK_ADMIN = 2 baris dan widget berikutnya terlihat tanpa menggulir. Seluruh kartu tetap tautan (tinggi ≥ 44 px) dengan fokus keyboard terlihat; judul penuh ada di atribut `title`.
+- **Variasi:** katalog (`dashboard-catalog.ts`) memberi setiap KPI `tone` (neutral / info / attention) dan `icon` (ikon baru `check`, `alert`, `share`, `clock`, `tasks` di `Icon.tsx`, gaya sama dengan ikon sidebar). Fungsi murni `kpiLook(tone, nilai)` (`dashboard-kpi.ts`): KPI tindakan (belum dinilai, belum dibagikan, paspor, profil belum lengkap, menunggu keputusan, catatan belum dibaca, wawancara berkala, tindak lanjut, staf melebihi batas, tanpa penanggung jawab) menyala **hanya bila nilainya > 0**; bila 0 tampil tenang (hijau lembut, ikon centang, teks "Beres" / "問題なし"). KPI informasi (kandidat baru dibagikan, job order terbuka, pekerja aktif) memakai nada info (biru); hitungan platform super admin netral. Token warna baru di `@theme` (`attn-*`, `info-*`, `ok-*`; kontras teks ≥ 4,5:1). Warna bukan satu-satunya pembeda: ikon (centang vs ikon KPI), teks "Beres", dan teks tersembunyi "Perlu tindakan" untuk pembaca layar.
+- **Keterangan:** semua label/keterangan KPI (id dan ja) disingkat dan tanpa istilah internal; contoh: wawancara berkala = "Wawancara berkala belum dilakukan / Kuartal ini, sebelum tenggat" (bukan lagi "Sel Belum, ...").
+- Satu komponen `Kpi`, katalog + mode atur (`/?atur=1`, memakai grid yang sama) + ukuran widget non-KPI tidak berubah; berlaku semua peran.
+
+**Verifikasi** (db-dev `hashi_dev`; produksi tidak disentuh)
+- `npm run typecheck` → lulus; `npm run build` → 0 peringatan; `npm run test:i18n` → lulus (1483 kunci); `npm run test:unit` → 74 lulus (3 baru `dashboard-kpi.test.ts`: tiap KPI punya nada + ikon yang ada, 0 = calm dan > 0 = attention, info/netral tidak berubah, pembagian nada per KPI)
+- `db:seed -- --reset` + `npm run test:rls` → lulus; `npm run verify:seed` → lulus (tanpa perubahan skema/data)
+- `E2E_PORT=3120 npm run test:e2e` → 192 lulus (4 baru `dashboard-kpi.spec.ts`: 1280 px kartu ≤ 110 px, sebaris sama tinggi, KPI TSK_ADMIN ≤ 2 baris dan widget pertama terlihat tanpa menggulir; 390 px 2 kartu per baris tanpa gulir horizontal (LPK_ADMIN dan TSK_ADMIN); nada mengikuti nilai di data seed (ada yang calm dan yang attention, info tetap info), fokus keyboard terlihat; teks "perlu tindakan" untuk pembaca layar dan "Beres" di id)
+- Tangkapan layar sebelum/sesudah LPK_ADMIN dan TSK_ADMIN, ja dan id, desktop 1280 + ponsel 390 (halaman penuh): `docs/screenshots/T-012/` (`sebelum-*` / `sesudah-*`; data dummy seed). Pengambilannya mengganti bahasa tampilan akun uji lewat tombol lalu mengembalikannya (dicek di DB: `tsk.admin` ja, `lpk1.admin` id).
+
+**Kondisi server:** produksi `8b5fa6d` (T-011). T-012 tidak meminta deploy (menunggu `PM: DISETUJUI`; tanpa migrasi).
+
+**Kendala / catatan**
+- Tinggi kartu id lebih besar (±106 px) daripada ja (±88 px) karena label/keterangan Indonesia lebih panjang dan bisa 2 baris; tetap di bawah batas 110 px.
+- Super admin (kartu netral tanpa keterangan) tidak punya dashboard bernada tindakan; tampilannya hanya ikut ringkas.
+
+**Pertanyaan:** tidak ada.
+
+**Usulan berikutnya** (bukan tugas)
+- Widget non-KPI bisa diberi ikon pada judul agar seragam dengan KPI; belum diminta.
+
 ## 2026-10-07 · T-011 · Tabel lebar rapi dalam bahasa Jepang
 
 **PR:** #12 (branch `eng/T-011-tabel-jepang`)
