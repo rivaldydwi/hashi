@@ -34,6 +34,45 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-06 · T-004 · Desain pelacak 在留カード + hasil deploy T-009
+
+**PR:** #11 (branch `eng/T-004-desain-zairyu-card`)
+**Status:** siap direview (dokumen saja, tanpa kode/skema/migrasi)
+
+**Hasil deploy T-009 lewat `scripts/deploy.sh --backup`** (PR #10 di-merge `28e525b`, setelah `PM: DISETUJUI` dan CI hijau di head `2398b55`)
+- Cadangan terenkripsi dulu: `hashi-20261006-213318-*` (database 651 entri, 146 berkas dokumen; `LAST_FAILED` tidak ada). Migration 0024 terterap otomatis: keempat kolom baru (`method`, `responder_role`, `responder_title`, `form55`) ada di `periodic_interviews` produksi.
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: 28e525b (label image: 28e525b); health: {"status":"ok","commit":"28e525b"}`. Demo tidak disentuh (Up, healthy). Label form 5-5 tetap DRAFT sampai staf TSK mengecek (PM yang menyampaikan).
+
+**Yang dikerjakan**
+- `docs/zairyu-card.md`: ruang lingkup; data (tabel usulan `residence_cards`, riwayat = baris baru, "Terima kartu baru" = satu transaksi, penanggung jawab diturunkan dari T-010 bukan kolom); nomor/foto kartu pro-kontra (rekomendasi: TIDAK disimpan);
+  hak akses (RLS hanya TSK, tanpa DELETE, audit tanpa isi, batas tampilan LPK lewat fungsi SECURITY DEFINER sempit, bukan membuka tabel); pengingat sebagai fungsi murni `cardStage` (tabel tahap + 12 kasus tepi: sudah lewat, akhir bulan, Februari kabisat, Tokyo vs Jakarta, dst.);
+  tampilan (KPI, daftar `/records/cards`, bagian di detail pekerja); rencana pemecahan T-A (skema+aturan), T-B (UI detail), T-C (daftar+KPI+seed), T-D opsional (isi awal data), masing-masing dengan kriteria selesai; 12 pertanyaan bernomor untuk staf TSK.
+- `docs/glossary.md`: 在留資格, 在留期間, 在留期限, 在留期間更新許可申請, 特例期間, 担当.
+- Tanggal contoh (batas bulan, kabisat, zona) dihitung dengan skrip sementara, bukan ditebak.
+
+**Verifikasi**
+- Tidak ada perubahan kode, skema, atau migrasi (`git diff --stat main` hanya `docs/zairyu-card.md`, `docs/glossary.md`, `docs/STATUS.md`); tes tidak dijalankan ulang karena tidak ada kode yang berubah (CI tetap berjalan di PR).
+
+**Kondisi server:** produksi `28e525b` (T-009). Tidak ada deploy untuk T-004.
+
+**Pertanyaan**
+- BUTUH IPAL: tolong teruskan ke staf TSK (rincian dan alasan tiap butir di `docs/zairyu-card.md` bagian 9):
+  1. Penerima pengingat: 担当 pekerja + salinan Admin TSK (semua Admin atau satu?); bila belum ada 担当 cukup ke Admin? Apakah pengurus perpanjangan selalu 担当 yang sama?
+  2. Setelah diajukan ke imigrasi (申請中): pengingat tetap berjalan sampai kartu baru diterima, atau cukup "menunggu hasil"? Perlu menampilkan 特例期間?
+  3. Konfirmasi jadwal (4 bulan / 3 bulan / H-30 / H-14 / H-7 / sesudah lewat); "sesudah lewat" tampil sampai kapan? Hari terakhir (tanggal habis) masih berlaku?
+  4. 在留資格 apa saja yang dicatat (hanya 特定技能1号 atau juga 2号/技能実習/特定活動/lainnya)? Perlu 在留期間 selain tanggal habis?
+  5. Apakah empat status proses cukup (belum mulai → persiapan → sudah diajukan → kartu baru diterima)? Perlu "berkas lengkap", "dokumen tambahan (追加資料)", "ditolak"?
+  6. Nomor kartu dan foto kartu perlu disimpan? Untuk apa? (rekomendasi: tidak; bila perlu, cek gyōsei shoshi dulu)
+  7. Siapa boleh mengubah data kartu: semua staf TSK atau hanya 担当 + Admin?
+  8. Berapa pekerja aktif yang harus diisi di awal, dan cara paling nyaman: satu per satu atau tempel dari spreadsheet?
+  9. LPK: apa arti "status visa" (nilai apa saja), dari mana tanggal tiba, siapa yang mengisinya? (tugas terpisah)
+  10. "Tanggal terima kartu baru" = tanggal kartu fisik diterima pekerja atau staf? Siapa yang mencatat?
+  11. H-30/H-14/H-7 dihitung menurut tanggal Jepang (Tokyo): setuju?
+  12. Perlu notifikasi di luar aplikasi (email/LINE) di tahap berikutnya? Kepada siapa dan jam berapa?
+
+**Usulan berikutnya** (bukan tugas; PM yang memutuskan)
+- Setelah jawaban TSK: T-A sampai T-C dari bagian 6 dokumen menjadi tugas implementasi; T-D bergantung pertanyaan 8.
+
 ## 2026-10-06 · T-009 · revisi ke-1: teks form 5-5 sama dengan form resmi
 
 **PR:** #10 (branch `eng/T-009-form-5-5`)
