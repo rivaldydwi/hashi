@@ -12,25 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-013 · Lacak peringatan `pg` "client.query() ... already executing" · `SIAP`
-
-Log e2e menampilkan peringatan pg ini (`docs/HISTORY.md` §4). Di pg@9 perilaku ini akan jadi **error**, jadi ini bom waktu: biasanya dua query dijalankan bersamaan
-di SATU klien/transaksi (mis. `Promise.all` di dalam `withTenant(tx => …)`).
-
-Kerjakan:
-- Temukan sumbernya: jalankan e2e/halaman dengan `NODE_OPTIONS=--trace-warnings` (atau `process.on("warning")` sementara) sampai dapat stack trace; catat berkas + fungsi.
-- Perbaiki di akarnya (query berurutan di dalam transaksi yang sama, atau pisah transaksi bila memang boleh paralel); cari pola serupa di seluruh `src/` (`Promise.all` di dalam `withTenant`/`tx`), bukan hanya satu tempat.
-- Tambah penjaga supaya tidak muncul lagi: mis. tes/skrip yang menjalankan halaman-halaman utama dan GAGAL bila peringatan itu muncul (atau `process.on("warning")` di `serve-standalone.mjs` saat e2e yang menulis ke log lalu dicek di akhir).
-- Peringatan "destination stream closed early" ikut diperiksa: jelaskan penyebabnya; perbaiki hanya bila memang bug.
-
-**Kriteria selesai**
-- [ ] STATUS menyebut sumber peringatan (berkas/fungsi) dan pola yang diperbaiki di mana saja.
-- [ ] Log `test:e2e` lengkap tanpa peringatan "already executing" (kutip potongan log / hitungan 0 di PR) + penjaga otomatis yang gagal bila muncul lagi.
-- [ ] Tidak ada perubahan perilaku (typecheck, build 0 peringatan, test:rls, e2e, CI hijau).
-
----
-
-### T-023 · Terjemahan peramban: teks bebas BOLEH diterjemahkan, yang dikunci hanya identitas · `SIAP` (setelah T-013, sebelum T-020)
+### T-023 · Terjemahan peramban: teks bebas BOLEH diterjemahkan, yang dikunci hanya identitas · `SIAP`
 
 Masukan Ipal (2026-10-07, tangkapan layar detail kandidat dengan Chrome "Terjemahkan" id→ja): catatan LPK berbahasa Indonesia (motivasi, PR diri, hobi, keahlian, catatan riwayat Jepang, dst.)
 **tidak ikut diterjemahkan**. Staf TSK orang Jepang/Myanmar/Vietnam justru perlu membaca isi itu. **Keputusan Ipal: teks bebas harus bisa diterjemahkan.** Ini mengoreksi aturan T-016,
@@ -144,10 +126,12 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 - Tampilan LPK: status visa + tanggal tiba (jawaban no. 9: hanya yang dibuat TSK). Setelah T-019.
 - Langkah 7 sisanya: checklist keberangkatan/kedatangan, bagian 管理・報告 di lembar 定期面談, profil pekerja lengkap, status visa + tanggal tiba untuk LPK (baca-saja), notifikasi email/LINE.
 - Catatan lanjutan: syarat "pekerja sama" hanya diperiksa saat dibuat; bila nanti perlu ketat, trigger di `activity_record_subjects` (temuan T-007, belum perlu).
+- `next.config`: `agentRules: false` supaya `next dev` tidak menulis blok aturan ke `CLAUDE.md` (temuan engineer T-013).
 - Langkah 9: demo ke TSK.
 
 ## Selesai
 
+- **T-013** Peringatan pg "already executing" (PR #18): 116 kejadian dilacak ke `Promise.all` di atas `tx`, 16 tempat diganti `inSeries` (`src/db/serial.ts`); penjaga: server e2e mati kode 97 (`guard-pg-concurrency.cjs`) + pemindai sumber `no-tx-promise-all.test.ts`; log e2e 0 kejadian.
 - **T-019** 在留カード (C) (PR #17): `/records/cards` + menu sungguhan, KPI urgent/prepare/waiting/missing dari SATU sumber (`loadCardRows`/`filterCardRows`/`cardKpiCounts`, `isActionNeeded` termasuk 追加資料), staf = miliknya, Admin = semua; seed 3 keadaan + `verify:seed` KPI = daftar; 13 pekerja uji e2e untuk semua tahap. KPI TSK_ADMIN kini 3 baris di 1280 px (diterima PM; tes T-012 disesuaikan ke ≤ 3).
 - **T-018** 在留カード (B) (PR #16): bagian kartu di `/records/workers/<id>` (kartu pertama, enam status, 追加資料/不許可 bertanggal lewat migrasi 0026, terima kartu baru atomik, serah, void, riwayat), tombol hanya untuk 担当/Admin (server + RLS), catatan mirip nomor kartu ditolak, 10 e2e.
 - **T-017** 在留カード (A) (PR #15): migrasi 0025 `residence_cards` (rantai kartu, terima + pengganti atomik lewat constraint trigger tertunda, kartu diterima final), tulis 担当 efektif + Admin (`card_editor`, = `effectiveResponsible`), baca semua staf TSK, tanpa DELETE; `cardStage` dengan 結果待ち/特例期間/不許可; verify-rls bagian X; 21 tes unit. Tanpa UI.
