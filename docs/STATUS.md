@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-021 · Data perpanjangan 在留カード online siap salin + data Jepang pekerja (+ hasil deploy T-022)
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-021-renewal-data`)
+**PR:** #22 (branch `eng/T-021-renewal-data`)
 **Status:** siap direview. **Satu bagian tugas SENGAJA tidak dibuat (PDF 手数料納付書): butuh keputusan PM/Ipal, lihat "Pertanyaan".** Deploy produksi belum (menunggu `PM: DISETUJUI`; migrasi 0029).
 
 **Hasil deploy T-022** (PR #21 di-merge `e9df9b4` setelah `PM: DISETUJUI` dan CI hijau di head `558f163`; ada migrasi 0028 + service baru)
