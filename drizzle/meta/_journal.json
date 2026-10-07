@@ -204,6 +204,13 @@
       "when": 1791374912343,
       "tag": "0028_card_reminder_log",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791415258272,
+      "tag": "0029_worker_jp_profiles",
+      "breakpoints": true
     }
   ]
 }

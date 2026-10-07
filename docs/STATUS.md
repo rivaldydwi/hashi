@@ -34,6 +34,47 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-021 · Data perpanjangan 在留カード online siap salin + data Jepang pekerja (+ hasil deploy T-022)
+
+**PR:** (diisi setelah dibuka) (branch `eng/T-021-renewal-data`)
+**Status:** siap direview. **Satu bagian tugas SENGAJA tidak dibuat (PDF 手数料納付書): butuh keputusan PM/Ipal, lihat "Pertanyaan".** Deploy produksi belum (menunggu `PM: DISETUJUI`; migrasi 0029).
+
+**Hasil deploy T-022** (PR #21 di-merge `e9df9b4` setelah `PM: DISETUJUI` dan CI hijau di head `558f163`; ada migrasi 0028 + service baru)
+- `scripts/deploy.sh --backup`: cadangan terenkripsi `hashi-20261008-081850-*` dibuat dulu, migrasi 0028 terpasang, service `worker` ikut naik. Keluaran akhir: commit berjalan `e9df9b4`, health `{"status":"ok","commit":"e9df9b4"}`. `SMTP_URL` produksi KOSONG (diperiksa sebelum deploy). Demo tidak disentuh (masih `eab9692`).
+- **Bukti log `worker` produksi (mode KERING)**: `[reminder] worker mulai: mode=KERING (SMTP_URL kosong: tidak ada email terkirim)` → `[reminder] 2026-10-08 selesai mode=dry-run org=1 penerima=0 email=0 item=0 gagal=0` → `[reminder] putaran berikutnya 2026-10-08T23:00:00.000Z (08:00 Asia/Tokyo)`. Status kontainer: `hashi-worker-1 Up`, `hashi-app-1 healthy`.
+- Masih menunggu Ipal: (1) salinan `CARD_DATA_KEY` ke tempat aman (T-020; jangan memasukkan data kartu nyata dulu), (2) pilihan layanan SMTP (T-022).
+
+**Temuan yang mengubah lingkup (BUTUH PM/IPAL, lihat Pertanyaan)**
+- Halaman resmi 出入国在留管理庁 tentang perubahan biaya per 2026-10-01 (https://www.moj.go.jp/isa/11_00107.html): untuk pengajuan **online** mulai 1 Oktober 2026 biaya dibayar lewat **pembayaran konbini atau bank** (setelah email panduan dari no-reply@service-dgft.com); **収入印紙 tidak bisa dipakai**. Pengajuan di loket tetap memakai 収入印紙. Biaya juga naik (contoh perpanjangan 1 tahun: 27.000 yen + biaya pembayaran 330 yen).
+- Keputusan Ipal untuk T-021 adalah perpanjangan ONLINE. Jadi **PDF 手数料納付書 (+ 収入印紙) tidak relevan untuk alur ini** dan saya TIDAK membuatnya (juga daftar pengambilan kartu disesuaikan: biaya online, tanpa materai). Bila TSK tetap ingin cadangan jalur loket, itu tugas terpisah (butuh PDF kosong resmi; bahan: https://www.moj.go.jp/isa/content/001458260.pdf).
+
+**Yang dikerjakan** (migration `0029_worker_jp_profiles`; desain `docs/zairyu-card.md` §11)
+- **Data Jepang pekerja**: tabel `worker_jp_profiles` (alamat tinggal 住居地 + telepon/HP; milik TSK, satu baris per pekerja, BUKAN di `candidate_private`). RLS: baca = staf TSK organisasi sama; tulis = TSK_ADMIN atau 担当 efektif (`card_editor`); tanpa DELETE; trigger: pekerja harus punya penempatan di organisasi, kolom identitas terkunci, pembuat/pengubah dari sesi. Form ubah (`JpProfileSection`) di `/records/workers/<id>`; staf lain baca-saja; nilai ber-`translate="no"`. Audit `worker_jp_profile.update` hanya NAMA kolom (alamat/telepon tidak pernah tercatat).
+- **Halaman `/records/workers/<id>/renewal`** (hanya 担当 + TSK_ADMIN; staf lain/LPK/sensei 404): butir 1-14 berlabel Jepang (+ Indonesia kecil) dengan tombol **Salin** per nilai; 15/16 pengingat "tidak disimpan di Hashi". Pemetaan murni `src/db/renewal.ts`: 国籍 インドネシア; 生年月日 西暦 + 和暦 (era 令和/平成/昭和/大正/明治, 元年); 氏名 romaji KAPITAL tanpa aksen (marga/nama = PERKIRAAN, ditandai di halaman); 男/女; 有/無; 職業 会社員; alamat Indonesia dari profil; 旅券 nomor + masa berlaku; 在留資格 特定技能1号 + 在留期間 (4か月/6か月/1年) + 満了日; 希望する在留期間 bawaan = 在留期間 kartu; 更新の理由 templat bawaan (perusahaan + bidang) yang bisa diubah di halaman dan TIDAK disimpan.
+- **Butir kosong** ditandai "Belum terisi" + tautan ke tempat mengisinya (profil kandidat, data kartu, data Jepang); ringkasan jumlah butir kosong. **Peringatan**: paspor kedaluwarsa, paspor habis sebelum/pada 満了日, belum ada data kartu.
+- **Nomor kartu (butir 12)**: tidak pernah ada di halaman; hanya tombol "Tampilkan" yang sama dengan T-020 (audit `number_view` sebelum nilai kembali), lalu bisa disalin. e2e membuktikan membuka halaman tidak mencatat `number_view`, HTML tanpa nomor, dan audit tanpa nilai.
+- **Audit** `residence_card.renewal_view` (setiap halaman dibuka oleh yang berhak, tanpa nilai) dan `worker_jp_profile.update`; keduanya terdaftar di `ACTIONS` (id + ja).
+- **Tautan** ke halaman ini dari bagian kartu di detail pekerja dan dari baris `/records/cards` pada tahap `prepare` s.d. `expired` (hanya untuk 担当 + Admin).
+- **Pengambilan kartu (結果待ち)**: teks bantuan statis di bagian kartu (pemberitahuan hasil, paspor, kartu lama, biaya online tanpa materai; catatan bahwa loket masih memakai surat pembayaran + materai).
+- Kebiasaan baru yang tertangkap: namespace pesan `cards.renewal` sudah dipakai untuk label STATUS proses; sempat tertimpa, ketahuan lewat log server e2e (`MISSING_MESSAGE`), dipulihkan, dan teks baru dipindah ke `cards.renewalData` (dicatat di `CLAUDE.md`). Full e2e kini diperiksa bebas `MISSING_MESSAGE`.
+
+**Verifikasi** (database dev `hashi_dev`)
+- `npm run typecheck` → lulus; `npm run test:i18n` → lulus (1729 kunci); `npm run test:unit` → 138/138 (baru `renewal.test.ts` 8: 和暦 termasuk batas era dan 元年, 在留期間, romaji, butir lengkap, nomor kartu tak pernah bernilai, butir kosong + tempat perbaikan, peringatan paspor, templat alasan).
+- `npm run verify:audit-coverage` → tanpa pelanggaran; `npm run build` → 0 peringatan; `db:migrate` + `db:seed -- --reset` → lulus; `npm run test:rls` → semua lulus (bagian AA baru 2 pemeriksaan + `worker_jp_profiles` masuk daftar tuntas bagian I); `npm run verify:seed` → lulus.
+- `E2E_PORT=3120 npm run test:e2e` → 235 lulus, tanpa `MISSING_MESSAGE` (7 tes baru `renewal.spec.ts`: butir dan 和暦, butir kosong + tautan, data Jepang + audit nama kolom + Salin (clipboard dibaca), nomor kartu lewat Tampilkan, alasan tak tersimpan + peringatan paspor, 404 untuk staf lain/LPK/sensei dan audit `renewal_view`, tautan dari bagian kartu dan daftar, teks bantuan pengambilan kartu).
+
+**Kendala / catatan**
+- Butir 7 memakai alamat Indonesia dari profil apa adanya (teks bebas): staf perlu menyesuaikan penulisan dengan isian online. Teks resmi form berstatus DRAFT sampai dicek staf TSK (sama seperti form 5-5).
+- Halaman lanjutan versi 特定技能 ("V") dan 所属機関等作成用 belum termasuk tugas ini (sesuai TASKS).
+
+**Pertanyaan**
+- BUTUH PM/IPAL: setujukah PDF 手数料納付書 ditiadakan karena alur online sejak 2026-10-01 membayar via konbini/bank (tanpa 収入印紙)? Atau tetap dibuat sebagai cadangan jalur loket (tugas terpisah)? Mohon konfirmasi apakah TSK ada kemungkinan mengajukan di loket.
+- BUTUH IPAL: salinan `CARD_DATA_KEY` dan pilihan layanan SMTP (masih terbuka dari T-020/T-022).
+
+**Usulan berikutnya**
+- Menampilkan estimasi biaya perpanjangan (naik per 2026-10-01; tergantung masa izin) di halaman perpanjangan sebagai teks bantuan, bila TSK mau; perlu sumber resmi tabel biaya.
+
+
 ## 2026-10-07 · T-022 · Email pengingat 在留カード (ke 担当 + Admin) + hasil deploy T-020
 
 **PR:** #21 (branch `eng/T-022-card-reminder-email`)
