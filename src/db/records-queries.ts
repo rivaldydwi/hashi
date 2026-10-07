@@ -1,5 +1,6 @@
 // Query Catatan kegiatan yang dipakai lebih dari satu tempat (halaman, dashboard, lencana sidebar, verify:seed). Semua di dalam withTenant:
 // RLS membatasi ke staf TSK organisasi sesi.
+import { inSeries } from "./serial";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Tx } from "./index";
 import {
@@ -105,7 +106,7 @@ export type WorkerQuarters = { worker: ActiveWorker; quarters: QuarterCell[] };
 
 /** Keadaan 4 kuartal untuk pekerja-pekerja pada tahun fiskal `fy` (hanya pekerja yang bekerja minimal satu hari di FY itu: ACTIVE dan ENDED). SATU sumber untuk grid, KPI, dan daftar laporan tahunan. */
 export async function quartersOfFiscalYear(tx: Tx, fy: number, today: string): Promise<WorkerQuarters[]> {
-  const [workers, rows] = await Promise.all([allWorkers(tx), interviewsOfFiscalYear(tx, fy)]);
+  const [workers, rows] = await inSeries(() => allWorkers(tx), () => interviewsOfFiscalYear(tx, fy));
   const byWorker = new Map<string, IntervalRow[]>();
   for (const r of rows) byWorker.set(r.candidateId, [...(byWorker.get(r.candidateId) ?? []), r]);
   return workers

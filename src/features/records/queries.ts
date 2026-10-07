@@ -1,3 +1,4 @@
+import { inSeries } from "@/db/serial";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Tx } from "@/db";
 import {
@@ -77,12 +78,12 @@ export async function listRecords(tx: Tx, f: RecordFilters, userId: string): Pro
     .offset((f.page - 1) * RECORD_PAGE_SIZE);
   const ids = base.map((r) => r.id);
   if (ids.length === 0) return { rows: [], total: n };
-  const [subs, reads, tasks, photos] = await Promise.all([
-    tx.select({ recordId: activityRecordSubjects.recordId, id: candidates.id, name: candidates.fullName }).from(activityRecordSubjects).innerJoin(candidates, eq(candidates.id, activityRecordSubjects.candidateId)).where(inArray(activityRecordSubjects.recordId, ids)),
-    tx.select({ recordId: activityRecordReads.recordId, v: activityRecordReads.versionNoRead }).from(activityRecordReads).where(and(eq(activityRecordReads.userId, userId), inArray(activityRecordReads.recordId, ids))),
-    tx.select({ recordId: activityFollowups.recordId, n: sql<number>`count(*)::int` }).from(activityFollowups).where(and(eq(activityFollowups.status, "open"), inArray(activityFollowups.recordId, ids))).groupBy(activityFollowups.recordId),
-    tx.select({ recordId: activityAttachments.recordId, n: sql<number>`count(*)::int` }).from(activityAttachments).where(and(isNull(activityAttachments.removedAt), inArray(activityAttachments.recordId, ids))).groupBy(activityAttachments.recordId),
-  ]);
+  const [subs, reads, tasks, photos] = await inSeries(
+    () => tx.select({ recordId: activityRecordSubjects.recordId, id: candidates.id, name: candidates.fullName }).from(activityRecordSubjects).innerJoin(candidates, eq(candidates.id, activityRecordSubjects.candidateId)).where(inArray(activityRecordSubjects.recordId, ids)),
+    () => tx.select({ recordId: activityRecordReads.recordId, v: activityRecordReads.versionNoRead }).from(activityRecordReads).where(and(eq(activityRecordReads.userId, userId), inArray(activityRecordReads.recordId, ids))),
+    () => tx.select({ recordId: activityFollowups.recordId, n: sql<number>`count(*)::int` }).from(activityFollowups).where(and(eq(activityFollowups.status, "open"), inArray(activityFollowups.recordId, ids))).groupBy(activityFollowups.recordId),
+    () => tx.select({ recordId: activityAttachments.recordId, n: sql<number>`count(*)::int` }).from(activityAttachments).where(and(isNull(activityAttachments.removedAt), inArray(activityAttachments.recordId, ids))).groupBy(activityAttachments.recordId),
+  );
   const readBy = new Map(reads.map((r) => [r.recordId, r.v]));
   const rows = base.map((r) => {
     const seen = readBy.get(r.id);
@@ -122,15 +123,15 @@ export async function getRecord(tx: Tx, id: string) {
     .where(eq(activityRecords.id, id))
     .limit(1);
   if (!rec) return null;
-  const [subjects, handlers, recipients, reads, attachments, followups, revisions] = await Promise.all([
-    tx.select({ id: candidates.id, name: candidates.fullName, katakana: candidates.nameKatakana }).from(activityRecordSubjects).innerJoin(candidates, eq(candidates.id, activityRecordSubjects.candidateId)).where(eq(activityRecordSubjects.recordId, id)).orderBy(asc(candidates.fullName)),
-    tx.select({ id: users.id, name: users.name }).from(activityRecordHandlers).innerJoin(users, eq(users.id, activityRecordHandlers.userId)).where(eq(activityRecordHandlers.recordId, id)).orderBy(asc(users.name)),
-    tx.select({ id: users.id, name: users.name }).from(activityRecordRecipients).innerJoin(users, eq(users.id, activityRecordRecipients.userId)).where(eq(activityRecordRecipients.recordId, id)).orderBy(asc(users.name)),
-    tx.select({ userId: activityRecordReads.userId, name: users.name, readAt: activityRecordReads.readAt, versionNoRead: activityRecordReads.versionNoRead }).from(activityRecordReads).innerJoin(users, eq(users.id, activityRecordReads.userId)).where(eq(activityRecordReads.recordId, id)).orderBy(asc(activityRecordReads.readAt)),
-    tx.select().from(activityAttachments).where(and(eq(activityAttachments.recordId, id), isNull(activityAttachments.removedAt))).orderBy(asc(activityAttachments.createdAt)),
-    tx.select({ f: activityFollowups, assigneeName: users.name }).from(activityFollowups).innerJoin(users, eq(users.id, activityFollowups.assigneeId)).where(eq(activityFollowups.recordId, id)).orderBy(asc(activityFollowups.createdAt)),
-    revisionsOf(tx, "record", id),
-  ]);
+  const [subjects, handlers, recipients, reads, attachments, followups, revisions] = await inSeries(
+    () => tx.select({ id: candidates.id, name: candidates.fullName, katakana: candidates.nameKatakana }).from(activityRecordSubjects).innerJoin(candidates, eq(candidates.id, activityRecordSubjects.candidateId)).where(eq(activityRecordSubjects.recordId, id)).orderBy(asc(candidates.fullName)),
+    () => tx.select({ id: users.id, name: users.name }).from(activityRecordHandlers).innerJoin(users, eq(users.id, activityRecordHandlers.userId)).where(eq(activityRecordHandlers.recordId, id)).orderBy(asc(users.name)),
+    () => tx.select({ id: users.id, name: users.name }).from(activityRecordRecipients).innerJoin(users, eq(users.id, activityRecordRecipients.userId)).where(eq(activityRecordRecipients.recordId, id)).orderBy(asc(users.name)),
+    () => tx.select({ userId: activityRecordReads.userId, name: users.name, readAt: activityRecordReads.readAt, versionNoRead: activityRecordReads.versionNoRead }).from(activityRecordReads).innerJoin(users, eq(users.id, activityRecordReads.userId)).where(eq(activityRecordReads.recordId, id)).orderBy(asc(activityRecordReads.readAt)),
+    () => tx.select().from(activityAttachments).where(and(eq(activityAttachments.recordId, id), isNull(activityAttachments.removedAt))).orderBy(asc(activityAttachments.createdAt)),
+    () => tx.select({ f: activityFollowups, assigneeName: users.name }).from(activityFollowups).innerJoin(users, eq(users.id, activityFollowups.assigneeId)).where(eq(activityFollowups.recordId, id)).orderBy(asc(activityFollowups.createdAt)),
+    () => revisionsOf(tx, "record", id),
+  );
   return { ...rec, subjects, handlers, recipients, reads, attachments, followups, revisions };
 }
 
@@ -203,13 +204,13 @@ export async function listCases(tx: Tx, f: { status: string; workerId: string })
 export async function getCase(tx: Tx, id: string) {
   const [c] = await tx.select({ c: activityCases, creatorName: users.name }).from(activityCases).innerJoin(users, eq(users.id, activityCases.createdBy)).where(eq(activityCases.id, id)).limit(1);
   if (!c) return null;
-  const [subjects, events, records, followups, revisions] = await Promise.all([
-    tx.select({ id: candidates.id, name: candidates.fullName, katakana: candidates.nameKatakana }).from(activityCaseSubjects).innerJoin(candidates, eq(candidates.id, activityCaseSubjects.candidateId)).where(eq(activityCaseSubjects.caseId, id)).orderBy(asc(candidates.fullName)),
-    tx.select({ e: caseTimelineEvents, creatorName: users.name }).from(caseTimelineEvents).innerJoin(users, eq(users.id, caseTimelineEvents.createdBy)).where(eq(caseTimelineEvents.caseId, id)).orderBy(asc(caseTimelineEvents.occurredAt), asc(caseTimelineEvents.createdAt)),
-    tx.select({ id: activityRecords.id, kind: activityRecords.kind, recordDate: activityRecords.recordDate, status: activityRecords.status, subject: activityRecords.subject, workType: activityRecords.workType, authorName: users.name }).from(activityRecords).innerJoin(users, eq(users.id, activityRecords.authorId)).where(eq(activityRecords.caseId, id)).orderBy(desc(activityRecords.recordDate)),
-    tx.select({ f: activityFollowups, assigneeName: users.name }).from(activityFollowups).innerJoin(users, eq(users.id, activityFollowups.assigneeId)).where(eq(activityFollowups.caseId, id)).orderBy(asc(activityFollowups.createdAt)),
-    revisionsOf(tx, "case", id),
-  ]);
+  const [subjects, events, records, followups, revisions] = await inSeries(
+    () => tx.select({ id: candidates.id, name: candidates.fullName, katakana: candidates.nameKatakana }).from(activityCaseSubjects).innerJoin(candidates, eq(candidates.id, activityCaseSubjects.candidateId)).where(eq(activityCaseSubjects.caseId, id)).orderBy(asc(candidates.fullName)),
+    () => tx.select({ e: caseTimelineEvents, creatorName: users.name }).from(caseTimelineEvents).innerJoin(users, eq(users.id, caseTimelineEvents.createdBy)).where(eq(caseTimelineEvents.caseId, id)).orderBy(asc(caseTimelineEvents.occurredAt), asc(caseTimelineEvents.createdAt)),
+    () => tx.select({ id: activityRecords.id, kind: activityRecords.kind, recordDate: activityRecords.recordDate, status: activityRecords.status, subject: activityRecords.subject, workType: activityRecords.workType, authorName: users.name }).from(activityRecords).innerJoin(users, eq(users.id, activityRecords.authorId)).where(eq(activityRecords.caseId, id)).orderBy(desc(activityRecords.recordDate)),
+    () => tx.select({ f: activityFollowups, assigneeName: users.name }).from(activityFollowups).innerJoin(users, eq(users.id, activityFollowups.assigneeId)).where(eq(activityFollowups.caseId, id)).orderBy(asc(activityFollowups.createdAt)),
+    () => revisionsOf(tx, "case", id),
+  );
   return { ...c, subjects, events, records, followups, revisions };
 }
 
@@ -254,11 +255,11 @@ export async function listTasks(tx: Tx, f: TaskFilters, userId: string, today: s
 export async function interviewDetail(tx: Tx, candidateId: string, month: string) {
   const [row] = await tx.select().from(periodicInterviews).where(and(eq(periodicInterviews.candidateId, candidateId), eq(periodicInterviews.periodMonth, month), eq(periodicInterviews.status, "active"))).limit(1);
   if (!row) return null;
-  const [attachments, followups, revisions] = await Promise.all([
-    tx.select().from(activityAttachments).where(and(eq(activityAttachments.interviewId, row.id), isNull(activityAttachments.removedAt))).orderBy(asc(activityAttachments.createdAt)),
-    tx.select({ f: activityFollowups, assigneeName: users.name }).from(activityFollowups).innerJoin(users, eq(users.id, activityFollowups.assigneeId)).where(eq(activityFollowups.interviewId, row.id)),
-    revisionsOf(tx, "periodic_interview", row.id),
-  ]);
+  const [attachments, followups, revisions] = await inSeries(
+    () => tx.select().from(activityAttachments).where(and(eq(activityAttachments.interviewId, row.id), isNull(activityAttachments.removedAt))).orderBy(asc(activityAttachments.createdAt)),
+    () => tx.select({ f: activityFollowups, assigneeName: users.name }).from(activityFollowups).innerJoin(users, eq(users.id, activityFollowups.assigneeId)).where(eq(activityFollowups.interviewId, row.id)),
+    () => revisionsOf(tx, "periodic_interview", row.id),
+  );
   return { row, attachments, followups, revisions };
 }
 

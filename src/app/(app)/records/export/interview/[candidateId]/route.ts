@@ -1,3 +1,4 @@
+import { inSeries } from "@/db/serial";
 import { and, eq } from "drizzle-orm";
 import { allWorkers, interviewRowsFull, quarterNotes } from "@/features/records/queries";
 import { UUID, auditExport, pdfResponse, staffOrResponse, text, withTenant } from "@/features/records/export-route";
@@ -17,7 +18,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ candidateId: st
   const data = await withTenant(g.scope, async (tx) => {
     const worker = (await allWorkers(tx)).find((w) => w.id === candidateId);
     if (!worker) return null;
-    const [rows, notes, staff] = await Promise.all([interviewRowsFull(tx, fy), quarterNotes(tx, fy), tx.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.organizationId, g.me.organizationId)))]);
+    const [rows, notes, staff] = await inSeries(
+      () => interviewRowsFull(tx, fy),
+      () => quarterNotes(tx, fy),
+      () => tx.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.organizationId, g.me.organizationId))),
+    );
     const nameOf = new Map(staff.map((s) => [s.id, s.name]));
     const months = new Map<string, InterviewMonth>();
     for (const r of rows.filter((x) => x.candidateId === candidateId)) {

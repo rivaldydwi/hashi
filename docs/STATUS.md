@@ -34,6 +34,47 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-013 · Peringatan `pg` "client.query() ... already executing" dilacak dan diperbaiki + hasil deploy T-019
+
+**PR:** (branch `eng/T-013-pg-warning`; nomor PR di komentar pembuka)
+**Status:** siap direview
+
+**Hasil deploy T-019 lewat `scripts/deploy.sh`** (PR #17 di-merge `470d000`, setelah `PM: DISETUJUI` bersyarat dan job e2e CI hijau di head `8a2794a`; tanpa migrasi, jadi tanpa `--backup`)
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: 470d000 (label image: 470d000); health: {"status":"ok","commit":"470d000"}`. Demo tidak disentuh.
+
+**Sumber peringatan (dilacak, bukan ditebak)**
+- Mekanisme: satu transaksi = SATU koneksi pg. pg memberi peringatan bila sebuah kueri masuk saat antrean koneksi itu sudah berisi (≥ 3 kueri bersamaan; dua kueri saja belum memicu). `--trace-warnings` hanya memberi satu tumpukan terminifikasi, jadi saya memasang pencatat sementara (preload yang membungkus `Client.prototype.query` dan mencatat tumpukan tiap kali antrean tidak kosong), menjalankan `next dev` (nama fungsi tidak diminifikasi), lalu menjelajahi 33 halaman/rute × 5 peran (TSK_ADMIN, TSK_STAFF, LPK_ADMIN, sensei, super admin; termasuk PDF dan mode atur dashboard). **116 kejadian**, semuanya dari `Promise.all` di atas `tx`:
+  `loadFormContext` (40; halaman catatan baru/ubah/kasus), `getRecord` (20; detail + ubah catatan), `lpkKpis` (14) dan `tskKpis` (7; dashboard), `responsibleOfWorker` (12) dan `workersWithResponsible` (11) dan `responsibilityOverview` (5; halaman pekerja, wawancara, penanggung jawab, daftar kartu), `listRecords` (8), `getCase` (6), `recordHeader` (2).
+- Sebab akarnya: pola `await Promise.all([kueriA(tx), kueriB(tx), …])` di dalam `withTenant`/`tenantQuery`.
+
+**Yang diperbaiki (semua pola serupa di `src/`, bukan hanya yang terlacak)**
+- Pembantu baru `inSeries(() => kueri1, () => kueri2)` (`src/db/serial.ts`): menjalankan berurutan dan mengembalikan hasil seperti `Promise.all` (tipe terjaga). 21 `Promise.all` di `src/` diperiksa; **16 di atas `tx` diganti** di: `responsibility-queries.ts` (3), `dashboard-queries.ts` (4), `records-queries.ts`, `job-matching.ts`, `records/queries.ts` (4: `getRecord`, `getCase`, `listRecords`, `interviewDetail`), `records/form-context.ts`, `records/export-data.ts`, rute PDF `export/interview`. Sisanya sengaja dibiarkan karena tidak berbagi koneksi: `getLocale()` + `getSkillFields()`, `tenantQuery(...)` + `getSkillFieldOptions()` (dua halaman), dan render widget dashboard (tanpa DB).
+- **Tidak ada perubahan perilaku**: kueri yang sama, hanya berurutan.
+
+**Penjaga supaya tidak muncul lagi**
+1. `scripts/guard-pg-concurrency.cjs`, dipasang `scripts/serve-standalone.mjs` lewat `NODE_OPTIONS=--require` (dipakai e2e lokal dan CI): server MATI dengan kode 97 dan pesan `✗ PG-GUARD …` bila pg memberi peringatan itu, jadi e2e/CI gagal keras. **Dibuktikan**: saya mengembalikan `Promise.all` 4 arah di `lpkKpis` sementara, build, jalankan server lewat skrip, jelajahi → server keluar `exit=97` dengan pesan penjaga (log di STATUS tidak dilampirkan; potongan: `✗ PG-GUARD: kueri bersamaan pada satu koneksi pg terdeteksi…`, `exit=97`). Perubahan sementara itu dibatalkan.
+2. `tests/unit/no-tx-promise-all.test.ts`: pemindai sumber yang GAGAL bila ada `Promise.all(` yang memakai `tx` di luar `tenantQuery/withTenant/withSystem` (dibuktikan juga gagal saat regresi sementara ditaruh, menyebut berkas:baris).
+3. `tests/unit/pg-guard.test.ts`: penjaga mematikan proses (kode 97) untuk peringatan itu dan tidak untuk peringatan lain; terpasang di `serve-standalone`.
+
+**"destination stream closed early"**: dari Next saat klien memutus respons yang sedang di-stream. Dua kali muncul dalam 212 tes, keduanya di sekitar `dashboard-layout.spec.ts` (halaman mode atur: seluruh widget dirender + di-stream), persis saat tes berpindah halaman/menutup konteks; digest sama (`431339731`) dan tes tetap lulus. Tidak bisa saya reproduksi di luar suite (pemutusan di tengah muat, tiga klik simpan berturut-turut, muat ulang). Kesimpulan: bukan bug aplikasi (tidak ada data hilang; persistensi dites), tidak diubah. Penyebab pasti di Next tidak dibuktikan; ini penjelasan terbaik dari gejala.
+
+**Verifikasi** (db-dev `hashi_dev`; produksi tidak disentuh)
+- `npm run typecheck` → lulus; `npm run build` → 0 peringatan; `npm run test:i18n` → lulus; `npm run verify:audit-coverage` → lulus
+- `npm run test:unit` → 111 lulus (5 baru: pemindai 2, penjaga 3)
+- **Log `test:e2e` lengkap (212 tes lulus): "already executing" = 0, "PG-GUARD" = 0, "DeprecationWarning" = 0**; "destination stream closed early" = 2 (dijelaskan di atas). Sebelum perbaikan: peringatan itu muncul (HISTORY.md §4) dan pencatat menangkap 116 kejadian pada penjelajahan yang sama; **sesudah perbaikan penjelajahan yang sama dengan pencatat + penjaga di build produksi = 0 kejadian**.
+- `db:seed -- --reset` + `npm run test:rls` → lulus (dua kali); `npm run verify:seed` → lulus (tes rls memang butuh seed baru setelah e2e)
+
+**Kondisi server:** produksi `470d000` (T-019). T-013 tidak menambah migrasi dan tidak mengubah image produksi selain perubahan kueri berurutan; deploy biasa `scripts/deploy.sh` setelah `PM: DISETUJUI`.
+
+**Kendala / catatan**
+- **Jebakan baru (dicatat di CLAUDE.md)**: `next dev` menulis blok "nextjs-agent-rules" ke `CLAUDE.md` saat dijalankan. Saya mengembalikannya (`git checkout -- CLAUDE.md`) dan tidak di-commit; dev server juga butuh `localhost` (bukan `127.0.0.1`). Usulan: set `agentRules: false` di `next.config` (tidak saya lakukan: di luar lingkup T-013).
+- `inSeries` sedikit memperlambat halaman yang tadinya "paralel semu"; di satu koneksi pg kueri memang dijalankan satu per satu, jadi selisih waktu praktis nol (pengukuran sistematis ada di T-014).
+
+**Pertanyaan:** tidak ada.
+
+**Usulan berikutnya** (bukan tugas)
+- `agentRules: false` di `next.config` supaya `next dev` tidak mengubah `CLAUDE.md`.
+
 ## 2026-10-07 · T-019 · 在留カード (C): daftar, KPI, menu, data demo + hasil deploy T-018
 
 **PR:** #17 (branch `eng/T-019-zairyu-card-c`)

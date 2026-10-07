@@ -365,6 +365,9 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   organisasi sesi). Selalu jalankan `test:rls` setelah mengubah policy.
 - drizzle-kit TIDAK bisa mengubah enum yang nilainya dikurangi (akan meng-cast dan gagal/membuang data). Tulis
   migration manual dengan pemetaan data (contoh: `drizzle/0006_candidate_selections.sql`).
+- **JANGAN `Promise.all` pada `tx`** (kueri bersamaan di SATU koneksi pg = peringatan "client.query() ... already executing"; di pg@9 menjadi error). Pakai `inSeries(() => kueri1, () => kueri2)` dari `src/db/serial.ts`.
+  `Promise.all` hanya untuk pekerjaan yang TIDAK berbagi koneksi (mis. `getLocale()`, atau `tenantQuery(...)` terpisah). Dijaga `tests/unit/no-tx-promise-all.test.ts` (pemindai sumber) dan `scripts/guard-pg-concurrency.cjs` (dipasang `serve-standalone.mjs`: server e2e/CI mati kode 97 bila terjadi).
+- **`npm run dev` / `next dev` menulis blok "nextjs-agent-rules" ke `CLAUDE.md`** saat dijalankan. Jangan di-commit: `git checkout -- CLAUDE.md` setelah memakai dev server (dev server juga perlu `localhost`, bukan `127.0.0.1`, atau hidrasi diblokir).
 - Port 3100 dipakai aplikasi lain: jalankan e2e dengan `E2E_PORT=3120 npm run test:e2e`.
 - Audit log append-only: tes e2e yang memeriksa audit harus dibatasi ke baris sejak tes dimulai (`created_at >= …`).
 - Label statis ada di katalog terjemahan yang dikirim ke browser semua peran; yang harus tidak bocor ke sensei

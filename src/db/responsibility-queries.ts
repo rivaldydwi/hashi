@@ -1,4 +1,5 @@
 // Kueri penanggung jawab pekerja (T-010). Semua di dalam withTenant (RLS: hanya staf TSK organisasi sesi). SATU sumber untuk halaman, KPI dashboard, dan verify:seed.
+import { inSeries } from "./serial";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { Tx } from "./index";
 import { clientCompanies, responsibleAssignments, users } from "./schema";
@@ -30,7 +31,7 @@ export async function loadAssignments(tx: Tx) {
 
 /** Semua pekerja (ACTIVE dan ENDED) beserta penanggung jawab efektifnya pada `today`. */
 export async function workersWithResponsible(tx: Tx, today: string): Promise<{ workers: WorkerWithResponsible[]; assignments: Awaited<ReturnType<typeof loadAssignments>> }> {
-  const [workers, assignments] = await Promise.all([allWorkers(tx), loadAssignments(tx)]);
+  const [workers, assignments] = await inSeries(() => allWorkers(tx), () => loadAssignments(tx));
   return {
     assignments,
     workers: workers.map((w) => ({ ...w, responsible: effectiveResponsible(assignments.byPlacement.get(w.placementId) ?? [], assignments.byCompany.get(w.companyId) ?? [], today) })),
@@ -49,7 +50,7 @@ export type ResponsibilityOverview = {
 
 /** Gambaran lengkap: beban per staf, pekerja tanpa penanggung jawab, dan staf yang melebihi batas. KPI dashboard dan daftar halaman memakai fungsi INI. */
 export async function responsibilityOverview(tx: Tx, today: string): Promise<ResponsibilityOverview> {
-  const [staff, { workers, assignments }] = await Promise.all([listResponsibleStaff(tx), workersWithResponsible(tx, today)]);
+  const [staff, { workers, assignments }] = await inSeries(() => listResponsibleStaff(tx), () => workersWithResponsible(tx, today));
   const byId = new Map(staff.map((s) => [s.id, s]));
   const workload = workloadByStaff(workers.map((w) => ({ status: w.status, responsibleId: w.responsible.staffId })), staff.map((s) => s.id))
     .map((x) => ({ staff: byId.get(x.staffId)!, count: x.count, level: x.level }))
@@ -63,7 +64,7 @@ export async function companiesBasic(tx: Tx) {
 
 /** Penanggung jawab efektif SATU pekerja (nama + sumber), atau null bila bukan pekerja (tanpa penempatan). */
 export async function responsibleOfWorker(tx: Tx, candidateId: string, today: string): Promise<{ staffId: string | null; name: string | null; source: "placement" | "company" | "none"; isMe?: never } | null> {
-  const [{ workers }, staff] = await Promise.all([workersWithResponsible(tx, today), listResponsibleStaff(tx)]);
+  const [{ workers }, staff] = await inSeries(() => workersWithResponsible(tx, today), () => listResponsibleStaff(tx));
   const w = workers.find((x) => x.id === candidateId);
   if (!w) return null;
   return { staffId: w.responsible.staffId, name: staff.find((s) => s.id === w.responsible.staffId)?.name ?? null, source: w.responsible.source };

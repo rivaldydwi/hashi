@@ -82,7 +82,7 @@ form yang redirect tidak boleh memanggil `revalidatePath`; filter KPI dan daftar
 - Foto HEIC ditolak (libvips bawaan sharp tanpa HEVC): minta JPEG/PNG/WebP, atau atur kamera iPhone ke "Paling kompatibel".
 - `test:rls` bergantung isi seed: jalankan `db:seed -- --reset` di dev dulu; setelah e2e, bagian S bisa gagal "duplicate key" sampai di-reseed. Jangan arahkan ke database produksi.
 - e2e menambah data uji dan hanya boleh di database dev; PDF diuji manual di image produksi lokal, CI hanya mengecek font dan sharp di image.
-- Log e2e menampilkan peringatan `pg` ("client.query() ... already executing", akan dihapus di pg@9) dan "destination stream closed early" saat halaman di-reload di tengah respons; keduanya tidak menggagalkan tes tetapi sumber peringatan pg belum dilacak.
+- ~~Peringatan `pg` "client.query() ... already executing"~~ **diperbaiki di T-013**: sumbernya `Promise.all` di atas SATU transaksi (`tx`); kini kueri berurutan lewat `inSeries` (`src/db/serial.ts`), dijaga pemindai sumber (`tests/unit/no-tx-promise-all.test.ts`) dan penjaga e2e (`scripts/guard-pg-concurrency.cjs`). "destination stream closed early" (Next) = klien memutus respons yang sedang di-stream saat tes berpindah halaman; bukan bug aplikasi, tidak diubah.
 - Data demo: `salary_note` job order sudah memuat nominal gaji, jadi di lembar muncul dua kali (isi data, bukan bug).
 - Lembar job order versi internal dengan teks sangat panjang bisa melewati satu halaman (data contoh muat satu halaman).
 - Produksi tidak boleh dibuka ke internet; hanya instance demo (data dummy) yang lewat Tailscale Funnel.
