@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/EmptyState";
-import { btnPrimary, btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
+import { gridTd, gridTdText, gridTh, btnPrimary, btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
 import { fiscalMonths, fiscalTitle, fiscalYearOf, monthMark, quarterOfMonth, type MonthMark, type QuarterState } from "@/db/records-core";
 import { requireStaff } from "@/features/records/access";
 import { saveQuarterNote } from "@/features/records/actions";
@@ -76,8 +76,8 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
     for (const [k, v] of Object.entries({ fy: String(fy), month, status, staff: staffF, client: clientF, field: fieldF, view: viewPending ? "pending" : "", mine: mine ? "1" : "", ...over })) if (v) p.set(k, v);
     return `/records/interviews?${p}`;
   };
-  const thc = "border border-line bg-page px-2 py-2 text-left text-xs font-semibold text-ink-2";
-  const tdc = "border border-line px-2 py-2 align-top text-sm";
+  const thc = gridTh;
+  const tdc = gridTd;
 
   return (
     <>
@@ -137,21 +137,21 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
               <th className={thc}>{t("interviews.col.responsible")}</th><th className={thc}>{t("interviews.col.address")}</th><th className={thc}>{t("interviews.col.phone")}</th><th className={thc}>{t("interviews.col.pic")}</th>
               {months.flatMap((m, i) => {
                 const head = <th key={m} className={`${thc} min-w-24 ${m === month ? "bg-accent-soft" : ""}`}>{monthLabel(m)}</th>;
-                return i % 3 === 2 ? [head, <th key={`q${i}`} className={`${thc} min-w-56`}>{t("interviews.quarterNote", { q: quarterOfMonth(m) })}</th>] : [head];
+                return i % 3 === 2 ? [head, <th key={`q${i}`} className={`${thc} min-w-64`}>{t("interviews.quarterNote", { q: quarterOfMonth(m) })}</th>] : [head];
               })}
               <th className={thc}><span className="sr-only">{t("interviews.col.actions")}</span></th>
             </tr></thead>
             <tbody>
               {shown.map((w) => (
                 <tr key={w.id} data-testid="interview-row" data-worker={w.id} data-status={w.status}>
-                  <th scope="row" className={`${tdc} sticky left-0 z-10 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>{w.status === "ENDED" && w.endDate && <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800" data-testid="worker-ended">{t("interviews.endedOn", { date: w.endDate.replace(/-/g, "/") })}</span>} <Link href={`/records/workers/${w.id}`} className="ml-1 inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text" data-testid="interview-worker-history">{t("whistory.historyLink")}</Link></th>
-                  <td className={tdc}>{(locale === "ja" ? w.fieldNameJa : w.fieldNameId) ?? "—"}</td>
+                  <th scope="row" className={`${tdc} cjk-phrase sticky left-0 z-10 min-w-48 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>{w.status === "ENDED" && w.endDate && <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800" data-testid="worker-ended">{t("interviews.endedOn", { date: w.endDate.replace(/-/g, "/") })}</span>} <Link href={`/records/workers/${w.id}`} className="ml-1 inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text" data-testid="interview-worker-history">{t("whistory.historyLink")}</Link></th>
+                  <td className={`${gridTdText} min-w-28`}>{(locale === "ja" ? w.fieldNameJa : w.fieldNameId) ?? "—"}</td>
                   <td className={`${tdc} whitespace-nowrap`}>{w.startDate.replace(/-/g, "/")}</td>
-                  <td className={tdc}>{w.companyName}<div className="text-xs text-ink-2">{w.siteName}</div></td>
-                  <td className={tdc} data-testid="grid-responsible" data-staff={respOf.get(w.id)?.staffId ?? ""}>{respOf.get(w.id)?.staffId ? respName.get(respOf.get(w.id)!.staffId!) ?? "—" : <span className="text-ink-2">—</span>}</td>
-                  <td className={`${tdc} min-w-40`}>{w.siteAddress ?? "—"}</td>
+                  <td className={`${gridTdText} min-w-44`}>{w.companyName}<div className="text-xs text-ink-2">{w.siteName}</div></td>
+                  <td className={`${gridTdText} min-w-28`} data-testid="grid-responsible" data-staff={respOf.get(w.id)?.staffId ?? ""}>{respOf.get(w.id)?.staffId ? respName.get(respOf.get(w.id)!.staffId!) ?? "—" : <span className="text-ink-2">—</span>}</td>
+                  <td className={`${gridTdText} min-w-64`}>{w.siteAddress ?? "—"}</td>
                   <td className={`${tdc} whitespace-nowrap`}>{w.sitePhone ?? "—"}</td>
-                  <td className={tdc}>{w.contacts[0] ? <>{w.contacts[0].name}<div className="text-xs text-ink-2">{w.contacts[0].phone ?? ""}</div></> : "—"}</td>
+                  <td className={`${gridTdText} min-w-32`}>{w.contacts[0] ? <>{w.contacts[0].name}<div className="whitespace-nowrap text-xs text-ink-2">{w.contacts[0].phone ?? ""}</div></> : "—"}</td>
                   {months.flatMap((m, i) => {
                     const st = markOf(w, m);
                     const cell = (
@@ -172,9 +172,11 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                         <p className={`mb-1 text-sm font-semibold ${qs === "missed" ? "text-rose-800" : qcell(w.id, q)?.urgent ? "rounded bg-amber-50 px-1 text-amber-900" : ""}`} data-testid="quarter-state" data-state={qs} data-urgent={qcell(w.id, q)?.urgent ? "true" : undefined}>
                           {qs === "notRequired" || qs === "notDue" ? <span className="font-normal text-ink-2">—</span> : <><span aria-hidden>{ICON[qs]}</span> {qs === "open" ? t("interviews.qstate.open", { date: (qcell(w.id, q)?.deadline ?? "").replace(/-/g, "/") }) : t(`interviews.qstate.${qs}`)}{qs === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: quarterCountOf(w.id, q) })})</span>}</>}
                         </p>
-                        <p lang="ja" className="whitespace-pre-wrap break-words text-xs">{noteOf(w.id, q) || "—"}</p>
                         <details>
-                          <summary className="inline-flex min-h-11 cursor-pointer items-center text-xs font-semibold text-accent-text">{t("interviews.editQuarter")}</summary>
+                          <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs">
+                            <span lang="ja" className="min-w-0 flex-1 whitespace-pre-wrap break-words">{noteOf(w.id, q) || "—"}</span>
+                            <span className="shrink-0 whitespace-nowrap font-semibold text-accent-text">{t("interviews.editQuarter")}</span>
+                          </summary>
                           <ActionForm action={saveQuarterNote} hidden={{ candidateId: w.id, fiscalYear: String(fy), quarter: String(q) }} submitLabel={t("f.save")} submitTone="secondary" className="w-52 space-y-1">
                             <label className="sr-only" htmlFor={`qn-${w.id}-${q}`}>{t("interviews.quarterNote", { q })}</label>
                             <textarea id={`qn-${w.id}-${q}`} name="note" defaultValue={noteOf(w.id, q)} rows={3} lang="ja" maxLength={4000} className={`${inputClass} py-2`} />

@@ -61,3 +61,31 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Tabel dalam bahasa Jepang (T-011). Teks Jepang tidak punya spasi, jadi tanpa aturan ini browser boleh memotong di antara HURUF mana pun:
+ * kolom sempit membuat header dan nama perusahaan tersusun satu huruf per baris dan baris setinggi setengah layar.
+ *  - Header kolom (thead th / th[scope=col]) tidak pernah patah (satu baris); kolom melebar secukupnya dan tabel digulir horizontal di pembungkusnya.
+ *  - `cjk-phrase` dipasang pada sel teks pendek (nama, perusahaan, alamat): pecah hanya di batas frasa (word-break: auto-phrase), atau
+ *    tidak pecah sama sekali di peramban yang belum mendukungnya (keep-all). Selalu dengan lebar minimum (min-w-*) pada selnya.
+ *  - Nilai pendek (tanggal, telepon, hitungan) memakai `whitespace-nowrap` biasa.
+ * Hanya berlaku bila bahasa halaman = ja; tampilan bahasa Indonesia tidak berubah.
+ */
+@layer base {
+  :lang(ja) thead th,
+  :lang(ja) th[scope="col"] {
+    white-space: nowrap;
+    word-break: keep-all;
+  }
+}
+@utility cjk-phrase {
+  &:lang(ja) {
+    word-break: keep-all;
+    overflow-wrap: normal;
+  }
+  @supports (word-break: auto-phrase) {
+    &:lang(ja) {
+      word-break: auto-phrase;
+    }
+  }
+}

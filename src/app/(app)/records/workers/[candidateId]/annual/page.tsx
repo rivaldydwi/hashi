@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/EmptyState";
-import { btnPrimary, btnSecondary, cardClass } from "@/components/styles";
+import { btnPrimary, btnSecondary, cardClass, gridTd, gridTh } from "@/components/styles";
 import { FORM55_ITEM_CODES, summarizeForm55 } from "@/db/form55";
 import { fiscalTitle, fiscalYearOf, quarterOfMonth } from "@/db/records-core";
 import { requireStaff } from "@/features/records/access";
@@ -39,8 +39,8 @@ export default async function WorkerAnnualPage({ params, searchParams }: { param
   const { w, interviews, events } = data;
   const conducted = interviews.filter(isConducted);
   const base = `/records/workers/${candidateId}/annual`;
-  const th = "border border-line bg-page px-2 py-2 text-left text-xs font-semibold text-ink-2";
-  const td = "border border-line px-2 py-2 align-top text-sm";
+  const th = gridTh;
+  const td = gridTd;
 
   return (
     <div className="space-y-5">

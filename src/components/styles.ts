@@ -15,3 +15,14 @@ export const btnDanger = `${btnBase} border border-rose-300 bg-card text-rose-80
 export const cardClass = "rounded-2xl border border-line bg-card";
 
 export const tableHeadClass = "border-y border-line bg-page text-xs uppercase tracking-wide text-ink-2";
+
+/**
+ * Kelas tabel lebar yang dipakai bersama (T-011): header tidak patah di bahasa Jepang (aturan global `th` di globals.css), sel teks pendek memakai `cjk-phrase`
+ * (pecah di batas frasa) dan SELALU diberi lebar minimum, nilai pendek (tanggal, telepon, hitungan) `whitespace-nowrap`.
+ */
+export const gridTh = "border border-line bg-page px-2 py-2 text-left text-xs font-semibold text-ink-2";
+export const gridTd = "border border-line px-2 py-2 align-top text-sm";
+/** Sel teks pendek (nama, perusahaan, alamat): pasang bersama `min-w-*`. */
+export const gridTdText = `${gridTd} cjk-phrase`;
+/** Sel nilai pendek yang tidak boleh patah (tanggal, telepon, jumlah). */
+export const gridTdShort = `${gridTd} whitespace-nowrap`;
