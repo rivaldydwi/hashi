@@ -3047,6 +3047,13 @@ async function main() {
     xr.badBy = await bad({ renewal_status: "'received'", applied_on: "(current_date - 10)", received_on: "(current_date - 1)", received_by: "'pos'" });
     xr.noPlacement = await attempt(tx, (t) => t.execute(card(tskAdminUser.id, outsider.id, a.fid)));
     xr.noteTooLong = await bad({ note: "repeat('x', 2001)" });
+    // T-018 (migration 0026): tanggal 追加資料 dan 不許可 wajib untuk statusnya, tidak lebih awal dari pengajuan, tidak di masa depan
+    xr.additionalNoDate = await bad({ renewal_status: "'additional_docs'", applied_on: "(current_date - 10)" });
+    xr.rejectedNoDate = await bad({ renewal_status: "'rejected'", applied_on: "(current_date - 10)" });
+    xr.additionalBeforeApplied = await bad({ renewal_status: "'additional_docs'", applied_on: "(current_date - 5)", additional_docs_on: "(current_date - 10)" });
+    xr.rejectedFuture = await bad({ renewal_status: "'rejected'", applied_on: "(current_date - 5)", rejected_on: "(current_date + 3)" });
+    xr.additionalOk = await attempt(tx, (t) => t.execute(card(tskAdminUser.id, a.cid, a.fid, { renewal_status: "'additional_docs'", applied_on: "(current_date - 10)", additional_docs_on: "(current_date - 3)" })));
+    xr.rejectedOk = await attempt(tx, (t) => t.execute(card(tskAdminUser.id, a.cid, a.fid, { renewal_status: "'rejected'", applied_on: "(current_date - 10)", rejected_on: "(current_date - 2)" })));
 
     // --- "Terima kartu baru" atomik: kartu diterima wajib punya pengganti pada akhir transaksi (dicek tertunda)
     const recv = `update residence_cards set renewal_status = 'received', applied_on = current_date - 10, received_on = current_date - 1, received_by = 'staff' where id = '${id2}'`;
@@ -3069,6 +3076,7 @@ async function main() {
     // kartu diterima final (kecuali tanggal serah, catatan); pengganti tidak bisa dibatalkan; kartu yang punya pengganti tidak bisa dibatalkan
     xr.receivedLocked = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set expiry_date = expiry_date + 1 where id = '${id2}'`)));
     xr.receivedLockedStatus = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set renewal_status = 'preparing', received_on = null, received_by = null where id = '${id2}'`)));
+    xr.receivedLockedDates = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set additional_docs_on = current_date - 20 where id = '${id2}'`)));
     xr.handoverOk = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set handed_over_on = current_date, note = 'diserahkan' where id = '${id2}'`)));
     xr.voidWithSuccessor = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set status = 'void', void_reason = 'salah' where id = '${id2}'`)));
     xr.voidSuccessor = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set status = 'void', void_reason = 'salah' where id = '${idNew}'`)));
@@ -3115,8 +3123,8 @@ async function main() {
     JSON.stringify(eqv),
   );
   check(
-    "Kartu izin tinggal: tanpa DELETE; CHECK dan trigger menolak status/jenis di luar daftar, pengajuan tanpa tanggal, diterima tanpa penerima, tanggal terbalik atau di masa depan, masa tinggal di luar 1-60, serah oleh pekerja, penerima tak dikenal, catatan > 2000, dan pekerja tanpa penempatan",
-    [xr.noDelete, xr.badStatus, xr.badResidence, xr.appliedNoDate, xr.receivedNoBy, xr.receivedOnWrongStatus, xr.datesOrder, xr.futureApplied, xr.badPeriod, xr.handoverWorker, xr.badBy, xr.noPlacement, xr.noteTooLong].every(X3),
+    "Kartu izin tinggal: tanpa DELETE; CHECK dan trigger menolak status/jenis di luar daftar, pengajuan tanpa tanggal, diterima tanpa penerima, tanggal terbalik atau di masa depan, masa tinggal di luar 1-60, serah oleh pekerja, penerima tak dikenal, catatan > 2000, pekerja tanpa penempatan, serta 追加資料/不許可 tanpa tanggal, lebih awal dari pengajuan, atau di masa depan (yang sah lolos)",
+    [xr.noDelete, xr.badStatus, xr.badResidence, xr.appliedNoDate, xr.receivedNoBy, xr.receivedOnWrongStatus, xr.datesOrder, xr.futureApplied, xr.badPeriod, xr.handoverWorker, xr.badBy, xr.noPlacement, xr.noteTooLong, xr.additionalNoDate, xr.rejectedNoDate, xr.additionalBeforeApplied, xr.rejectedFuture].every(X3) && xr.additionalOk === null && xr.rejectedOk === null,
     JSON.stringify([xr.noDelete, xr.badStatus, xr.badResidence, xr.appliedNoDate, xr.receivedNoBy, xr.receivedOnWrongStatus, xr.datesOrder, xr.futureApplied, xr.badPeriod, xr.handoverWorker, xr.badBy, xr.noPlacement, xr.noteTooLong].map((v) => String(v).slice(0, 28))),
   );
   check(
@@ -3126,7 +3134,7 @@ async function main() {
   );
   check(
     "Kartu izin tinggal: kartu diterima final (hanya tanggal serah dan catatan bisa berubah); kartu yang punya pengganti dan pengganti dari kartu diterima tidak bisa dibatalkan; data pengganti masih bisa diperbaiki; pembatalan butuh alasan, final, dan tercatat pelakunya",
-    /tidak bisa diubah/.test(String(xr.receivedLocked)) && /tidak bisa diubah/.test(String(xr.receivedLockedStatus)) && xr.handoverOk === null && /pengganti/.test(String(xr.voidWithSuccessor)) && /tidak bisa dibatalkan/.test(String(xr.voidSuccessor)) && xr.successorEditable === null
+    /tidak bisa diubah/.test(String(xr.receivedLocked)) && /tidak bisa diubah/.test(String(xr.receivedLockedStatus)) && /tidak bisa diubah/.test(String(xr.receivedLockedDates)) && xr.handoverOk === null && /pengganti/.test(String(xr.voidWithSuccessor)) && /tidak bisa dibatalkan/.test(String(xr.voidSuccessor)) && xr.successorEditable === null
       && X3(xr.voidNoReason) && xr.voidOk === null && /tidak bisa diubah lagi/.test(String(xr.voidFinal)) && xr.voidMeta === 1,
     JSON.stringify([String(xr.receivedLocked).slice(0, 30), String(xr.receivedLockedStatus).slice(0, 30), xr.handoverOk, String(xr.voidWithSuccessor).slice(0, 30), String(xr.voidSuccessor).slice(0, 30), xr.successorEditable, String(xr.voidNoReason).slice(0, 30), xr.voidOk, String(xr.voidFinal).slice(0, 30), xr.voidMeta]),
   );

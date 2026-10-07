@@ -1098,6 +1098,8 @@ export const residenceCards = pgTable(
     expiryDate: date("expiry_date").notNull(), // 在留期限 (tanggal kalender Jepang; hari itu masih berlaku)
     renewalStatus: text("renewal_status").notNull().default("not_started"),
     appliedOn: date("applied_on"), // tanggal pengajuan ke 入管
+    additionalDocsOn: date("additional_docs_on"), // tanggal imigrasi meminta dokumen tambahan (追加資料); wajib bila status additional_docs (T-018, migration 0026)
+    rejectedOn: date("rejected_on"), // tanggal ditolak (不許可); wajib bila status rejected
     receivedOn: date("received_on"), // tanggal kartu baru diterima
     receivedBy: text("received_by"), // staff | worker (diambil staf lalu diserahkan, atau pekerja mengambil sendiri)
     handedOverOn: date("handed_over_on"), // tanggal diserahkan ke pekerja (hanya bila received_by = staff)
@@ -1120,6 +1122,9 @@ export const residenceCards = pgTable(
     check("residence_cards_applied_check", sql`${t.renewalStatus} in ('not_started','preparing') or ${t.appliedOn} is not null`),
     check("residence_cards_received_check", sql`(${t.renewalStatus} = 'received') = (${t.receivedOn} is not null)`),
     check("residence_cards_received_by_check", sql`(${t.renewalStatus} = 'received') = (${t.receivedBy} is not null) and (${t.receivedBy} is null or ${t.receivedBy} in ('staff','worker'))`),
+    check("residence_cards_additional_check", sql`${t.renewalStatus} <> 'additional_docs' or ${t.additionalDocsOn} is not null`),
+    check("residence_cards_rejected_check", sql`${t.renewalStatus} <> 'rejected' or ${t.rejectedOn} is not null`),
+    check("residence_cards_status_dates_check", sql`(${t.additionalDocsOn} is null or ${t.appliedOn} is null or ${t.additionalDocsOn} >= ${t.appliedOn}) and (${t.rejectedOn} is null or ${t.appliedOn} is null or ${t.rejectedOn} >= ${t.appliedOn})`),
     check("residence_cards_dates_check", sql`${t.appliedOn} is null or ${t.receivedOn} is null or ${t.appliedOn} <= ${t.receivedOn}`),
     check("residence_cards_handover_check", sql`${t.handedOverOn} is null or (${t.receivedBy} = 'staff' and ${t.receivedOn} is not null and ${t.handedOverOn} >= ${t.receivedOn})`),
     check("residence_cards_note_check", sql`${t.note} is null or length(${t.note}) <= 2000`),
