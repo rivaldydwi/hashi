@@ -12,22 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-018 · 在留カード (B): bagian di detail pekerja · `SIAP`
-
-Sesuai rencana T-B (`docs/zairyu-card.md` §6) dengan jawaban TSK di T-017:
-- Form kartu pertama: bidang (bawaan dari kandidat), 在留期間, tanggal habis.
-- Ubah status proses (enam status). 追加資料 dan 不許可 masing-masing punya tanggal + catatan singkat.
-- "Terima kartu baru" dalam SATU transaksi: `received_by` staf/pekerja, `handed_over_on` bila staf, tanggal habis baru.
-- Void dengan alasan; riwayat kartu + riwayat edit.
-- Tombol ubah hanya tampil untuk 担当/Admin. Staf lain melihat baca-saja, dengan penjelasan siapa yang boleh mengubah.
-
-**Kriteria selesai**
-- [ ] e2e: alur lengkap (buat, persiapan, diajukan, 結果待ち tampil, 追加資料, terima kartu baru oleh staf lalu diserahkan); staf bukan 担当 tidak melihat tombol ubah dan server menolak; LPK/sensei 404; ponsel 390 px; id + ja.
-- [ ] Audit tanpa isi (dites). Tangkapan layar di PR. typecheck, build, test:rls, e2e, CI hijau.
-
----
-
-### T-019 · 在留カード (C): daftar, KPI, data demo · `SIAP` (setelah T-018)
+### T-019 · 在留カード (C): daftar, KPI, data demo · `SIAP`
 
 Sesuai rencana T-C:
 - `/records/cards` dengan filter tahap, "milikku", perusahaan, dan "tanpa data".
@@ -110,6 +95,7 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 
 ## Selesai
 
+- **T-018** 在留カード (B) (PR #16): bagian kartu di `/records/workers/<id>` (kartu pertama, enam status, 追加資料/不許可 bertanggal lewat migrasi 0026, terima kartu baru atomik, serah, void, riwayat), tombol hanya untuk 担当/Admin (server + RLS), catatan mirip nomor kartu ditolak, 10 e2e.
 - **T-017** 在留カード (A) (PR #15): migrasi 0025 `residence_cards` (rantai kartu, terima + pengganti atomik lewat constraint trigger tertunda, kartu diterima final), tulis 担当 efektif + Admin (`card_editor`, = `effectiveResponsible`), baca semua staf TSK, tanpa DELETE; `cardStage` dengan 結果待ち/特例期間/不許可; verify-rls bagian X; 21 tes unit. Tanpa UI.
 - **T-016** Terjemahan peramban: label boleh, data jangan (PR #14): `<Data>`/`translate="no"` pada nama, katakana (`lang="ja"`), perusahaan, alamat, telepon, email, kode, isi catatan; `<html>` tidak diblokir; e2e `translate-data.spec.ts`. Uji manual Chrome "Terjemahkan" dilakukan Ipal setelah deploy (fitur itu tidak ada di Chromium server).
 - **T-012** Kartu KPI ringkas dan bervariasi (PR #13): tinggi sekitar 96 px, grid otomatis menurut lebar, nada + ikon per KPI di katalog, `kpiLook` (KPI tindakan tenang/"Beres" bila 0), token warna AA, keterangan id/ja disederhanakan; tes unit + e2e tata letak.
