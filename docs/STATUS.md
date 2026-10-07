@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-020 · 在留カード: nomor + foto kartu terenkripsi + hasil deploy T-023
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-020-card-number-photo`)
+**PR:** #20 (branch `eng/T-020-card-number-photo`)
 **Status:** siap direview. Deploy produksi BELUM (menunggu `PM: DISETUJUI`, lalu `--backup` + langkah kunci `BUTUH IPAL`, lihat "Pertanyaan").
 
 **Hasil deploy T-023** (PR #19 di-merge `eab9692` setelah `PM: DISETUJUI` dan CI hijau di head `c4c60e6`; tanpa migrasi, jadi tanpa `--backup`)
