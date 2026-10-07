@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-011 · Tabel lebar rapi dalam bahasa Jepang
 
-**PR:** (branch `eng/T-011-tabel-jepang`; nomor PR di komentar pembuka)
+**PR:** #12 (branch `eng/T-011-tabel-jepang`)
 **Status:** siap direview
 
 **Hasil T-004** (PR #11 di-merge `bafa7a1` setelah `PM: DISETUJUI` dan CI hijau di head `8317fc6`): dokumen saja, tidak ada deploy; produksi tetap `28e525b`.
