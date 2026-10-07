@@ -12,22 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-019 · 在留カード (C): daftar, KPI, data demo · `SIAP`
-
-Sesuai rencana T-C:
-- `/records/cards` dengan filter tahap, "milikku", perusahaan, dan "tanpa data".
-- KPI `kpi-card-urgent` (`ATTENTION_STAGES` + `waiting_result` dengan tanda `additionalDocs`: 追加資料 menuntut tindakan staf; hitung dengan SATU fungsi bersama daftar), `kpi-card-prepare`, `kpi-card-missing` (Admin), dengan nada/ikon sesuai T-012.
-- `kpi-card-waiting` (結果待ち, info) boleh ditambah.
-- Seed + `verify:seed` mencakup semua tahap.
-- Menu "Segera hadir: 在留カード" diganti menu sungguhan.
-
-**Kriteria selesai**
-- [ ] Angka KPI = jumlah baris daftar (dites); staf melihat miliknya di "milikku", Admin melihat semua.
-- [ ] Tangkapan layar daftar + dashboard (id + ja); e2e + CI hijau.
-
----
-
-### T-013 · Lacak peringatan `pg` "client.query() ... already executing" · `SIAP` (setelah T-019)
+### T-013 · Lacak peringatan `pg` "client.query() ... already executing" · `SIAP`
 
 Log e2e menampilkan peringatan pg ini (`docs/HISTORY.md` §4). Di pg@9 perilaku ini akan jadi **error**, jadi ini bom waktu: biasanya dua query dijalankan bersamaan
 di SATU klien/transaksi (mis. `Promise.all` di dalam `withTenant(tx => …)`).
@@ -52,7 +37,7 @@ Tujuan: membuktikan aplikasi tetap cepat dan benar dengan volume pilot, sebelum 
 Kerjakan:
 - `npm run seed:pilot` (skrip baru di `scripts/`, hanya impor `src/db/`; ADDITIVE, deterministik, ditolak `db-guard` di luar `_dev`/`_test`/`_demo`): +200 kandidat lengkap
   (sebaran status LPK, keputusan TSK, penilaian bulanan beberapa bulan, dokumen dummy kecil), sebagian berangkat jadi pekerja aktif dengan catatan kegiatan + wawancara berkala,
-  dan **satu staf TSK dengan ≥ 45 pekerja** supaya peringatan beban T-010 terlihat. Jalankan dua kali = tidak menggandakan (idempoten).
+  dan **satu staf TSK dengan ≥ 45 pekerja** supaya peringatan beban T-010 terlihat. Pekerja aktif pilot juga punya **sebaran semua tahap 在留カード** (none, prepare, can_apply, H-30/14/7, lewat, 結果待ち, 追加資料, 特例期間, special_overdue, 不許可, tanpa data; keputusan PM T-019), dan waktu `loadCardRows`/`/records/cards` ikut diukur. Jalankan dua kali = tidak menggandakan (idempoten).
 - `verify:seed` diperluas (mode pilot) atau pemeriksaan sendiri: jumlah, kelengkapan, dan angka KPI = daftar tetap berlaku pada volume ini.
 - Ukur waktu server (bukan perasaan) untuk: `/candidates` (tanpa dan dengan filter penilaian), detail kandidat, dashboard LPK_ADMIN dan TSK_ADMIN, `/records/interviews`, `/records/responsible`,
   `/activity`. Catat median + terburuk dari ≥ 5 kali per halaman di STATUS. Batas: **≤ 1 detik** di OptiPlex untuk tiap halaman; yang lebih lambat diperbaiki (indeks, N+1, query berkorelasi).
@@ -95,6 +80,7 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 
 ## Selesai
 
+- **T-019** 在留カード (C) (PR #17): `/records/cards` + menu sungguhan, KPI urgent/prepare/waiting/missing dari SATU sumber (`loadCardRows`/`filterCardRows`/`cardKpiCounts`, `isActionNeeded` termasuk 追加資料), staf = miliknya, Admin = semua; seed 3 keadaan + `verify:seed` KPI = daftar; 13 pekerja uji e2e untuk semua tahap. KPI TSK_ADMIN kini 3 baris di 1280 px (diterima PM; tes T-012 disesuaikan ke ≤ 3).
 - **T-018** 在留カード (B) (PR #16): bagian kartu di `/records/workers/<id>` (kartu pertama, enam status, 追加資料/不許可 bertanggal lewat migrasi 0026, terima kartu baru atomik, serah, void, riwayat), tombol hanya untuk 担当/Admin (server + RLS), catatan mirip nomor kartu ditolak, 10 e2e.
 - **T-017** 在留カード (A) (PR #15): migrasi 0025 `residence_cards` (rantai kartu, terima + pengganti atomik lewat constraint trigger tertunda, kartu diterima final), tulis 担当 efektif + Admin (`card_editor`, = `effectiveResponsible`), baca semua staf TSK, tanpa DELETE; `cardStage` dengan 結果待ち/特例期間/不許可; verify-rls bagian X; 21 tes unit. Tanpa UI.
 - **T-016** Terjemahan peramban: label boleh, data jangan (PR #14): `<Data>`/`translate="no"` pada nama, katakana (`lang="ja"`), perusahaan, alamat, telepon, email, kode, isi catatan; `<html>` tidak diblokir; e2e `translate-data.spec.ts`. Uji manual Chrome "Terjemahkan" dilakukan Ipal setelah deploy (fitur itu tidak ada di Chromium server).
