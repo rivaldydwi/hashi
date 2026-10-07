@@ -1,6 +1,6 @@
 # Pelacak kartu izin tinggal (在留カード, Zairyū Kādo): desain
 
-Status: **DESAIN (T-004), diperbarui di T-017**: skema, aturan hak tulis, audit, dan fungsi `cardStage` SUDAH terimplementasi (migrasi 0025, `src/db/zairyu.ts`); **UI belum ada** (T-018 dst.). Bagian bertanda *(T-017)* mencatat jawaban staf TSK (Ghulam, 2026-10-07) dan apa yang berubah dari desain awal; bagian 9 memuat pertanyaan awal beserta jawabannya.
+Status: **DESAIN (T-004), diperbarui di T-017 dan T-018**: skema, aturan hak tulis, audit, dan fungsi `cardStage` terimplementasi (migrasi 0025, `src/db/zairyu.ts`); **bagian di detail pekerja (T-018) terimplementasi** (migrasi 0026, `src/features/cards/`); daftar, KPI, dan data demo (T-019) belum. Bagian bertanda *(T-017)* mencatat jawaban staf TSK (Ghulam, 2026-10-07) dan apa yang berubah dari desain awal; bagian 9 memuat pertanyaan awal beserta jawabannya.
 
 Istilah mengikuti `docs/glossary.md` (istilah baru ditambahkan di sana). Semua yang berlabel **usulan** menunggu jawaban TSK; yang berlabel **tetap** sudah diputuskan
 (`CLAUDE.md` atau jawaban staf TSK sebelumnya).
@@ -38,6 +38,8 @@ Perpanjangan berulang = **baris baru**, bukan menimpa. Baris lama tetap sebagai 
 | `period_months` | integer 1-60 | tidak | 在留期間 dalam bulan; pilihan di SATU konfigurasi `PERIOD_OPTIONS` (`src/db/zairyu.ts`: 4, 6, 12) |
 | `expiry_date` | date | ya | 在留期限 (tanggal kalender Jepang, tanpa jam; berlaku **sampai akhir hari itu**) |
 | `renewal_status` | text + CHECK | ya, bawaan `not_started` | `not_started` (belum mulai) · `preparing` (persiapan berkas) · `applied` (申請中, sudah diajukan) · `additional_docs` (追加資料, diajukan dan diminta dokumen tambahan) · `received` (kartu baru diterima) · `rejected` (不許可, ditolak) |
+| `additional_docs_on` | date | bila `additional_docs` | *(T-018, migrasi 0026)* tanggal imigrasi meminta dokumen tambahan (追加資料); tidak lebih awal dari `applied_on`, tidak di masa depan; terkunci pada kartu diterima |
+| `rejected_on` | date | bila `rejected` | *(T-018, migrasi 0026)* tanggal permohonan ditolak (不許可); aturan sama |
 | `applied_on` | date | bila status bukan `not_started`/`preparing` | tanggal pengajuan ke 入管. CHECK: `applied_on <= received_on`; tidak boleh di masa depan (trigger, tanggal Tokyo) |
 | `received_on` | date | bila `received` | tanggal menerima kartu baru. CHECK: `(renewal_status = 'received') = (received_on is not null)`; tidak boleh di masa depan |
 | `received_by` | `staff`/`worker` | bila `received` | kartu diambil **staf** lalu diserahkan ke pekerja, atau **pekerja mengambil sendiri** (jawaban no. 10). CHECK: terisi ⇔ `received` |
@@ -178,7 +180,7 @@ Pembantu lain di berkas yang sama: `addMonths`/`addDays`/`daysBetween`, `current
 ## 6. Rencana pemecahan *(diperbarui T-017)*
 
 - **T-017 · A: skema, aturan, `cardStage`, audit, `verify-rls`: SELESAI (tanpa UI).** Migrasi 0025, `src/db/zairyu.ts`, entri audit `residence_card.*`, bagian X `verify-rls`, tes unit semua kasus §4.3.
-- **T-018 · B: bagian di detail pekerja** (form kartu pertama, ubah status/tanggal, "Terima kartu baru" atomik, void dengan alasan, riwayat kartu + edit, bidang bawaan dari `candidates.field_id`, 在留期間 dari `PERIOD_OPTIONS`, tanda 追加資料/特例期間).
+- **T-018 · B: bagian di detail pekerja: SELESAI.** `/records/workers/<id>` memuat bagian "在留カード" (`src/features/cards/`): kartu pertama (bidang bawaan dari `candidates.field_id`, 在留期間 dari `PERIOD_OPTIONS`, tanggal habis), ubah status proses (tanggal pengajuan/追加資料/不許可 wajib sesuai status; catatan dengan pola nomor kartu ditolak), "Terima kartu baru" atomik (+ diterima oleh staf/pekerja, tanggal serah), catat penyerahan, batalkan dengan alasan, riwayat kartu + riwayat edit, tanda 追加資料 dan 特例期間. Ubah/terima/batalkan hanya tampil untuk 担当 efektif + Admin; staf lain baca-saja dengan penjelasan; server menolak (`cards.errors.notEditor`) bila hak hilang di tengah jalan. Validasi murni di `src/features/cards/input.ts` (dites unit); migrasi 0026 menambah `additional_docs_on` dan `rejected_on`.
 - **T-019 · C: daftar `/records/cards`, KPI, data demo** (`kpi-card-*`, penerima = 担当 + Admin lewat `cardRecipients`, `seed:records` additive + `verify:seed`).
 - **T-020: nomor dan foto kartu** (jawaban TSK no. 6: HARUS disimpan): kolom dienkripsi, hanya yang berhak, akses tercatat, tidak masuk daftar/ekspor/log; desain enkripsi dan siapa yang berhak dikerjakan di tugas itu.
 - **T-021: isi awal/massal** mengikuti form PDF imigrasi (perorangan + grup), DITAHAN sampai Ipal mengirim form PDF-nya.

@@ -34,6 +34,44 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-018 · 在留カード (B): bagian di detail pekerja + hasil deploy T-017
+
+**PR:** (branch `eng/T-018-zairyu-card-b`; nomor PR di komentar pembuka)
+**Status:** siap direview
+
+**Hasil deploy T-017 lewat `scripts/deploy.sh --backup`** (PR #15 di-merge `cb529e1`, setelah `PM: DISETUJUI` dan CI hijau di head `5b980ff`)
+- Cadangan terenkripsi dulu: `hashi-20261007-133326-*` (database 651 entri, 146 berkas dokumen; `LAST_FAILED` tidak ada). Migration 0025 terterap otomatis: tabel `residence_cards` ada di produksi (0 baris).
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: cb529e1 (label image: cb529e1); health: {"status":"ok","commit":"cb529e1"}`. Demo (`hashi-demo`) tidak disentuh oleh deploy ini (demo diperbarui terpisah atas izin Ipal ke `704dfc7`, belum memuat T-017).
+
+**Yang dikerjakan**
+- **Migrasi 0026** (kecil): kolom `additional_docs_on` dan `rejected_on` di `residence_cards` (spesifikasi T-018: 追加資料 dan 不許可 masing-masing punya tanggal; skema T-017 hanya punya `applied_on`). CHECK: tanggal wajib untuk statusnya dan tidak lebih awal dari pengajuan; penjaga trigger ikut memeriksa (tidak di masa depan menurut Tokyo; terkunci pada kartu diterima). Tabel masih kosong di produksi, jadi aman.
+- **Bagian "在留カード" di `/records/workers/<id>`** (`src/features/cards/`: `CardSection`, `CardForms`, `actions.ts`, `queries.ts`, `guards.ts`, `input.ts`): kartu terkini + tahap `cardStage` (lencana + penjelasan + sisa hari), tanda 追加資料, 特例期間 (`specialUntil`), kartu pertama (bidang bawaan dari kandidat, 在留期間 4/6/12, tanggal habis), ubah status proses (enam status; tanggal pengajuan/追加資料/不許可 wajib sesuai status, tanggal milik status lain dikosongkan; riwayat edit menyimpan nilai lama), **"Terima kartu baru" dalam SATU transaksi** (kartu lama `received` + diterima oleh staf/pekerja + tanggal serah bila staf, DAN kartu baru dengan tanggal habis baru), catat penyerahan ke pekerja (kartu yang diambil staf), batalkan dengan alasan, riwayat kartu dan riwayat edit.
+- **Hak ubah**: tombol/form hanya tampil untuk TSK_ADMIN dan 担当 efektif; staf lain melihat baca-saja dengan penjelasan siapa yang boleh mengubah (nama 担当 / hanya Admin bila belum ada / tanpa penempatan aktif). Server memeriksa lagi (`cards.errors.notEditor`) dan RLS (`card_editor`) tetap penjaga akhir; galat trigger dipetakan ke pesan jelas (tidak ada teks teknis).
+- **Validasi murni** `src/features/cards/input.ts` (dites unit): rentang tanggal habis (2020 sampai +6 tahun), tanggal tidak di masa depan, urutan tanggal, 在留期間 hanya 4/6/12, **catatan yang tampak seperti nomor kartu ditolak** (nomor kartu dan foto = T-020, bukan teks bebas).
+- **Audit**: `residence_card.create/update/receive/void` memakai kode status/tahap, `receivedBy`, dan NAMA kolom (tanpa tanggal, catatan, nama; dites e2e).
+- id + ja lengkap (namespace `cards`, 120 kunci); data kartu ditandai `translate="no"` (aturan T-016); `docs/zairyu-card.md` dan CLAUDE.md diperbarui.
+
+**Verifikasi** (db-dev `hashi_dev`; produksi tidak disentuh)
+- `npm run typecheck` → lulus; `npm run build` → 0 peringatan; `npm run test:i18n` → lulus (1599 kunci); `npm run verify:audit-coverage` → lulus (5 action baru tercatat sebagai penulis yang diaudit)
+- `npm run test:unit` → 103 lulus (8 baru `card-input.test.ts`)
+- `db:seed -- --reset` + `npm run test:rls` → lulus (DUA kali); bagian X diperluas untuk kolom baru (追加資料/不許可 tanpa tanggal, lebih awal dari pengajuan, atau di masa depan ditolak; yang sah lolos; kolom baru terkunci pada kartu diterima). **Migrasi dari nol**: database sementara `hashi_t018_test` (di `db-dev`, sudah dihapus) → `db:migrate` + `db:seed` + `test:rls` lulus.
+- `npm run verify:seed` → lulus; `E2E_PORT=3120 npm run test:e2e` → **207 lulus** (10 baru `residence-card.spec.ts` dengan pekerja uji sendiri, dibersihkan di `afterAll`): 担当 mencatat kartu pertama → persiapan → diajukan (tahap 結果待ち tidak naik) → 追加資料 (tanda, catatan dengan nomor kartu ditolak) → 不許可 (tahap ditolak, tanpa tombol terima) → diajukan lagi → terima kartu baru oleh staf (dua baris: lama `received` + baru dengan `previous_card_id`) → diserahkan; audit tanpa isi; staf bukan 担当 baca-saja dan tanpa tombol, Admin bisa mengubah; LPK/sensei 404; bahasa Jepang; ponsel 390 px tanpa gulir horizontal; **form lama dibiarkan terbuka lalu 担当 diganti → server menolak dengan pesan jelas, data tidak berubah**; pembatalan pengganti ditolak dengan pesan jelas.
+- Tangkapan layar: `docs/screenshots/T-018/` (kartu pertama, diajukan + 追加資料 dengan form ubah terbuka, form terima kartu baru, baca-saja untuk staf bukan 担当 (ja), 特例期間 pada tampilan Admin (ja), ponsel 390 px). Pekerja contoh dibuat sementara dan dihapus.
+
+**Kondisi server:** produksi `cb529e1` (T-017). T-018 menambah migrasi 0026 → **deploy dengan `scripts/deploy.sh --backup`** setelah `PM: DISETUJUI`.
+
+**Kendala / catatan**
+- **Spesifikasi menuntut tanggal untuk 追加資料 dan 不許可**, yang belum ada di skema T-017, jadi saya menambah migrasi 0026 (dua kolom + CHECK); catatan singkat memakai kolom `note` yang sudah ada (satu catatan per kartu, bukan per status).
+- "Terima kartu baru" hanya tampil dari status diajukan / 追加資料 (butuh tanggal pengajuan). Dari status lain, staf mengisi dulu tanggal pengajuan lewat Ubah, sesuai CHECK DB (pesan `appliedMissing` menjelaskannya).
+- Kartu yang sudah diterima tidak bisa dikoreksi di aplikasi (aturan T-017); form hanya mengizinkan catat tanggal serah. Pembatalan kartu yang punya pengganti, atau pengganti dari kartu diterima, ditolak (pesan jelas); data pengganti masih bisa diperbaiki lewat Ubah.
+- Keadaan terbuka `<details>` dipertahankan setelah simpan (perilaku bawaan `router.refresh`); tes e2e membuka secara idempoten.
+- Terjemahan peramban: nama bidang dan tanggal kartu ditandai `translate="no"`; label tidak.
+
+**Pertanyaan:** tidak ada baru.
+
+**Usulan berikutnya** (bukan tugas)
+- T-019 (daftar + KPI) dapat memakai `loadCardSection`/`cardStage` yang sama; `cardsOfWorker` per pekerja perlu padanan massal (satu kueri) untuk daftar.
+
 ## 2026-10-07 · T-017 · 在留カード (A): skema, aturan, `cardStage`, dokumen desain mengikuti jawaban TSK + hasil deploy T-016
 
 **PR:** #15 (branch `eng/T-017-zairyu-card-a`)

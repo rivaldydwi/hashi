@@ -10,6 +10,9 @@ import { Badge, dateLabelSync } from "@/features/records/ui/common";
 import { dateTimeIn, safeTimezone, ymdIn } from "@/lib/org-time";
 import { responsibleOfWorker } from "@/db/responsibility-queries";
 import { tenantQuery } from "@/lib/session";
+import { loadCardSection } from "@/features/cards/queries";
+import { CardSection } from "@/features/cards/ui/CardSection";
+import { getSkillFieldOptions } from "@/features/skill-fields/server";
 
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -30,13 +33,15 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
   const t = await getTranslations("records");
   const locale = await getLocale();
   const tz = safeTimezone(me.organizationTimezone, me.organizationType);
+  const today = ymdIn(new Date(), tz);
   const data = await tenantQuery(async (tx) => {
     const w = await workerBasics(tx, candidateId);
     if (!w) return null;
-    return { w, resp: await responsibleOfWorker(tx, candidateId, ymdIn(new Date(), tz)), tasks: await openTasksOfWorker(tx, candidateId), tl: await workerTimeline(tx, candidateId, { order, page, tz }) };
+    return { w, cards: await loadCardSection(tx, me, candidateId, today), resp: await responsibleOfWorker(tx, candidateId, today), tasks: await openTasksOfWorker(tx, candidateId), tl: await workerTimeline(tx, candidateId, { order, page, tz }) };
   });
   if (!data) notFound();
-  const { w, resp, tasks, tl } = data;
+  const { w, resp, tasks, tl, cards } = data;
+  const fieldOptions = await getSkillFieldOptions();
   const tresp = await getTranslations("responsible");
   const pages = Math.max(1, Math.ceil(tl.total / WORKER_TIMELINE_PAGE_SIZE));
   const base = `/records/workers/${candidateId}`;
@@ -67,6 +72,8 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
           <Link href={`/candidates/${candidateId}`} className={btnSecondary} data-testid="worker-profile">{t("whistory.profile")}</Link>
         </div>
       </header>
+
+      <CardSection candidateId={candidateId} data={cards} fieldOptions={fieldOptions} today={today} tz={tz} />
 
       <section className={`${cardClass} p-4 sm:p-5`} aria-labelledby="wt-title" data-testid="worker-open-tasks">
         <h3 id="wt-title" className="text-[16px] font-semibold">{t("whistory.openTasks")} <span className="text-sm font-normal text-ink-2">({tasks.length})</span></h3>

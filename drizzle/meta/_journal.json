@@ -183,6 +183,13 @@
       "when": 1791344206558,
       "tag": "0025_residence_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791347708131,
+      "tag": "0026_residence_card_dates",
+      "breakpoints": true
     }
   ]
 }
