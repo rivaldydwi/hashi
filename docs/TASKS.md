@@ -31,6 +31,24 @@ Kerjakan:
 
 ---
 
+### T-016 · Cegah terjemahan otomatis browser merusak teks · `SIAP` (setelah T-012)
+
+Temuan Ipal (2026-10-07): di bahasa Indonesia, menu "Kandidat" tampil sebagai **"Kandosat"**, "Konstruksi" jadi "Kon struksi", tombol bahasa "Jepang" jadi "Japanese", tanggal jadi
+"7 October", dan nama katakana diubah ke huruf Latin yang salah ("Djokovic Pratama"). Teks ini **tidak ada** di `messages/`, jadi penyebabnya fitur terjemahan otomatis browser (Chrome/Google
+Translate), yang terpicu karena halaman memuat banyak huruf Jepang (katakana nama). Akibatnya pengguna bisa salah baca **data**, misalnya nama dan bidang kerja, bukan hanya label.
+
+Kerjakan:
+- `src/app/layout.tsx`: `<html translate="no">` + `<meta name="google" content="notranslate">` (semua halaman, termasuk login). `lang` tetap mengikuti bahasa UI.
+- Teks Jepang di dalam halaman bahasa Indonesia (nama katakana, istilah Jepang) sudah ditandai `lang="ja"` di tempat yang relevan. Cek daftar kandidat, detail, dan catatan kegiatan, supaya pembaca
+  layar dan font benar.
+
+**Kriteria selesai**
+- [ ] Tes e2e: `html` punya `translate="no"` dan meta `notranslate` ada (halaman login + satu halaman dalam aplikasi).
+- [ ] Kalimat singkat di `docs/glossary.md` atau README: aplikasi sengaja menolak terjemahan otomatis; bahasa diganti lewat tombol bahasa.
+- [ ] typecheck, build, e2e, CI hijau.
+
+---
+
 ### T-013 · Lacak peringatan `pg` "client.query() ... already executing" · `SIAP` (setelah T-012)
 
 Log e2e menampilkan peringatan pg ini (`docs/HISTORY.md` §4). Di pg@9 perilaku ini akan jadi **error**, jadi ini bom waktu: biasanya dua query dijalankan bersamaan
