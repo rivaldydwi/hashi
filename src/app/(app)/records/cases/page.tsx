@@ -43,7 +43,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
               <Link href={`/records/cases/${c.id}`} className="block px-4 py-3 hover:bg-hover" data-testid="case-row">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs text-ink-2">{c.code}</span>
-                  <span lang="ja" className="text-sm font-semibold">{c.title}</span>
+                  <span className="text-sm font-semibold">{c.title}</span>
                   <Badge tone={c.status === "open" ? "warn" : "ok"} testId="case-status">{c.status === "open" ? "● " : "✓ "}{t(`cases.status.${c.status}`)}</Badge>
                   <Badge>{t(`categories.${c.category}`)}</Badge>
                 </div>

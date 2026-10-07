@@ -8,9 +8,21 @@ import { PlacementForm } from "@/features/job-orders/JobOrderForms";
 import { DecisionForm, NoteAddForm, NoteEditForm, RowForm, SectionForm, type JobOrderOption } from "./DetailForms";
 import { getSkillFieldOptions } from "@/features/skill-fields/server";
 import { isTskRole, type ContentAccess } from "./permissions";
-import { toFormValue, type FieldDef, type ListSectionDef, type SingleSectionDef } from "./sections";
+import { fieldNature, toFormValue, type FieldDef, type ListSectionDef, type SingleSectionDef } from "./sections";
 
 type Row = Record<string, unknown>;
+
+/** Ringkasan satu baris: tiap nilai dibungkus menurut sifat kolomnya (T-023): identitas `translate="no"`, teks bebas/pilihan boleh diterjemahkan. */
+function summaryParts(names: string[], byName: Map<string, FieldDef>, r: Row, fmt: (f: FieldDef, raw: unknown) => string) {
+  const parts = names.map((n) => ({ f: byName.get(n)!, v: fmt(byName.get(n)!, r[n]) })).filter((x) => x.v !== "—");
+  if (parts.length === 0) return "—";
+  return parts.map((x, i) => (
+    <span key={x.f.name}>
+      {i > 0 && " · "}
+      <span translate={fieldNature(x.f) === "identity" ? "no" : undefined}>{x.v}</span>
+    </span>
+  ));
+}
 
 async function useFormatValue(sectionKey: string) {
   const t = await getTranslations(`detail.sections.${sectionKey}`);
@@ -55,7 +67,7 @@ export async function SectionCard({
         {section.fields.map((f) => (
           <div key={f.name} className={f.kind === "textarea" ? "sm:col-span-2" : ""}>
             <dt className="text-xs text-stone-500">{ts(`fields.${f.name}`)}</dt>
-            <dd className="whitespace-pre-line text-stone-900" data-testid={`value-${f.name}`} translate={["select", "boolean", "skillField"].includes(f.kind) ? undefined : "no"}>{fmt(f, row?.[f.name])}</dd>
+            <dd className="whitespace-pre-line text-stone-900" data-testid={`value-${f.name}`} translate={fieldNature(f) === "identity" ? "no" : undefined}>{fmt(f, row?.[f.name])}</dd>
           </div>
         ))}
       </dl>
@@ -97,11 +109,8 @@ export async function ListSectionCard({
         <ul className="mt-3 divide-y divide-stone-100">
           {rows.map((r) => (
             <li key={String(r.id)} className="py-2.5" data-testid={`row-${section.key}`}>
-              <p className="text-sm text-stone-900" translate="no">
-                {section.summary
-                  .map((n) => fmt(byName.get(n)!, r[n]))
-                  .filter((v) => v !== "—")
-                  .join(" · ") || "—"}
+              <p className="text-sm text-stone-900" data-testid="row-summary">
+                {summaryParts(section.summary, byName, r, fmt)}
               </p>
               {access.canEdit && (
                 <details className="mt-1">

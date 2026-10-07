@@ -12,33 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-023 · Terjemahan peramban: teks bebas BOLEH diterjemahkan, yang dikunci hanya identitas · `SIAP`
-
-Masukan Ipal (2026-10-07, tangkapan layar detail kandidat dengan Chrome "Terjemahkan" id→ja): catatan LPK berbahasa Indonesia (motivasi, PR diri, hobi, keahlian, catatan riwayat Jepang, dst.)
-**tidak ikut diterjemahkan**. Staf TSK orang Jepang/Myanmar/Vietnam justru perlu membaca isi itu. **Keputusan Ipal: teks bebas harus bisa diterjemahkan.** Ini mengoreksi aturan T-016,
-yang dulu ikut mengunci "isi catatan dan teks bebas".
-
-Aturan baru (satu tempat, berlaku di seluruh aplikasi):
-- **TETAP `translate="no"` (identitas, jangan diubah mesin):** nama orang + katakana, nama organisasi/LPK/perusahaan/lokasi/PIC, alamat, telepon, email, kode (kandidat, kasus), nomor dokumen,
-  nama merek "Hashi" (termasuk "Hashi · <commit>" di sidebar). Judul/nama job order juga tetap.
-- **BOLEH diterjemahkan (hapus `translate="no"`):** semua teks bebas/kalimat. Contohnya kolom panjang profil kandidat (motivasi, PR diri, hobi, keahlian khusus, catatan riwayat Jepang, alasan, dst.),
-  catatan TSK, catatan/tindak lanjut penilaian, isi catatan kegiatan/notulen/kronologi/tindak lanjut/laporan harian, catatan kuartal 定期面談, catatan kartu 在留カード, isian teks form 5-5, dan alasan pembatalan.
-  Nilai pilihan (status, jenis kelamin, ya/tidak, bidang) sudah label, jadi boleh diterjemahkan.
-- **Jangan memasang `lang`** pada teks bebas: bahasanya bisa Indonesia atau Jepang, jadi biarkan peramban menebak.
-- Tentukan dari **definisi kolom**, bukan per halaman. Misalnya di `sections.ts`, tiap field punya sifat `data: "identity" | "prose"` (atau turunan dari jenis kolom). Ringkasan baris berulang
-  (`DetailSections` → `section.summary`) dipecah per nilai sesuai sifat kolomnya, bukan satu `translate="no"` untuk seluruh baris.
-- Perbarui aturan di `CLAUDE.md` (butir "Terjemahan peramban") dan `docs/glossary.md`/README bila ada.
-
-**Kriteria selesai**
-- [ ] e2e `translate-data.spec.ts` diperluas: nama/katakana/perusahaan/alamat/telepon/kode tetap `translate="no"`, sedangkan kolom teks bebas (minimal: motivasi kandidat, catatan TSK,
-  isi catatan kegiatan, catatan kuartal) TIDAK berada di dalam `[translate="no"]`; merek "Hashi" `translate="no"`.
-- [ ] Tes unit: setiap field di `sections.ts` punya sifat yang jelas (identity/prose), tidak ada yang terlewat.
-- [ ] Uji manual Chrome "Terjemahkan" (id→ja dan ja→en) oleh Ipal setelah deploy; engineer melampirkan daftar kolom identity vs prose di PR untuk dicek.
-- [ ] typecheck, build, e2e, CI hijau.
-
----
-
-### T-020 · 在留カード: nomor + foto kartu (terenkripsi) · `SIAP` (setelah T-023)
+### T-020 · 在留カード: nomor + foto kartu (terenkripsi) · `SIAP`
 
 Jawaban TSK no. 6: nomor dan foto kartu **harus disimpan**. Data paling sensitif di Hashi, jadi aturannya ketat.
 
@@ -162,6 +136,7 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 
 ## Selesai
 
+- **T-023** Terjemahan peramban dikoreksi (PR #19): sifat kolom `data: identity|prose` di `candidate-sections.ts` (+ `fieldNature`, tes unit), teks bebas boleh diterjemahkan, identitas/nama staf/merek dikunci; `medicalNote` dikunci (data kesehatan), `visionNote` boleh (keputusan Ipal: syarat buta warna). Uji manual Chrome oleh Ipal setelah deploy.
 - **T-013** Peringatan pg "already executing" (PR #18): 116 kejadian dilacak ke `Promise.all` di atas `tx`, 16 tempat diganti `inSeries` (`src/db/serial.ts`); penjaga: server e2e mati kode 97 (`guard-pg-concurrency.cjs`) + pemindai sumber `no-tx-promise-all.test.ts`; log e2e 0 kejadian.
 - **T-019** 在留カード (C) (PR #17): `/records/cards` + menu sungguhan, KPI urgent/prepare/waiting/missing dari SATU sumber (`loadCardRows`/`filterCardRows`/`cardKpiCounts`, `isActionNeeded` termasuk 追加資料), staf = miliknya, Admin = semua; seed 3 keadaan + `verify:seed` KPI = daftar; 13 pekerja uji e2e untuk semua tahap. KPI TSK_ADMIN kini 3 baris di 1280 px (diterima PM; tes T-012 disesuaikan ke ≤ 3).
 - **T-018** 在留カード (B) (PR #16): bagian kartu di `/records/workers/<id>` (kartu pertama, enam status, 追加資料/不許可 bertanggal lewat migrasi 0026, terima kartu baru atomik, serah, void, riwayat), tombol hanya untuk 担当/Admin (server + RLS), catatan mirip nomor kartu ditolak, 10 e2e.

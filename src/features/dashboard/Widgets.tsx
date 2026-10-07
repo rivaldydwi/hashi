@@ -270,7 +270,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
           {list(data.myTasks!.map((f) => (
             <li key={f.id}>
               <Link href={f.recordId ? `/records/${f.recordId}` : f.caseId ? `/records/cases/${f.caseId}` : "/records/tasks"} className="flex min-h-11 items-center justify-between gap-3 py-2 hover:bg-hover">
-                <span lang="ja" className="line-clamp-2 text-sm">{f.description}</span>
+                <span className="line-clamp-2 text-sm">{f.description}</span>
                 <span className={`shrink-0 text-xs ${f.dueDate && f.dueDate < (data.today ?? "") ? "font-semibold text-rose-800" : "text-ink-2"}`}>{f.dueDate ? `${f.dueDate < (data.today ?? "") ? "⚠ " : ""}${f.dueDate}` : ""}</span>
               </Link>
             </li>
@@ -282,7 +282,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
         <Card testid="w-open-cases" title={t("wOpenCases")} href="/records/cases?status=open" linkLabel={t("viewAll")}>
           {list(data.casesOpen!.map((c) => (
             <li key={c.id}>
-              <Link href={`/records/cases/${c.id}`} className="flex min-h-11 items-center gap-3 py-2 hover:bg-hover"><span translate="no" className="font-mono text-xs text-ink-2">{c.code}</span><span lang="ja" translate="no" className="text-sm font-medium">{c.title}</span></Link>
+              <Link href={`/records/cases/${c.id}`} className="flex min-h-11 items-center gap-3 py-2 hover:bg-hover"><span translate="no" className="font-mono text-xs text-ink-2">{c.code}</span><span className="text-sm font-medium">{c.title}</span></Link>
             </li>
           )), t("emptyOpenCases"))}
         </Card>

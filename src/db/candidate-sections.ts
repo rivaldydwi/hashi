@@ -15,9 +15,18 @@ import {
 /** skillField = pilihan dari tabel master skill_fields (nilai = id bidang kerja); opsinya diisi dari konteks UI, bukan dari definisi. */
 export type FieldKind = "text" | "textarea" | "date" | "select" | "boolean" | "int" | "email" | "skillField";
 
+/**
+ * Sifat data kolom untuk terjemahan peramban (T-023). identity = identitas yang tidak boleh diterjemahkan (nama orang/katakana/organisasi/tempat,
+ * alamat, telepon, email, nomor dokumen): dikunci `translate="no"`. prose = kalimat/teks bebas dan istilah umum (motivasi, jabatan, jurusan, catatan):
+ * BOLEH diterjemahkan. Pengecualian: `health.medicalNote` = identity walau teks bebas (data kesehatan sensitif; "Terjemahkan" Chrome mengirim teks ke server Google). Wajib diisi untuk kolom text/textarea/email (dites); jenis lain diturunkan oleh `fieldNature`.
+ */
+export type DataNature = "identity" | "prose";
+
 export type FieldDef = {
   name: string;
   kind: FieldKind;
+  /** Sifat data untuk terjemahan peramban; wajib untuk text/textarea/email. */
+  data?: DataNature;
   required?: boolean;
   max?: number; // panjang teks, atau nilai maksimum untuk int
   min?: number; // nilai minimum untuk int
@@ -59,11 +68,11 @@ export const SINGLE_SECTIONS: SingleSectionDef[] = [
     table: "candidates",
     level: "basic",
     fields: [
-      { name: "fullName", kind: "text", required: true, max: 120 },
-      { name: "nameKatakana", kind: "text", max: 120 },
+      { name: "fullName", kind: "text", data: "identity", required: true, max: 120 },
+      { name: "nameKatakana", kind: "text", data: "identity", max: 120 },
       { name: "gender", kind: "select", required: true, options: gender.enumValues },
       { name: "birthDate", kind: "date", required: true },
-      { name: "birthPlace", kind: "text", max: 120 },
+      { name: "birthPlace", kind: "text", data: "identity", max: 120 },
       { name: "maritalStatus", kind: "select", options: maritalStatus.enumValues },
       { name: "fieldId", kind: "skillField", required: true },
       { name: "heightCm", kind: "int", min: 100, max: 230 },
@@ -76,10 +85,10 @@ export const SINGLE_SECTIONS: SingleSectionDef[] = [
     table: "candidates",
     level: "basic",
     fields: [
-      { name: "motivation", kind: "textarea" },
-      { name: "selfPr", kind: "textarea" },
-      { name: "hobby", kind: "text", max: 300 },
-      { name: "specialSkill", kind: "text", max: 300 },
+      { name: "motivation", kind: "textarea", data: "prose" },
+      { name: "selfPr", kind: "textarea", data: "prose" },
+      { name: "hobby", kind: "text", data: "prose", max: 300 },
+      { name: "specialSkill", kind: "text", data: "prose", max: 300 },
     ],
   },
   {
@@ -89,7 +98,7 @@ export const SINGLE_SECTIONS: SingleSectionDef[] = [
     fields: [
       { name: "everInJapan", kind: "boolean" },
       { name: "visaRejectedBefore", kind: "boolean" },
-      { name: "japanHistoryNote", kind: "textarea" },
+      { name: "japanHistoryNote", kind: "textarea", data: "prose" },
     ],
   },
   {
@@ -97,10 +106,10 @@ export const SINGLE_SECTIONS: SingleSectionDef[] = [
     table: "candidate_private",
     level: "detail",
     fields: [
-      { name: "address", kind: "textarea", max: 500 },
-      { name: "phone", kind: "text", max: 40 },
-      { name: "whatsapp", kind: "text", max: 40 },
-      { name: "email", kind: "email", max: 254 },
+      { name: "address", kind: "textarea", data: "identity", max: 500 },
+      { name: "phone", kind: "text", data: "identity", max: 40 },
+      { name: "whatsapp", kind: "text", data: "identity", max: 40 },
+      { name: "email", kind: "email", data: "identity", max: 254 },
     ],
   },
   {
@@ -109,9 +118,9 @@ export const SINGLE_SECTIONS: SingleSectionDef[] = [
     level: "detail",
     orderedDates: [["passportIssuedDate", "passportExpiryDate"]],
     fields: [
-      { name: "nationalId", kind: "text", max: 40 },
-      { name: "familyCardNumber", kind: "text", max: 40 },
-      { name: "passportNumber", kind: "text", max: 40 },
+      { name: "nationalId", kind: "text", data: "identity", max: 40 },
+      { name: "familyCardNumber", kind: "text", data: "identity", max: 40 },
+      { name: "passportNumber", kind: "text", data: "identity", max: 40 },
       { name: "passportIssuedDate", kind: "date" },
       { name: "passportExpiryDate", kind: "date" },
     ],
@@ -121,9 +130,9 @@ export const SINGLE_SECTIONS: SingleSectionDef[] = [
     table: "candidate_private",
     level: "detail",
     fields: [
-      { name: "visionNote", kind: "text", max: 300 },
+      { name: "visionNote", kind: "text", data: "prose", max: 300 },
       { name: "colorBlind", kind: "boolean" },
-      { name: "medicalNote", kind: "textarea" },
+      { name: "medicalNote", kind: "textarea", data: "identity" },
     ],
   },
 ];
@@ -138,10 +147,10 @@ export const LIST_SECTIONS: ListSectionDef[] = [
     summary: ["relation", "name", "occupation"],
     fields: [
       { name: "relation", kind: "select", required: true, options: familyRelation.enumValues },
-      { name: "name", kind: "text", required: true, max: 120 },
-      { name: "occupation", kind: "text", max: 120 },
-      { name: "phone", kind: "text", max: 40 },
-      { name: "address", kind: "textarea", max: 500 },
+      { name: "name", kind: "text", data: "identity", required: true, max: 120 },
+      { name: "occupation", kind: "text", data: "prose", max: 120 },
+      { name: "phone", kind: "text", data: "identity", max: 40 },
+      { name: "address", kind: "textarea", data: "identity", max: 500 },
       { name: "livesInJapan", kind: "boolean" },
       { name: "isEmergencyContact", kind: "boolean" },
     ],
@@ -153,8 +162,8 @@ export const LIST_SECTIONS: ListSectionDef[] = [
     orderedDates: [["startYear", "endYear"]],
     summary: ["schoolName", "major", "startYear", "endYear"],
     fields: [
-      { name: "schoolName", kind: "text", required: true, max: 160 },
-      { name: "major", kind: "text", max: 160 },
+      { name: "schoolName", kind: "text", data: "identity", required: true, max: 160 },
+      { name: "major", kind: "text", data: "prose", max: 160 },
       { name: "startYear", kind: "int", min: 1940, max: 2100 },
       { name: "endYear", kind: "int", min: 1940, max: 2100 },
     ],
@@ -166,8 +175,8 @@ export const LIST_SECTIONS: ListSectionDef[] = [
     orderedDates: [["startDate", "endDate"]],
     summary: ["companyName", "position", "startDate", "endDate"],
     fields: [
-      { name: "companyName", kind: "text", required: true, max: 160 },
-      { name: "position", kind: "text", max: 160 },
+      { name: "companyName", kind: "text", data: "identity", required: true, max: 160 },
+      { name: "position", kind: "text", data: "prose", max: 160 },
       { name: "startDate", kind: "date" },
       { name: "endDate", kind: "date" },
     ],
@@ -179,13 +188,19 @@ export const LIST_SECTIONS: ListSectionDef[] = [
     summary: ["type", "levelOrField", "score", "issuedDate"],
     fields: [
       { name: "type", kind: "select", required: true, options: certificateType.enumValues },
-      { name: "levelOrField", kind: "text", max: 120 },
+      { name: "levelOrField", kind: "text", data: "prose", max: 120 },
       { name: "score", kind: "int", min: 0, max: 100000 },
-      { name: "certificateNumber", kind: "text", max: 80 },
+      { name: "certificateNumber", kind: "text", data: "identity", max: 80 },
       { name: "issuedDate", kind: "date" },
     ],
   },
 ];
+
+/** Sifat data efektif: kolom teks memakai `data` eksplisit; pilihan/boolean/bidang kerja = label (prose, ikut diterjemahkan); tanggal/angka = identity (tidak diubah). */
+export function fieldNature(f: FieldDef): DataNature {
+  if (f.kind === "text" || f.kind === "textarea" || f.kind === "email") return f.data ?? "identity";
+  return f.kind === "select" || f.kind === "boolean" || f.kind === "skillField" ? "prose" : "identity";
+}
 
 export function singleSection(key: string) {
   return SINGLE_SECTIONS.find((s) => s.key === key);

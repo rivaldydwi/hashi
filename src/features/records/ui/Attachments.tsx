@@ -27,7 +27,7 @@ export async function Attachments({ items, parent, canEdit, left }: { items: Att
                   <label className="inline-flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="includeInPdf" defaultChecked={a.includeInPdf} className="h-5 w-5" />{t("f.includeInPdf")}</label>
                 </ActionForm>
               ) : (
-                <p lang="ja" className="text-sm">{a.caption ?? "—"} {a.includeInPdf && <span className="text-xs text-ink-2">({t("photos.inPdf")})</span>}</p>
+                <p className="text-sm">{a.caption ?? "—"} {a.includeInPdf && <span className="text-xs text-ink-2">({t("photos.inPdf")})</span>}</p>
               )}
               {canEdit && <ActionForm action={removeAttachment} hidden={{ id: a.id }} submitLabel={t("photos.remove")} submitTone="danger" testId="remove-attachment" />}
             </li>

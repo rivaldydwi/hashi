@@ -81,8 +81,8 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
           <ul className="mt-2 space-y-2">
             {tasks.map((x) => (
               <li key={x.id} className="text-sm" data-testid="worker-task">
-                <span lang="ja">{x.description}</span>{" "}
-                <span className="text-xs text-ink-2">({x.assigneeName}{x.dueDate ? `, ${dateLabelSync(x.dueDate, locale)}` : ""})</span>{" "}
+                <span>{x.description}</span>{" "}
+                <span className="text-xs text-ink-2">(<Data>{x.assigneeName}</Data>{x.dueDate ? `, ${dateLabelSync(x.dueDate, locale)}` : ""})</span>{" "}
                 <Link href={x.recordId ? `/records/${x.recordId}` : x.caseId ? `/records/cases/${x.caseId}` : `/records/tasks`} className="text-xs font-medium text-accent-text hover:underline">{t("whistory.openSource")}</Link>
               </li>
             ))}
@@ -113,7 +113,7 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
                     {it.openTasks > 0 && <Badge tone="info">{t("badge.tasks", { n: it.openTasks })}</Badge>}
                     {it.caseCode && <Badge><Data>{it.caseCode}</Data></Badge>}
                   </div>
-                  {it.summary && <p lang="ja" translate="no" className={`mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-ink-menu ${it.status === "void" ? "line-through" : ""}`}>{it.summary}</p>}
+                  {it.summary && <p className={`mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-ink-menu ${it.status === "void" ? "line-through" : ""}`}>{it.summary}</p>}
                   {it.authorName && <p className="mt-1 text-xs text-ink-2">{t.rich("list.by", { name: it.authorName, n: dataTag })}</p>}
                 </Link>
               </li>

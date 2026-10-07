@@ -1,8 +1,9 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { login, ownerQuery } from "./helpers";
 
-// Terjemahan peramban (T-016): LABEL boleh diterjemahkan, DATA (nama, perusahaan, alamat, telepon, email, kode, isi catatan) tidak.
-// Tes memeriksa atribut `translate="no"` pada data dan memastikan label/judul kolom/halaman TIDAK ikut ditandai, dan `<html>` tidak pernah ditandai.
+// Terjemahan peramban (T-016, dikoreksi T-023): LABEL dan TEKS BEBAS (motivasi, catatan, isi catatan kegiatan, ...) boleh diterjemahkan; hanya IDENTITAS
+// (nama, katakana, perusahaan, alamat, telepon, email, kode, merek) dikunci. Tes memeriksa atribut `translate="no"` pada identitas dan memastikan label/teks bebas
+// TIDAK ikut ditandai (dan tidak ada `lang` pada teks bebas), dan `<html>` tidak pernah ditandai.
 
 async function pageFor(browser: Browser, email: string): Promise<Page> {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
@@ -84,5 +85,57 @@ test("catatan kegiatan, klien, job order, pengguna: data translate=no, label tid
   await page.goto("/users");
   expect(await page.locator("table tbody tr").first().locator("td").first().locator('[translate="no"]').count(), "nama dan email pengguna").toBeGreaterThanOrEqual(2);
   expect(await noTranslate(page, "table thead th"), "judul kolom pengguna").toBe(false);
+  await page.context().close();
+});
+
+const inNo = (loc: import("@playwright/test").Locator) => loc.first().evaluate((e) => !!e.closest('[translate="no"]'));
+
+test("T-023 detail kandidat: identitas dikunci, teks bebas (motivasi, PR diri) dan ringkasan baris berulang menurut sifat kolom", async ({ browser }) => {
+  const page = await pageFor(browser, "lpk1.admin@hashi.test");
+  const [row] = await ownerQuery<{ id: string }>(`select c.id from candidates c join candidate_private p on p.candidate_id = c.id join candidate_family_members f on f.candidate_id = c.id where c.motivation is not null and p.address is not null and f.occupation is not null limit 1`);
+  await page.goto(`/candidates/${row.id}`);
+  await expect(page.getByTestId("value-motivation")).toBeVisible();
+  for (const id of ["fullName", "address", "phone"]) expect(await inNo(page.getByTestId(`value-${id}`)), `identitas ${id}`).toBe(true);
+  for (const id of ["motivation", "selfPr"]) {
+    const v = page.getByTestId(`value-${id}`);
+    if (await v.count()) {
+      expect(await inNo(v), `teks bebas ${id}`).toBe(false);
+      expect(await v.first().evaluate((e) => !!e.closest("[lang]") && e.closest("[lang]") !== document.documentElement), `tanpa lang pada ${id}`).toBe(false);
+    }
+  }
+  // ringkasan keluarga: "<hubungan> · <nama> · <pekerjaan>": nama dikunci, hubungan dan pekerjaan bisa diterjemahkan
+  const summary = page.getByTestId("section-family").getByTestId("row-summary").first();
+  const parts = summary.locator(":scope > span");
+  expect(await parts.count()).toBeGreaterThanOrEqual(2);
+  expect(await summary.evaluate((e) => !!e.closest('[translate="no"]')), "baris ringkasan secara keseluruhan tidak dikunci").toBe(false);
+  expect(await parts.nth(0).locator("span").first().getAttribute("translate"), "hubungan (pilihan)").toBeNull();
+  expect(await parts.nth(1).locator("span").first().getAttribute("translate"), "nama anggota keluarga").toBe("no");
+  await page.context().close();
+});
+
+test("T-023 catatan TSK pada detail kandidat tidak dikunci", async ({ browser }) => {
+  const page = await pageFor(browser, "tsk.admin@hashi.test");
+  const [row] = await ownerQuery<{ id: string }>(`select c.id from candidates c where c.shared_with_tsk and exists (select 1 from candidate_notes n where n.candidate_id = c.id) limit 1`);
+  await page.goto(`/candidates/${row.id}`);
+  const body = page.getByTestId("note-body").first();
+  await expect(body).toBeVisible();
+  expect(await inNo(body), "isi catatan TSK").toBe(false);
+  await page.context().close();
+});
+
+test("T-023 isi catatan kegiatan dan catatan kuartal tidak dikunci; merek Hashi dikunci", async ({ browser }) => {
+  const page = await pageFor(browser, "tsk.admin@hashi.test");
+  const [rec] = await ownerQuery<{ id: string; action_taken: string }>(`select id, action_taken from activity_records where kind = 'daily_work' and status = 'active' and action_taken is not null order by created_at limit 1`);
+  await page.goto(`/records/${rec.id}`);
+  const body = page.locator("p", { hasText: rec.action_taken.split("\n")[0].slice(0, 12) }).first();
+  await expect(body).toBeVisible();
+  expect(await inNo(body), "isi catatan kegiatan").toBe(false);
+  expect(await body.evaluate((e) => !!e.closest("[lang]") && e.closest("[lang]") !== document.documentElement), "tanpa lang").toBe(false);
+  expect(await inNo(page.getByTestId("build-version")), "merek Hashi").toBe(true);
+
+  await page.goto("/records/interviews");
+  const note = page.getByTestId("quarter-cell").locator("span.whitespace-pre-wrap", { hasNotText: "—" }).first();
+  await expect(note).toBeVisible();
+  expect(await inNo(note), "catatan kuartal").toBe(false);
   await page.context().close();
 });

@@ -60,6 +60,12 @@ test("'Lanjutkan': form terisi pekerja/lokasi/kasus (ditandai otomatis) + ringka
   expect(await recent.count()).toBeLessThanOrEqual(3);
   await expect(panel.getByTestId("continue-recent")).toContainText(MARK_A);
   await expect(panel.getByTestId("continue-tasks")).toContainText(TASK);
+  // T-023: isi tindak lanjut boleh diterjemahkan, tetapi nama staf penanggungnya dikunci translate=no
+  const taskItem = panel.getByTestId("continue-task").filter({ hasText: TASK }).first();
+  const assignee = taskItem.locator('[translate="no"]');
+  await expect(assignee).toHaveCount(1);
+  expect(((await assignee.textContent()) ?? "").trim().length, "nama staf terisi").toBeGreaterThan(0);
+  expect(await taskItem.evaluate((e) => !!e.closest('[translate="no"]')), "kalimat tindak lanjut tidak dikunci").toBe(false);
   await page.locator("#workType").selectOption("interview");
   await page.locator("#actionTaken").fill(MARK_B);
   await page.getByTestId("save-record").click();
