@@ -1,6 +1,7 @@
 // Query dashboard dan filter kartu KPI. SATU sumber kebenaran: angka di kartu = jumlah id dari `viewCandidateIds`, dan daftar /candidates?view=...
 // memakai fungsi yang sama (candidate-list.ts memanggil viewCandidateIds). Semua berjalan di dalam withTenant/withSystem, jadi RLS tetap berlaku.
 // Pola aman: GROUP BY terpisah (bukan subquery berkorelasi), daftar keputusan eksplisit (bukan `>=` pada enum).
+import { inSeries } from "./serial";
 import { and, asc, desc, eq, gte, isNotNull, lt, ne, sql } from "drizzle-orm";
 import type { Tx } from "./index";
 import { assessmentStats, jlptBest, pendingCandidates } from "./candidate-list";
@@ -72,12 +73,12 @@ export async function viewCandidateIds(tx: Tx, view: FilterView): Promise<string
 // ------------------------------------------------------------------------------------------------ LPK
 
 export async function lpkKpis(tx: Tx) {
-  const [unrated, unshared, passportSoon, incomplete] = await Promise.all([
-    viewCandidateIds(tx, "unrated"),
-    viewCandidateIds(tx, "unshared"),
-    viewCandidateIds(tx, "passport"),
-    viewCandidateIds(tx, "incomplete"),
-  ]);
+  const [unrated, unshared, passportSoon, incomplete] = await inSeries(
+    () => viewCandidateIds(tx, "unrated"),
+    () => viewCandidateIds(tx, "unshared"),
+    () => viewCandidateIds(tx, "passport"),
+    () => viewCandidateIds(tx, "incomplete"),
+  );
   const expired = (await tx.select({ id: candidatePrivate.candidateId }).from(candidatePrivate).where(and(isNotNull(candidatePrivate.passportExpiryDate), lt(candidatePrivate.passportExpiryDate, todayInAppTz())))).length;
   return { unrated: unrated.length, unshared: unshared.length, passportSoon: passportSoon.length, passportExpired: expired, incomplete: incomplete.length };
 }
@@ -88,7 +89,7 @@ export async function candidateTotal(tx: Tx): Promise<number> {
 
 /** "Perlu dinilai bulan ini": n teratas (urut nama) beserta rata-rata nilai terakhir. */
 export async function unratedTop(tx: Tx, n = 4) {
-  const [rows, stats] = await Promise.all([pendingCandidates(tx, currentPeriod()), assessmentStats(tx)]);
+  const [rows, stats] = await inSeries(() => pendingCandidates(tx, currentPeriod()), () => assessmentStats(tx));
   return rows.slice(0, n).map((r) => ({ id: r.id, fullName: r.fullName, nameKatakana: r.nameKatakana, latestAvg: stats.get(r.id)?.latestAvg ?? null }));
 }
 
@@ -152,7 +153,7 @@ export async function attentionList(tx: Tx) {
 // ------------------------------------------------------------------------------------------------ TSK
 
 export async function tskKpis(tx: Tx) {
-  const [newShared, awaiting, placed] = await Promise.all([viewCandidateIds(tx, "new-shared"), viewCandidateIds(tx, "awaiting"), viewCandidateIds(tx, "placed")]);
+  const [newShared, awaiting, placed] = await inSeries(() => viewCandidateIds(tx, "new-shared"), () => viewCandidateIds(tx, "awaiting"), () => viewCandidateIds(tx, "placed"));
   const jobs = (
     await tx.execute(sql`
       select j.positions::int as positions,
@@ -203,6 +204,6 @@ export async function newCandidatesTop(tx: Tx, n = 3) {
     .orderBy(desc(candidates.sharedWithTskAt), asc(candidates.fullName))
     .limit(n);
   if (rows.length === 0) return [];
-  const [stats, jlpt] = await Promise.all([assessmentStats(tx), jlptBest(tx)]);
+  const [stats, jlpt] = await inSeries(() => assessmentStats(tx), () => jlptBest(tx));
   return rows.map((r) => ({ ...r, jlpt: jlpt.get(r.id) ?? null, latestAvg: stats.get(r.id)?.latestAvg ?? null }));
 }

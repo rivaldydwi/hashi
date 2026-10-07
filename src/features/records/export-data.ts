@@ -1,4 +1,5 @@
 // Pengumpul data untuk ekspor PDF (server). Semua lewat transaksi tenant (RLS). Foto dibaca dari penyimpanan privat dan diubah ke JPEG/PNG untuk PDF.
+import { inSeries } from "@/db/serial";
 import { readFile } from "node:fs/promises";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import sharp from "sharp";
@@ -27,11 +28,11 @@ export async function photosFor(tx: Tx, orgId: string, recordId: string): Promis
 }
 
 async function recordHeader(tx: Tx, ids: string[]) {
-  const [subs, handlers, recipients] = await Promise.all([
-    tx.select({ recordId: activityRecordSubjects.recordId, name: candidates.fullName }).from(activityRecordSubjects).innerJoin(candidates, eq(candidates.id, activityRecordSubjects.candidateId)).where(inArray(activityRecordSubjects.recordId, ids)).orderBy(asc(candidates.fullName)),
-    tx.select({ recordId: activityRecordHandlers.recordId, name: users.name }).from(activityRecordHandlers).innerJoin(users, eq(users.id, activityRecordHandlers.userId)).where(inArray(activityRecordHandlers.recordId, ids)).orderBy(asc(users.name)),
-    tx.select({ recordId: activityRecordRecipients.recordId, name: users.name }).from(activityRecordRecipients).innerJoin(users, eq(users.id, activityRecordRecipients.userId)).where(inArray(activityRecordRecipients.recordId, ids)).orderBy(asc(users.name)),
-  ]);
+  const [subs, handlers, recipients] = await inSeries(
+    () => tx.select({ recordId: activityRecordSubjects.recordId, name: candidates.fullName }).from(activityRecordSubjects).innerJoin(candidates, eq(candidates.id, activityRecordSubjects.candidateId)).where(inArray(activityRecordSubjects.recordId, ids)).orderBy(asc(candidates.fullName)),
+    () => tx.select({ recordId: activityRecordHandlers.recordId, name: users.name }).from(activityRecordHandlers).innerJoin(users, eq(users.id, activityRecordHandlers.userId)).where(inArray(activityRecordHandlers.recordId, ids)).orderBy(asc(users.name)),
+    () => tx.select({ recordId: activityRecordRecipients.recordId, name: users.name }).from(activityRecordRecipients).innerJoin(users, eq(users.id, activityRecordRecipients.userId)).where(inArray(activityRecordRecipients.recordId, ids)).orderBy(asc(users.name)),
+  );
   return { subs, handlers, recipients };
 }
 

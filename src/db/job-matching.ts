@@ -1,5 +1,6 @@
 // Pencocokan kandidat untuk job order (dipakai halaman "Kandidat cocok" dan verify:seed). Memakai fungsi yang sama dengan
 // halaman kandidat: statistik penilaian (assessmentStats), JLPT tertinggi (jlptBest), dan view keputusan paling maju.
+import { inSeries } from "./serial";
 import { and, asc, eq, gte, inArray, isNotNull } from "drizzle-orm";
 import type { Tx } from "./index";
 import { assessmentStats, jlptBest } from "./candidate-list";
@@ -58,23 +59,14 @@ export async function matchCandidates(tx: Tx, jo: MatchJobOrder, tskOrgId: strin
     .orderBy(asc(candidates.fullName), asc(candidates.id));
   if (base.length === 0) return [];
   const ids = base.map((c) => c.id);
-  const [stats, jlpt, jft, headline, mine, placed] = await Promise.all([
-    assessmentStats(tx),
-    jlptBest(tx),
-    tx
-      .select({ id: candidateCertificates.candidateId })
-      .from(candidateCertificates)
-      .where(and(eq(candidateCertificates.type, "JFT_BASIC"), isNotNull(candidateCertificates.score), gte(candidateCertificates.score, JFT_PASS_SCORE), inArray(candidateCertificates.candidateId, ids))),
-    tx
-      .select({ id: candidateHeadlineDecision.candidateId, d: candidateHeadlineDecision.decision })
-      .from(candidateHeadlineDecision)
-      .where(and(eq(candidateHeadlineDecision.tskOrgId, tskOrgId), inArray(candidateHeadlineDecision.candidateId, ids))),
-    tx
-      .select({ id: candidateSelections.candidateId, d: candidateSelections.decision })
-      .from(candidateSelections)
-      .where(and(eq(candidateSelections.jobOrderId, jo.id), inArray(candidateSelections.candidateId, ids))),
-    tx.select({ id: placements.candidateId }).from(placements).where(and(eq(placements.status, "ACTIVE"), inArray(placements.candidateId, ids))),
-  ]);
+  const [stats, jlpt, jft, headline, mine, placed] = await inSeries(
+    () => assessmentStats(tx),
+    () => jlptBest(tx),
+    () => tx.select({ id: candidateCertificates.candidateId }) .from(candidateCertificates) .where(and(eq(candidateCertificates.type, "JFT_BASIC"), isNotNull(candidateCertificates.score), gte(candidateCertificates.score, JFT_PASS_SCORE), inArray(candidateCertificates.candidateId, ids))),
+    () => tx.select({ id: candidateHeadlineDecision.candidateId, d: candidateHeadlineDecision.decision }) .from(candidateHeadlineDecision) .where(and(eq(candidateHeadlineDecision.tskOrgId, tskOrgId), inArray(candidateHeadlineDecision.candidateId, ids))),
+    () => tx.select({ id: candidateSelections.candidateId, d: candidateSelections.decision }) .from(candidateSelections) .where(and(eq(candidateSelections.jobOrderId, jo.id), inArray(candidateSelections.candidateId, ids))),
+    () => tx.select({ id: placements.candidateId }).from(placements).where(and(eq(placements.status, "ACTIVE"), inArray(placements.candidateId, ids))),
+  );
   const jftSet = new Set(jft.map((r) => r.id));
   const headlineMap = new Map(headline.map((r) => [r.id, r.d]));
   const mineMap = new Map(mine.map((r) => [r.id, r.d]));
