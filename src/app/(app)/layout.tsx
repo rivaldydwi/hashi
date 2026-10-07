@@ -46,17 +46,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       items.push({ href: "/clients", label: t("nav.clients"), icon: "clients" });
       items.push({ href: "/job-orders", label: t("nav.jobOrders"), icon: "jobOrders" });
       items.push({ href: "/records", label: t("nav.records"), icon: "records", badge: recordsBadge, badgeLabel: t("shell.badgeRecords", { n: recordsBadge }) });
+      items.push({ href: "/records/cards", label: t("nav.residenceCard"), icon: "residence" });
     }
     if (user.role === "LPK_ADMIN" || user.role === "TSK_ADMIN") {
       items.push({ href: "/users", label: t("nav.users"), icon: "users" });
       items.push({ href: "/activity", label: t("nav.activity"), icon: "history" });
     }
   }
-  const soon: SoonItem[] = isTsk
-    ? [
-        { key: "residence", label: t("nav.residenceCard"), icon: "residence" },
-      ]
-    : [];
+  const soon: SoonItem[] = []; // belum ada menu "segera hadir" (在留カード sudah menjadi menu sungguhan, T-019)
 
   const action =
     user.role === "LPK_ADMIN"

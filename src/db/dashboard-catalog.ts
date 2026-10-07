@@ -43,6 +43,11 @@ export const WIDGETS: readonly WidgetDef[] = [
   { id: "kpi-interviews-pending", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiInterviewsPending", tone: "attention", icon: "periodic" },
   { id: "kpi-followups-open", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiFollowupsOpen", tone: "attention", icon: "tasks" },
   // Penanggung jawab pekerja (T-010): hanya TSK_ADMIN
+  // Kartu izin tinggal 在留カード (T-019): urgent/prepare/waiting untuk semua staf TSK (staf = pekerja yang ia 担当, Admin = semua), missing hanya Admin
+  { id: "kpi-card-urgent", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiCardUrgent", tone: "attention", icon: "residence" },
+  { id: "kpi-card-prepare", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiCardPrepare", tone: "info", icon: "residence" },
+  { id: "kpi-card-waiting", kind: "kpi", roles: TSK_BOTH, sizes: [], defaultSize: "half", label: "kpiCardWaiting", tone: "info", icon: "clock" },
+  { id: "kpi-card-missing", kind: "kpi", roles: TSK_A, sizes: [], defaultSize: "half", label: "kpiCardMissing", tone: "attention", icon: "alert" },
   { id: "kpi-staff-over", kind: "kpi", roles: TSK_A, sizes: [], defaultSize: "half", label: "kpiStaffOver", tone: "attention", icon: "users" },
   { id: "kpi-unassigned", kind: "kpi", roles: TSK_A, sizes: [], defaultSize: "half", label: "kpiUnassigned", tone: "attention", icon: "alert" },
   { id: "kpi-orgs", kind: "kpi", roles: SUPER, sizes: [], defaultSize: "half", label: "kpiOrgs", tone: "neutral", icon: "organizations" },
@@ -58,7 +63,6 @@ export const WIDGETS: readonly WidgetDef[] = [
   { id: "pipeline", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wPipeline" },
   { id: "open-jobs", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wJobs" },
   { id: "new-candidates", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wNewCands" },
-  { id: "coming-soon", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wSoon" },
   { id: "activity", kind: "widget", roles: ["LPK_ADMIN", "TSK_ADMIN"], sizes: HALF_FULL, defaultSize: "full", label: "wActivity" },
   { id: "my-followups", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wMyFollowups" },
   { id: "open-cases", kind: "widget", roles: TSK_BOTH, sizes: HALF_FULL, defaultSize: "half", label: "wOpenCases" },

@@ -34,6 +34,43 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-019 · 在留カード (C): daftar, KPI, menu, data demo + hasil deploy T-018
+
+**PR:** #17 (branch `eng/T-019-zairyu-card-c`)
+**Status:** siap direview, dengan SATU penyimpangan dari spesifikasi yang perlu keputusan PM (seed tidak mencakup SEMUA tahap; lihat Kendala)
+
+**Hasil deploy T-018 lewat `scripts/deploy.sh --backup`** (PR #16 di-merge `6425218`, setelah `PM: DISETUJUI` bersyarat dan job e2e CI hijau di head `fea7240`)
+- Cadangan terenkripsi dulu: `hashi-20261007-140546-*` (database 678 entri, 146 berkas dokumen; `LAST_FAILED` tidak ada). Migration 0026 terterap otomatis: kedua kolom baru (`additional_docs_on`, `rejected_on`) ada di `residence_cards` produksi.
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: 6425218 (label image: 6425218); health: {"status":"ok","commit":"6425218"}`. Demo tidak disentuh.
+
+**Yang dikerjakan**
+- **Satu sumber angka KPI dan daftar** (jawaban PM: "satu fungsi bersama"): `loadCardRows` (`src/db/zairyu-queries.ts`: semua pekerja AKTIF + kartu terkini + tahap + 担当 efektif, urut paling mendesak; kueri berurutan, bukan `Promise.all`), `filterCardRows`, `cardKpiCounts`; dan di `src/db/zairyu.ts` fungsi murni `isActionNeeded`, `matchesView`, `countViews`, `compareCardItems`. **"Perlu tindakan" = tahap perhatian (h30, h14, h7, expired, rejected, special_overdue) + menunggu hasil DENGAN 追加資料** (catatan PM T-017/T-018). `waiting` = menunggu hasil TANPA 追加資料, jadi satu pekerja tidak dihitung dua kali (dites).
+- **`/records/cards`** (tab Catatan kegiatan + menu sidebar "Kartu izin tinggal" menggantikan "Segera hadir"; widget dashboard "Segera hadir" dihapus): lencana kelompok berhitungan (Semua, Perlu tindakan, Mulai disiapkan, Menunggu hasil, Belum ada data), filter "milikku" (担当 efektif), perusahaan, tahap; kolom tahap + sisa hari + tanda 追加資料 + 特例期間 + status proses + 担当 + tautan ke pekerja. Hanya staf TSK (LPK/sensei 404). Data pengguna `translate="no"` (aturan T-016).
+- **KPI dashboard** `kpi-card-urgent` (attention), `kpi-card-prepare` (info), `kpi-card-waiting` (info, opsional di spesifikasi, ditambah) untuk staf TSK (staf = pekerja yang ia 担当, tautan KPI membawa `&mine=1`; Admin = semua), dan `kpi-card-missing` (attention) hanya Admin, dengan ikon/nada seperti T-012; teks id + ja.
+- **Seed demo**: w0 = H-14 dengan rantai kartu (kartu lama diterima staf lalu diserahkan + kartu sekarang), w1 = menunggu hasil dengan 追加資料, w2 = tanpa data. `verify:seed` memeriksa: KPI = daftar (Admin dan tiap staf), baris = pekerja aktif, ada pekerja urgent/追加資料/tanpa data/rantai kartu.
+
+**Verifikasi** (db-dev `hashi_dev`; produksi tidak disentuh)
+- `npm run typecheck` → lulus; `npm run build` → 0 peringatan; `npm run test:i18n` → lulus (1636 kunci); `npm run verify:audit-coverage` → lulus (tidak ada server action baru)
+- `npm run test:unit` → 106 lulus (3 baru di `zairyu.test.ts`: `isActionNeeded`, kelompok dari data nyata tanpa tumpang tindih, urutan daftar)
+- `db:seed -- --reset` + `npm run test:rls` → lulus (DUA kali) setelah satu penyesuaian tes (UPDATE tanpa WHERE oleh staf lain kini hanya dihitung pada kartu pekerja uji, karena kartu seed pekerja lain memang boleh diubah 担当-nya); `npm run verify:seed` → lulus
+- `E2E_PORT=3120 npm run test:e2e` → **212 lulus** (5 baru `card-list.spec.ts` dengan 13 pekerja uji SENDIRI untuk SEMUA tahap, dibersihkan di `afterAll`): setiap tahap tampil benar (none, prepare, can_apply, h30, h14, h7, expired, waiting, waiting+追加資料, 特例期間, special_overdue, rejected, tanpa data) + urutan; kelompok urgent/prepare/waiting/missing berisi tepat yang seharusnya; **KPI = jumlah baris daftar** untuk keempat KPI Admin dan untuk staf lewat tautan KPI (milikku), staf hanya melihat miliknya di "milikku" dan semua tanpa filter, `kpi-card-missing` hanya Admin; menu sungguhan, tidak ada "segera hadir", LPK/sensei 404; ponsel 390 px.
+- Dua tes lama diperbarui karena menu "Segera hadir" tidak ada lagi (`dashboard.spec`, `records-access.spec`; keduanya kini menegaskan menu Kartu izin tinggal ada dan grup "segera" tidak ada). Rute `/records/cards` ditambahkan ke daftar rute akses.
+- Tangkapan layar: `docs/screenshots/T-019/` (daftar id dan ja, kelompok urgent + milikku, dashboard staf id dan Admin ja, daftar ponsel). Pekerja contoh dibuat sementara dan dihapus.
+
+**Kondisi server:** produksi `6425218` (T-018). T-019 tidak menambah migrasi (tabel dan kolom sudah ada); tidak memerlukan `--backup`, deploy biasa `scripts/deploy.sh`. Demo belum memuat pelacak kartu (menunggu izin Ipal).
+
+**Kendala / catatan**
+- **PENYIMPANGAN: seed TIDAK mencakup semua tahap.** Spesifikasi: "Seed + `verify:seed` mencakup semua tahap". Seed dasar hanya punya **3 pekerja aktif** (setiap pekerja aktif juga harus punya wawancara berkala, penanggung jawab, dst., dan banyak tes e2e/verify-seed bergantung pada jumlah itu), jadi satu kartu terkini per pekerja hanya bisa memuat 3 keadaan (H-14, 追加資料, tanpa data). Menambah pekerja aktif demi tahap lain akan menggeser angka banyak tes. Cakupan SEMUA tahap dibuktikan lewat: tes unit (`cardStage` dan kelompok), e2e `card-list.spec.ts` (13 pekerja uji, tiap tahap diperiksa di daftar + KPI), dan seed pilot T-014 (200 siswa) sebaiknya memuat sebaran tahap. Mohon PM memutuskan: (a) diterima begini, atau (b) tambahkan permintaan sebaran tahap ke T-014 (usulan saya), atau (c) perluas seed dasar dengan pekerja tambahan (butuh penyesuaian banyak tes).
+- **Baris KPI TSK_ADMIN jadi 3 di 1280 px** (13 KPI pada 5 kolom; sebelumnya 9 = 2 baris). Tes T-012 yang mensyaratkan "≤ 2 baris" saya longgarkan menjadi ≤ 3 baris dengan komentar alasannya; tinggi kartu (≤ 110 px), kesamaan tinggi per baris, dan "widget berikutnya terlihat tanpa menggulir" tetap dijaga. Alternatif bila PM ingin tetap 2 baris: sembunyikan `kpi-card-prepare`/`kpi-card-waiting` secara bawaan (perlu dukungan `defaultHidden` di katalog), atau gabungkan KPI.
+- `kpi-card-waiting` bernilai 0 ditampilkan biru (info, bukan "Beres") karena bukan KPI tindakan; sesuai aturan nada T-012.
+- `Residence Card (Zairyū Kādo)` di menu id dipendekkan menjadi "Kartu izin tinggal" (label panjang membungkus di sidebar).
+
+**Pertanyaan**
+- (untuk PM) Keputusan soal cakupan seed dan baris KPI di atas.
+
+**Usulan berikutnya** (bukan tugas)
+- Untuk T-014: sebaran tahap kartu pada 200 pekerja pilot, sekaligus menguji kecepatan `loadCardRows` (satu kueri kartu untuk semua pekerja aktif; sudah tanpa N+1).
+
 ## 2026-10-07 · T-018 · 在留カード (B): bagian di detail pekerja + hasil deploy T-017
 
 **PR:** #16 (branch `eng/T-018-zairyu-card-b`)

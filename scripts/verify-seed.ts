@@ -19,6 +19,7 @@ import { ACTIONS } from "../src/db/audit-describe";
 import { activeWorkers, allWorkers, followupIds, openInterviewQuarters, quartersOfFiscalYear, unreadRecordIds, unreadReportIds } from "../src/db/records-queries";
 import { fiscalYearOf } from "../src/db/records-core";
 import { responsibilityOverview } from "../src/db/responsibility-queries";
+import { cardKpiCounts, filterCardRows, loadCardRows } from "../src/db/zairyu-queries";
 import { todayInTskTz } from "../src/db/time";
 import { demoAttachmentPath } from "../src/db/demo-files";
 import { access } from "node:fs/promises";
@@ -339,6 +340,21 @@ async function main() {
     const loadSum = ov.workload.reduce((nn, x) => nn + x.count, 0);
     const asg = await ownerQ<{ company: string; placement: string }>(sql`select count(*) filter (where company_id is not null)::text as company, count(*) filter (where placement_id is not null)::text as placement from responsible_assignments`);
     check("Penanggung jawab: >= 1 pekerja aktif tanpa penanggung jawab; ada penetapan per perusahaan dan per pekerja; beban per staf hanya menghitung pekerja ACTIVE (jumlah beban + tanpa penanggung jawab = pekerja aktif); KPI = daftar (fungsi sama)", ov.unassigned.length >= 1 && Number(asg[0].company) >= 1 && Number(asg[0].placement) >= 1 && loadSum + ov.unassigned.length === activeN && ov.overLimit.length === ov2.overLimit.length && ov.unassigned.length === ov2.unassigned.length, `aktif ${activeN}, beban ${loadSum}, tanpa ${ov.unassigned.length}, melebihi ${ov.overLimit.length}, penetapan perusahaan ${asg[0].company} / pekerja ${asg[0].placement}`);
+    // Kartu izin tinggal (T-019): KPI = daftar (satu sumber: loadCardRows + filterCardRows/cardKpiCounts) untuk Admin (semua) dan tiap staf (milikku); seed memuat tahap yang dijanjikan
+    const cardRows = await asTsk(admin, (tx) => loadCardRows(tx, today));
+    const cardViews = ["urgent", "prepare", "waiting", "missing"] as const;
+    const adminCards = cardKpiCounts(cardRows, { role: "TSK_ADMIN", userId: admin.id });
+    const adminList = Object.fromEntries(cardViews.map((v) => [v, filterCardRows(cardRows, { view: v }).length]));
+    const staffUsers = tskUsers.filter((u) => u.role === "TSK_STAFF");
+    const staffCardsOk = staffUsers.every((u) => {
+      const k = cardKpiCounts(cardRows, { role: "TSK_STAFF", userId: u.id });
+      return k.mine && cardViews.every((v) => k.counts[v] === filterCardRows(cardRows, { view: v, mineUserId: u.id }).length);
+    });
+    const mineSum = staffUsers.reduce((nn, u) => nn + filterCardRows(cardRows, { view: "all", mineUserId: u.id }).length, 0) + filterCardRows(cardRows, { view: "all", mineUserId: admin.id }).length;
+    const unassignedCards = cardRows.filter((r) => r.responsibleId === null).length;
+    check("Kartu izin tinggal: KPI = jumlah baris daftar (Admin = semua kelompok; tiap staf = 'milikku'); baris = pekerja aktif; milik semua staf + tanpa penanggung jawab = pekerja aktif", cardRows.length === activeN && adminCards.mine === false && JSON.stringify(adminCards.counts) === JSON.stringify(adminList) && staffCardsOk && mineSum + unassignedCards === cardRows.length, `${JSON.stringify(adminCards.counts)} baris ${cardRows.length} aktif ${activeN}`);
+    const chains = await ownerQ<{ n: string }>(sql`select count(*)::text as n from residence_cards where previous_card_id is not null and status = 'active'`);
+    check("Kartu izin tinggal: seed memuat >= 1 pekerja 'perlu tindakan' (H-14), >= 1 menunggu hasil dengan 追加資料 (ikut 'perlu tindakan', tidak ganda di 'menunggu'), >= 1 pekerja tanpa data, dan >= 1 rantai kartu (diterima staf lalu diserahkan + kartu sekarang)", adminCards.counts.urgent >= 2 && cardRows.some((r) => r.stage === "h14") && cardRows.some((r) => r.stage === "waiting_result" && r.additionalDocs && filterCardRows([r], { view: "urgent" }).length === 1 && filterCardRows([r], { view: "waiting" }).length === 0) && adminCards.counts.missing >= 1 && Number(chains[0].n) >= 1, `urgent ${adminCards.counts.urgent}, missing ${adminCards.counts.missing}, rantai ${chains[0].n}`);
     const endedW = (await asTsk(admin, (tx) => allWorkers(tx))).filter((w) => w.status === "ENDED");
     const endedFy = endedW[0]?.endDate ? fiscalYearOf(endedW[0].endDate) : null;
     const qEnded = endedFy !== null ? await asTsk(admin, (tx) => quartersOfFiscalYear(tx, endedFy, today)) : [];

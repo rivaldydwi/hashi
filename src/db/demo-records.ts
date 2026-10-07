@@ -7,7 +7,7 @@ import type { Tx } from "./index";
 import {
   activityAttachments, activityCaseSubjects, activityCases, activityDailyReportRecipients, activityDailyReports, activityFollowups, activityRecordHandlers,
   activityRecordReads, activityRecordRecipients, activityRecordSubjects, activityRecords, caseTimelineEvents, candidateSelections, candidates, clientCompanies,
-  clientSiteContacts, clientSites, jobOrders, organizations, partnerships, periodicInterviewQuarterNotes, periodicInterviews, placements, responsibleAssignments, users,
+  clientSiteContacts, clientSites, jobOrders, organizations, partnerships, periodicInterviewQuarterNotes, periodicInterviews, placements, residenceCards, responsibleAssignments, users,
 } from "./schema";
 import { fiscalMonths, fiscalYearOf, quarterOfMonth } from "./records-core";
 import { addDays, uuidFor } from "./demo-rng";
@@ -306,6 +306,26 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
     respN++;
   }
   bump("responsible", respN);
+
+  // ================= Kartu izin tinggal 在留カード (T-019) =================
+  // Seed hanya punya 3 pekerja aktif, jadi: w0 = H-14 (belum diajukan, rantai kartu: kartu lama diterima staf lalu diserahkan + kartu sekarang), w1 = menunggu hasil dengan 追加資料
+  // (masuk "perlu tindakan"), w2 = BELUM ada data kartu (KPI Admin "tanpa data"). Tahap lain dicakup tes unit/e2e (pekerja uji) dan seed pilot (T-014).
+  const fieldOf = new Map((await tx.select({ id: candidates.id, f: candidates.fieldId }).from(candidates).where(inArray(candidates.id, [w0.id, w1.id]))).map((c) => [c.id, c.f]));
+  const day = (n: number) => addDays(opts.today, n);
+  const prevCard = T("card:w0:prev");
+  const curCard = T("card:w0:cur");
+  await tx.insert(residenceCards).values({
+    id: prevCard, organizationId: orgId, createdBy: s1.id, candidateId: w0.id, skillFieldId: fieldOf.get(w0.id)!, periodMonths: 12, expiryDate: day(10 - 365), renewalStatus: "received",
+    appliedOn: day(-420), receivedOn: day(-350), receivedBy: "staff", handedOverOn: day(-348), note: "前回の更新（デモ用）", createdAt: at(430, 0),
+  }).onConflictDoNothing();
+  await tx.insert(residenceCards).values({
+    id: curCard, organizationId: orgId, createdBy: s1.id, candidateId: w0.id, previousCardId: prevCard, skillFieldId: fieldOf.get(w0.id)!, periodMonths: 12, expiryDate: day(10), renewalStatus: "preparing", note: "書類を準備中（デモ用）", createdAt: at(350, 0),
+  }).onConflictDoNothing();
+  await tx.insert(residenceCards).values({
+    id: T("card:w1:cur"), organizationId: orgId, createdBy: s2.id, candidateId: w1.id, skillFieldId: fieldOf.get(w1.id)!, periodMonths: 6, expiryDate: day(20), renewalStatus: "additional_docs",
+    appliedOn: day(-14), additionalDocsOn: day(-5), note: "追加資料：雇用契約書の写しを提出予定（デモ用）", createdAt: at(30, 0),
+  }).onConflictDoNothing();
+  bump("residenceCards", 3);
 
   // ================= Pekerja yang SUDAH BERHENTI di tengah tahun fiskal (T-008) =================
   // Satu penempatan ENDED (tanpa keputusan DEPARTED: hanya data demo, supaya hitungan keputusan di daftar kandidat tidak bergeser). Masa kerja ~100 hari yang selesai 30 hari lalu:

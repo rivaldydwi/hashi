@@ -1,15 +1,13 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Data } from "@/components/Data";
 import { cardClass } from "@/components/styles";
-import { cardStage, currentCard, type CardStage } from "@/db/zairyu";
-import { Badge, type Tone } from "@/features/records/ui/common";
+import { cardStage } from "@/db/zairyu";
+import { Badge } from "@/features/records/ui/common";
 import { RevisionHistory, toSnake, type RevField } from "@/features/records/ui/RevisionHistory";
 import type { CardRow, CardSectionData } from "../queries";
+import { STAGE_TONE } from "../stage";
 import { CreateCardForm, HandOverForm, ReceiveCardForm, UpdateCardForm, VoidCardForm, type FieldOption } from "./CardForms";
 
-const STAGE_TONE: Record<CardStage, Tone> = {
-  none: "neutral", done: "ok", prepare: "info", can_apply: "info", waiting_result: "info", h30: "warn", h14: "danger", h7: "danger", expired: "danger", special_overdue: "danger", rejected: "danger",
-};
 const slash = (ymd: string | null | undefined) => (ymd ? ymd.replace(/-/g, "/") : "—");
 
 /**

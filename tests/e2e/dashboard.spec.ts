@@ -25,11 +25,11 @@ test("menu LPK_SENSEI: tanpa Pengguna; dashboard tanpa widget sensitif (DOM dan 
   for (const secret of [priv.pn, priv.nid, "tsk-decisions", "kpi-passport"]) expect(html).not.toContain(secret.toLowerCase());
 });
 
-test("menu TSK: Klien dan Job order ada, menu LPK/super admin tidak; ada 2 item 'segera'", async ({ page }) => {
+test("menu TSK: Klien, Job order, dan Kartu izin tinggal ada, menu LPK/super admin tidak; tidak ada lagi grup 'segera hadir'", async ({ page }) => {
   await login(page, "tsk.staff@hashi.test");
-  for (const href of ["/candidates", "/clients", "/job-orders"]) await expect(sidebarLink(page, href)).toHaveCount(1);
+  for (const href of ["/candidates", "/clients", "/job-orders", "/records/cards"]) await expect(sidebarLink(page, href)).toHaveCount(1);
   for (const href of ["/users", "/admin/organizations"]) await expect(sidebarLink(page, href)).toHaveCount(0);
-  await expect(page.getByTestId("nav-soon").locator("li")).toHaveCount(1); // hanya Residence Card; Wawancara berkala sudah ada (Catatan kegiatan)
+  await expect(page.getByTestId("nav-soon")).toHaveCount(0); // Wawancara berkala dan Kartu izin tinggal sudah menu sungguhan (T-019)
 });
 
 test("menu super admin: organisasi, kemitraan, bidang kerja; tanpa Kandidat", async ({ page }) => {

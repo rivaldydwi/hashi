@@ -2988,7 +2988,8 @@ async function main() {
     xr.otherInsert = await attempt(tx, (t) => t.execute(card(staff2!.id, a.cid, a.fid)));
     await tx.execute(sql.raw(`update residence_cards set note = 'bukan-担当' where id = '${id1}'`));
     await tx.execute(sql.raw(`update residence_cards set note = 'bukan-担当-tanpa-where'`));
-    xr.otherUpdateBlocked = await num(tx, `select count(*)::int as n from residence_cards where note like 'bukan-担当%'`);
+    // UPDATE tanpa WHERE oleh staf lain hanya boleh mengubah kartu pekerja yang IA 担当 (mis. kartu seed milik pekerja lain), TIDAK kartu pekerja `a`
+    xr.otherUpdateBlocked = await num(tx, `select count(*)::int as n from residence_cards where candidate_id = '${a.cid}' and note like 'bukan-担当%'`);
     xr.otherReads = await num(tx, `select count(*)::int as n from residence_cards where id = '${id1}'`); // membaca boleh
     await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
     const id2 = await idOf(card(tskAdminUser.id, b2.cid, b2.fid)); // Admin menulis untuk pekerja mana pun

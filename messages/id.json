@@ -28,7 +28,7 @@
     "skillFields": "Bidang kerja",
     "clients": "Klien",
     "jobOrders": "Job order",
-    "residenceCard": "Residence Card (Zairyū Kādo)",
+    "residenceCard": "Kartu izin tinggal",
     "periodicInterview": "Wawancara berkala (Teiki Mendan)",
     "activity": "Riwayat aktivitas",
     "records": "Catatan kegiatan"
@@ -100,7 +100,6 @@
     "wPipeline": "Alur seleksi",
     "wJobs": "Job order terbuka",
     "wNewCands": "Kandidat baru dari LPK",
-    "wSoon": "Segera hadir",
     "wOrgs": "Semua organisasi",
     "latestAvg": "Nilai terakhir",
     "emptyUnrated": "Semua siswa sudah dinilai bulan ini.",
@@ -117,8 +116,6 @@
     "aspectAttitude": "Sikap",
     "aspectFitness": "Kebugaran",
     "aspectMotivation": "Motivasi",
-    "soonResidence": "Pengingat Residence Card",
-    "soonBadge": "Segera",
     "onboarding": {
       "title": "Selamat datang, {name}",
       "intro": "Tiga langkah awal supaya Hashi siap dipakai.",
@@ -170,7 +167,16 @@
     "kpiUnassigned": "Pekerja tanpa penanggung jawab",
     "kpiUnassignedHint": "Belum ada staf yang menangani",
     "kpiCalm": "Beres",
-    "kpiAttention": "Perlu tindakan"
+    "kpiAttention": "Perlu tindakan",
+    "kpiCardUrgent": "Kartu perlu tindakan",
+    "kpiCardScopeMine": "Pekerja milikmu",
+    "kpiCardScopeAll": "Seluruh organisasi",
+    "kpiCardPrepare": "Kartu mulai disiapkan",
+    "kpiCardPrepareHint": "Persiapan atau sudah bisa diajukan",
+    "kpiCardWaiting": "Kartu menunggu hasil",
+    "kpiCardWaitingHint": "Sudah diajukan ke imigrasi",
+    "kpiCardMissing": "Pekerja tanpa data kartu",
+    "kpiCardMissingHint": "Data kartu belum dicatat"
   },
   "users": {
     "title": "Pengguna",
@@ -1154,7 +1160,8 @@
       "cases": "Kasus (Kronologi kasus, Jikeiretsu)",
       "interviews": "Wawancara berkala (Teiki Mendan)",
       "tasks": "Tindak lanjut",
-      "responsible": "Penanggung jawab"
+      "responsible": "Penanggung jawab",
+      "cards": "Kartu izin tinggal"
     },
     "kinds": {
       "daily_work": "Catatan kerja harian",
@@ -1919,7 +1926,8 @@
     },
     "flags": {
       "additionalDocs": "Dokumen tambahan diminta (tsuika shiryō)",
-      "special": "Masa tinggal tambahan (tokurei kikan) berlaku sampai {date}."
+      "special": "Masa tinggal tambahan (tokurei kikan) berlaku sampai {date}.",
+      "additionalDocsShort": "Dokumen tambahan"
     },
     "history": {
       "title": "Riwayat kartu",
@@ -1968,6 +1976,41 @@
     },
     "saved": "Data kartu tersimpan.",
     "received": "Kartu baru diterima dan data kartu baru dicatat.",
-    "voided": "Data kartu dibatalkan."
+    "voided": "Data kartu dibatalkan.",
+    "list": {
+      "title": "Kartu izin tinggal pekerja aktif",
+      "intro": "Semua pekerja yang sedang bekerja beserta tahap kartu mereka, yang paling mendesak di atas. Buka satu pekerja untuk mengubah data kartunya.",
+      "viewsLabel": "Kelompok",
+      "views": {
+        "all": "Semua",
+        "urgent": "Perlu tindakan",
+        "prepare": "Mulai disiapkan",
+        "waiting": "Menunggu hasil",
+        "missing": "Belum ada data"
+      },
+      "mine": "Hanya pekerja saya",
+      "company": "Perusahaan",
+      "stage": "Tahap",
+      "all": "Semua",
+      "apply": "Terapkan",
+      "reset": "Reset filter",
+      "count": "{n} pekerja",
+      "cols": {
+        "worker": "Pekerja",
+        "company": "Perusahaan / lokasi",
+        "expiry": "Tanggal habis",
+        "stage": "Tahap",
+        "renewal": "Status proses",
+        "responsible": "Penanggung jawab",
+        "open": "Buka"
+      },
+      "none": "Belum ada data kartu",
+      "open": "Buka",
+      "emptyTitle": "Belum ada pekerja aktif",
+      "emptyBody": "Pekerja yang sudah berangkat dan punya penempatan aktif akan muncul di sini.",
+      "noMatchTitle": "Tidak ada yang cocok",
+      "noMatchBody": "Tidak ada pekerja yang cocok dengan filter ini.",
+      "note": "Perlu tindakan = kurang dari 30 hari, sudah lewat, ditolak, lewat masa tinggal tambahan, atau imigrasi meminta dokumen tambahan. Menunggu hasil tidak termasuk jika dokumen tambahan diminta (sudah masuk Perlu tindakan)."
+    }
   }
 }
