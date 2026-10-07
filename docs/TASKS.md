@@ -12,40 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-017 · 在留カード (A): skema, aturan, `cardStage`, dokumen desain mengikuti jawaban TSK · `SIAP`
-
-Dasar: desain `docs/zairyu-card.md` (T-004) + **jawaban staf TSK (Ghulam, 2026-10-07)**. Jawaban yang mengubah desain:
-
-| No | Jawaban TSK | Akibat untuk desain |
-|---|---|---|
-| 1 | Pengingat ke 担当 **wajib**; salinan ke manajer/Admin | Sesuai §4.1: penerima = 担当 efektif (T-010) + semua TSK_ADMIN |
-| 2 | Setelah diajukan (申請中) cukup tampil **結果待ち** | Tahap baru `waiting_result`: H-30/H-14/H-7 TIDAK lagi naik setelah status `applied`/`additional_docs` |
-| 3 | 特例期間 ditampilkan **bila diperlukan** (tafsiran PM) | Bila `waiting_result` dan tanggal habis sudah lewat: tampil "特例期間 s.d. <habis + 2 bulan>". Bila lewat batas itu dan belum ada hasil, tahap `special_overdue` (perhatian) |
-| 4 | Hanya **特定技能1号** + bidangnya (介護, 飲食 dll); **在留期間 dicatat** | `residence_status` tetap `ssw1` (kolom tetap ada untuk masa depan); bidang = FK `skill_fields` (bawaan dari `candidates.field_id`, bisa diubah); kolom `period_months` (pilihan di SATU konfigurasi, mis. 4/6/12/… bulan) |
-| 5 | Status: belum mulai, persiapan, diajukan, **追加資料**, kartu baru diterima, **ditolak (不許可)** | `renewal_status`: `not_started`, `preparing`, `applied`, `additional_docs`, `received`, `rejected` |
-| 6 | Nomor dan foto kartu **harus disimpan** | Tugas TERPISAH **T-020** (enkripsi + akses terbatas). T-017 TIDAK menyimpannya |
-| 7 | Yang boleh mengubah: **担当 + Admin** | Tulis: 担当 efektif pekerja itu atau TSK_ADMIN, ditegakkan di RLS (fungsi `SECURITY DEFINER` sempit, misalnya `card_editor(candidate_id)`, logika sama dengan `effectiveResponsible`). Baca: semua staf TSK org itu |
-| 8 | Isian mengikuti form PDF imigrasi (perorangan + grup) | Tugas **T-021** (isi awal/massal), DITAHAN sampai Ipal mengirim form PDF-nya |
-| 9 | LPK hanya melihat yang dibuat TSK | Tetap seperti §3.3 (tugas terpisah, belum dijadwalkan) |
-| 10 | Kartu diambil **staf** lalu diserahkan ke pekerja; opsi **pekerja mengambil sendiri** | Kolom `received_by` (`staff`/`worker`) + `handed_over_on` (tanggal diserahkan ke pekerja, opsional, hanya bila `staff`) |
-| 11 | Tanggal Jepang | Sesuai §4.2 (zona organisasi TSK) |
-| 12 | Email hanya untuk pengingat daftar/perbarui kartu (ke staf, Admin, pekerja); progres cukup di Hashi | Email = tugas terpisah, menunggu keputusan Ipal (layanan email berbiaya + email pekerja = data pribadi). T-017 s.d. T-019 hanya dalam aplikasi |
-
-Kerjakan (sesuai rencana T-A di `docs/zairyu-card.md` §6, dengan perubahan di atas):
-- Migrasi `residence_cards` + SQL manual (GRANT tanpa DELETE, ENABLE/FORCE RLS, policy baca semua staf TSK, tulis 担当/Admin, trigger penjaga, perluasan `activity_revisions.entity_type`).
-- `src/db/zairyu.ts`: `cardStage` dengan tahap baru: `waiting_result`, `special_overdue`, `rejected` (perhatian, menghentikan pengingat biasa), serta `additional_docs` sebagai tanda pada `waiting_result`. Plus `addMonths`, pemilihan kartu terkini, konfigurasi `PERIOD_OPTIONS`.
-- Perbarui `docs/zairyu-card.md`: jawaban §9 dicatat, tabel tahap dan kasus tepi §4.3 disesuaikan (tambah kasus: diajukan lalu lewat tanggal habis = 特例期間; lewat +2 bulan = `special_overdue`; 追加資料; 不許可; diambil pekerja sendiri).
-- `ACTIONS` audit + `AUDIT_VALUE_FIELDS.residence_card` (kode status/tahap, `received_by`; tanpa tanggal, nomor, catatan, nama).
-- `verify-rls`: bagian baru (staf bukan 担当 tidak bisa menulis, 担当 dan Admin bisa, UPDATE tanpa WHERE, tanpa DELETE, LPK/sensei/super admin/null 0 baris, cascade/RESTRICT `candidate_id`).
-
-**Kriteria selesai**
-- [ ] Tes unit `cardStage` mencakup SEMUA kasus di §4.3 yang diperbarui (angka, bukan hanya "tidak error").
-- [ ] `verify-rls` hijau dengan aturan tulis 担当 + Admin (termasuk pergantian 担当: 担当 lama tidak bisa menulis lagi).
-- [ ] Tidak ada UI baru; typecheck, build, test:rls, unit, `verify:audit-coverage`, CI hijau.
-
----
-
-### T-018 · 在留カード (B): bagian di detail pekerja · `SIAP` (setelah T-017)
+### T-018 · 在留カード (B): bagian di detail pekerja · `SIAP`
 
 Sesuai rencana T-B (`docs/zairyu-card.md` §6) dengan jawaban TSK di T-017:
 - Form kartu pertama: bidang (bawaan dari kandidat), 在留期間, tanggal habis.
@@ -64,7 +31,7 @@ Sesuai rencana T-B (`docs/zairyu-card.md` §6) dengan jawaban TSK di T-017:
 
 Sesuai rencana T-C:
 - `/records/cards` dengan filter tahap, "milikku", perusahaan, dan "tanpa data".
-- KPI `kpi-card-urgent` (H-30/H-14/H-7/lewat/`special_overdue`/`rejected`/`additional_docs`), `kpi-card-prepare`, `kpi-card-missing` (Admin), dengan nada/ikon sesuai T-012.
+- KPI `kpi-card-urgent` (`ATTENTION_STAGES` + `waiting_result` dengan tanda `additionalDocs`: 追加資料 menuntut tindakan staf; hitung dengan SATU fungsi bersama daftar), `kpi-card-prepare`, `kpi-card-missing` (Admin), dengan nada/ikon sesuai T-012.
 - `kpi-card-waiting` (結果待ち, info) boleh ditambah.
 - Seed + `verify:seed` mencakup semua tahap.
 - Menu "Segera hadir: 在留カード" diganti menu sungguhan.
@@ -133,6 +100,7 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 - **T-020 · 在留カード: nomor + foto kartu** (jawaban TSK no. 6: harus disimpan). **DITAHAN: BUTUH IPAL** untuk kunci enkripsi.
   - Nomor dienkripsi di level aplikasi (kunci di `.env`, dicadangkan terpisah seperti kunci cadangan). Foto depan/belakang lewat pola dokumen (`sharp`, buang EXIF).
   - Baca/lihat hanya 担当 + Admin, setiap akses diaudit. Tidak masuk daftar, ekspor, PDF, maupun log.
+- 在留カード: koreksi tanggal kartu yang sudah `received` oleh Admin (usulan engineer T-017), hanya bila TSK memintanya setelah dipakai.
 - **T-021 · 在留カード: isi awal/massal mengikuti form imigrasi** (perorangan + grup, jawaban no. 8). DITAHAN sampai Ipal mengirim form PDF imigrasinya.
 - **Email pengingat 在留カード** (jawaban no. 12: ke staf, Admin, pekerja; hanya pengingat daftar/perbarui). DITAHAN: BUTUH IPAL (layanan email berbiaya; email pekerja = data pribadi).
 - Tampilan LPK: status visa + tanggal tiba (jawaban no. 9: hanya yang dibuat TSK). Setelah T-019.
@@ -142,6 +110,7 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 
 ## Selesai
 
+- **T-017** 在留カード (A) (PR #15): migrasi 0025 `residence_cards` (rantai kartu, terima + pengganti atomik lewat constraint trigger tertunda, kartu diterima final), tulis 担当 efektif + Admin (`card_editor`, = `effectiveResponsible`), baca semua staf TSK, tanpa DELETE; `cardStage` dengan 結果待ち/特例期間/不許可; verify-rls bagian X; 21 tes unit. Tanpa UI.
 - **T-016** Terjemahan peramban: label boleh, data jangan (PR #14): `<Data>`/`translate="no"` pada nama, katakana (`lang="ja"`), perusahaan, alamat, telepon, email, kode, isi catatan; `<html>` tidak diblokir; e2e `translate-data.spec.ts`. Uji manual Chrome "Terjemahkan" dilakukan Ipal setelah deploy (fitur itu tidak ada di Chromium server).
 - **T-012** Kartu KPI ringkas dan bervariasi (PR #13): tinggi sekitar 96 px, grid otomatis menurut lebar, nada + ikon per KPI di katalog, `kpiLook` (KPI tindakan tenang/"Beres" bila 0), token warna AA, keterangan id/ja disederhanakan; tes unit + e2e tata letak.
 - **T-011** Tabel lebar rapi dalam bahasa Jepang (PR #12): header `:lang(ja)` tidak patah, utilitas `cjk-phrase` (word-break auto-phrase / keep-all) + `min-w-*` lewat `gridTh/gridTd/gridTdText/gridTdShort`, diterapkan ke grid 定期面談, daftar tahunan, kandidat, job order, pengguna, organisasi; e2e `table-ja.spec.ts` menjaga tinggi header/baris.
