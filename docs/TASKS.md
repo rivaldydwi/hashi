@@ -12,32 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-020 · 在留カード: nomor + foto kartu (terenkripsi) · `SIAP`
-
-Jawaban TSK no. 6: nomor dan foto kartu **harus disimpan**. Data paling sensitif di Hashi, jadi aturannya ketat.
-
-Kerjakan:
-- **Kunci baru `CARD_DATA_KEY`** (32 byte acak, base64). Ini kunci BARU, berbeda dari `AUTH_SECRET` dan dari kunci cadangan.
-  - Pengembangan/CI/e2e: kunci uji sendiri (boleh dibuat bebas, jangan di-commit).
-  - **Produksi**: kunci dibuat engineer di `.env` server saat deploy, lalu **berhenti dan tulis `BUTUH IPAL:` di STATUS/PR** supaya Ipal menyalinnya ke tempat aman (seperti kunci cadangan).
-    Jangan memasukkan data nyata sebelum Ipal mengonfirmasi salinannya. Kunci tidak boleh muncul di log, keluaran skrip, atau git.
-  - Aplikasi menolak jalan dengan jelas bila kunci tidak ada (tanpa diam-diam menyimpan polos). Rancang `key_id` supaya kunci bisa diganti nanti.
-- **Nomor kartu**: kolom terenkripsi di level aplikasi (AES-256-GCM, nonce acak per nilai) di `residence_cards` (atau tabel anak 1:1), validasi format 12 karakter (2 huruf + 8 angka + 2 huruf).
-  Tidak pernah tampil di daftar, KPI, ekspor, PDF, audit, maupun log. Di detail: tersamar (`AB********CD`), tombol "Tampilkan" hanya untuk 担当 + Admin, dan setiap tampil **diaudit** (`residence_card.number_view`, tanpa nilai).
-- **Foto kartu depan/belakang**: pola dokumen yang ada (`sniffType`, JPG/PNG/PDF, `sharp` buang EXIF), berkas **terenkripsi di disk** dengan kunci yang sama. Unduh/lihat hanya 担当 + Admin lewat route handler
-  (RLS + audit `residence_card.photo_view`), `attachment` + `nosniff`. Ikut terhapus/void bersama kartu sesuai aturan T-017 (tanpa DELETE fisik data audit).
-- Catatan yang mirip nomor kartu tetap ditolak (T-018). Cadangan (`scripts/backup.sh`) ikut membawa berkas terenkripsi. Dokumentasikan di `docs/backup.md` bahwa **tanpa `CARD_DATA_KEY` data ini tidak bisa dipulihkan**.
-- `docs/zairyu-card.md` §2.3 diperbarui: keputusan berubah karena jawaban TSK.
-
-**Kriteria selesai**
-- [ ] Tes unit enkripsi (bolak-balik, nonce berbeda, kunci salah = gagal, data rusak = gagal). `verify-rls`: staf bukan 担当 tidak bisa membaca kolom/berkas, LPK/sensei 0 baris.
-- [ ] e2e: simpan nomor + foto, tersamar di detail, "Tampilkan" mencatat audit tanpa nilai, staf lain tidak melihat tombol (dan server menolak), nomor tidak ada di HTML daftar/KPI.
-- [ ] Bukti di PR: isi kolom di database = sandi acak, bukan nomor; berkas di disk bukan JPG terbaca.
-- [ ] Deploy produksi dengan `--backup` + langkah kunci `BUTUH IPAL` di atas.
-
----
-
-### T-022 · Email pengingat 在留カード (ke staf + Admin) · `SIAP` (setelah T-020)
+### T-022 · Email pengingat 在留カード (ke staf + Admin) · `SIAP`
 
 Jawaban TSK no. 12: email hanya untuk **pengingat mendaftarkan/memperbarui kartu**; progres setelah diajukan cukup di Hashi (imigrasi sudah mengirim email sendiri).
 
@@ -132,10 +107,12 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 - `next.config`: `agentRules: false` supaya `next dev` tidak menulis blok aturan ke `CLAUDE.md` (temuan engineer T-013).
 - COE (在留資格認定証明書, termasuk form grup): ditunda atas keputusan Ipal (proses panjang).
 - 在留カード lanjutan: halaman 特定技能 ("V") + 所属機関等作成用 untuk perpanjangan, menunggu contoh dari Ghulam.
+- 在留カード: nomor/foto kartu LAMA setelah kartu baru diterima tetap tersimpan terenkripsi tapi tidak bisa dibuka di aplikasi (hanya kartu aktif). Perlu keputusan retensi (hapus otomatis setelah X bulan?) dengan TSK/行政書士 sebelum data nyata.
 - Langkah 9: demo ke TSK.
 
 ## Selesai
 
+- **T-020** 在留カード nomor + foto terenkripsi (PR #20): AES-256-GCM dengan AAD per kartu/foto + `key_id` (rotasi lewat `CARD_DATA_KEYS_OLD`), tabel terpisah `residence_card_secrets`/`residence_card_photos` (migrasi 0027, RLS baca+tulis hanya TSK_ADMIN + 担当), nomor tersamar + "Tampilkan" yang diaudit sebelum nilai kembali, foto terenkripsi di disk lewat route ber-audit, kartu batal = nomor/foto dibuang; aplikasi menolak start tanpa kunci; `ensure-card-key.sh`; `docs/backup.md` §7.
 - **T-023** Terjemahan peramban dikoreksi (PR #19): sifat kolom `data: identity|prose` di `candidate-sections.ts` (+ `fieldNature`, tes unit), teks bebas boleh diterjemahkan, identitas/nama staf/merek dikunci; `medicalNote` dikunci (data kesehatan), `visionNote` boleh (keputusan Ipal: syarat buta warna). Uji manual Chrome oleh Ipal setelah deploy.
 - **T-013** Peringatan pg "already executing" (PR #18): 116 kejadian dilacak ke `Promise.all` di atas `tx`, 16 tempat diganti `inSeries` (`src/db/serial.ts`); penjaga: server e2e mati kode 97 (`guard-pg-concurrency.cjs`) + pemindai sumber `no-tx-promise-all.test.ts`; log e2e 0 kejadian.
 - **T-019** 在留カード (C) (PR #17): `/records/cards` + menu sungguhan, KPI urgent/prepare/waiting/missing dari SATU sumber (`loadCardRows`/`filterCardRows`/`cardKpiCounts`, `isActionNeeded` termasuk 追加資料), staf = miliknya, Admin = semua; seed 3 keadaan + `verify:seed` KPI = daftar; 13 pekerja uji e2e untuk semua tahap. KPI TSK_ADMIN kini 3 baris di 1280 px (diterima PM; tes T-012 disesuaikan ke ≤ 3).

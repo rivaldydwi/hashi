@@ -1,6 +1,11 @@
 // Pembantu bersama action kartu (bukan modul "use server").
 import type { Tx } from "@/db";
+import { requireStaffAction } from "@/features/records/access";
+import { audit } from "@/lib/audit";
+import { CardDecryptError, CardKeyError } from "@/lib/card-crypto";
 import { ActionError, pgErrorCode } from "@/lib/errors";
+import type { FormState } from "@/lib/form-state";
+import { safeTimezone, ymdIn } from "@/lib/org-time";
 import type { CurrentUser } from "@/lib/session";
 import type { CardError } from "./input";
 import { cardEditAccess, getCard, type CardRow } from "./queries";
@@ -31,4 +36,31 @@ export function mapCardPgError(err: unknown): string | null {
     return "cards.errors.invalid";
   }
   return null;
+}
+
+export const todayOf = (me: CurrentUser) => ymdIn(new Date(), safeTimezone(me.organizationTimezone, me.organizationType));
+
+/** Galat enkripsi → pesan jelas (tanpa detail teknis/kunci). null = bukan galat enkripsi. */
+export function mapCryptoError(err: unknown): string | null {
+  if (err instanceof CardKeyError) return "cards.errors.keyMissing";
+  if (err instanceof CardDecryptError) return "cards.errors.decryptFailed";
+  return null;
+}
+
+/** Pembungkus action nomor/foto (T-020): pengguna staf TSK, galat yang dikenal → FormState, selain itu dilempar. */
+export async function runCard<T extends FormState | { ok: boolean; key?: string }>(fn: (me: CurrentUser, today: string) => Promise<T>, onError: (key: string) => T): Promise<T> {
+  const me = await requireStaffAction();
+  try {
+    return await fn(me, todayOf(me));
+  } catch (err) {
+    if (err instanceof ActionError) return onError(err.code);
+    const key = mapCardPgError(err) ?? mapCryptoError(err);
+    if (key) return onError(key);
+    throw err;
+  }
+}
+
+/** Audit kartu di log organisasi TSK. `after` hanya memuat kode (status/sisi), TIDAK PERNAH nomor atau nama berkas. */
+export function cardLog(tx: Tx, me: CurrentUser, action: string, id: string, after: Record<string, unknown>) {
+  return audit(tx, { organizationId: me.organizationId, actorUserId: me.id, action, entity: "residence_card", entityId: id, after });
 }

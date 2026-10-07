@@ -10,8 +10,10 @@
 |---|---|---|---|
 | Database produksi `hashi` (semua tabel, termasuk audit, catatan kegiatan, riwayat edit) | container `hashi-db-1` | `pg_dump -Fc` (format kustom, terkompresi, bisa dipulihkan per tabel) | **Wajib** |
 | Dokumen dan lampiran (`<org>/<kandidat>/<id>.<ext>`, `activity/…`) | volume `hashi_docs-data` | `tar` lewat container sementara baca-saja | **Wajib** (metadata dokumen ada di database; satu tanpa yang lain tidak cukup) |
+| Foto kartu izin tinggal (`cards/<org>/<id>.enc`, T-020) | volume `hashi_docs-data` (sama dengan di atas, ikut otomatis) | `tar` yang sama; berkasnya SUDAH terenkripsi (AES-256-GCM) | **Wajib**, dan **harus dipulihkan bersama `CARD_DATA_KEY`** (lihat di bawah) |
+| **`CARD_DATA_KEY`** (kunci enkripsi nomor + foto kartu, di `.env`) | | **Tidak masuk cadangan ini** (sengaja: cadangan tidak boleh memuat data dan kuncinya sekaligus); simpan salinan di pengelola kata sandi | **Wajib disimpan di tempat lain: tanpa kunci ini nomor dan foto kartu TIDAK bisa dipulihkan**, juga dari cadangan |
 | Database dan volume demo (`hashi-demo`), db-dev | | | Tidak: data dummy, bisa dibuat ulang lewat seed |
-| `.env` (kata sandi database, `AUTH_SECRET`) | | **Tidak masuk cadangan ini**; simpan terpisah di pengelola kata sandi | Wajib disimpan di tempat lain |
+| `.env` (kata sandi database, `AUTH_SECRET`, `CARD_DATA_KEY`) | | **Tidak masuk cadangan ini**; simpan terpisah di pengelola kata sandi | Wajib disimpan di tempat lain |
 | Kode | GitHub | | Sudah ada |
 
 Ukuran sekarang (2026-10-06, data dummy): database 11 MB di disk (dump terenkripsi ±350 KB), dokumen ±750 KB (±390 KB), jadi satu set ≈ **0,7 MB**.
@@ -116,3 +118,14 @@ Bila Ipal ingin menghindari akun awan, pilih C. Untuk A, pertanyaan untuk Ipal a
 - Pemberitahuan keluar bila cadangan gagal/terlambat (sekarang hanya `LAST_FAILED` dan journal).
 - Linger (agar timer jalan tanpa sesi login): lihat batasan di §3.
 - Pengujian pemulihan penuh dari mesin lain, hanya dengan kunci dari pengelola kata sandi.
+
+## 7. Kunci data kartu (`CARD_DATA_KEY`, T-020)
+
+Nomor dan foto 在留カード disimpan terenkripsi (AES-256-GCM, nonce acak per nilai; nomor di kolom `residence_card_secrets.number_enc`, foto di `docs-data/cards/<org>/<id>.enc`).
+Kunci ada di `.env` server sebagai `CARD_DATA_KEY` (32 byte acak, base64). Ini kunci BARU: bukan `AUTH_SECRET` dan bukan kunci cadangan.
+
+- **Tanpa kunci ini data tidak bisa dipulihkan.** Dump database dan arsip `docs-data` tetap berisi sandi, tetapi tidak bisa dibuka; tidak ada pintu belakang. Simpan salinan kunci di pengelola kata sandi, DI LUAR server, sebelum data nyata masuk.
+- Membuat kunci: `scripts/ensure-card-key.sh` (menambahkan ke `.env` tanpa mencetak nilainya; tidak menimpa kunci yang sudah ada). Aplikasi menolak start di produksi tanpa kunci sah (`src/instrumentation.ts`); `scripts/deploy.sh` memeriksanya sebelum menyentuh container.
+- Setiap nilai menyimpan `key_id` (bawaan `k1`) sehingga kunci bisa diganti: set `CARD_DATA_KEY_ID=k2` + `CARD_DATA_KEY` baru, dan pindahkan kunci lama ke `CARD_DATA_KEYS_OLD=k1=<base64>` (hanya untuk MEMBACA). Mengenkripsi ulang data lama dengan kunci baru = tugas terpisah; sebelum itu JANGAN membuang kunci lama.
+- Memulihkan produksi: pulihkan dump + `docs-data` seperti di bagian 4b, pastikan `.env` memuat kunci yang SAMA. Uji pemulihan ke db-dev memakai kunci uji sendiri (data kartu seed tidak terenkripsi dan tidak ada), jadi uji dekripsi dilakukan di tes otomatis (`tests/unit/card-crypto.test.ts`).
+- Nilai kunci tidak boleh muncul di log, keluaran skrip, chat, atau git. Nomor kartu asli tidak pernah masuk audit, log, daftar, KPI, ekspor, atau PDF.

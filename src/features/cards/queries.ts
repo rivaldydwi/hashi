@@ -6,6 +6,7 @@ import { currentCard } from "@/db/zairyu";
 import { candidates, residenceCards } from "@/db/schema";
 import { revisionsOf, type RevisionRow } from "@/features/records/queries";
 import type { CurrentUser } from "@/lib/session";
+import { loadSecretsMeta, type CardSecretsMeta } from "./secret-queries";
 
 export type CardRow = typeof residenceCards.$inferSelect;
 
@@ -45,6 +46,8 @@ export type CardSectionData = {
   revisions: RevisionRow[];
   defaultFieldId: string | null;
   access: Awaited<ReturnType<typeof cardEditAccess>>;
+  /** Nomor tersamar + foto per kartu (T-020): HANYA diisi bila pengguna boleh (TSK_ADMIN / 担当); selain itu kosong dan tidak dikueri. */
+  secrets: Record<string, CardSecretsMeta>;
 };
 
 /** Semua data bagian "在留カード" di halaman pekerja (urut, satu transaksi: kueri berurutan, bukan paralel pada koneksi yang sama). */
@@ -54,5 +57,6 @@ export async function loadCardSection(tx: Tx, me: Pick<CurrentUser, "id" | "role
   const revisions = current ? await revisionsOf(tx, "residence_card", current.id) : [];
   const defaultFieldId = await workerFieldId(tx, candidateId);
   const access = await cardEditAccess(tx, me, candidateId, today);
-  return { cards, current, revisions, defaultFieldId, access };
+  const secrets = access.canEdit ? await loadSecretsMeta(tx, cards.filter((c) => c.status === "active").map((c) => c.id)) : {};
+  return { cards, current, revisions, defaultFieldId, access, secrets };
 }

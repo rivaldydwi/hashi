@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { assertSkillFieldUsable } from "@/features/candidates/guards";
 import { cardStage, currentCard } from "@/db/zairyu";
-import { residenceCards } from "@/db/schema";
+import { residenceCardPhotos, residenceCardSecrets, residenceCards } from "@/db/schema";
 import { requireStaffAction } from "@/features/records/access";
 import { str, uuid } from "@/features/records/form";
 import { audit } from "@/lib/audit";
@@ -15,6 +15,7 @@ import { tenantQuery, type CurrentUser } from "@/lib/session";
 import { cardErr, loadEditableCard, mapCardPgError } from "./guards";
 import { parseCreate, parseHandover, parseReceive, parseUpdate, parseVoidReason } from "./input";
 import { cardEditAccess, cardsOfWorker } from "./queries";
+import { removeCardPhotoFile } from "./secret-storage";
 
 // Server action kartu izin tinggal 在留カード (T-018). Tulis = TSK_ADMIN atau 担当 efektif pekerja; RLS (`card_editor`) dan trigger tetap penjaga akhir.
 // Audit di log organisasi TSK: HANYA kode status/tahap, `receivedBy`, dan NAMA kolom yang berubah (tanpa tanggal, catatan, nama, nomor).
@@ -144,12 +145,20 @@ export async function voidCard(_prev: FormState, fd: FormData): Promise<FormStat
     const reason = parseVoidReason(str(fd, "reason"));
     if (!reason.ok) throw new ActionError("cards.errors.reasonRequired");
     let candidateId = "";
+    let orgId = "";
+    const photoIds: string[] = [];
     await tenantQuery(async (tx) => {
       const card = await loadEditableCard(tx, me, id, today);
       candidateId = card.candidateId;
+      orgId = card.organizationId;
       await tx.update(residenceCards).set({ status: "void", voidReason: reason.value }).where(eq(residenceCards.id, id));
+      // T-020: nomor dihapus dan foto ditandai dihapus bersama kartunya (data sensitif tidak dipertahankan untuk kartu yang salah input); berkas disk dibuang setelah commit
+      await tx.delete(residenceCardSecrets).where(eq(residenceCardSecrets.cardId, id));
+      const gone = await tx.update(residenceCardPhotos).set({ removedAt: new Date(), removedBy: me.id }).where(and(eq(residenceCardPhotos.cardId, id), isNull(residenceCardPhotos.removedAt))).returning({ id: residenceCardPhotos.id });
+      photoIds.push(...gone.map((g) => g.id));
       await log(tx, me, "residence_card.void", id, { status: "void" });
     });
+    for (const photoId of photoIds) await removeCardPhotoFile(orgId, photoId).catch((e) => console.error("gagal menghapus berkas foto kartu", e instanceof Error ? e.name : "error"));
     revalidatePath(`/records/workers/${candidateId}`);
     return ok("cards.voided");
   });

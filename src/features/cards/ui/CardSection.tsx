@@ -6,6 +6,7 @@ import { Badge } from "@/features/records/ui/common";
 import { RevisionHistory, toSnake, type RevField } from "@/features/records/ui/RevisionHistory";
 import type { CardRow, CardSectionData } from "../queries";
 import { STAGE_TONE } from "../stage";
+import { CardSecrets } from "./CardSecrets";
 import { CreateCardForm, HandOverForm, ReceiveCardForm, UpdateCardForm, VoidCardForm, type FieldOption } from "./CardForms";
 
 const slash = (ymd: string | null | undefined) => (ymd ? ymd.replace(/-/g, "/") : "—");
@@ -17,7 +18,7 @@ const slash = (ymd: string | null | undefined) => (ymd ? ymd.replace(/-/g, "/") 
 export async function CardSection({ candidateId, data, fieldOptions, today, tz }: { candidateId: string; data: CardSectionData; fieldOptions: FieldOption[]; today: string; tz: string }) {
   const t = await getTranslations("cards");
   const locale = await getLocale();
-  const { cards, current, revisions, defaultFieldId, access } = data;
+  const { cards, current, revisions, defaultFieldId, access, secrets } = data;
   const fieldName = (id: string) => fieldOptions.find((f) => f.id === id)?.label ?? "—";
   /** Bidang yang boleh dipilih: yang aktif, ditambah yang sedang dipakai kartu/pekerja ini (bidang nonaktif tidak muncul untuk pilihan baru). */
   const usable = (extra?: string): FieldOption[] => fieldOptions.filter((f) => f.active !== false || f.id === extra || f.id === defaultFieldId);
@@ -77,6 +78,14 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
             {current.note && <p className="whitespace-pre-wrap break-words text-sm text-ink-menu" data-testid="card-note">{current.note}</p>}
           </div>
 
+          {current.status === "active" && (
+            access.canEdit && secrets[current.id] ? (
+              <div className="rounded-xl border border-line p-3 sm:p-4"><CardSecrets cardId={current.id} meta={secrets[current.id]} /></div>
+            ) : (
+              <p className="text-xs text-ink-2" data-testid="card-secrets-restricted">{t("secrets.restricted")}</p>
+            )
+          )}
+
           {editable && (
             <div className="space-y-3" data-testid="card-actions">
               <details className="rounded-xl border border-line p-3">
@@ -91,6 +100,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
               )}
               <details className="rounded-xl border border-rose-200 bg-rose-50/40 p-3">
                 <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-rose-900" data-testid="card-void-toggle">{t("form.voidTitle")}</summary>
+                <p className="mt-2 text-xs text-ink-2">{t("secrets.voidNote")}</p>
                 <div className="mt-2"><VoidCardForm id={current.id} /></div>
               </details>
             </div>
@@ -118,6 +128,9 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
                   </p>
                 )}
                 {c.status === "void" && c.voidReason && <p className="text-xs text-rose-900">{t("history.voidedBecause")}: {c.voidReason}</p>}
+                {access.canEdit && c.status === "active" && c.id !== current?.id && secrets[c.id] && (
+                  <details className="mt-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-accent-text" data-testid="card-history-secrets-toggle">{t("secrets.title")}</summary><div className="mt-1"><CardSecrets cardId={c.id} meta={secrets[c.id]} testPrefix="card-history" /></div></details>
+                )}
                 {access.canEdit && c.status === "active" && c.renewalStatus === "received" && c.receivedBy === "staff" && !c.handedOverOn && c.receivedOn && (
                   <details className="mt-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-accent-text" data-testid="card-handover-toggle">{t("form.handOverTitle")}</summary><div className="mt-1"><HandOverForm id={c.id} today={today} receivedOn={c.receivedOn} /></div></details>
                 )}

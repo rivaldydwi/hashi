@@ -34,6 +34,48 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-020 · 在留カード: nomor + foto kartu terenkripsi + hasil deploy T-023
+
+**PR:** #20 (branch `eng/T-020-card-number-photo`)
+**Status:** siap direview. Deploy produksi BELUM (menunggu `PM: DISETUJUI`, lalu `--backup` + langkah kunci `BUTUH IPAL`, lihat "Pertanyaan").
+
+**Hasil deploy T-023** (PR #19 di-merge `eab9692` setelah `PM: DISETUJUI` dan CI hijau di head `c4c60e6`; tanpa migrasi, jadi tanpa `--backup`)
+- Keluaran akhir `scripts/deploy.sh`: commit berjalan `eab9692`, health ok. Demo tidak disentuh.
+
+**Yang dikerjakan** (migration `0027_residence_card_secrets`; desain di `docs/zairyu-card.md` §2.3 yang sudah diperbarui)
+- **Enkripsi** `src/lib/card-crypto.ts`: AES-256-GCM, nonce 12 byte ACAK per nilai, AAD mengikat sandi ke kartu/foto (sandi yang dipindah ke baris lain gagal), `key_id` di setiap nilai. Kunci `CARD_DATA_KEY` (32 byte base64, BARU) + `CARD_DATA_KEY_ID` + `CARD_DATA_KEYS_OLD` (membaca kunci lama saat rotasi). Tanpa kunci sah: `CardKeyError` (tidak pernah menyimpan polos); pesan galat tidak memuat nilai kunci.
+- **Aplikasi menolak jalan tanpa kunci**: `src/instrumentation.ts` (produksi) mencetak pesan jelas lalu KELUAR kode 1 (dicoba pada build standalone: `exit: 1`). `compose.yaml` meneruskan variabelnya (sengaja bukan `:?`, supaya perintah compose lain seperti db-dev/demo-down tidak ikut gagal); `scripts/deploy.sh` menolak sebelum menyentuh container bila kunci tidak ada di `.env`; `scripts/ensure-card-key.sh` membuat kunci dan menambahkannya ke berkas env TANPA mencetak nilainya (tidak menimpa yang ada, mode 600; dicoba pada berkas sementara). `demo-up.sh` ikut melengkapi `.env.demo`.
+- **Tabel terpisah** `residence_card_secrets` (nomor 1:1: `number_enc`, `number_masked` `AB********CD`, `key_id`) dan `residence_card_photos` (depan/belakang, mime, ukuran, `removed_at`); BUKAN kolom di `residence_cards`, jadi daftar, KPI, ekspor, dan snapshot riwayat edit tidak mungkin memuatnya. CHECK menolak `number_enc` yang bukan `hcd1:…` (nomor polos tidak bisa masuk), satu foto aktif per sisi, jenis JPG/PNG/PDF, ukuran ≤ 10 MB.
+- **RLS**: baca DAN tulis hanya TSK_ADMIN atau 担当 efektif (`card_editor`); staf TSK lain, TSK lain, LPK, sensei, super admin, peran null: 0 baris. Trigger: organisasi/pekerja = kartunya, kartu harus aktif saat menambah/mengganti, kolom identitas terkunci, foto hanya bisa ditandai dihapus (`removed_by` dari sesi, tidak bisa dipalsukan, sekali). Nomor boleh DELETE (pembersihan saat kartu batal / koreksi), foto tanpa DELETE.
+- **UI** (`CardSecrets`, `NumberReveal`): nomor tersamar + "Tampilkan" (nomor lengkap TIDAK ada di HTML awal; diminta lewat server action, tampil 30 detik di memori komponen, tanpa penyimpanan peramban). Foto: unggah/ganti/hapus per sisi, unduh lewat route `/records/cards/photo/<id>` (`attachment`, `nosniff`, CSP sandbox, `no-store`). Hanya dirender dan dikueri untuk 担当 + Admin; staf lain melihat satu kalimat penjelasan. Kartu lama yang sudah diterima juga bisa diisi (di riwayat kartu). Query tampilan TIDAK PERNAH memilih `number_enc`.
+- **Foto**: jenis dari ISI berkas (`sniffType`), `sharp` memutar sesuai EXIF lalu membuang SEMUA metadata (PDF apa adanya), maks 10 MB, dienkripsi sebelum ditulis ke `docs-data/cards/<org>/<id>.enc` (nama = UUID). Ganti foto: lama ditandai dihapus, berkas dibuang setelah commit; transaksi gagal = berkas baru dibersihkan.
+- **Audit** (log org TSK, hanya kode/sisi): `residence_card.number_set|number_view|number_remove|photo_set|photo_view|photo_remove`. Tampil/unduh dicatat SEBELUM nilai/berkas dikembalikan (audit gagal = tidak ada tampilan). e2e membuktikan SELURUH audit sejak tes mulai tidak memuat nomor.
+- **Kartu dibatalkan** (`voidCard`): nomor dihapus dan semua foto ditandai dihapus (berkas dibuang). Catatan yang mirip nomor tetap ditolak (T-018).
+- Seed reset (`--reset`) ikut membersihkan folder `cards/`. Cadangan: `scripts/backup.sh` sudah mengarsipkan seluruh volume `docs-data`, jadi `cards/` ikut tanpa perubahan; `docs/backup.md` baris tabel + bagian 7 baru: **tanpa `CARD_DATA_KEY` data ini tidak bisa dipulihkan**, rotasi, pemulihan.
+- Katalog pesan tidak boleh memuat contoh nomor (HTML memuat seluruh katalog; dites). `CLAUDE.md` diperbarui.
+
+**Bukti** (dari e2e `card-secrets.spec.ts` terhadap database dev, dan contoh bentuk dengan kunci sekali pakai)
+- Kolom di database: `number_enc` = `hcd1:k1:<nonce>:<sandi>`; tes memastikan tidak memuat nomor maupun "12345678"; contoh bentuk: `hcd1:k1:SVt7dAGVstblrOjp:enr2Csa9_Xi6TSSb0od9ykA3TY5q18Zq7qzYuQ`.
+- Berkas di disk: byte awal `HCD1` (bukan `89504e47` PNG), tidak memuat `IHDR`; contoh: PNG asli `89504e470d0a1a0a` → berkas `.enc` `48434431026b3170…`. Unduhan lewat route mengembalikan PNG sah (8 byte awal sama), header `attachment`, `nosniff`, `no-store`.
+
+**Verifikasi** (database dev `hashi_dev`)
+- `npm run typecheck` → lulus; `npm run test:i18n` → lulus (1668 kunci); `npm run test:unit` → 124/124 (baru: `card-crypto` 6 [bolak-balik, nonce berbeda, kunci salah, data rusak, AAD lain, rotasi, validasi kunci], `card-key-startup` 2).
+- `npm run verify:audit-coverage` → tanpa pelanggaran (5 action baru tercatat). `npm run build` → 0 peringatan.
+- `db:migrate` + `db:seed -- --reset` → lulus; `npm run test:rls` → semua lulus, termasuk bagian Y baru (6 pemeriksaan: staf bukan 担当 0 baris + INSERT ditolak RLS, TSK lain/LPK/sensei/super admin/peran null 0 baris, UPDATE/DELETE tanpa WHERE tak mengubah apa pun, CHECK nomor polos, trigger, kartu batal, foto tanpa DELETE); `npm run verify:seed` → lulus.
+- `E2E_PORT=3120 npm run test:e2e` → 223 lulus (8 tes baru di `card-secrets.spec.ts`: format salah ditolak, tersamar, HTML bersih, "Tampilkan" + audit tanpa nilai, foto terenkripsi + unduh + audit, ganti/hapus buang berkas, staf lain tidak melihat apa pun dan unduhan 404, daftar/KPI/beranda bersih + LPK 404, 担当 berpindah di tengah jalan ditolak tanpa audit, kartu batal membuang semuanya).
+
+**Kendala / catatan**
+- Seed belum memuat nomor/foto kartu (tidak ada kunci di seed; T-014 bisa menambahkannya bila perlu).
+- Memindahkan data ke kunci baru (enkripsi ulang) belum ada; format sudah menyimpan `key_id` sehingga bisa ditambahkan nanti. Selama itu jangan membuang kunci lama.
+- Demo (`hashi-demo`) belum disentuh; `.env.demo` lama akan dilengkapi kunci otomatis oleh `demo-up.sh` saat demo diperbarui (butuh izin Ipal).
+
+**Pertanyaan**
+- BUTUH IPAL (setelah `PM: DISETUJUI`, saat deploy): produksi butuh `CARD_DATA_KEY`. Rencana sesuai TASKS: `scripts/deploy.sh --backup` akan menolak sampai kunci ada; saya jalankan `scripts/ensure-card-key.sh` di server (menambah ke `.env`, nilai tidak dicetak), deploy, lalu BERHENTI. Ipal menyalin nilai `CARD_DATA_KEY` dari `.env` server ke pengelola kata sandi (seperti kunci cadangan). Jangan memasukkan data nyata sebelum Ipal mengonfirmasi salinannya.
+
+**Usulan berikutnya**
+- Enkripsi ulang ke kunci baru (rotasi) sebagai tugas terpisah sebelum data nyata banyak; tambahkan nomor/foto dummy ke seed pilot T-014 (butuh kunci dummy).
+
+
 ## 2026-10-07 · T-023 · Terjemahan peramban: teks bebas boleh diterjemahkan, yang dikunci hanya identitas + hasil deploy T-013
 
 **PR:** #19 (branch `eng/T-023-translate-free-text`)
