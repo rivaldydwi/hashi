@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-018 · 在留カード (B): bagian di detail pekerja + hasil deploy T-017
 
-**PR:** (branch `eng/T-018-zairyu-card-b`; nomor PR di komentar pembuka)
+**PR:** #16 (branch `eng/T-018-zairyu-card-b`)
 **Status:** siap direview
 
 **Hasil deploy T-017 lewat `scripts/deploy.sh --backup`** (PR #15 di-merge `cb529e1`, setelah `PM: DISETUJUI` dan CI hijau di head `5b980ff`)
