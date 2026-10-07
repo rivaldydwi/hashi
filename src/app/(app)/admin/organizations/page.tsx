@@ -40,7 +40,7 @@ export default async function OrganizationsPage() {
             <tbody className="divide-y divide-stone-100">
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td className="px-5 py-3 font-medium">{r.name}</td>
+                  <td className="cjk-phrase min-w-40 px-5 py-3 font-medium">{r.name}</td>
                   <td className="px-5 py-3 text-stone-700">{t(`orgTypes.${r.type}`)}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{r.users}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{r.candidates}</td>

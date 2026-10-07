@@ -34,8 +34,8 @@ export async function PartnershipTable({ rows, editable }: { rows: Row[]; editab
           <tbody className="divide-y divide-stone-100">
             {rows.map((p) => (
               <tr key={p.id} className={p.active ? "" : "text-stone-500"}>
-                <td className="px-5 py-3 font-medium">{p.tskName}</td>
-                <td className="px-5 py-3">{p.lpkName}</td>
+                <td className="cjk-phrase min-w-40 px-5 py-3 font-medium">{p.tskName}</td>
+                <td className="cjk-phrase min-w-40 px-5 py-3">{p.lpkName}</td>
                 <td className="px-5 py-3">
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${

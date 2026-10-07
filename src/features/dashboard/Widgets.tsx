@@ -288,7 +288,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
               <tbody className="divide-y divide-line">
                 {data.platform!.map((r) => (
                   <tr key={r.id}>
-                    <td className="py-3 pr-4 font-medium">{r.name}</td>
+                    <td className="cjk-phrase min-w-40 py-3 pr-4 font-medium">{r.name}</td>
                     <td className="py-3 pr-4 text-ink-menu">{tType(r.type)}</td>
                     <td className="py-3 pr-4 text-right tabular-nums">{r.users}</td>
                     <td className="py-3 text-right tabular-nums">{r.candidates}</td>

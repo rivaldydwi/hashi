@@ -8,7 +8,7 @@ import type { Stats } from "@/features/assessments/queries";
 import type { CandidateListRow } from "./queries";
 
 // Tabel di layar lebar; di ponsel (< md) tiap baris menjadi kartu: kolom jadi pasangan label-nilai (label dari data-label, tanpa duplikasi DOM).
-const cell = "flex items-center justify-between gap-3 py-1 before:text-xs before:text-ink-2 before:content-[attr(data-label)] md:table-cell md:px-5 md:py-3 md:before:content-none";
+const cell = "cjk-phrase flex items-center justify-between gap-3 py-1 before:text-xs before:text-ink-2 before:content-[attr(data-label)] md:table-cell md:px-5 md:py-3 md:before:content-none";
 
 export async function CandidateTable({ rows, isTsk, stats }: { rows: CandidateListRow[]; isTsk: boolean; stats: Map<string, Stats> }) {
   const t = await getTranslations("candidates");
@@ -32,13 +32,13 @@ export async function CandidateTable({ rows, isTsk, stats }: { rows: CandidateLi
           <tbody className="block divide-y divide-line md:table-row-group">
             {rows.map((c) => (
               <tr key={c.id} data-testid="candidate-row" className="block max-md:px-4 max-md:py-3 md:table-row">
-                <td className="block md:table-cell md:px-5 md:py-3">
+                <td className="block cjk-phrase md:table-cell md:min-w-40 md:px-5 md:py-3">
                   <Link href={`/candidates/${c.id}`} className="inline-flex min-h-11 items-center font-medium text-accent-text hover:underline md:min-h-0">
                     {c.fullName}
                   </Link>
                   {c.nameKatakana && <div className="text-xs text-ink-2">{c.nameKatakana}</div>}
                 </td>
-                {isTsk && <td data-label={t("colLpk")} className={`${cell} text-ink-menu`}>{c.lpkName}</td>}
+                {isTsk && <td data-label={t("colLpk")} className={`${cell} text-ink-menu md:min-w-44`}>{c.lpkName}</td>}
                 <td data-label={t("colField")} className={`${cell} text-ink-menu`}>{(locale === "ja" ? c.fieldNameJa : c.fieldNameId) ?? "—"}</td>
                 <td data-label={t("colStage")} className={cell}><StageBadge stage={c.stage} /></td>
                 <td data-label={t("colLatest")} className={`${cell} tabular-nums`} data-testid="latest-avg">

@@ -34,6 +34,42 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-011 · Tabel lebar rapi dalam bahasa Jepang
+
+**PR:** (branch `eng/T-011-tabel-jepang`; nomor PR di komentar pembuka)
+**Status:** siap direview
+
+**Hasil T-004** (PR #11 di-merge `bafa7a1` setelah `PM: DISETUJUI` dan CI hijau di head `8317fc6`): dokumen saja, tidak ada deploy; produksi tetap `28e525b`.
+
+**Akar masalah dan pendekatan**
+- Teks Jepang tidak punya spasi, jadi di kolom sempit browser memecah di antara huruf mana pun (header `特定技能分野` dan nama `さくらフーズ株式会社` satu huruf per baris). Satu aturan bersama, bukan tambalan per halaman (`src/app/globals.css`, `src/components/styles.ts`):
+  - **Header kolom** (`thead th`, `th[scope=col]`): `white-space: nowrap` + `keep-all`, HANYA bila bahasa halaman = ja. Kolom melebar secukupnya; tabel digulir horizontal di pembungkusnya (sudah ada).
+  - **Utilitas `cjk-phrase`** untuk sel teks pendek (nama, perusahaan, alamat): `word-break: auto-phrase` (pecah di batas frasa, mis. 株式会社), cadangan `keep-all` di peramban yang belum mendukung; selalu dipasang dengan `min-w-*`.
+  - Nilai pendek (tanggal, telepon): `whitespace-nowrap`. Konstanta bersama `gridTh/gridTd/gridTdText/gridTdShort`.
+- **Pilihan: kolom perusahaan TIDAK digabung** menjadi satu sel "配属先" bertingkat (usulan di tugas). Alasannya: satu sel berisi nama + lokasi + alamat + telepon + PIC akan 5 baris teks, melanggar kriteria tinggi baris ≤ ~3 baris; dengan lebar minimum per kolom barisnya sudah pendek dan kolom tetap bisa dibandingkan antarbaris. Nama menempel di kiri saat digulir (sudah ada).
+- Sel kuartal grid: catatan kuartal dan tombol "ubah" kini satu baris (di dalam `summary` dari `<details>`), jadi baris tidak menumpuk catatan + tombol 44px terpisah. Lencana "退職" tidak lagi patah.
+- Tabel yang disisir dan diubah: grid 定期面談, daftar tahunan (`/records/interviews/annual`), halaman tahunan per pekerja, daftar kandidat, daftar job order + detail job order (kecocokan), pengguna, kemitraan, organisasi (super admin), widget dashboard organisasi. `/records/responsible`, riwayat aktivitas, dan tabel penilaian/kasus tidak punya masalah berarti (header otomatis ikut aturan global; teks bebas kasus tetap `break-words`).
+
+**Ukuran (ja, data seed, tinggi baris grid 定期面談)**: sebelum 377 px (409 px terburuk) → sesudah 85 px di 1280 dan 1440 px. Daftar tahunan 113 → 97 px (1280). Kandidat di 1024 px: 97 → 61 px, field/nama tidak lagi patah per huruf. Header: satu baris (33 px) di semua tabel yang dicek.
+
+**Verifikasi** (db-dev `hashi_dev`; produksi tidak disentuh)
+- `npm run typecheck` → lulus; `npm run build` → 0 peringatan; `npm run test:i18n` → lulus; `npm run test:unit` → 71 lulus
+- `db:seed -- --reset` + `npm run test:rls` → lulus; `npm run verify:seed` → lulus (tidak ada perubahan skema/data)
+- `E2E_PORT=3120 npm run test:e2e` → run penuh pertama (database dev baru di-reseed) 188 lulus. Run penuh kedua, setelah satu perubahan kecil sesudahnya (lebar minimum kolom LPK di daftar kandidat) dan beberapa run tes lain di database yang sama: 183 lulus, 1 gagal, `records-continue.spec.ts:83` (riwayat pekerja). Penyebab: data uji dari run-run sebelumnya menumpuk di database dev sehingga catatan baru jatuh di halaman ke-2 riwayat urut naik (30 item/halaman); bukan dari perubahan ini. Setelah `db:seed -- --reset`, spesifikasi itu + `table-ja` + `candidates` (18 tes) lulus. Tes itu sendiri rapuh terhadap penumpukan data (usulan di bawah). 4 tes baru `table-ja.spec.ts` (header grid ≤ 52 px di 1280 dan 1440, baris ≤ 130 px dan sel perusahaan ≥ 150 px lebar/≤ 110 px tinggi, daftar tahunan/kandidat/job order di 1024 px, bahasa Indonesia tetap `white-space: normal` dan tanpa gulir horizontal di ponsel 390 px, tampilan kartu kandidat tetap jalan)
+- Tangkapan layar sebelum/sesudah dan id + ponsel: `docs/screenshots/T-011/` (data dummy seed saja).
+
+**Kondisi server:** produksi `28e525b`; T-011 tidak meminta deploy.
+
+**Kendala / catatan**
+- `word-break: auto-phrase` baru didukung Chromium; Safari/Firefox memakai cadangan `keep-all` (tidak memecah di antara huruf sama sekali, hanya di tanda baca/spasi). Hanya dipasang pada sel teks pendek berlebar minimum, jadi aman; belum diuji di Safari/Firefox (hanya Chromium di Playwright).
+- Tinggi baris minimum ±85 px ditentukan target sentuh 44 px (tombol "ubah" kuartal); tidak diturunkan lagi supaya aturan 44 px tetap berlaku.
+
+**Pertanyaan:** tidak ada.
+
+**Usulan berikutnya** (bukan tugas)
+- Tes `records-continue` riwayat pekerja bergantung pada jumlah catatan pekerja uji (< 30 item); bisa dibuat kebal dengan pekerja uji sendiri (`createScratchCandidate`) atau memuat halaman terakhir.
+- Bila staf TSK memakai Safari/Firefox untuk grid ini, cek manual hasil cadangan `keep-all`.
+
 ## 2026-10-06 · T-004 · Desain pelacak 在留カード + hasil deploy T-009
 
 **PR:** #11 (branch `eng/T-004-desain-zairyu-card`)

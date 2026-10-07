@@ -33,7 +33,7 @@ export async function UserTable({
           <tbody className="divide-y divide-stone-100">
             {rows.map((u) => (
               <tr key={u.id} className={u.active ? "" : "bg-stone-50 text-stone-500"}>
-                <td className="px-5 py-3">
+                <td className="cjk-phrase min-w-40 px-5 py-3">
                   <div className="font-medium">
                     {u.name}
                     {u.id === currentUserId && (

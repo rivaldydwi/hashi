@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/EmptyState";
-import { btnSecondary, cardClass } from "@/components/styles";
+import { btnSecondary, cardClass, gridTd, gridTh } from "@/components/styles";
 import { FISCAL_QUARTERS, fiscalQuarterRange, fiscalTitle, fiscalYearOf } from "@/db/records-core";
 import { requireStaff } from "@/features/records/access";
 import { quartersOfFiscalYear } from "@/features/records/queries";
@@ -28,8 +28,8 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
   const gaps = data.reduce((n, x) => n + x.quarters.filter((c) => c.state === "missed").length, 0); // bolong = kuartal yang sudah lewat tanpa wawancara
   const openQ = data.reduce((n, x) => n + x.quarters.filter((c) => c.state === "open").length, 0); // kuartal berjalan yang masih bisa dikejar
   const complete = data.filter((x) => x.quarters.every((c) => c.state !== "missed")).length;
-  const th = "border border-line bg-page px-2 py-2 text-left text-xs font-semibold text-ink-2";
-  const td = "border border-line px-2 py-2 align-top text-sm";
+  const th = gridTh;
+  const td = gridTd;
   const link = (y: number) => `/records/interviews/annual?fy=${y}`;
   return (
     <>
@@ -57,7 +57,7 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
                 const missing = quarters.filter((c) => c.state === "missed").map((c) => c.q);
                 return (
                   <tr key={w.id} data-testid="annual-row" data-worker={w.id} data-status={w.status} data-gaps={missing.join(",")}>
-                    <th scope="row" className={`${td} sticky left-0 bg-card font-medium`}>
+                    <th scope="row" className={`${td} cjk-phrase sticky left-0 min-w-48 bg-card font-medium`}>
                       <Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>
                       <div className="text-xs font-normal text-ink-2">{w.companyName}</div>
                       <Link href={`/records/workers/${w.id}`} className="inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text">{t("whistory.historyLink")}</Link>
@@ -68,7 +68,7 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
                       {w.status === "ENDED" && w.endDate && <Badge tone="neutral" testId="annual-ended">{t("interviews.endedOn", { date: w.endDate.replace(/-/g, "/") })}</Badge>}
                     </td>
                     {quarters.map((c) => (
-                      <td key={c.q} className={td} data-testid="annual-quarter" data-quarter={c.q} data-state={c.state} data-count={c.count}>
+                      <td key={c.q} className={`${td} cjk-phrase min-w-36`} data-testid="annual-quarter" data-quarter={c.q} data-state={c.state} data-count={c.count}>
                         {c.state === "notRequired" || c.state === "notDue" ? <span className="text-ink-2">—</span> : (
                           <span className={`font-medium ${c.state === "missed" ? "text-rose-800" : ""}`}>{c.state === "done" ? "✅" : c.state === "missed" ? "🔴" : c.state === "open" ? "⏳" : "➖"} {c.state === "open" ? t("interviews.qstate.open", { date: c.deadline.replace(/-/g, "/") }) : t(`interviews.qstate.${c.state}`)}
                             {c.state === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: c.count })})</span>}</span>
