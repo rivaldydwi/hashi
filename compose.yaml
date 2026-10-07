@@ -55,6 +55,12 @@ services:
     environment:
       DATABASE_URL: postgresql://hashi_app:${DB_APP_PASSWORD}@db:5432/${DB_NAME:-hashi}
       AUTH_SECRET: ${AUTH_SECRET:?isi AUTH_SECRET di file .env}
+      # Kunci enkripsi nomor/foto 在留カード (T-020): BARU dan terpisah dari AUTH_SECRET (buat: scripts/ensure-card-key.sh). Hilang = data kartu tidak bisa dipulihkan (docs/backup.md).
+      # Sengaja BUKAN `:?` supaya perintah compose lain (db-dev, build migrate, demo-down) tidak ikut gagal; aplikasi sendiri menolak start tanpa kunci sah
+      # (src/instrumentation.ts) dan scripts/deploy.sh memeriksanya sebelum menyentuh container.
+      CARD_DATA_KEY: ${CARD_DATA_KEY:-}
+      CARD_DATA_KEY_ID: ${CARD_DATA_KEY_ID:-k1}
+      CARD_DATA_KEYS_OLD: ${CARD_DATA_KEYS_OLD:-}
       AUTH_TRUST_HOST: "true"
       SHOW_DEMO_ACCOUNTS: ${SHOW_DEMO_ACCOUNTS:-false}
       SEED_PASSWORD: ${SEED_PASSWORD:-}

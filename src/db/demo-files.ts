@@ -41,7 +41,7 @@ export async function clearDocumentStorage(root: string): Promise<number> {
     throw err;
   }
   for (const e of entries) {
-    if (e.isDirectory() && (UUID.test(e.name) || e.name === "activity")) {
+    if (e.isDirectory() && (UUID.test(e.name) || e.name === "activity" || e.name === "cards")) {
       await rm(path.join(root, e.name), { recursive: true, force: true });
       removed++;
     }

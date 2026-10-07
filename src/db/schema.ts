@@ -1132,3 +1132,54 @@ export const residenceCards = pgTable(
     check("residence_cards_void_check", sql`${t.status} = 'active' or (${t.voidReason} is not null and length(btrim(${t.voidReason})) > 0)`),
   ],
 );
+
+// ---------------------------------------------------------------------------------------------
+// Nomor dan foto 在留カード (T-020, migration 0027; desain docs/zairyu-card.md §2.3). Data paling sensitif: DIENKRIPSI di level aplikasi (AES-256-GCM, src/lib/card-crypto.ts),
+// disimpan di tabel TERPISAH dari residence_cards (supaya daftar, KPI, ekspor, dan snapshot riwayat edit tidak pernah memuatnya). Baca/tulis HANYA TSK_ADMIN atau 担当 efektif
+// pekerja (RLS `card_editor`); staf TSK lain, LPK, sensei, super admin: 0 baris. Nilai asli tidak pernah masuk audit/log.
+// ---------------------------------------------------------------------------------------------
+export const residenceCardSecrets = pgTable(
+  "residence_card_secrets",
+  {
+    cardId: uuid("card_id").primaryKey().references(() => residenceCards.id, { onDelete: "restrict" }),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id").notNull().references(() => candidates.id, { onDelete: "restrict" }), // salinan dari kartu (dipakai policy; trigger memastikan sama)
+    numberEnc: text("number_enc").notNull(), // hcd1:<key_id>:<nonce>:<sandi>; CHECK menolak nilai polos
+    numberMasked: text("number_masked").notNull(), // AB********CD (satu-satunya bentuk yang tampil tanpa "Tampilkan")
+    keyId: text("key_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid("created_by").notNull().references(() => users.id),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => users.id),
+  },
+  (t) => [
+    check("residence_card_secrets_enc_check", sql`${t.numberEnc} like 'hcd1:%'`),
+    check("residence_card_secrets_masked_check", sql`${t.numberMasked} ~ '^[A-Z]{2}[*]{8}[A-Z]{2}$'`),
+  ],
+);
+
+export const residenceCardPhotos = pgTable(
+  "residence_card_photos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    cardId: uuid("card_id").notNull().references(() => residenceCards.id, { onDelete: "restrict" }),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id").notNull().references(() => candidates.id, { onDelete: "restrict" }),
+    side: text("side").notNull(), // front | back
+    mime: text("mime").notNull(), // jenis ASLI (dari isi berkas); berkas di disk selalu terenkripsi (<STORAGE_DIR>/cards/<org>/<id>.enc)
+    sizeBytes: integer("size_bytes").notNull(), // ukuran berkas asli (setelah foto dibersihkan)
+    keyId: text("key_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid("created_by").notNull().references(() => users.id),
+    removedAt: timestamp("removed_at", { withTimezone: true }), // diganti/dibatalkan: berkas di disk dihapus, baris tetap (jejak)
+    removedBy: uuid("removed_by").references(() => users.id),
+  },
+  (t) => [
+    index("residence_card_photos_card_idx").on(t.cardId),
+    uniqueIndex("residence_card_photos_one_active_key").on(t.cardId, t.side).where(sql`${t.removedAt} is null`),
+    check("residence_card_photos_side_check", sql`${t.side} in ('front','back')`),
+    check("residence_card_photos_mime_check", sql`${t.mime} in ('image/jpeg','image/png','application/pdf')`),
+    check("residence_card_photos_size_check", sql`${t.sizeBytes} between 1 and 10485760`),
+    check("residence_card_photos_removed_check", sql`(${t.removedAt} is null) = (${t.removedBy} is null)`),
+  ],
+);

@@ -18,6 +18,7 @@ if [ ! -f "$ENV_FILE" ]; then
   set_env SEED_PASSWORD "$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-16)"
   printf '\n# --- Khusus instance demo ---\nDB_NAME=hashi_demo\n' >> "$ENV_FILE"
 fi
+"$ROOT/scripts/ensure-card-key.sh" "$ENV_FILE" >/dev/null   # kunci enkripsi nomor/foto kartu (T-020); .env.demo lama ikut dilengkapi, nilai tidak dicetak
 check_env
 
 echo "▶ Menjalankan stack $PROJECT (build + migration otomatis)..."

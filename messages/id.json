@@ -1972,7 +1972,12 @@
       "voidChain": "Kartu yang sudah punya kartu pengganti (atau pengganti dari kartu yang diterima) tidak bisa dibatalkan. Perbaiki datanya.",
       "needSuccessor": "Kartu yang diterima harus dicatat bersama kartu barunya.",
       "duplicate": "Data kartu ganda. Muat ulang halaman.",
-      "reasonRequired": "Isi alasan pembatalan."
+      "reasonRequired": "Isi alasan pembatalan.",
+      "numberInvalid": "Nomor kartu harus 12 karakter: 2 huruf, 8 angka, 2 huruf.",
+      "noNumber": "Nomor kartu belum disimpan.",
+      "keyMissing": "Kunci enkripsi nomor/foto kartu belum diatur di server. Hubungi pengelola sistem; tidak ada yang disimpan.",
+      "decryptFailed": "Data terenkripsi tidak bisa dibuka (kunci tidak cocok atau data rusak). Hubungi pengelola sistem.",
+      "photoUnreadable": "Gambar tidak bisa dibaca. Coba foto atau pindaian lain (JPG, PNG, atau PDF)."
     },
     "saved": "Data kartu tersimpan.",
     "received": "Kartu baru diterima dan data kartu baru dicatat.",
@@ -2011,6 +2016,35 @@
       "noMatchTitle": "Tidak ada yang cocok",
       "noMatchBody": "Tidak ada pekerja yang cocok dengan filter ini.",
       "note": "Perlu tindakan = kurang dari 30 hari, sudah lewat, ditolak, lewat masa tinggal tambahan, atau imigrasi meminta dokumen tambahan. Menunggu hasil tidak termasuk jika dokumen tambahan diminta (sudah masuk Perlu tindakan)."
+    },
+    "secrets": {
+      "title": "Nomor dan foto kartu",
+      "intro": "Data paling sensitif. Disimpan terenkripsi; hanya penanggung jawab pekerja dan Admin TSK yang bisa melihat. Setiap kali nomor ditampilkan atau foto dibuka, tercatat di riwayat aktivitas.",
+      "restricted": "Nomor dan foto kartu hanya terlihat oleh penanggung jawab pekerja dan Admin TSK.",
+      "number": "Nomor kartu",
+      "numberNone": "Belum disimpan.",
+      "numberHint": "2 huruf, 8 angka, 2 huruf. Spasi dan tanda hubung diabaikan.",
+      "show": "Tampilkan",
+      "hide": "Sembunyikan",
+      "showHelp": "Menampilkan nomor akan dicatat di riwayat aktivitas.",
+      "shownFor": "Nomor disembunyikan otomatis dalam {n} detik.",
+      "saveNumber": "Simpan nomor",
+      "replaceNumber": "Ganti nomor",
+      "clearNumber": "Hapus nomor",
+      "numberSaved": "Nomor kartu disimpan.",
+      "numberRemoved": "Nomor kartu dihapus.",
+      "photos": "Foto kartu",
+      "front": "Sisi depan",
+      "back": "Sisi belakang",
+      "photoNone": "Belum ada.",
+      "download": "Unduh",
+      "remove": "Hapus foto",
+      "upload": "Unggah",
+      "replace": "Ganti",
+      "fileHint": "JPG, PNG, atau PDF, maksimal 10 MB. Data lokasi dan metadata foto dibuang.",
+      "photoSaved": "Foto kartu disimpan.",
+      "photoRemoved": "Foto kartu dihapus.",
+      "voidNote": "Jika kartu dibatalkan, nomor dihapus dan foto ikut dihapus."
     }
   }
 }

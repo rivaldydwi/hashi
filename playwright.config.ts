@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
 import { assertTestDatabase } from "./scripts/db-guard";
 
@@ -29,6 +30,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     // Dokumen e2e disimpan di folder sendiri (bisa dihapus, tidak bercampur dengan data dev)
-    env: { PORT: String(PORT), STORAGE_DIR: process.env.E2E_STORAGE_DIR ?? `${process.cwd()}/.e2e-docs` },
+    // Kunci enkripsi kartu (T-020) untuk server uji: dari lingkungan bila ada, kalau tidak dibuat ACAK per proses uji (tidak pernah ditulis ke berkas/log). Data uji dibersihkan tes sendiri.
+    env: { PORT: String(PORT), STORAGE_DIR: process.env.E2E_STORAGE_DIR ?? `${process.cwd()}/.e2e-docs`, CARD_DATA_KEY: process.env.CARD_DATA_KEY || randomBytes(32).toString("base64") },
   },
 });

@@ -1312,7 +1312,7 @@ async function main() {
     J(sh.leftoverPolicies) === "[]" && J(sh.leftoverFns) === J(["enforce_tsk_cannot_change_lpk_fields"]),
     `${J(sh.leftoverPolicies)} ${J(sh.leftoverFns)}`,
   );
-  const covered = ["activity_case_subjects", "activity_record_subjects", "audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories", "periodic_interview_quarter_notes", "periodic_interviews", "placements", "residence_cards"];
+  const covered = ["activity_case_subjects", "activity_record_subjects", "audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories", "periodic_interview_quarter_notes", "periodic_interviews", "placements", "residence_card_photos", "residence_card_secrets", "residence_cards"];
   check(
     "Tuntas: setiap tabel ber-candidate_id sudah tercakup tes berbagi (tabel baru ber-candidate_id harus ditambahkan ke bagian I)",
     J(sh.candidateTables) === J(covered),
@@ -3148,6 +3148,117 @@ async function main() {
     "Kartu izin tinggal: TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris, tidak bisa menulis, dan UPDATE tanpa WHERE mereka tidak mengubah apa pun",
     ["tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => xr[`read/${w}`] === 0 && X3(xr[`insert/${w}`])) && xr.untouched === 0 && Number(xr.adminReads) >= 3,
     JSON.stringify([...Object.entries(xr).filter(([k]) => k.startsWith("read/") || k.startsWith("insert/")).map(([k, v]) => [k, typeof v === "string" ? v.slice(0, 24) : v]), xr.untouched, xr.adminReads]),
+  );
+
+  // --- Y. Nomor dan foto 在留カード (T-020): baca DAN tulis hanya TSK_ADMIN + 担当 efektif (card_editor); staf TSK lain, TSK lain, LPK, sensei, super admin, peran null: 0 baris;
+  // nomor wajib bersandi (CHECK menolak nilai polos); organisasi/pekerja sama dengan kartu; kartu batal = tidak bisa ditambah/diubah; foto tanpa DELETE (hanya ditandai dihapus), satu aktif per sisi ---
+  const cs: Record<string, unknown> = {};
+  const ENC = "hcd1:k1:AAAAAAAAAAAAAAAA:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const infos = (await tx.execute(sql`select p.candidate_id::text as cid, p.id::text as pid, c.field_id::text as fid from placements p join candidates c on c.id = p.candidate_id where p.status = 'ACTIVE' and p.org_id = ${tsk.id}::uuid order by p.id limit 2`)).rows as Array<{ cid: string; pid: string; fid: string }>;
+    const [a, b2] = infos;
+    const newCard = async (cid: string, fid: string) =>
+      ((await tx.execute(sql.raw(`insert into residence_cards (organization_id, created_by, candidate_id, skill_field_id, expiry_date) values ('${tsk.id}', '${tskAdminUser.id}', '${cid}', '${fid}', current_date + 100) returning id::text as id`))).rows[0] as { id: string }).id;
+    const secret = (card: string, cid: string, enc = ENC, masked = "AB********CD") =>
+      sql.raw(`insert into residence_card_secrets (card_id, organization_id, candidate_id, number_enc, number_masked, key_id, created_by) values ('${card}', '${tsk.id}', '${cid}', '${enc}', '${masked}', 'k1', '${tskAdminUser.id}')`);
+    const photo = (card: string, cid: string, cols: Record<string, string> = {}) => {
+      const all: Record<string, string> = { card_id: `'${card}'`, organization_id: `'${tsk.id}'`, candidate_id: `'${cid}'`, side: "'front'", mime: "'image/jpeg'", size_bytes: "1000", key_id: "'k1'", created_by: `'${tskAdminUser.id}'`, ...cols };
+      return sql.raw(`insert into residence_card_photos (${Object.keys(all).join(", ")}) values (${Object.values(all).join(", ")}) returning id::text as id`);
+    };
+    const idOf = async (q: ReturnType<typeof photo>) => ((await tx.execute(q)).rows[0] as { id: string }).id;
+
+    await tx.execute(sql.raw(`insert into responsible_assignments (organization_id, created_by, placement_id, staff_id, effective_from) values ('${tsk.id}', '${tskAdminUser.id}', '${a.pid}', '${staffUser.id}', current_date)`));
+    const card1 = await newCard(a.cid, a.fid);
+    const card2 = await newCard(b2.cid, b2.fid); // pekerja lain: 担当 pekerja `a` bukan 担当-nya
+
+    // --- 担当 menulis nomor + foto untuk kartu pekerjanya; Admin membaca; CHECK menolak nilai polos
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    cs.editorInsert = await attempt(tx, (t) => t.execute(secret(card1, a.cid)));
+    cs.editorRead = await num(tx, `select count(*)::int as n from residence_card_secrets where card_id = '${card1}' and number_enc = '${ENC}'`);
+    cs.plainRejected = await attempt(tx, (t) => t.execute(secret(card1, a.cid, "AB12345678CD")));
+    cs.maskBad = await attempt(tx, (t) => t.execute(secret(card1, a.cid, ENC, "AB12345678CD")));
+    cs.updateOk = await attempt(tx, (t) => t.execute(sql.raw(`update residence_card_secrets set number_enc = 'hcd1:k1:CCCCCCCCCCCCCCCC:DDDD' where card_id = '${card1}'`)));
+    cs.updatedBy = await num(tx, `select count(*)::int as n from residence_card_secrets where card_id = '${card1}' and updated_by = '${staffUser.id}'`);
+    const ph1 = await idOf(photo(card1, a.cid, { created_by: `'${tskAdminUser.id}'` })); // created_by dipalsukan
+    cs.photoCreatedBy = await num(tx, `select count(*)::int as n from residence_card_photos where id = '${ph1}' and created_by = '${staffUser.id}'`);
+    cs.dupSide = await attempt(tx, (t) => t.execute(photo(card1, a.cid))); // satu aktif per sisi
+    await idOf(photo(card1, a.cid, { side: "'back'", mime: "'application/pdf'" }));
+    cs.badMime = await attempt(tx, (t) => t.execute(photo(card1, a.cid, { side: "'back'", mime: "'image/gif'" })));
+    cs.badSide = await attempt(tx, (t) => t.execute(photo(card1, a.cid, { side: "'top'" })));
+    cs.badSize = await attempt(tx, (t) => t.execute(photo(card1, a.cid, { size_bytes: "10485761" })));
+    cs.photoLocked = await attempt(tx, (t) => t.execute(sql.raw(`update residence_card_photos set mime = 'image/png' where id = '${ph1}'`)));
+    cs.noPhotoDelete = await attempt(tx, (t) => t.execute(sql.raw(`delete from residence_card_photos where id = '${ph1}'`)));
+    cs.removeForged = await attempt(tx, (t) => t.execute(sql.raw(`update residence_card_photos set removed_at = now(), removed_by = '${tskAdminUser.id}' where id = '${ph1}'`)));
+    cs.removedBy = await num(tx, `select count(*)::int as n from residence_card_photos where id = '${ph1}' and removed_at is not null and removed_by = '${staffUser.id}'`);
+    cs.removedTwice = await attempt(tx, (t) => t.execute(sql.raw(`update residence_card_photos set removed_at = now() where id = '${ph1}'`)));
+    cs.replaceAfterRemove = await attempt(tx, (t) => t.execute(photo(card1, a.cid))); // sisi yang sama boleh lagi setelah yang lama dihapus
+    cs.mismatchCandidate = await attempt(tx, (t) => t.execute(secret(card1, b2.cid)));
+    cs.mismatchPhotoOrg = await attempt(tx, (t) => t.execute(photo(card1, b2.cid)));
+
+    // --- bukan 担当 (staf lain): 0 baris, tidak bisa menulis; UPDATE/DELETE tanpa WHERE tidak mengubah apa pun
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2!.id);
+    cs.otherSecretRead = await num(tx, `select count(*)::int as n from residence_card_secrets`);
+    cs.otherPhotoRead = await num(tx, `select count(*)::int as n from residence_card_photos`);
+    cs.otherSecretInsert = await attempt(tx, (t) => t.execute(secret(card1, a.cid, ENC))); // staf2 BUKAN 担当 pekerja a (card2/b2 bisa saja milik staf2 menurut seed)
+    cs.otherPhotoInsert = await attempt(tx, (t) => t.execute(photo(card1, a.cid, { side: "'back'" })));
+    await tx.execute(sql.raw(`update residence_card_secrets set number_masked = 'ZZ********ZZ'`));
+    await tx.execute(sql.raw(`delete from residence_card_secrets`));
+    await tx.execute(sql.raw(`update residence_card_photos set removed_at = now()`));
+    // peran lain: 0 baris, tulis ditolak
+    for (const [who, org, role, uid] of [["tskB", tskB, "TSK_ADMIN", adminB], ["lpkAdmin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id], ["sensei", lpk1.id, "LPK_SENSEI", senseiUser.id], ["superAdmin", platformOrg.id, "SUPER_ADMIN", null], ["roleNull", tsk.id, null, null]] as const) {
+      await actAs(tx, org, role, uid);
+      cs[`readS/${who}`] = await num(tx, `select count(*)::int as n from residence_card_secrets`);
+      cs[`readP/${who}`] = await num(tx, `select count(*)::int as n from residence_card_photos`);
+      cs[`insS/${who}`] = await attempt(tx, (t) => t.execute(secret(card2, b2.cid)));
+      cs[`insP/${who}`] = await attempt(tx, (t) => t.execute(photo(card2, b2.cid)));
+      await tx.execute(sql.raw(`update residence_card_secrets set number_masked = 'ZZ********ZZ'`));
+      await tx.execute(sql.raw(`delete from residence_card_secrets`));
+      await tx.execute(sql.raw(`update residence_card_photos set removed_at = now()`));
+    }
+
+    // --- Admin membaca semuanya; semua data masih utuh setelah percobaan tanpa WHERE; kartu batal
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    cs.adminSecrets = await num(tx, `select count(*)::int as n from residence_card_secrets where card_id = '${card1}' and number_masked = 'AB********CD'`);
+    cs.adminPhotosActive = await num(tx, `select count(*)::int as n from residence_card_photos where card_id = '${card1}' and removed_at is null`);
+    cs.untouchedPhotos = await num(tx, `select count(*)::int as n from residence_card_photos where card_id = '${card1}' and removed_at is null and side = 'front'`);
+    await tx.execute(secret(card2, b2.cid));
+    await tx.execute(sql.raw(`update residence_cards set status = 'void', void_reason = 'salah' where id = '${card2}'`));
+    cs.voidedSecretUpdate = await attempt(tx, (t) => t.execute(sql.raw(`update residence_card_secrets set number_enc = 'hcd1:k1:EEEEEEEEEEEEEEEE:FFFF' where card_id = '${card2}'`)));
+    cs.voidedPhotoInsert = await attempt(tx, (t) => t.execute(photo(card2, b2.cid)));
+    cs.voidedSecretDelete = await attempt(tx, (t) => t.execute(sql.raw(`delete from residence_card_secrets where card_id = '${card2}'`)));
+    cs.voidedSecretGone = await num(tx, `select count(*)::int as n from residence_card_secrets where card_id = '${card2}'`);
+    cs.cardsNoSecretCols = await num(tx, `select count(*)::int as n from information_schema.columns where table_name = 'residence_cards' and (column_name like '%number%' or column_name like '%cipher%' or column_name like '%photo%')`);
+  });
+  const Y3 = (v: unknown) => typeof v === "string" && v.length > 0;
+  check(
+    "Nomor kartu: 担当 efektif menulis dan membaca; CHECK menolak nomor polos dan penyamaran salah; pekerja/organisasi harus sama dengan kartunya; updated_by dari sesi",
+    cs.editorInsert === null && cs.editorRead === 1 && /enc_check/.test(String(cs.plainRejected)) && /masked_check/.test(String(cs.maskBad)) && cs.updateOk === null && cs.updatedBy === 1 && Y3(cs.mismatchCandidate) && Y3(cs.mismatchPhotoOrg),
+    JSON.stringify([cs.editorInsert, cs.editorRead, String(cs.plainRejected).slice(0, 60), String(cs.maskBad).slice(0, 60), cs.updateOk, cs.updatedBy, String(cs.mismatchCandidate).slice(0, 40), String(cs.mismatchPhotoOrg).slice(0, 40)]),
+  );
+  check(
+    "Foto kartu: created_by dari sesi; satu aktif per sisi; jenis/sisi/ukuran di luar daftar ditolak; kolom terkunci; tanpa DELETE; hanya bisa ditandai dihapus (removed_by = sesi, tidak bisa dipalsukan, sekali), lalu sisi itu boleh diisi lagi",
+    cs.photoCreatedBy === 1 && /one_active_key/.test(String(cs.dupSide)) && /mime_check/.test(String(cs.badMime)) && /side_check/.test(String(cs.badSide)) && /size_check/.test(String(cs.badSize)) && /tidak bisa diubah/.test(String(cs.photoLocked))
+      && Y3(cs.noPhotoDelete) && cs.removeForged === null && cs.removedBy === 1 && /sudah dihapus/.test(String(cs.removedTwice)) && cs.replaceAfterRemove === null,
+    JSON.stringify([cs.photoCreatedBy, String(cs.dupSide).slice(0, 50), String(cs.badMime).slice(0, 40), String(cs.badSide).slice(0, 40), String(cs.badSize).slice(0, 40), String(cs.photoLocked).slice(0, 40), String(cs.noPhotoDelete).slice(0, 40), cs.removeForged, cs.removedBy, String(cs.removedTwice).slice(0, 40), cs.replaceAfterRemove]),
+  );
+  check(
+    "Nomor/foto kartu: staf TSK yang BUKAN 担当 membaca 0 baris dan tidak bisa menulis (INSERT ditolak; UPDATE/DELETE tanpa WHERE tidak mengubah apa pun)",
+    cs.otherSecretRead === 0 && cs.otherPhotoRead === 0 && /row-level security/.test(String(cs.otherSecretInsert)) && /row-level security/.test(String(cs.otherPhotoInsert)),
+    JSON.stringify([cs.otherSecretRead, cs.otherPhotoRead, String(cs.otherSecretInsert).slice(0, 40), String(cs.otherPhotoInsert).slice(0, 40)]),
+  );
+  check(
+    "Nomor/foto kartu: TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris, INSERT ditolak; Admin TSK membaca; data utuh setelah UPDATE/DELETE tanpa WHERE semua pihak itu",
+    ["tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => cs[`readS/${w}`] === 0 && cs[`readP/${w}`] === 0 && Y3(cs[`insS/${w}`]) && Y3(cs[`insP/${w}`]))
+      && cs.adminSecrets === 1 && cs.adminPhotosActive === 2 && cs.untouchedPhotos === 1,
+    JSON.stringify([...Object.entries(cs).filter(([k]) => /^(readS|readP)\//.test(k)), cs.adminSecrets, cs.adminPhotosActive, cs.untouchedPhotos]),
+  );
+  check(
+    "Kartu batal: nomor tidak bisa diubah dan foto tidak bisa ditambah, tetapi nomor boleh DIHAPUS (pembersihan); tabel kartu sendiri tidak punya kolom nomor/sandi",
+    /dibatalkan/.test(String(cs.voidedSecretUpdate)) && /dibatalkan/.test(String(cs.voidedPhotoInsert)) && cs.voidedSecretDelete === null && cs.voidedSecretGone === 0 && cs.cardsNoSecretCols === 0,
+    JSON.stringify([String(cs.voidedSecretUpdate).slice(0, 50), String(cs.voidedPhotoInsert).slice(0, 50), cs.voidedSecretDelete, cs.voidedSecretGone, cs.cardsNoSecretCols]),
   );
 
   await pool.end();

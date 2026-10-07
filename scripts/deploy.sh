@@ -45,6 +45,11 @@ if [[ -z "$PORT" && -f .env ]]; then PORT="$(grep -E '^APP_PORT=' .env | head -1
 # Tanpa APP_PORT JANGAN menebak 3100: di OptiPlex port itu dipakai aplikasi lain, jadi health check akan menilai aplikasi yang salah.
 [[ -n "$PORT" ]] || fail "APP_PORT tidak ditemukan (env atau .env). Isi APP_PORT=3110 di .env atau jalankan: APP_PORT=3110 scripts/deploy.sh. Tidak ada yang diubah."
 [[ "$PORT" =~ ^[0-9]+$ ]] || fail "APP_PORT tidak valid: '$PORT'"
+# Kunci enkripsi nomor/foto kartu (T-020) WAJIB ada: compose menolak jalan tanpanya. Diperiksa di sini supaya gagal SEBELUM container disentuh (nilai tidak dicetak).
+KEY_OK=0
+[[ -n "${CARD_DATA_KEY:-}" ]] && KEY_OK=1
+[[ "$KEY_OK" == 1 || ! -f .env ]] || { grep -Eq '^CARD_DATA_KEY=.+' .env && KEY_OK=1; }
+[[ "$KEY_OK" == 1 ]] || fail "CARD_DATA_KEY belum ada di .env. Buat dengan scripts/ensure-card-key.sh (nilai tidak dicetak), lalu SALIN kuncinya ke tempat aman di luar server (BUTUH IPAL, lihat docs/backup.md). Tidak ada yang diubah."
 HEALTH="http://127.0.0.1:$PORT/api/health"
 health_commit() { curl -fsS --max-time 4 "$HEALTH" 2>/dev/null | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p'; }
 
