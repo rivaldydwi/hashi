@@ -12,6 +12,7 @@ import { EventFields } from "@/features/records/ui/EventFields";
 import { AddFollowupForm, FollowupList } from "@/features/records/ui/Followups";
 import { WorkerPicker } from "@/features/records/ui/Pickers";
 import { RevisionHistory, toSnake, type RevField } from "@/features/records/ui/RevisionHistory";
+import { Data, dataTag } from "@/components/Data";
 import { Badge, dateLabelSync } from "@/features/records/ui/common";
 import { dateTimeIn, safeTimezone, ymdIn } from "@/lib/org-time";
 import { tenantQuery } from "@/lib/session";
@@ -105,7 +106,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
                     <td className={td}><span className="whitespace-pre-wrap break-words">{e.companyResponse ?? "—"}</span></td>
                     <td className={td}><span className="whitespace-pre-wrap break-words">{e.note ?? "—"}</span>{!e.includeInClientExport && <div><Badge>{t("cases.internalOnly")}</Badge></div>}</td>
                     <td className={`${td} whitespace-nowrap`}>
-                      <p className="mb-1 text-xs text-ink-2">{t("cases.writtenBy", { name: creatorName })}{e.versionNo > 1 && ` · ${t("badge.version", { n: e.versionNo })}`}</p>
+                      <p className="mb-1 text-xs text-ink-2">{t.rich("cases.writtenBy", { name: creatorName, n: dataTag })}{e.versionNo > 1 && ` · ${t("badge.version", { n: e.versionNo })}`}</p>
                       {canEdit && (
                         <details>
                           <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-accent-text" data-testid="edit-event-toggle">{t("cases.editEvent")}</summary>
@@ -147,7 +148,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
           <ul className="mt-2 divide-y divide-line" data-testid="related-records">
             {c.records.map((r) => (
               <li key={r.id}><Link href={`/records/${r.id}`} className="flex min-h-11 flex-wrap items-center gap-2 py-2 text-sm hover:bg-hover">
-                <Badge>{t(`kinds.${r.kind}`)}</Badge><span className={r.status === "void" ? "line-through" : ""}>{dateLabelSync(r.recordDate, locale)} · {r.kind === "meeting" ? r.subject : t(`workTypes.${r.workType ?? "other"}`)}</span><span className="text-xs text-ink-2">{r.authorName}</span>
+                <Badge>{t(`kinds.${r.kind}`)}</Badge><span className={r.status === "void" ? "line-through" : ""}>{dateLabelSync(r.recordDate, locale)} · {r.kind === "meeting" ? r.subject : t(`workTypes.${r.workType ?? "other"}`)}</span><Data className="text-xs text-ink-2">{r.authorName}</Data>
               </Link></li>
             ))}
           </ul>

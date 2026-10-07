@@ -1440,7 +1440,7 @@
       "rowActions": "行の操作",
       "internalOnly": "社内のみ",
       "includeInClient": "企業向けの書き出しに含める",
-      "writtenBy": "作成：{name}",
+      "writtenBy": "作成：<n>{name}</n>",
       "fromRecord": "記録から",
       "relatedRecords": "関連する記録",
       "noRecords": "関連付けられた記録はありません。",

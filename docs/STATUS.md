@@ -37,7 +37,12 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 ## 2026-10-07 · T-023 · Terjemahan peramban: teks bebas boleh diterjemahkan, yang dikunci hanya identitas + hasil deploy T-013
 
 **PR:** #19 (branch `eng/T-023-translate-free-text`)
-**Status:** siap direview
+**Status:** revisi ke-1 (siap direview ulang setelah CI hijau)
+
+**Revisi ke-1 (komentar `PM: REVISI` + koreksi keputusan Ipal)**
+- Nama staf pada tindak lanjut di panel "Lanjutkan" (`ContinuePanel`) kini `<Data>`. Pemeriksaan nama orang lain di elemen yang kuncinya dilepas: dikunci juga nama penerima laporan (`reportToApp`) dan penulis catatan di `records/[id]`, nama penulis kronologi kasus (pesan `cases.writtenBy` memakai tag `<n>`, id + ja) dan penulis catatan di daftar catatan kasus. Tambah asersi e2e di `records-continue.spec.ts` (nama staf `translate="no"`, kalimat tindak lanjut tidak).
+- `health.medicalNote` → `identity` (dikunci; data kesehatan sensitif, "Terjemahkan" Chrome mengirim teks ke server Google). `health.visionNote` TETAP `prose` (keputusan Ipal: syarat job order buta warna). Tes unit, komentar `FieldDef.data`, dan `CLAUDE.md` disesuaikan; daftar kolom di bawah sudah dikoreksi.
+- Verifikasi ulang (database dev): typecheck, `test:i18n` (1636 kunci), `test:unit` (field-nature 5/5), build, dan `E2E_PORT=3120 npm run test:e2e` → 215 lulus (termasuk asersi baru). Tidak ada perubahan skema/RLS, jadi `test:rls` tidak diulang.
 
 **Hasil deploy T-013** (PR #18 di-merge `4e4702b`, setelah `PM: DISETUJUI` dan CI hijau di head `c2a99b8`; tanpa migrasi, jadi tanpa `--backup`)
 - Keluaran akhir `scripts/deploy.sh`: commit berjalan `4e4702b`, health ok. Demo tidak disentuh.
@@ -52,7 +57,8 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 **Daftar kolom profil kandidat, untuk dicek Ipal**
 - IDENTITAS (dikunci): nama lengkap, nama katakana, tempat lahir, alamat, telepon, WhatsApp, email, NIK, nomor KK, nomor paspor; keluarga: nama, telepon, alamat; sekolah (nama); perusahaan kerja (nama); nomor sertifikat. Tanggal dan angka juga tetap.
-- TEKS BEBAS (boleh diterjemahkan): motivasi, PR diri, hobi, keahlian khusus, catatan riwayat Jepang, catatan penglihatan, catatan medis; keluarga: pekerjaan; sekolah: jurusan; kerja: jabatan; sertifikat: level/bidang. Pilihan (jenis kelamin, status nikah, hubungan keluarga, jenis sertifikat, bidang kerja, ya/tidak) = label, boleh diterjemahkan.
+- TEKS BEBAS (boleh diterjemahkan): motivasi, PR diri, hobi, keahlian khusus, catatan riwayat Jepang, catatan penglihatan; keluarga: pekerjaan; sekolah: jurusan; kerja: jabatan; sertifikat: level/bidang. Pilihan (jenis kelamin, status nikah, hubungan keluarga, jenis sertifikat, bidang kerja, ya/tidak) = label, boleh diterjemahkan.
+- Dikunci walau teks bebas: catatan medis (`health.medicalNote`).
 - Tetap dikunci di luar profil: judul job order, kode kasus/kandidat, nama organisasi/perusahaan/lokasi/PIC, nama pengguna dan email.
 
 **Verifikasi** (database dev `hashi_dev`)

@@ -18,7 +18,7 @@ export type FieldKind = "text" | "textarea" | "date" | "select" | "boolean" | "i
 /**
  * Sifat data kolom untuk terjemahan peramban (T-023). identity = identitas yang tidak boleh diterjemahkan (nama orang/katakana/organisasi/tempat,
  * alamat, telepon, email, nomor dokumen): dikunci `translate="no"`. prose = kalimat/teks bebas dan istilah umum (motivasi, jabatan, jurusan, catatan):
- * BOLEH diterjemahkan. Wajib diisi untuk kolom text/textarea/email (dites); jenis lain diturunkan oleh `fieldNature`.
+ * BOLEH diterjemahkan. Pengecualian: `health.medicalNote` = identity walau teks bebas (data kesehatan sensitif; "Terjemahkan" Chrome mengirim teks ke server Google). Wajib diisi untuk kolom text/textarea/email (dites); jenis lain diturunkan oleh `fieldNature`.
  */
 export type DataNature = "identity" | "prose";
 
@@ -132,7 +132,7 @@ export const SINGLE_SECTIONS: SingleSectionDef[] = [
     fields: [
       { name: "visionNote", kind: "text", data: "prose", max: 300 },
       { name: "colorBlind", kind: "boolean" },
-      { name: "medicalNote", kind: "textarea", data: "prose" },
+      { name: "medicalNote", kind: "textarea", data: "identity" },
     ],
   },
 ];

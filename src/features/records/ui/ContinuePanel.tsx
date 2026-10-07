@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { cardClass } from "@/components/styles";
 import type { RecentRecord, WorkerTask } from "../queries";
+import { Data } from "@/components/Data";
 import { Badge, dateLabelSync } from "./common";
 
 /** Panel baca-saja di samping form "Lanjutkan": 3 catatan terakhir pekerja + tindak lanjut yang masih terbuka (T-007). */
@@ -31,7 +32,7 @@ export async function ContinuePanel({ worker, recent, tasks, parentDate }: { wor
         <h4 className="text-[13px] font-semibold text-ink-2">{t("continue.openTasks")}</h4>
         {tasks.length === 0 ? <p className="mt-1 text-sm text-ink-2" data-testid="continue-no-tasks">{t("continue.noTasks")}</p> : (
           <ul className="mt-1 list-disc space-y-1 pl-5" data-testid="continue-tasks">
-            {tasks.map((x) => <li key={x.id} className="text-sm" data-testid="continue-task">{x.description} <span className="text-xs text-ink-2">({x.assigneeName}{x.dueDate ? `, ${x.dueDate}` : ""})</span></li>)}
+            {tasks.map((x) => <li key={x.id} className="text-sm" data-testid="continue-task">{x.description} <span className="text-xs text-ink-2">(<Data>{x.assigneeName}</Data>{x.dueDate ? `, ${x.dueDate}` : ""})</span></li>)}
           </ul>
         )}
       </div>

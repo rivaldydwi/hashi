@@ -84,7 +84,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
 
         <dl className="mt-3 divide-y divide-line">
           {dl(t("f.date"), dateLabelSync(r.recordDate, locale))}
-          {dl(t("f.author"), rec.authorName)}
+          {dl(t("f.author"), <Data>{rec.authorName}</Data>)}
           {dl(t("f.subjects"), rec.subjects.length ? (
             <ul className="flex flex-wrap gap-2">{rec.subjects.map((s) => <li key={s.id} className="flex flex-wrap items-center gap-2"><Link href={`/candidates/${s.id}`} translate="no" className="text-sm font-medium text-accent-text hover:underline">{s.name}</Link><Link href={`/records/workers/${s.id}`} className="inline-flex min-h-11 items-center text-xs font-medium text-accent-text hover:underline" data-testid="worker-history-link">{t("whistory.historyLink")}</Link></li>)}</ul>
           ) : <span className="text-ink-2">—</span>)}
@@ -96,7 +96,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
               {dl(t("f.result"), <Multiline text={r.result} />)}
               {dl(t("f.pending"), <Multiline text={r.pending} />)}
               {dl(t("f.nextAction"), <Multiline text={r.nextAction} />)}
-              {dl(t("f.reportTo"), <div className="space-y-1"><Multiline text={r.reportToText} identity />{rec.recipients.length > 0 && <p className="text-xs text-ink-2">{t("f.reportToApp")}: {rec.recipients.map((x) => x.name).join(", ")}</p>}</div>)}
+              {dl(t("f.reportTo"), <div className="space-y-1"><Multiline text={r.reportToText} identity />{rec.recipients.length > 0 && <p className="text-xs text-ink-2">{t("f.reportToApp")}: {rec.recipients.map((x, i) => <span key={x.id}>{i > 0 && ", "}<Data>{x.name}</Data></span>)}</p>}</div>)}
               {dl(t("f.note"), <Multiline text={r.note} />)}
             </>
           ) : (

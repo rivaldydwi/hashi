@@ -27,14 +27,20 @@ test("identitas: nama, katakana, tempat/organisasi, alamat, telepon, email, nomo
   }
 });
 
-test("teks bebas: motivasi, PR diri, hobi, keahlian, catatan riwayat Jepang, catatan medis/penglihatan, jabatan, jurusan, pekerjaan keluarga", () => {
-  const prose = ["about.motivation", "about.selfPr", "about.hobby", "about.specialSkill", "japan.japanHistoryNote", "health.visionNote", "health.medicalNote", "work.position", "education.major", "family.occupation", "certificates.levelOrField"];
+test("teks bebas: motivasi, PR diri, hobi, keahlian, catatan riwayat Jepang, catatan penglihatan, jabatan, jurusan, pekerjaan keluarga", () => {
+  const prose = ["about.motivation", "about.selfPr", "about.hobby", "about.specialSkill", "japan.japanHistoryNote", "health.visionNote", "work.position", "education.major", "family.occupation", "certificates.levelOrField"];
   for (const key of prose) {
     const [s, n] = key.split(".");
     const f = all.find((x) => x.section === s && x.f.name === n)?.f;
     assert.ok(f, key);
     assert.equal(fieldNature(f), "prose", key);
   }
+});
+
+test("catatan medis dikunci (identity) walau teks bebas: data kesehatan sensitif tidak dikirim ke layanan terjemahan; catatan penglihatan tetap prose", () => {
+  const f = (n: string) => all.find((x) => x.section === "health" && x.f.name === n)!.f;
+  assert.equal(fieldNature(f("medicalNote")), "identity");
+  assert.equal(fieldNature(f("visionNote")), "prose");
 });
 
 test("jenis non-teks: pilihan/boolean/bidang kerja = label (prose); tanggal dan angka = identity", () => {
