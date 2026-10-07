@@ -53,15 +53,64 @@ Kerjakan:
 
 ---
 
+### T-013 · Lacak peringatan `pg` "client.query() ... already executing" · `SIAP` (setelah T-012)
+
+Log e2e menampilkan peringatan pg ini (`docs/HISTORY.md` §4). Di pg@9 perilaku ini akan jadi **error**, jadi ini bom waktu: biasanya dua query dijalankan bersamaan
+di SATU klien/transaksi (mis. `Promise.all` di dalam `withTenant(tx => …)`).
+
+Kerjakan:
+- Temukan sumbernya: jalankan e2e/halaman dengan `NODE_OPTIONS=--trace-warnings` (atau `process.on("warning")` sementara) sampai dapat stack trace; catat berkas + fungsi.
+- Perbaiki di akarnya (query berurutan di dalam transaksi yang sama, atau pisah transaksi bila memang boleh paralel); cari pola serupa di seluruh `src/` (`Promise.all` di dalam `withTenant`/`tx`), bukan hanya satu tempat.
+- Tambah penjaga supaya tidak muncul lagi: mis. tes/skrip yang menjalankan halaman-halaman utama dan GAGAL bila peringatan itu muncul (atau `process.on("warning")` di `serve-standalone.mjs` saat e2e yang menulis ke log lalu dicek di akhir).
+- Peringatan "destination stream closed early" ikut diperiksa: jelaskan penyebabnya; perbaiki hanya bila memang bug.
+
+**Kriteria selesai**
+- [ ] STATUS menyebut sumber peringatan (berkas/fungsi) dan pola yang diperbaiki di mana saja.
+- [ ] Log `test:e2e` lengkap tanpa peringatan "already executing" (kutip potongan log / hitungan 0 di PR) + penjaga otomatis yang gagal bila muncul lagi.
+- [ ] Tidak ada perubahan perilaku (typecheck, build 0 peringatan, test:rls, e2e, CI hijau).
+
+---
+
+### T-014 · Langkah 8 siap pilot: 200 siswa dummy + cek kecepatan · `SIAP` (setelah T-013)
+
+Tujuan: membuktikan aplikasi tetap cepat dan benar dengan volume pilot, sebelum data nyata. **Hanya `db-dev`/`_test` dan (dengan izin Ipal) demo; produksi tidak disentuh.**
+
+Kerjakan:
+- `npm run seed:pilot` (skrip baru di `scripts/`, hanya impor `src/db/`; ADDITIVE, deterministik, ditolak `db-guard` di luar `_dev`/`_test`/`_demo`): +200 kandidat lengkap
+  (sebaran status LPK, keputusan TSK, penilaian bulanan beberapa bulan, dokumen dummy kecil), sebagian berangkat jadi pekerja aktif dengan catatan kegiatan + wawancara berkala,
+  dan **satu staf TSK dengan ≥ 45 pekerja** supaya peringatan beban T-010 terlihat. Jalankan dua kali = tidak menggandakan (idempoten).
+- `verify:seed` diperluas (mode pilot) atau pemeriksaan sendiri: jumlah, kelengkapan, dan angka KPI = daftar tetap berlaku pada volume ini.
+- Ukur waktu server (bukan perasaan) untuk: `/candidates` (tanpa dan dengan filter penilaian), detail kandidat, dashboard LPK_ADMIN dan TSK_ADMIN, `/records/interviews`, `/records/responsible`,
+  `/activity`. Catat median + terburuk dari ≥ 5 kali per halaman di STATUS. Batas: **≤ 1 detik** di OptiPlex untuk tiap halaman; yang lebih lambat diperbaiki (indeks, N+1, query berkorelasi).
+  Sertakan `EXPLAIN ANALYZE` untuk query yang diperbaiki.
+- `docs/pilot-checklist.md`: daftar periksa sebelum data nyata (cadangan luar-server berjalan + uji restore, `SHOW_DEMO_ACCOUNTS=false`, kata sandi akun bukan bawaan, akun demo dimatikan,
+  data dummy tidak ada di produksi, 行政書士 untuk syarat gender/My Number, pengecekan form 5-5 oleh staf TSK, dst.), setiap butir dengan cara memeriksanya. Hanya dokumen; jangan ubah `.env`.
+
+**Kriteria selesai**
+- [ ] `seed:pilot` idempoten + ditolak di database produksi (tes/bukti di PR); CI menjalankannya di `hashi_test` lalu `verify:seed`.
+- [ ] Tabel waktu per halaman di STATUS (sebelum/sesudah bila ada perbaikan), semua ≤ 1 detik.
+- [ ] Tangkapan layar `/records/responsible` dengan staf ≥ 45 (kuning) dan daftar kandidat 200+.
+- [ ] `docs/pilot-checklist.md` ada; typecheck, build, test:rls, e2e, CI hijau.
+
+---
+
+### T-015 · `scripts/deploy.sh`: log build ke berkas · `SIAP` (setelah T-014)
+
+Usulan engineer (T-007): output build Docker yang panjang menenggelamkan hasil penting. Log lengkap ke berkas (mis. `~/hashi-backups/deploy-<waktu>.log`, simpan 20 terakhir),
+terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + commit). Gagal = tampilkan 40 baris terakhir log + path berkasnya, kode keluar ≠ 0. Perilaku lain tidak berubah.
+
+**Kriteria selesai**
+- [ ] Contoh output sukses dan gagal (mis. simulasi build gagal di branch uji, BUKAN di produksi) di PR; `shellcheck` bersih.
+- [ ] Deploy produksi berikutnya memakai skrip baru dan hasilnya (commit + health) tercatat di STATUS.
+
+---
+
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
 - Pelacak 在留カード: implementasi = T-A (skema + `cardStage` + RLS), T-B (bagian di detail pekerja), T-C (daftar, KPI, seed), T-D opsional (isi awal), persis seperti `docs/zairyu-card.md` §6. **DITAHAN** sampai TSK menjawab pertanyaan §9 no. 1, 2, 4, 5, 7 (memengaruhi skema); PM memindahkannya ke antrean setelah jawaban masuk.
-- Langkah 8 siap pilot: seed 200 siswa dummy (sekaligus memunculkan satu staf ≥ 45 pekerja untuk tampilan beban T-010), cek kecepatan halaman daftar/detail, `SHOW_DEMO_ACCOUNTS=false`, daftar periksa sebelum data nyata.
 - Langkah 7 sisanya: checklist keberangkatan/kedatangan, bagian 管理・報告 di lembar 定期面談, profil pekerja lengkap, status visa + tanggal tiba untuk LPK (baca-saja), notifikasi email/LINE.
-- `scripts/deploy.sh`: log build ke berkas (mis. `~/hashi-backups/deploy.log`), terminal hanya ringkasan (usulan engineer, T-007).
 - Catatan lanjutan: syarat "pekerja sama" hanya diperiksa saat dibuat; bila nanti perlu ketat, trigger di `activity_record_subjects` (temuan T-007, belum perlu).
-- Telusuri peringatan `pg` "client.query() ... already executing" di log e2e (lihat `docs/HISTORY.md` §4).
 - Langkah 9: demo ke TSK.
 
 ## Selesai
