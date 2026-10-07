@@ -49,7 +49,7 @@ Kerjakan:
 
 ---
 
-### T-013 · Lacak peringatan `pg` "client.query() ... already executing" · `SIAP` (setelah T-012)
+### T-013 · Lacak peringatan `pg` "client.query() ... already executing" · `SIAP` (setelah T-016)
 
 Log e2e menampilkan peringatan pg ini (`docs/HISTORY.md` §4). Di pg@9 perilaku ini akan jadi **error**, jadi ini bom waktu: biasanya dua query dijalankan bersamaan
 di SATU klien/transaksi (mis. `Promise.all` di dalam `withTenant(tx => …)`).
