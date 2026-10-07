@@ -30,7 +30,52 @@ Kerjakan:
 
 ---
 
-### T-014 · Langkah 8 siap pilot: 200 siswa dummy + cek kecepatan · `SIAP` (setelah T-013)
+### T-020 · 在留カード: nomor + foto kartu (terenkripsi) · `SIAP` (setelah T-013)
+
+Jawaban TSK no. 6: nomor dan foto kartu **harus disimpan**. Data paling sensitif di Hashi, jadi aturannya ketat.
+
+Kerjakan:
+- **Kunci baru `CARD_DATA_KEY`** (32 byte acak, base64). Ini kunci BARU, berbeda dari `AUTH_SECRET` dan dari kunci cadangan.
+  - Pengembangan/CI/e2e: kunci uji sendiri (boleh dibuat bebas, jangan di-commit).
+  - **Produksi**: kunci dibuat engineer di `.env` server saat deploy, lalu **berhenti dan tulis `BUTUH IPAL:` di STATUS/PR** supaya Ipal menyalinnya ke tempat aman (seperti kunci cadangan).
+    Jangan memasukkan data nyata sebelum Ipal mengonfirmasi salinannya. Kunci tidak boleh muncul di log, keluaran skrip, atau git.
+  - Aplikasi menolak jalan dengan jelas bila kunci tidak ada (tanpa diam-diam menyimpan polos). Rancang `key_id` supaya kunci bisa diganti nanti.
+- **Nomor kartu**: kolom terenkripsi di level aplikasi (AES-256-GCM, nonce acak per nilai) di `residence_cards` (atau tabel anak 1:1), validasi format 12 karakter (2 huruf + 8 angka + 2 huruf).
+  Tidak pernah tampil di daftar, KPI, ekspor, PDF, audit, maupun log. Di detail: tersamar (`AB********CD`), tombol "Tampilkan" hanya untuk 担当 + Admin, dan setiap tampil **diaudit** (`residence_card.number_view`, tanpa nilai).
+- **Foto kartu depan/belakang**: pola dokumen yang ada (`sniffType`, JPG/PNG/PDF, `sharp` buang EXIF), berkas **terenkripsi di disk** dengan kunci yang sama. Unduh/lihat hanya 担当 + Admin lewat route handler
+  (RLS + audit `residence_card.photo_view`), `attachment` + `nosniff`. Ikut terhapus/void bersama kartu sesuai aturan T-017 (tanpa DELETE fisik data audit).
+- Catatan yang mirip nomor kartu tetap ditolak (T-018). Cadangan (`scripts/backup.sh`) ikut membawa berkas terenkripsi. Dokumentasikan di `docs/backup.md` bahwa **tanpa `CARD_DATA_KEY` data ini tidak bisa dipulihkan**.
+- `docs/zairyu-card.md` §2.3 diperbarui: keputusan berubah karena jawaban TSK.
+
+**Kriteria selesai**
+- [ ] Tes unit enkripsi (bolak-balik, nonce berbeda, kunci salah = gagal, data rusak = gagal). `verify-rls`: staf bukan 担当 tidak bisa membaca kolom/berkas, LPK/sensei 0 baris.
+- [ ] e2e: simpan nomor + foto, tersamar di detail, "Tampilkan" mencatat audit tanpa nilai, staf lain tidak melihat tombol (dan server menolak), nomor tidak ada di HTML daftar/KPI.
+- [ ] Bukti di PR: isi kolom di database = sandi acak, bukan nomor; berkas di disk bukan JPG terbaca.
+- [ ] Deploy produksi dengan `--backup` + langkah kunci `BUTUH IPAL` di atas.
+
+---
+
+### T-022 · Email pengingat 在留カード (ke staf + Admin) · `SIAP` (setelah T-020)
+
+Jawaban TSK no. 12: email hanya untuk **pengingat mendaftarkan/memperbarui kartu**; progres setelah diajukan cukup di Hashi (imigrasi sudah mengirim email sendiri).
+
+Kerjakan:
+- Penerima = `cardRecipients` (担当 efektif + semua TSK_ADMIN), email dari tabel `users`. **Pekerja belum** (butuh kolom email pekerja + persetujuan; tugas terpisah).
+- Pemicu = tahap masuk `prepare`, `can_apply`, `h30`, `h14`, `h7`, `expired`, `special_overdue`, `rejected`, serta 追加資料. **Sekali per (kartu, tahap)**: tabel log pengiriman (unik kartu + tahap), tanpa isi email.
+  Satu email ringkasan per penerima per hari (bukan satu email per kartu). Isi email bahasa Jepang + Indonesia sesuai `users.locale`, berisi nama pekerja + tahap + tautan ke Hashi. Tidak memuat nomor kartu, catatan, atau data lain.
+- Penjadwal: service baru **di dalam project compose `hashi`** (misalnya `worker`) yang berjalan tiap hari jam 08:00 Asia/Tokyo memakai `withSystem` (bukan cron sistem, bukan systemd: menyentuh cron sistem = `BUTUH IPAL`).
+- Pengiriman lewat SMTP dari env (`SMTP_URL`, `MAIL_FROM`). **Tanpa `SMTP_URL` = mode kering**: email tidak terkirim, hanya dicatat "akan dikirim" di log aplikasi (tanpa alamat lengkap). Pengembangan/e2e memakai **Mailpit** di `compose.dev.yaml`.
+- **Produksi tetap mode kering** sampai Ipal menyiapkan akun SMTP (`BUTUH IPAL`: akun layanan pihak luar/berbiaya). Usulkan 2–3 pilihan layanan gratis/murah di STATUS.
+- Audit: `residence_card.reminder_sent` (tahap, jumlah penerima; tanpa alamat).
+
+**Kriteria selesai**
+- [ ] Tes unit: pemilihan kartu/tahap yang dikirim hari ini, tidak terkirim dua kali, ringkasan per penerima.
+- [ ] e2e/integrasi dengan Mailpit: email sampai ke 担当 + Admin, bahasa sesuai `locale`, tanpa nomor kartu; dijalankan dua kali = tidak ada email ganda.
+- [ ] Produksi berjalan dalam mode kering (bukti log), plus daftar pilihan layanan SMTP untuk Ipal.
+
+---
+
+### T-014 · Langkah 8 siap pilot: 200 siswa dummy + cek kecepatan · `SIAP` (setelah T-022)
 
 Tujuan: membuktikan aplikasi tetap cepat dan benar dengan volume pilot, sebelum data nyata. **Hanya `db-dev`/`_test` dan (dengan izin Ipal) demo; produksi tidak disentuh.**
 
@@ -67,12 +112,9 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
-- **T-020 · 在留カード: nomor + foto kartu** (jawaban TSK no. 6: harus disimpan). **DITAHAN: BUTUH IPAL** untuk kunci enkripsi.
-  - Nomor dienkripsi di level aplikasi (kunci di `.env`, dicadangkan terpisah seperti kunci cadangan). Foto depan/belakang lewat pola dokumen (`sharp`, buang EXIF).
-  - Baca/lihat hanya 担当 + Admin, setiap akses diaudit. Tidak masuk daftar, ekspor, PDF, maupun log.
 - 在留カード: koreksi tanggal kartu yang sudah `received` oleh Admin (usulan engineer T-017), hanya bila TSK memintanya setelah dipakai.
+- Email pengingat 在留カード **ke pekerja** (butuh kolom email pekerja + persetujuan; setelah T-022).
 - **T-021 · 在留カード: isi awal/massal mengikuti form imigrasi** (perorangan + grup, jawaban no. 8). DITAHAN sampai Ipal mengirim form PDF imigrasinya.
-- **Email pengingat 在留カード** (jawaban no. 12: ke staf, Admin, pekerja; hanya pengingat daftar/perbarui). DITAHAN: BUTUH IPAL (layanan email berbiaya; email pekerja = data pribadi).
 - Tampilan LPK: status visa + tanggal tiba (jawaban no. 9: hanya yang dibuat TSK). Setelah T-019.
 - Langkah 7 sisanya: checklist keberangkatan/kedatangan, bagian 管理・報告 di lembar 定期面談, profil pekerja lengkap, status visa + tanggal tiba untuk LPK (baca-saja), notifikasi email/LINE.
 - Catatan lanjutan: syarat "pekerja sama" hanya diperiksa saat dibuat; bila nanti perlu ketat, trigger di `activity_record_subjects` (temuan T-007, belum perlu).
