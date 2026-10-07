@@ -34,6 +34,54 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-022 · Email pengingat 在留カード (ke 担当 + Admin) + hasil deploy T-020
+
+**PR:** #21 (branch `eng/T-022-card-reminder-email`)
+**Status:** siap direview. Deploy produksi belum (menunggu `PM: DISETUJUI`; migrasi 0028 + service `worker` baru, mode kering).
+
+**Hasil deploy T-020** (PR #20 di-merge `82dc058` setelah `PM: DISETUJUI` dan CI hijau di head `3812ece`; ada migrasi 0027)
+- Urutan sesuai TASKS: `scripts/ensure-card-key.sh` (membuat `CARD_DATA_KEY` di `.env` server; nilai TIDAK dicetak; mode 600) → `scripts/deploy.sh --backup`: cadangan terenkripsi `hashi-20261007-210612-*` dibuat dulu, migrasi 0027 terpasang (2 tabel baru), keluaran akhir: commit berjalan `82dc058`, health `{"status":"ok","commit":"82dc058"}`; log aplikasi tanpa galat kunci. Demo tidak disentuh (demo masih `eab9692`).
+- **BUTUH IPAL (langkah kunci, belum dikonfirmasi): salin nilai `CARD_DATA_KEY` dari `.env` OptiPlex ke tempat aman DI LUAR server** (pengelola kata sandi, seperti kunci cadangan); jangan ditempel ke chat/log/git. **Jangan memasukkan data nyata (nomor/foto kartu) sebelum Ipal mengonfirmasi salinannya.** Dicatat juga di komentar PR #20.
+
+**Yang dikerjakan** (migration `0028_card_reminder_log`; desain di `docs/zairyu-card.md` §10)
+- **Logika murni** `src/db/card-reminders.ts` (dites unit): `reminderStageOf` (tahap kirim: `prepare`, `can_apply`, `h30`, `h14`, `h7`, `expired`, `special_overdue`, `rejected`, + `additional_docs` untuk 追加資料; `waiting_result` biasa/`none`/`done`/tanpa kartu tidak), `planReminders` (penerima = `cardRecipients`: 担当 efektif + semua Admin, tanpa dobel; yang sudah terkirim dilewati; urut paling mendesak), `buildDigest` (id/ja sesuai `users.locale`, nama + tahap + sisa hari + tautan bila `APP_URL` terisi, HTML di-escape, TANPA nomor kartu/catatan), `nextRunAfter` (08:00 Asia/Tokyo).
+- **Sekali per (kartu, tahap, penerima)**: tabel `card_reminder_log` (unik; tanpa isi/alamat). Catatan desain: penerima ikut kunci unik (spesifikasi menyebut kartu + tahap) supaya kegagalan kirim ke satu penerima bisa dicoba ulang besok tanpa mengirim ganda ke yang sudah menerima. Dicatat SETELAH email ke penerima itu berhasil. Tabel hanya untuk jalur sistem: RLS dengan policy `app_bypass_rls()` saja, jadi peran aplikasi mana pun 0 baris dan tulis ditolak (`verify-rls` bagian Z). Satu temuan penting lewat e2e: membaca log lewat `withTenant` selalu kosong, jadi dibaca lewat `withSystem` (ada komentar di kode + dijaga tes "dua kali = tidak ada email ganda").
+- **Satu email ringkasan per penerima per hari**; pengiriman per organisasi TSK; data kartu dibaca lewat `withTenant` sebagai Admin organisasi itu (fungsi yang SAMA dengan daftar/KPI: `loadCardRows`).
+- **Worker**: `scripts/reminder-worker.ts` (hanya impor dari `src/db`) + service `worker` di `compose.yaml` (project `hashi`, image `tools`, `node --import tsx`, 256 MB, role `hashi_app`, tanpa cron/systemd sistem). Jalan terus, tiap hari 08:00 Asia/Tokyo; saat mulai dan sudah lewat 08:00 menyusul sekali (aman: log unik); `--once` untuk uji manual. Gagal kirim tidak dicatat (dicoba lagi) dan log hanya memuat nama galat, tanpa alamat atau SMTP_URL.
+- **SMTP**: `SMTP_URL`, `MAIL_FROM`, `APP_URL` (nodemailer baru di dependencies; `.env.example` diperbarui). **Tanpa `SMTP_URL` = mode kering**: tidak ada email, tidak ada baris log pengiriman; hanya `[reminder] … mode=dry-run akan dikirim: 1 email ringkasan (N pekerja, bahasa ja) ke 1 penerima …` (tanpa alamat).
+- **Mailpit** di `compose.dev.yaml` (SMTP 127.0.0.1:1025, API/UI 127.0.0.1:8025; hanya penampung uji, tidak mengirim ke luar) dan sebagai service di job CI.
+- **Audit** `residence_card.reminder_sent` per (kartu, tahap): tahap + jumlah penerima, pelaku = sistem (`actor_user_id` kosong, "Hashi (otomatis)"), tanpa alamat. Tampil di halaman Riwayat (ACTIONS id + ja).
+- `CLAUDE.md` dan `docs/zairyu-card.md` §10 diperbarui.
+
+**Produksi: mode kering (bukti)**
+- Belum di-deploy. Bukti dari image worker yang SAMA terhadap db-dev tanpa `SMTP_URL`: `[reminder] worker mulai: mode=KERING (SMTP_URL kosong: tidak ada email terkirim)` lalu `[reminder] 2026-10-07 selesai mode=dry-run org=1 penerima=0 email=0 item=0 gagal=0`. Setelah deploy, bukti log produksi (`docker compose -p hashi logs worker`) ditulis di STATUS entri berikutnya, dan SMTP_URL tidak diisi di `.env` produksi.
+
+**Pilihan layanan SMTP untuk Ipal (BUTUH IPAL: akun layanan pihak luar, kemungkinan berbiaya; kuota/harga ESTIMASI, cek halaman resmi sebelum mendaftar)**
+Kebutuhan sangat kecil: beberapa email ringkasan per hari (≈ jumlah staf TSK), jadi paket gratis/termurah cukup.
+1. **Brevo (SMTP relay), paket gratis**: kuota harian sekitar ratusan email, tanpa kartu kredit di awal; cukup verifikasi alamat/domain pengirim. Paling mudah untuk mulai.
+2. **Amazon SES** (region Tokyo `ap-northeast-1`): sangat murah per ribu email, tetapi butuh akun AWS (kartu kredit), verifikasi domain + SPF/DKIM, dan permohonan keluar dari "sandbox". Cocok bila nanti butuh andal dan murah dalam jangka panjang.
+3. **Resend (SMTP)** atau SMTP Google Workspace/Gmail dengan app password: Resend punya paket gratis berkuota bulanan kecil dan mudah untuk domain sendiri; Gmail/Workspace bila TSK sudah memakainya (batas harian rendah, terikat satu akun orang, kurang ideal untuk jangka panjang).
+Apa pun pilihannya: perlu domain/alamat pengirim yang diverifikasi (SPF/DKIM) agar email tidak masuk spam. Lalu isi `SMTP_URL` (RAHASIA, hanya di `.env` server, jangan ditempel ke chat/git), `MAIL_FROM`, `APP_URL` dan restart service `worker`.
+
+**Verifikasi** (database dev `hashi_dev`)
+- `npm run typecheck` → lulus; `npm run test:i18n` → lulus (1668 kunci); `npm run test:unit` → 130/130 (baru `card-reminders` 6: tahap, rencana/dedupe/penerima, tahap baru = pengingat baru, isi id/ja tanpa nomor, escape HTML, jadwal 08:00 Tokyo termasuk pergantian tahun).
+- `npm run verify:audit-coverage` → tanpa pelanggaran. `npm run build` → 0 peringatan.
+- `db:migrate` + `db:seed -- --reset` → lulus; `npm run test:rls` → semua lulus (bagian Z baru, 2 pemeriksaan); `npm run verify:seed` → lulus.
+- `E2E_PORT=3120 npm run test:e2e` → 228 lulus (5 tes baru `card-reminder.spec.ts` dengan Mailpit: email sampai ke 担当 + Admin, bahasa id/ja sesuai locale, tanpa nomor kartu, Admin menerima SATU email ringkasan, staf lain tidak menerima pekerja yang bukan tanggung jawabnya; dua kali jalan = tidak ada email ganda; tahap `expired` baru = email baru sekali; audit tanpa alamat; mode kering tidak mengirim/mencatat dan log tanpa alamat).
+- Image worker dibangun (`docker compose build worker`) dan dijalankan sekali terhadap db-dev: mode kering (log di atas) dan mode kirim ke Mailpit (nodemailer di dalam image berfungsi).
+
+**Kendala / catatan**
+- Dalam pemakaian awal produksi tetap kering, jadi tidak ada email keluar. Setelah SMTP aktif, putaran pertama akan mengirim pengingat untuk tahap kartu yang SEDANG berlaku (belum pernah tercatat), bukan menunggu tahap berikutnya.
+- Pekerja belum menerima email (tugas terpisah, butuh kolom email + persetujuan).
+- Seed demo/pilot: log pengingat ikut terhapus saat `--reset` (cascade).
+
+**Pertanyaan**
+- BUTUH IPAL: (1) konfirmasi salinan `CARD_DATA_KEY` (lihat bagian hasil deploy T-020); (2) pilihan layanan SMTP + domain pengirim (daftar di atas).
+
+**Usulan berikutnya**
+- Tidak ada tambahan.
+
+
 ## 2026-10-07 · T-020 · 在留カード: nomor + foto kartu terenkripsi + hasil deploy T-023
 
 **PR:** #20 (branch `eng/T-020-card-number-photo`)

@@ -3261,6 +3261,44 @@ async function main() {
     JSON.stringify([String(cs.voidedSecretUpdate).slice(0, 50), String(cs.voidedPhotoInsert).slice(0, 50), cs.voidedSecretDelete, cs.voidedSecretGone, cs.cardsNoSecretCols]),
   );
 
+  // --- Z. Log pengiriman pengingat 在留カード (T-022): HANYA jalur sistem (worker) yang membaca/menulis; semua peran aplikasi 0 baris dan tidak bisa menulis; unik per (kartu, tahap, penerima) ---
+  const zr: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const [a] = (await tx.execute(sql`select p.candidate_id::text as cid, c.field_id::text as fid from placements p join candidates c on c.id = p.candidate_id where p.status = 'ACTIVE' and p.org_id = ${tsk.id}::uuid order by p.id limit 1`)).rows as Array<{ cid: string; fid: string }>;
+    const card = ((await tx.execute(sql.raw(`insert into residence_cards (organization_id, created_by, candidate_id, skill_field_id, expiry_date) values ('${tsk.id}', '${tskAdminUser.id}', '${a.cid}', '${a.fid}', current_date + 5) returning id::text as id`))).rows[0] as { id: string }).id;
+    const ins = (stage: string, user: string) => sql.raw(`insert into card_reminder_log (organization_id, card_id, stage, user_id, sent_on) values ('${tsk.id}', '${card}', '${stage}', '${user}', current_date)`);
+    await actAsSystem(tx);
+    zr.systemInsert = await attempt(tx, (t) => t.execute(ins("h7", staffUser.id)));
+    zr.systemRead = await num(tx, `select count(*)::int as n from card_reminder_log where card_id = '${card}'`);
+    zr.duplicate = await attempt(tx, (t) => t.execute(ins("h7", staffUser.id)));
+    zr.otherStageOk = await attempt(tx, (t) => t.execute(ins("expired", staffUser.id)));
+    zr.otherUserOk = await attempt(tx, (t) => t.execute(ins("h7", tskAdminUser.id)));
+    zr.badStage = await attempt(tx, (t) => t.execute(ins("waiting_result", staffUser.id)));
+    for (const [who, org, role, uid] of [["tskAdmin", tsk.id, "TSK_ADMIN", tskAdminUser.id], ["tskStaff", tsk.id, "TSK_STAFF", staffUser.id], ["tskB", tskB, "TSK_ADMIN", adminB], ["lpkAdmin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id], ["sensei", lpk1.id, "LPK_SENSEI", senseiUser.id], ["superAdmin", platformOrg.id, "SUPER_ADMIN", null], ["roleNull", tsk.id, null, null]] as const) {
+      await actAs(tx, org, role, uid);
+      zr[`read/${who}`] = await num(tx, `select count(*)::int as n from card_reminder_log`);
+      zr[`insert/${who}`] = await attempt(tx, (t) => t.execute(ins("h14", staffUser.id)));
+      zr[`delete/${who}`] = await attempt(tx, (t) => t.execute(sql.raw("delete from card_reminder_log")));
+      zr[`update/${who}`] = await attempt(tx, (t) => t.execute(sql.raw("update card_reminder_log set sent_on = current_date - 1")));
+    }
+    await actAsSystem(tx);
+    zr.intact = await num(tx, `select count(*)::int as n from card_reminder_log where card_id = '${card}'`);
+  });
+  const Z3 = (v: unknown) => typeof v === "string" && v.length > 0;
+  check(
+    "Log pengingat kartu: jalur sistem menulis dan membaca; unik per (kartu, tahap, penerima) (tahap atau penerima lain boleh); tahap di luar daftar ditolak",
+    zr.systemInsert === null && zr.systemRead === 1 && /once_key/.test(String(zr.duplicate)) && zr.otherStageOk === null && zr.otherUserOk === null && /stage_check/.test(String(zr.badStage)),
+    JSON.stringify([zr.systemInsert, zr.systemRead, String(zr.duplicate).slice(0, 50), zr.otherStageOk, zr.otherUserOk, String(zr.badStage).slice(0, 50)]),
+  );
+  check(
+    "Log pengingat kartu: semua peran aplikasi (Admin/staf TSK, TSK lain, LPK, sensei, super admin, peran null) membaca 0 baris dan INSERT/UPDATE/DELETE ditolak; data utuh",
+    ["tskAdmin", "tskStaff", "tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => zr[`read/${w}`] === 0 && Z3(zr[`insert/${w}`]) && Z3(zr[`delete/${w}`]) && Z3(zr[`update/${w}`])) && zr.intact === 3,
+    JSON.stringify([...Object.entries(zr).filter(([k]) => k.startsWith("read/")), zr.intact]),
+  );
+
   await pool.end();
   await ownerPool.end();
   console.log(failures === 0 ? "\nSemua pemeriksaan RLS lulus." : `\n${failures} pemeriksaan GAGAL.`);

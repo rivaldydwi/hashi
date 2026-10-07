@@ -29,5 +29,15 @@ services:
       retries: 20
     mem_limit: 512m
 
+  # Penerima email UJI untuk pengingat 在留カード (T-022): menampung email dari worker/tes, TIDAK mengirim ke luar. SMTP 127.0.0.1:1025, antarmuka + API 127.0.0.1:8025.
+  #   docker compose -f compose.yaml -f compose.dev.yaml up -d mailpit
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    mem_limit: 128m
+
 volumes:
   db-dev-data:

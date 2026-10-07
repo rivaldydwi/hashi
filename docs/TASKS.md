@@ -12,27 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-022 · Email pengingat 在留カード (ke staf + Admin) · `SIAP`
-
-Jawaban TSK no. 12: email hanya untuk **pengingat mendaftarkan/memperbarui kartu**; progres setelah diajukan cukup di Hashi (imigrasi sudah mengirim email sendiri).
-
-Kerjakan:
-- Penerima = `cardRecipients` (担当 efektif + semua TSK_ADMIN), email dari tabel `users`. **Pekerja belum** (butuh kolom email pekerja + persetujuan; tugas terpisah).
-- Pemicu = tahap masuk `prepare`, `can_apply`, `h30`, `h14`, `h7`, `expired`, `special_overdue`, `rejected`, serta 追加資料. **Sekali per (kartu, tahap)**: tabel log pengiriman (unik kartu + tahap), tanpa isi email.
-  Satu email ringkasan per penerima per hari (bukan satu email per kartu). Isi email bahasa Jepang + Indonesia sesuai `users.locale`, berisi nama pekerja + tahap + tautan ke Hashi. Tidak memuat nomor kartu, catatan, atau data lain.
-- Penjadwal: service baru **di dalam project compose `hashi`** (misalnya `worker`) yang berjalan tiap hari jam 08:00 Asia/Tokyo memakai `withSystem` (bukan cron sistem, bukan systemd: menyentuh cron sistem = `BUTUH IPAL`).
-- Pengiriman lewat SMTP dari env (`SMTP_URL`, `MAIL_FROM`). **Tanpa `SMTP_URL` = mode kering**: email tidak terkirim, hanya dicatat "akan dikirim" di log aplikasi (tanpa alamat lengkap). Pengembangan/e2e memakai **Mailpit** di `compose.dev.yaml`.
-- **Produksi tetap mode kering** sampai Ipal menyiapkan akun SMTP (`BUTUH IPAL`: akun layanan pihak luar/berbiaya). Usulkan 2–3 pilihan layanan gratis/murah di STATUS.
-- Audit: `residence_card.reminder_sent` (tahap, jumlah penerima; tanpa alamat).
-
-**Kriteria selesai**
-- [ ] Tes unit: pemilihan kartu/tahap yang dikirim hari ini, tidak terkirim dua kali, ringkasan per penerima.
-- [ ] e2e/integrasi dengan Mailpit: email sampai ke 担当 + Admin, bahasa sesuai `locale`, tanpa nomor kartu; dijalankan dua kali = tidak ada email ganda.
-- [ ] Produksi berjalan dalam mode kering (bukti log), plus daftar pilihan layanan SMTP untuk Ipal.
-
----
-
-### T-021 · 在留カード: data permohonan perpanjangan siap salin (online) + 手数料納付書 · `SIAP` (setelah T-022)
+### T-021 · 在留カード: data permohonan perpanjangan siap salin (online) + 手数料納付書 · `SIAP`
 
 Keputusan Ipal (7 Okt): perpanjangan 在留カード diajukan **online** (在留申請オンラインシステム), **hanya perorangan** (form grup = COE, ditunda). Form acuan: 在留期間更新許可申請書,
 **halaman 申請人等作成用1** (umum untuk semua status). Halaman lanjutan versi 特定技能 ("V") dan 所属機関等作成用 BELUM termasuk tugas ini. Karena online, keluarannya **bukan PDF formulir**,
@@ -112,6 +92,7 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 
 ## Selesai
 
+- **T-022** Email pengingat 在留カード (PR #21): `src/db/card-reminders.ts` (tahap pemicu + 追加資料, sekali per kartu×tahap×penerima lewat `card_reminder_log` hanya jalur sistem, satu ringkasan per penerima per hari, id/ja sesuai locale, tanpa nomor kartu), service `worker` di compose `hashi` (08:00 Tokyo), mode kering tanpa `SMTP_URL`, Mailpit di dev/CI, audit `residence_card.reminder_sent`. Produksi KERING sampai Ipal memilih SMTP.
 - **T-020** 在留カード nomor + foto terenkripsi (PR #20): AES-256-GCM dengan AAD per kartu/foto + `key_id` (rotasi lewat `CARD_DATA_KEYS_OLD`), tabel terpisah `residence_card_secrets`/`residence_card_photos` (migrasi 0027, RLS baca+tulis hanya TSK_ADMIN + 担当), nomor tersamar + "Tampilkan" yang diaudit sebelum nilai kembali, foto terenkripsi di disk lewat route ber-audit, kartu batal = nomor/foto dibuang; aplikasi menolak start tanpa kunci; `ensure-card-key.sh`; `docs/backup.md` §7.
 - **T-023** Terjemahan peramban dikoreksi (PR #19): sifat kolom `data: identity|prose` di `candidate-sections.ts` (+ `fieldNature`, tes unit), teks bebas boleh diterjemahkan, identitas/nama staf/merek dikunci; `medicalNote` dikunci (data kesehatan), `visionNote` boleh (keputusan Ipal: syarat buta warna). Uji manual Chrome oleh Ipal setelah deploy.
 - **T-013** Peringatan pg "already executing" (PR #18): 116 kejadian dilacak ke `Promise.all` di atas `tx`, 16 tempat diganti `inSeries` (`src/db/serial.ts`); penjaga: server e2e mati kode 97 (`guard-pg-concurrency.cjs`) + pemindai sumber `no-tx-promise-all.test.ts`; log e2e 0 kejadian.

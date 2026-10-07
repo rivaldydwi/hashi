@@ -237,3 +237,15 @@ Ditambahkan ke `docs/glossary.md`: 在留資格, 在留期間, 在留期限, 在
 | 10 | Kartu diambil **staf** lalu diserahkan; opsi **pekerja mengambil sendiri** | `received_by`, `handed_over_on` |
 | 11 | Tanggal Jepang | Zona organisasi TSK (Tokyo) |
 | 12 | Email hanya untuk pengingat daftar/perbarui kartu; progres cukup di Hashi | Tugas email terpisah, menunggu keputusan Ipal; T-017 s.d. T-019 hanya dalam aplikasi |
+
+
+## 10. Email pengingat (T-022)
+
+Jawaban TSK no. 12: email HANYA untuk pengingat mendaftarkan/memperbarui kartu; progres setelah diajukan cukup di Hashi (imigrasi mengirim email sendiri).
+
+- **Pemicu**: tahap kartu (`cardStage`) masuk `prepare`, `can_apply`, `h30`, `h14`, `h7`, `expired`, `special_overdue`, `rejected`, atau tanda 追加資料 (`additional_docs`; tahap `waiting_result` biasa tidak dikirim). Hanya tahap SAAT INI yang dipertimbangkan (tahap yang terlewat tidak dikejar).
+- **Sekali per (kartu, tahap, penerima)**: tabel `card_reminder_log` (migration 0028, unik; tanpa isi email/alamat; hanya jalur sistem yang membaca/menulis, RLS tanpa policy untuk peran aplikasi). Penerima sendiri bagian dari kuncinya supaya kegagalan kirim ke satu penerima bisa dicoba ulang tanpa mengirim ganda ke yang lain. Dicatat SETELAH email ke penerima itu berhasil terkirim.
+- **Satu email ringkasan per penerima per hari** (bukan satu per kartu). Penerima = `cardRecipients` (担当 efektif + semua Admin TSK aktif). Bahasa mengikuti `users.locale` (id atau ja). Isi: nama pekerja, tahap, sisa hari, tautan ke halaman pekerja (bila `APP_URL` terisi). TIDAK memuat nomor kartu, catatan, atau data lain; pekerja belum menerima email (butuh email pekerja + persetujuan: tugas terpisah).
+- **Penjadwal**: service `worker` di project compose `hashi` (`scripts/reminder-worker.ts`, image `tools`), jalan terus; tiap hari 08:00 Asia/Tokyo (tanpa cron/systemd sistem). Saat mulai (mis. setelah deploy) dan sudah lewat 08:00 menyusul sekali (aman karena log unik). Data dibaca lewat `withTenant` sebagai Admin TSK organisasi itu (aturan dan fungsi yang SAMA dengan daftar/KPI: `loadCardRows`).
+- **SMTP** dari env: `SMTP_URL`, `MAIL_FROM`, `APP_URL`. **Tanpa `SMTP_URL` = mode kering**: tidak ada email dan tidak ada log pengiriman; hanya baris log "akan dikirim" tanpa alamat. Produksi tetap kering sampai akun SMTP siap. Uji: Mailpit (`compose.dev.yaml`, juga service CI).
+- **Audit** `residence_card.reminder_sent` (per kartu+tahap: tahap + jumlah penerima, tanpa alamat; pelaku = sistem).
