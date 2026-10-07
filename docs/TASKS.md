@@ -12,22 +12,39 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-012 · Variasi kartu KPI di dashboard · `SIAP`
+### T-012 · Kartu KPI dashboard: lebih ringkas dan bervariasi · `SIAP`
 
-Masukan Ipal (2026-10-06): kartu KPI dashboard (`Kpi` di `src/features/dashboard/Widgets.tsx`) terlihat sama semua (putih, angka besar hitam), jadi sulit dipindai.
+Masukan Ipal (2026-10-06 dan 2026-10-07):
+- Semua kartu KPI (`Kpi` di `src/features/dashboard/Widgets.tsx`) terlihat sama (putih, angka besar hitam), jadi sulit dipindai.
+- Kartunya **terlalu besar**. Tujuh kartu memakan hampir satu layar (sekitar 190 px tinggi per kartu, 4 per baris), padahal isinya hanya label, angka, dan satu kalimat.
+- "Pokoknya UI-nya se-user-friendly mungkin."
 
 Kerjakan:
-- Tambah **nada (tone)** per KPI di katalog (`src/db/dashboard-catalog.ts`), mis. `neutral` / `info` / `attention`, dan **ikon** per KPI (gaya ikon yang sudah dipakai di app, mis. di `StatusBadge`).
-- Nada **mengikuti makna dan nilai**: KPI "perlu tindakan" (未実施の定期面談, 未完了のフォローアップ, 未読の記録, 判断待ち, beban staf merah, dsb.) memakai warna perhatian HANYA bila nilainya > 0;
-  bila 0, tampil tenang (mis. teks "beres" / ikon centang). KPI informasi (配属中, 募集中の求人, kandidat baru dibagikan) memakai aksen netral/info.
-- Warna dari token di `globals.css` (`@theme`), tambah token baru bila perlu; kontras teks minimal WCAG AA; warna tidak boleh satu-satunya pembeda (ada ikon/teks).
-- Tetap satu komponen `Kpi`; tata letak, ukuran, dan mode atur (`/?atur=1`) tidak berubah. Berlaku untuk semua peran (LPK dan TSK).
+- **Lebih ringkas.**
+  - Tinggi kartu kira-kira setengahnya (sekitar 88–100 px): ikon + label di satu baris, angka (`text-2xl`/`3xl`, bukan `4xl`) dan keterangan singkat di bawah, padding lebih kecil.
+  - Lebih banyak kartu per baris: 2 di ponsel, 3–4 di tablet, 5–6 di desktop lebar. Hitung kolom `grid` dari lebar, bukan jumlah tetap.
+  - Semua kartu dalam satu baris sama tingginya. Label panjang dipotong rapi atau dibungkus maksimal 2 baris, tidak mendorong kartu lebih tinggi.
+  - Target: di desktop 1280 px, semua KPI TSK_ADMIN (7 kartu) muat dalam **paling banyak 2 baris** dan widget berikutnya terlihat tanpa menggulir.
+  - Seluruh kartu tetap tautan dengan target sentuh ≥ 44 px dan fokus keyboard yang terlihat.
+- **Variasi.**
+  - Tambah **nada (tone)** per KPI di katalog (`src/db/dashboard-catalog.ts`), mis. `neutral` / `info` / `attention`, dan **ikon** per KPI (gaya ikon yang sudah dipakai di app, mis. di `StatusBadge`).
+  - Nada **mengikuti makna dan nilai**: KPI "perlu tindakan" (未実施の定期面談, 未完了のフォローアップ, 未読の記録, 判断待ち, beban staf merah, dsb.) memakai warna perhatian HANYA bila nilainya > 0.
+    Bila 0, tampil tenang (mis. ikon centang + "beres"). KPI informasi (配属中, 募集中の求人, kandidat baru dibagikan) memakai aksen netral/info.
+  - Warna dari token di `globals.css` (`@theme`), tambah token baru bila perlu. Kontras teks minimal WCAG AA. Warna tidak boleh satu-satunya pembeda (selalu ada ikon/teks).
+- **Teks keterangan.**
+  - Periksa ulang keterangan setiap KPI (id dan ja) supaya singkat dan bisa dipahami orang awam, tanpa istilah internal.
+  - Contoh keterangan lama yang membingungkan: "Sel Belum, bulan berjalan dan sebelumnya". Sesudah T-008 artinya adalah wawancara yang belum dilakukan di kuartal berjalan.
+- **Tetap.**
+  - Satu komponen `Kpi`; katalog widget dan mode atur (`/?atur=1`) tetap berfungsi.
+  - Pilihan ukuran widget non-KPI tidak berubah.
+  - Berlaku untuk semua peran (LPK dan TSK).
 
 **Kriteria selesai**
-- [ ] Setiap KPI di katalog punya nada + ikon (diperiksa tes unit: tidak ada KPI tanpa nada/ikon).
-- [ ] KPI tindakan bernilai 0 tampil tenang, bernilai > 0 tampil perhatian (tes e2e atau unit pada fungsi pemilih nada).
-- [ ] Tangkapan layar dashboard LPK_ADMIN dan TSK_ADMIN (ja dan id, desktop + ponsel) di PR.
-- [ ] `typecheck`, `build`, `test:e2e` hijau.
+- [ ] Setiap KPI di katalog punya nada + ikon (tes unit: tidak ada KPI tanpa nada/ikon).
+- [ ] KPI tindakan bernilai 0 tampil tenang, bernilai > 0 tampil perhatian (tes unit pada fungsi pemilih nada + satu cek e2e).
+- [ ] Tes e2e tata letak: di 1280 px tinggi kartu KPI ≤ 110 px dan seluruh KPI TSK_ADMIN ada dalam ≤ 2 baris; di 390 px 2 kartu per baris tanpa gulir horizontal.
+- [ ] Tangkapan layar **sebelum/sesudah** dashboard LPK_ADMIN dan TSK_ADMIN (ja dan id, desktop 1280 + ponsel 390) di PR.
+- [ ] `typecheck`, `build`, `test:e2e`, CI hijau.
 
 ---
 
