@@ -31,20 +31,26 @@ Kerjakan:
 
 ---
 
-### T-016 · Cegah terjemahan otomatis browser merusak teks · `SIAP` (setelah T-012)
+### T-016 · Terjemahan browser: label boleh, data jangan · `SIAP` (setelah T-012)
 
-Temuan Ipal (2026-10-07): di bahasa Indonesia, menu "Kandidat" tampil sebagai **"Kandosat"**, "Konstruksi" jadi "Kon struksi", tombol bahasa "Jepang" jadi "Japanese", tanggal jadi
-"7 October", dan nama katakana diubah ke huruf Latin yang salah ("Djokovic Pratama"). Teks ini **tidak ada** di `messages/`, jadi penyebabnya fitur terjemahan otomatis browser (Chrome/Google
-Translate), yang terpicu karena halaman memuat banyak huruf Jepang (katakana nama). Akibatnya pengguna bisa salah baca **data**, misalnya nama dan bidang kerja, bukan hanya label.
+Temuan Ipal (2026-10-07): dengan terjemahan otomatis Chrome, "Kandidat" jadi **"Kandosat"**, "Konstruksi" jadi "Kon struksi", dan nama katakana diubah ke huruf Latin yang salah
+("Djokovic Pratama" untuk Joko). Teks itu tidak ada di `messages/`; refresh mengembalikan teks asli.
+
+**Keputusan Ipal + PM: terjemahan browser TIDAK diblokir total.** Staf TSK bisa orang Myanmar/Vietnam dsb. yang perlu menerjemahkan label yang tidak dimengerti.
+Yang dilindungi hanya **data**, karena terjemahan data menyesatkan (orang/perusahaan yang salah).
 
 Kerjakan:
-- `src/app/layout.tsx`: `<html translate="no">` + `<meta name="google" content="notranslate">` (semua halaman, termasuk login). `lang` tetap mengikuti bahasa UI.
-- Teks Jepang di dalam halaman bahasa Indonesia (nama katakana, istilah Jepang) sudah ditandai `lang="ja"` di tempat yang relevan. Cek daftar kandidat, detail, dan catatan kegiatan, supaya pembaca
-  layar dan font benar.
+- JANGAN pasang `translate="no"` di `<html>` atau meta `notranslate` untuk seluruh halaman.
+- Satu komponen/utilitas bersama (mis. `<Data>` / kelas `notranslate` + atribut `translate="no"`) dipakai untuk: nama orang dan katakana, nama perusahaan/lokasi/PIC, alamat, telepon,
+  email, kode (kandidat, kasus), isi catatan dan teks bebas yang ditulis pengguna. Terapkan minimal di: daftar + detail kandidat, grid 定期面談 dan daftar tahunan, catatan kegiatan, klien/job order,
+  pengguna, riwayat aktivitas, header/akun di shell. Label, judul kolom, tombol, status, dan teks bantuan TETAP bisa diterjemahkan.
+- Teks Jepang di halaman berbahasa Indonesia (katakana, istilah Jepang) diberi `lang="ja"`; `<html lang>` tetap mengikuti bahasa UI. Ini membantu browser menebak bahasa sumber dengan benar.
+- Tanggal: tampil tetap dari formatter aplikasi (boleh diterjemahkan, tapi tidak wajib dilindungi).
 
 **Kriteria selesai**
-- [ ] Tes e2e: `html` punya `translate="no"` dan meta `notranslate` ada (halaman login + satu halaman dalam aplikasi).
-- [ ] Kalimat singkat di `docs/glossary.md` atau README: aplikasi sengaja menolak terjemahan otomatis; bahasa diganti lewat tombol bahasa.
+- [ ] Tes e2e: `html` TIDAK punya `translate="no"`; sel nama/katakana/perusahaan di daftar kandidat dan grid 定期面談 punya `translate="no"`; judul kolom tidak.
+- [ ] Uji manual dengan Chrome "Terjemahkan" (id→en atau ja→en) di daftar kandidat dan grid: label diterjemahkan, nama/perusahaan tetap asli. Lampirkan tangkapan layar di PR.
+- [ ] Aturan singkat di `CLAUDE.md` (data pengguna = `translate="no"`, label = boleh diterjemahkan) supaya halaman baru mengikuti.
 - [ ] typecheck, build, e2e, CI hijau.
 
 ---
