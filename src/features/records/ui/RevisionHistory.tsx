@@ -1,4 +1,5 @@
 import { getLocale, getTranslations } from "next-intl/server";
+import { dataTag } from "@/components/Data";
 import { readForm55, summarizeForm55 } from "@/db/form55";
 import { dateTimeIn } from "@/lib/org-time";
 import type { RevisionRow } from "../queries";
@@ -42,7 +43,7 @@ export async function RevisionHistory({ revisions, current, fields, names, tz, t
       {steps.map(({ r, diffs }) => (
         <li key={r.id} className="rounded-xl border border-line p-3" data-testid="revision-item">
           <p className="text-sm font-semibold">{t("history.step", { from: r.versionNo, to: r.versionNo + 1 })}</p>
-          <p className="text-xs text-ink-2">{t("history.by", { name: r.editorName ?? "—", time: dateTimeIn(r.editedAt, locale, tz) })}</p>
+          <p className="text-xs text-ink-2">{t.rich("history.by", { n: dataTag, name: r.editorName ?? "—", time: dateTimeIn(r.editedAt, locale, tz) })}</p>
           {diffs.length === 0 ? <p className="mt-1 text-xs text-ink-2">{t("history.noFieldChange")}</p> : (
             <dl className="mt-2 space-y-2">
               {diffs.map(({ f, b, a }) => (

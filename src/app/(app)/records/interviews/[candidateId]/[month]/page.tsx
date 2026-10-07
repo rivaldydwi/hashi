@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
+import { Data } from "@/components/Data";
 import { btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
 import { summarizeForm55, readForm55 } from "@/db/form55";
 import { CASE_CATEGORIES, INTERVIEW_REASONS, INTERVIEW_RESULTS, MAX_ATTACHMENTS_PER_RECORD, fiscalYearOf } from "@/db/records-core";
@@ -48,7 +49,7 @@ export default async function InterviewFormPage({ params }: { params: Promise<{ 
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
         <Link href="/records/interviews" className={btnSecondary}>← {t("interviews.backToGrid")}</Link>
-        <h2 className="text-[19px] font-semibold" data-testid="interview-title">{w.fullName} · {monthLabel}</h2>
+        <h2 className="text-[19px] font-semibold" data-testid="interview-title"><Data>{w.fullName}</Data> · {monthLabel}</h2>
         {r && <Badge testId="interview-state">{r.applicable ? (r.resultStatus ? t(`results.${r.resultStatus}`) : "") : t("interviews.state.na")}</Badge>}
         {r && r.versionNo > 1 && <Badge>{t("badge.version", { n: r.versionNo })}</Badge>}
       </div>
@@ -58,7 +59,7 @@ export default async function InterviewFormPage({ params }: { params: Promise<{ 
         <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
           <div><dt className="inline text-ink-2">{t("interviews.col.field")}: </dt><dd className="inline">{(locale === "ja" ? w.fieldNameJa : w.fieldNameId) ?? "—"}</dd></div>
           <div><dt className="inline text-ink-2">{t("interviews.col.start")}: </dt><dd className="inline">{w.startDate.replace(/-/g, "/")}</dd></div>
-          <div><dt className="inline text-ink-2">{t("interviews.col.company")}: </dt><dd className="inline">{w.companyName} / {w.siteName}</dd></div>
+          <div><dt className="inline text-ink-2">{t("interviews.col.company")}: </dt><dd className="inline" translate="no">{w.companyName} / {w.siteName}</dd></div>
           <div><dt className="inline text-ink-2">{t("interviews.col.pic")}: </dt><dd className="inline">{w.contacts[0]?.name ?? "—"}</dd></div>
         </dl>
       </section>

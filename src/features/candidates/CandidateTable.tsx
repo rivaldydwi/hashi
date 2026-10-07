@@ -32,13 +32,13 @@ export async function CandidateTable({ rows, isTsk, stats }: { rows: CandidateLi
           <tbody className="block divide-y divide-line md:table-row-group">
             {rows.map((c) => (
               <tr key={c.id} data-testid="candidate-row" className="block max-md:px-4 max-md:py-3 md:table-row">
-                <td className="block cjk-phrase md:table-cell md:min-w-40 md:px-5 md:py-3">
+                <td translate="no" className="block cjk-phrase md:table-cell md:min-w-40 md:px-5 md:py-3">
                   <Link href={`/candidates/${c.id}`} className="inline-flex min-h-11 items-center font-medium text-accent-text hover:underline md:min-h-0">
                     {c.fullName}
                   </Link>
-                  {c.nameKatakana && <div className="text-xs text-ink-2">{c.nameKatakana}</div>}
+                  {c.nameKatakana && <div lang="ja" className="text-xs text-ink-2">{c.nameKatakana}</div>}
                 </td>
-                {isTsk && <td data-label={t("colLpk")} className={`${cell} text-ink-menu md:min-w-44`}>{c.lpkName}</td>}
+                {isTsk && <td translate="no" data-label={t("colLpk")} className={`${cell} text-ink-menu md:min-w-44`}>{c.lpkName}</td>}
                 <td data-label={t("colField")} className={`${cell} text-ink-menu`}>{(locale === "ja" ? c.fieldNameJa : c.fieldNameId) ?? "—"}</td>
                 <td data-label={t("colStage")} className={cell}><StageBadge stage={c.stage} /></td>
                 <td data-label={t("colLatest")} className={`${cell} tabular-nums`} data-testid="latest-avg">

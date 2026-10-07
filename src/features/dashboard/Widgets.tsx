@@ -147,7 +147,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
             <li key={c.id}>
               <Link href={`/candidates/${c.id}`} className="flex min-h-11 items-center justify-between gap-3 py-2 hover:bg-hover">
                 <span>
-                  <span className="font-medium">{c.fullName}</span>
+                  <span translate="no" className="font-medium">{c.fullName}</span>
                   {c.nameKatakana && <span className="block text-xs text-ink-2">{c.nameKatakana}</span>}
                 </span>
                 <span className="text-sm text-ink-2">{t("latestAvg")}: <span className="font-medium tabular-nums text-ink">{fmtAvg(c.latestAvg)}</span></span>
@@ -230,7 +230,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
             <li key={j.id}>
               <Link href={`/job-orders/${j.id}`} className="block min-h-11 py-2 hover:bg-hover">
                 <span className="flex items-center justify-between gap-3">
-                  <span className="font-medium">{j.title}</span>
+                  <span translate="no" className="font-medium">{j.title}</span>
                   <span className="text-sm tabular-nums text-ink-2">{j.selected}/{j.positions}</span>
                 </span>
                 <span className="block text-xs text-ink-2">{j.company_name} · {locale === "ja" ? j.name_ja : j.name_id}</span>
@@ -246,7 +246,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
             <li key={c.id}>
               <Link href={`/candidates/${c.id}`} className="flex min-h-11 items-center justify-between gap-3 py-2 hover:bg-hover">
                 <span>
-                  <span className="font-medium">{c.fullName}</span>
+                  <span translate="no" className="font-medium">{c.fullName}</span>
                   <span className="block text-xs text-ink-2">{c.lpkName} · {(locale === "ja" ? c.fieldNameJa : c.fieldNameId) ?? "—"}{c.jlpt ? ` · ${c.jlpt}` : ""}</span>
                 </span>
                 <span className="text-sm tabular-nums text-ink-2">{fmtAvg(c.latestAvg)}</span>
@@ -278,7 +278,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
         <Card testid="w-open-cases" title={t("wOpenCases")} href="/records/cases?status=open" linkLabel={t("viewAll")}>
           {list(data.casesOpen!.map((c) => (
             <li key={c.id}>
-              <Link href={`/records/cases/${c.id}`} className="flex min-h-11 items-center gap-3 py-2 hover:bg-hover"><span className="font-mono text-xs text-ink-2">{c.code}</span><span lang="ja" className="text-sm font-medium">{c.title}</span></Link>
+              <Link href={`/records/cases/${c.id}`} className="flex min-h-11 items-center gap-3 py-2 hover:bg-hover"><span translate="no" className="font-mono text-xs text-ink-2">{c.code}</span><span lang="ja" translate="no" className="text-sm font-medium">{c.title}</span></Link>
             </li>
           )), t("emptyOpenCases"))}
         </Card>
@@ -313,7 +313,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
               <tbody className="divide-y divide-line">
                 {data.platform!.map((r) => (
                   <tr key={r.id}>
-                    <td className="cjk-phrase min-w-40 py-3 pr-4 font-medium">{r.name}</td>
+                    <td translate="no" className="cjk-phrase min-w-40 py-3 pr-4 font-medium">{r.name}</td>
                     <td className="py-3 pr-4 text-ink-menu">{tType(r.type)}</td>
                     <td className="py-3 pr-4 text-right tabular-nums">{r.users}</td>
                     <td className="py-3 text-right tabular-nums">{r.candidates}</td>

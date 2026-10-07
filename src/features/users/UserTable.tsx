@@ -35,14 +35,14 @@ export async function UserTable({
               <tr key={u.id} className={u.active ? "" : "bg-stone-50 text-stone-500"}>
                 <td className="cjk-phrase min-w-40 px-5 py-3">
                   <div className="font-medium">
-                    {u.name}
+                    <span translate="no">{u.name}</span>
                     {u.id === currentUserId && (
                       <span className="ml-2 rounded bg-stone-100 px-1.5 py-0.5 text-xs font-normal text-stone-600">
                         {t("users.you")}
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-stone-500">{u.email}</div>
+                  <div translate="no" className="text-xs text-stone-500">{u.email}</div>
                 </td>
                 <td className="px-5 py-3 whitespace-nowrap">{t(`roles.${u.role}`)}</td>
                 <td className="px-5 py-3 whitespace-nowrap"><LanguageChips languages={u.languages} /></td>

@@ -58,8 +58,8 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
                 return (
                   <tr key={w.id} data-testid="annual-row" data-worker={w.id} data-status={w.status} data-gaps={missing.join(",")}>
                     <th scope="row" className={`${td} cjk-phrase sticky left-0 min-w-48 bg-card font-medium`}>
-                      <Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>
-                      <div className="text-xs font-normal text-ink-2">{w.companyName}</div>
+                      <Link href={`/candidates/${w.id}`} translate="no" className="text-accent-text hover:underline">{w.fullName}</Link>
+                      <div translate="no" className="text-xs font-normal text-ink-2">{w.companyName}</div>
                       <Link href={`/records/workers/${w.id}`} className="inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text">{t("whistory.historyLink")}</Link>
                       <Link href={`/records/workers/${w.id}/annual?fy=${fy}`} className="ml-3 inline-flex min-h-11 items-center text-xs font-normal text-accent-text underline" data-testid="annual-worker-link">{t("annual.workerLink")}</Link>
                     </th>

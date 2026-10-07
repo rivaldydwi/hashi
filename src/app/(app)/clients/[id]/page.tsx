@@ -30,6 +30,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     <>
       <PageHeader
         title={company.name}
+        titleIsData
         intro={company.nameAlt ?? undefined}
         backHref="/clients"
         backLabel={t("title")}
@@ -57,9 +58,9 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
             <ul className="divide-y divide-stone-100">
               {sites.map((s) => (
                 <li key={s.id} className="py-2" data-testid="site-row">
-                  <Link href={`/clients/${company.id}/sites/${s.id}`} className="font-medium text-brand-700 hover:underline">{s.name}</Link>
+                  <Link href={`/clients/${company.id}/sites/${s.id}`} translate="no" className="font-medium text-brand-700 hover:underline">{s.name}</Link>
                   {!s.active && <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">{t("inactive")}</span>}
-                  {s.address && <p className="text-xs text-stone-500">{s.address}</p>}
+                  {s.address && <p translate="no" className="text-xs text-stone-500">{s.address}</p>}
                 </li>
               ))}
             </ul>

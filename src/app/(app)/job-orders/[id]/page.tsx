@@ -49,6 +49,7 @@ export default async function JobOrderPage({ params, searchParams }: { params: P
     <>
       <PageHeader
         title={jo.title}
+        titleIsData
         intro={`${data.companyName} / ${data.siteName} · ${skillFieldName({ nameId: data.fieldNameId, nameJa: data.fieldNameJa }, locale)}`}
         backHref="/job-orders"
         backLabel={t("title")}
@@ -97,7 +98,7 @@ export default async function JobOrderPage({ params, searchParams }: { params: P
                 <tbody className="divide-y divide-stone-100">
                   {matches.map((c) => (
                     <tr key={c.id} data-testid="match-row" data-candidate={c.fullName}>
-                      <td className="cjk-phrase min-w-40 px-5 py-3">
+                      <td translate="no" className="cjk-phrase min-w-40 px-5 py-3">
                         <Link href={`/candidates/${c.id}`} className="font-medium text-brand-700 hover:underline">{c.fullName}</Link>
                         <div className="text-xs text-stone-500">{c.lpkName}</div>
                       </td>

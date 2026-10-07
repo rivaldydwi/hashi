@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
+import { Data, dataTag } from "@/components/Data";
 import { EmptyState } from "@/components/EmptyState";
 import { btnPrimary, btnSecondary, cardClass } from "@/components/styles";
 import { requireStaff } from "@/features/records/access";
@@ -103,10 +104,10 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
                     {it.status === "void" && <Badge tone="danger">{t("badge.void")}</Badge>}
                     {it.continuesId && <Badge tone="accent" testId="badge-continued">{t("whistory.continued")}</Badge>}
                     {it.openTasks > 0 && <Badge tone="info">{t("badge.tasks", { n: it.openTasks })}</Badge>}
-                    {it.caseCode && <Badge>{it.caseCode}</Badge>}
+                    {it.caseCode && <Badge><Data>{it.caseCode}</Data></Badge>}
                   </div>
-                  {it.summary && <p lang="ja" className={`mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-ink-menu ${it.status === "void" ? "line-through" : ""}`}>{it.summary}</p>}
-                  {it.authorName && <p className="mt-1 text-xs text-ink-2">{t("list.by", { name: it.authorName })}</p>}
+                  {it.summary && <p lang="ja" translate="no" className={`mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-ink-menu ${it.status === "void" ? "line-through" : ""}`}>{it.summary}</p>}
+                  {it.authorName && <p className="mt-1 text-xs text-ink-2">{t.rich("list.by", { name: it.authorName, n: dataTag })}</p>}
                 </Link>
               </li>
             ))}

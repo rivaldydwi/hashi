@@ -55,7 +55,7 @@ export async function SectionCard({
         {section.fields.map((f) => (
           <div key={f.name} className={f.kind === "textarea" ? "sm:col-span-2" : ""}>
             <dt className="text-xs text-stone-500">{ts(`fields.${f.name}`)}</dt>
-            <dd className="whitespace-pre-line text-stone-900" data-testid={`value-${f.name}`}>{fmt(f, row?.[f.name])}</dd>
+            <dd className="whitespace-pre-line text-stone-900" data-testid={`value-${f.name}`} translate={["select", "boolean", "skillField"].includes(f.kind) ? undefined : "no"}>{fmt(f, row?.[f.name])}</dd>
           </div>
         ))}
       </dl>
@@ -97,7 +97,7 @@ export async function ListSectionCard({
         <ul className="mt-3 divide-y divide-stone-100">
           {rows.map((r) => (
             <li key={String(r.id)} className="py-2.5" data-testid={`row-${section.key}`}>
-              <p className="text-sm text-stone-900">
+              <p className="text-sm text-stone-900" translate="no">
                 {section.summary
                   .map((n) => fmt(byName.get(n)!, r[n]))
                   .filter((v) => v !== "—")

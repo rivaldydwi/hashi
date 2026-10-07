@@ -54,8 +54,8 @@ export default async function ClientsPage({ searchParams }: { searchParams: Sear
             <li key={c.id} className={`${cardClass} p-4 sm:p-5`} data-testid="company-card" data-active={c.active}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <Link href={`/clients/${c.id}`} className="text-lg font-semibold text-brand-700 hover:underline" data-testid="company-name">{c.name}</Link>
-                  {c.nameAlt && <span className="ml-2 text-sm text-stone-500">{c.nameAlt}</span>}
+                  <Link href={`/clients/${c.id}`} translate="no" className="text-lg font-semibold text-brand-700 hover:underline" data-testid="company-name">{c.name}</Link>
+                  {c.nameAlt && <span translate="no" className="ml-2 text-sm text-stone-500">{c.nameAlt}</span>}
                   {!c.active && <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">{t("inactive")}</span>}
                 </div>
                 <Link href={`/clients/${c.id}/sites/new`} className="text-sm font-medium text-brand-700 hover:underline">+ {t("addSite")}</Link>
@@ -67,9 +67,9 @@ export default async function ClientsPage({ searchParams }: { searchParams: Sear
                   {c.sites.map((s) => (
                     <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2" data-testid="site-row">
                       <div>
-                        <Link href={`/clients/${c.id}/sites/${s.id}`} className="font-medium hover:underline">{s.name}</Link>
+                        <Link href={`/clients/${c.id}/sites/${s.id}`} translate="no" className="font-medium hover:underline">{s.name}</Link>
                         {!s.active && <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">{t("inactive")}</span>}
-                        {s.address && <p className="text-xs text-stone-500">{s.address}</p>}
+                        {s.address && <p translate="no" className="text-xs text-stone-500">{s.address}</p>}
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {s.fieldIds.map((id) => (
