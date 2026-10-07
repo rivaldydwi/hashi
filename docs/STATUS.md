@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-016 · Terjemahan peramban: label boleh, data jangan + hasil deploy T-012
 
-**PR:** (branch `eng/T-016-translate-data`; nomor PR di komentar pembuka)
+**PR:** #14 (branch `eng/T-016-translate-data`)
 **Status:** siap direview, dengan SATU kriteria belum terpenuhi: uji manual Chrome "Terjemahkan" (lihat Pertanyaan)
 
 **Hasil deploy T-012 lewat `scripts/deploy.sh`** (PR #13 di-merge `9db2c21`, setelah `PM: DISETUJUI` bersyarat dan job e2e CI hijau di head `b2dc87a`; tanpa migrasi, jadi tanpa `--backup`)
