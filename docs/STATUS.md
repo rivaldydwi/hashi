@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-022 · Email pengingat 在留カード (ke 担当 + Admin) + hasil deploy T-020
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-022-card-reminder-email`)
+**PR:** #21 (branch `eng/T-022-card-reminder-email`)
 **Status:** siap direview. Deploy produksi belum (menunggu `PM: DISETUJUI`; migrasi 0028 + service `worker` baru, mode kering).
 
 **Hasil deploy T-020** (PR #20 di-merge `82dc058` setelah `PM: DISETUJUI` dan CI hijau di head `3812ece`; ada migrasi 0027)
