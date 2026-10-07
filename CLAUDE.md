@@ -256,6 +256,8 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   lintas pengguna, bahkan admin) + CHECK objek <= 4000 karakter. Preferensi tampilan: SENGAJA tidak diaudit. Widget tersembunyi tidak di-query (`loadDashboard(user, ids)`).
   Mode atur = `/?atur=1` (`LayoutEditor`, simpan otomatis lewat `saveDashboardLayout`/`resetDashboardLayout`; tombol biasa, bukan seret-lepas). Widget baru = 1 entri katalog +
   1 `case` di `Widgets.tsx` + loader di `data.ts` + label di `dashboard.*` (id dan ja).
+  **Kartu KPI** (T-012): komponen tunggal `Kpi` (`Widgets.tsx`), grid otomatis menurut lebar (`kpiGridClass`: 2 kolom di ponsel, 5-6 di desktop), ±90-106 px tinggi. Setiap KPI di katalog WAJIB punya `tone` (neutral / info / attention) dan `icon` (nama di `Icon.tsx`, dites unit);
+  tampilan akhir = `kpiLook(tone, nilai)` (`src/db/dashboard-kpi.ts`): KPI tindakan (attention) menyala HANYA bila nilainya > 0, bila 0 tenang (ikon centang + "beres"). Warna dari token `@theme` (`attn-*`, `info-*`, `ok-*`); warna bukan satu-satunya pembeda (ikon + teks + `sr-only`). Keterangan KPI singkat tanpa istilah internal.
 - **Kamus istilah & i18n id** (`docs/glossary.md`): teks Indonesia TIDAK boleh memuat huruf Jepang telanjang (`test:i18n` menolak; izin hanya `languages.ja` di `ALLOW_CJK_IN_ID`):
   tulis istilah Indonesia/Inggris + cara baca romaji. Status LPK/TSK memakai `StatusBadge` (ikon + teks + warna + `statusHelp.<kode>` sebagai penjelasan; `StageBadge`/`DecisionBadge` hanya
   pembungkus) dan `StatusLegend`; status baru WAJIB punya `statusHelp` (dicek `test:i18n`). Daftar kandidat: chip filter (`ActiveFilterChips`), `EmptyState`, tabel -> kartu di ponsel
