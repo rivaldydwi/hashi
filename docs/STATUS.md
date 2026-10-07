@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-023 · Terjemahan peramban: teks bebas boleh diterjemahkan, yang dikunci hanya identitas + hasil deploy T-013
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-023-translate-free-text`)
+**PR:** #19 (branch `eng/T-023-translate-free-text`)
 **Status:** siap direview
 
 **Hasil deploy T-013** (PR #18 di-merge `4e4702b`, setelah `PM: DISETUJUI` dan CI hijau di head `c2a99b8`; tanpa migrasi, jadi tanpa `--backup`)
