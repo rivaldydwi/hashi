@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-013 · Peringatan `pg` "client.query() ... already executing" dilacak dan diperbaiki + hasil deploy T-019
 
-**PR:** (branch `eng/T-013-pg-warning`; nomor PR di komentar pembuka)
+**PR:** #18 (branch `eng/T-013-pg-warning`)
 **Status:** siap direview
 
 **Hasil deploy T-019 lewat `scripts/deploy.sh`** (PR #17 di-merge `470d000`, setelah `PM: DISETUJUI` bersyarat dan job e2e CI hijau di head `8a2794a`; tanpa migrasi, jadi tanpa `--backup`)
