@@ -12,31 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-016 · Terjemahan browser: label boleh, data jangan · `SIAP`
-
-Temuan Ipal (2026-10-07): dengan terjemahan otomatis Chrome, "Kandidat" jadi **"Kandosat"**, "Konstruksi" jadi "Kon struksi", dan nama katakana diubah ke huruf Latin yang salah
-("Djokovic Pratama" untuk Joko). Teks itu tidak ada di `messages/`; refresh mengembalikan teks asli.
-
-**Keputusan Ipal + PM: terjemahan browser TIDAK diblokir total.** Staf TSK bisa orang Myanmar/Vietnam dsb. yang perlu menerjemahkan label yang tidak dimengerti.
-Yang dilindungi hanya **data**, karena terjemahan data menyesatkan (orang/perusahaan yang salah).
-
-Kerjakan:
-- JANGAN pasang `translate="no"` di `<html>` atau meta `notranslate` untuk seluruh halaman.
-- Satu komponen/utilitas bersama (mis. `<Data>` / kelas `notranslate` + atribut `translate="no"`) dipakai untuk: nama orang dan katakana, nama perusahaan/lokasi/PIC, alamat, telepon,
-  email, kode (kandidat, kasus), isi catatan dan teks bebas yang ditulis pengguna. Terapkan minimal di: daftar + detail kandidat, grid 定期面談 dan daftar tahunan, catatan kegiatan, klien/job order,
-  pengguna, riwayat aktivitas, header/akun di shell. Label, judul kolom, tombol, status, dan teks bantuan TETAP bisa diterjemahkan.
-- Teks Jepang di halaman berbahasa Indonesia (katakana, istilah Jepang) diberi `lang="ja"`; `<html lang>` tetap mengikuti bahasa UI. Ini membantu browser menebak bahasa sumber dengan benar.
-- Tanggal: tampil tetap dari formatter aplikasi (boleh diterjemahkan, tapi tidak wajib dilindungi).
-
-**Kriteria selesai**
-- [ ] Tes e2e: `html` TIDAK punya `translate="no"`; sel nama/katakana/perusahaan di daftar kandidat dan grid 定期面談 punya `translate="no"`; judul kolom tidak.
-- [ ] Uji manual dengan Chrome "Terjemahkan" (id→en atau ja→en) di daftar kandidat dan grid: label diterjemahkan, nama/perusahaan tetap asli. Lampirkan tangkapan layar di PR.
-- [ ] Aturan singkat di `CLAUDE.md` (data pengguna = `translate="no"`, label = boleh diterjemahkan) supaya halaman baru mengikuti.
-- [ ] typecheck, build, e2e, CI hijau.
-
----
-
-### T-017 · 在留カード (A): skema, aturan, `cardStage`, dokumen desain mengikuti jawaban TSK · `SIAP` (setelah T-016)
+### T-017 · 在留カード (A): skema, aturan, `cardStage`, dokumen desain mengikuti jawaban TSK · `SIAP`
 
 Dasar: desain `docs/zairyu-card.md` (T-004) + **jawaban staf TSK (Ghulam, 2026-10-07)**. Jawaban yang mengubah desain:
 
@@ -166,6 +142,7 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 
 ## Selesai
 
+- **T-016** Terjemahan peramban: label boleh, data jangan (PR #14): `<Data>`/`translate="no"` pada nama, katakana (`lang="ja"`), perusahaan, alamat, telepon, email, kode, isi catatan; `<html>` tidak diblokir; e2e `translate-data.spec.ts`. Uji manual Chrome "Terjemahkan" dilakukan Ipal setelah deploy (fitur itu tidak ada di Chromium server).
 - **T-012** Kartu KPI ringkas dan bervariasi (PR #13): tinggi sekitar 96 px, grid otomatis menurut lebar, nada + ikon per KPI di katalog, `kpiLook` (KPI tindakan tenang/"Beres" bila 0), token warna AA, keterangan id/ja disederhanakan; tes unit + e2e tata letak.
 - **T-011** Tabel lebar rapi dalam bahasa Jepang (PR #12): header `:lang(ja)` tidak patah, utilitas `cjk-phrase` (word-break auto-phrase / keep-all) + `min-w-*` lewat `gridTh/gridTd/gridTdText/gridTdShort`, diterapkan ke grid 定期面談, daftar tahunan, kandidat, job order, pengguna, organisasi; e2e `table-ja.spec.ts` menjaga tinggi header/baris.
 - **T-004** Desain pelacak 在留カード (PR #11): `docs/zairyu-card.md` (tabel `residence_cards` berbaris per kartu, 担当 diturunkan dari T-010, nomor/foto kartu TIDAK disimpan, RLS hanya TSK, `cardStage` fungsi murni + 12 kasus tepi, tampilan, rencana T-A..T-D, 12 pertanyaan TSK). Tanpa kode.
