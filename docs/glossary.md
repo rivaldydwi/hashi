@@ -27,6 +27,9 @@ Teks Jepang (`messages/ja.json`) memakai istilah Jepang aslinya. Istilah baru: t
 | 在留期限 | Zairyū Kigen | Tanggal habis izin tinggal | Tanggal kalender terakhir kartu berlaku (hari itu masih berlaku) |
 | 在留期間更新許可申請 | Zairyū Kikan Kōshin Kyoka Shinsei | Permohonan perpanjangan izin tinggal | Pengajuan perpanjangan ke imigrasi (nyūkan) |
 | 特例期間 | Tokurei Kikan | Masa tinggal tambahan selama proses | Masa setelah tanggal habis sambil menunggu hasil permohonan (perlu dikonfirmasi TSK) |
+| 結果待ち | Kekka Machi | Menunggu hasil | Tahap kartu setelah permohonan perpanjangan diajukan (T-017) |
+| 追加資料 | Tsuika Shiryō | Dokumen tambahan | Imigrasi meminta dokumen tambahan atas permohonan (status proses kartu) |
+| 不許可 | Fukyoka | Permohonan ditolak | Hasil permohonan perpanjangan: tidak diizinkan (status proses kartu) |
 | 担当 | Tantō | Penanggung jawab pekerja | Staf TSK yang ditetapkan untuk seorang pekerja (T-010); penerima pengingat kartu |
 | 取引先プロフィール | Torihikisaki Purofīru | Profil klien | Lembar PDF profil perusahaan klien (langkah 6) |
 | 求人票 | Kyūjinhyō | Lembar job order | Lembar PDF satu lowongan lengkap dengan kondisi kerja (langkah 6) |

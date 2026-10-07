@@ -11,6 +11,7 @@
 //
 // Pemeriksaan yang menulis data dijalankan di dalam transaksi yang selalu di-rollback.
 
+import { effectiveResponsible } from "../src/db/responsibility";
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
@@ -1311,7 +1312,7 @@ async function main() {
     J(sh.leftoverPolicies) === "[]" && J(sh.leftoverFns) === J(["enforce_tsk_cannot_change_lpk_fields"]),
     `${J(sh.leftoverPolicies)} ${J(sh.leftoverFns)}`,
   );
-  const covered = ["activity_case_subjects", "activity_record_subjects", "audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories", "periodic_interview_quarter_notes", "periodic_interviews", "placements"];
+  const covered = ["activity_case_subjects", "activity_record_subjects", "audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories", "periodic_interview_quarter_notes", "periodic_interviews", "placements", "residence_cards"];
   check(
     "Tuntas: setiap tabel ber-candidate_id sudah tercakup tes berbagi (tabel baru ber-candidate_id harus ditambahkan ke bagian I)",
     J(sh.candidateTables) === J(covered),
@@ -2643,7 +2644,7 @@ async function main() {
   // Di luar sandbox, lewat OWNER: riwayat di seed tidak bisa diubah/dihapus siapa pun, dan kunci asing ke kandidat RESTRICT
   sr.ownerRevUpdate = await ownerAttempt(sql`update activity_revisions set version_no = version_no where id = (select min(id) from activity_revisions)`);
   sr.ownerRevDelete = await ownerAttempt(sql`delete from activity_revisions where id = (select min(id) from activity_revisions)`);
-  sr.fkRestrict = ((await ownerDb.execute(sql`select c.conrelid::regclass::text as t, c.confdeltype as d from pg_constraint c where c.contype = 'f' and c.confrelid = 'candidates'::regclass and c.conrelid::regclass::text in ('activity_case_subjects', 'activity_record_subjects', 'periodic_interviews', 'periodic_interview_quarter_notes') order by 1`)).rows as Array<{ t: string; d: string }>).map((r) => `${r.t}:${r.d}`);
+  sr.fkRestrict = ((await ownerDb.execute(sql`select c.conrelid::regclass::text as t, c.confdeltype as d from pg_constraint c where c.contype = 'f' and c.confrelid = 'candidates'::regclass and c.conrelid::regclass::text in ('activity_case_subjects', 'activity_record_subjects', 'periodic_interviews', 'periodic_interview_quarter_notes', 'residence_cards') order by 1`)).rows as Array<{ t: string; d: string }>).map((r) => `${r.t}:${r.d}`);
   sr.seedRows = {
     records: Number(((await ownerDb.execute(sql`select count(*)::int as n from activity_records`)).rows[0] as { n: number }).n),
     revisions: Number(((await ownerDb.execute(sql`select count(*)::int as n from activity_revisions`)).rows[0] as { n: number }).n),
@@ -2724,8 +2725,8 @@ async function main() {
     JSON.stringify([sr.eventOtherStaffEdit, sr.eventAddByOther, sr.eventAdminEdit, sr.eventRevisions, String(sr.eventVoidNoReason).slice(0, 30), sr.eventEditAfterVoid, sr.caseClosed, sr.caseReopened, sr.caseRevisions]),
   );
   check(
-    "Hapus kandidat: kunci asing ke kandidat RESTRICT di 4 tabel fitur; LPK_ADMIN pemilik ditolak menghapus kandidat yang punya catatan kegiatan (ringkasan blocked=true), juga pekerja yang punya catatan",
-    J(sr.fkRestrict) === J(["activity_case_subjects:r", "activity_record_subjects:r", "periodic_interview_quarter_notes:r", "periodic_interviews:r"]) && /tidak bisa dihapus/.test(String(sr.lpkDelete)) && sr.lpkSummaryBlocked === true && /tidak bisa dihapus/.test(String(sr.workerDelete)),
+    "Hapus kandidat: kunci asing ke kandidat RESTRICT di 5 tabel fitur; LPK_ADMIN pemilik ditolak menghapus kandidat yang punya catatan kegiatan (ringkasan blocked=true), juga pekerja yang punya catatan",
+    J(sr.fkRestrict) === J(["activity_case_subjects:r", "activity_record_subjects:r", "periodic_interview_quarter_notes:r", "periodic_interviews:r", "residence_cards:r"]) && /tidak bisa dihapus/.test(String(sr.lpkDelete)) && sr.lpkSummaryBlocked === true && /tidak bisa dihapus/.test(String(sr.workerDelete)),
     JSON.stringify([sr.fkRestrict, String(sr.lpkDelete).slice(0, 60), sr.lpkSummaryBlocked, String(sr.workerDelete).slice(0, 60)]),
   );
 
@@ -2957,6 +2958,187 @@ async function main() {
     "Form 5-5: TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris wawancara dan form55 tetap utuh setelah UPDATE tanpa WHERE mereka",
     ["tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => wr[`read/${w}`] === 0) && wr.unchanged === 1,
     JSON.stringify(Object.fromEntries(Object.entries(wr).filter(([k]) => k.startsWith("read/") || k === "unchanged"))),
+  );
+
+  // --- X. Kartu izin tinggal 在留カード (T-017): baca = staf TSK organisasi sama; tulis = TSK_ADMIN atau 担当 efektif pekerja (card_editor, logika sama dengan effectiveResponsible);
+  // tanpa DELETE; pengganti kartu atomik; kartu diterima final; LPK/sensei/super admin/null/TSK lain 0 baris ---
+  const xr: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const infos = (await tx.execute(sql`select p.candidate_id::text as cid, p.id::text as pid, s.company_id::text as coid, c.field_id::text as fid from placements p join client_sites s on s.id = p.site_id join candidates c on c.id = p.candidate_id where p.status = 'ACTIVE' and p.org_id = ${tsk.id}::uuid order by p.id limit 3`)).rows as Array<{ cid: string; pid: string; coid: string; fid: string }>;
+    const [a, b2] = infos;
+    const card = (by: string, cid: string, fid: string, cols: Record<string, string> = {}) => {
+      const all: Record<string, string> = { organization_id: `'${tsk.id}'`, created_by: `'${by}'`, candidate_id: `'${cid}'`, skill_field_id: `'${fid}'`, expiry_date: "(current_date + 100)", ...cols };
+      return sql.raw(`insert into residence_cards (${Object.keys(all).join(", ")}) values (${Object.values(all).join(", ")}) returning id::text as id`);
+    };
+    const assign = (by: string, target: { placement?: string; company?: string }, staff: string | null) =>
+      sql.raw(`insert into responsible_assignments (organization_id, created_by, company_id, placement_id, staff_id, effective_from, created_at) values ('${tsk.id}', '${by}', ${target.company ? `'${target.company}'` : "null"}, ${target.placement ? `'${target.placement}'` : "null"}, ${staff ? `'${staff}'` : "null"}, current_date, clock_timestamp())`);
+    const idOf = async (q: ReturnType<typeof card>) => ((await tx.execute(q)).rows[0] as { id: string }).id;
+
+    // --- 担当 = staffUser (per penempatan): 担当 menulis; staf lain TIDAK; Admin menulis
+    await tx.execute(assign(tskAdminUser.id, { placement: a.pid }, staffUser.id));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    const id1 = await idOf(card(tskAdminUser.id, a.cid, a.fid, { created_by: `'${tskAdminUser.id}'` })); // created_by dipalsukan = admin
+    xr.createdByForced = await num(tx, `select count(*)::int as n from residence_cards where id = '${id1}' and created_by = '${staffUser.id}'`);
+    await tx.execute(sql.raw(`update residence_cards set note = 'dari-担当' where id = '${id1}'`));
+    xr.editorUpdate = await num(tx, `select count(*)::int as n from residence_cards where id = '${id1}' and note = 'dari-担当'`);
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2!.id);
+    xr.otherInsert = await attempt(tx, (t) => t.execute(card(staff2!.id, a.cid, a.fid)));
+    await tx.execute(sql.raw(`update residence_cards set note = 'bukan-担当' where id = '${id1}'`));
+    await tx.execute(sql.raw(`update residence_cards set note = 'bukan-担当-tanpa-where'`));
+    xr.otherUpdateBlocked = await num(tx, `select count(*)::int as n from residence_cards where note like 'bukan-担当%'`);
+    xr.otherReads = await num(tx, `select count(*)::int as n from residence_cards where id = '${id1}'`); // membaca boleh
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const id2 = await idOf(card(tskAdminUser.id, b2.cid, b2.fid)); // Admin menulis untuk pekerja mana pun
+    await tx.execute(sql.raw(`update residence_cards set note = 'dari-admin' where id = '${id1}'`));
+    xr.adminUpdate = await num(tx, `select count(*)::int as n from residence_cards where id = '${id1}' and note = 'dari-admin'`);
+
+    // --- pergantian 担当: 担当 lama tidak bisa menulis lagi, 担当 baru bisa
+    await tx.execute(assign(tskAdminUser.id, { placement: a.pid }, staff2!.id));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    await tx.execute(sql.raw(`update residence_cards set note = 'staf-lama' where id = '${id1}'`));
+    xr.oldEditorBlocked = await num(tx, `select count(*)::int as n from residence_cards where id = '${id1}' and note = 'staf-lama'`);
+    xr.oldEditorInsert = await attempt(tx, (t) => t.execute(card(staffUser.id, a.cid, a.fid)));
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2!.id);
+    await tx.execute(sql.raw(`update residence_cards set note = 'staf-baru' where id = '${id1}'`));
+    xr.newEditor = await num(tx, `select count(*)::int as n from residence_cards where id = '${id1}' and note = 'staf-baru'`);
+    // --- dikosongkan di tingkat penempatan = ikut perusahaan: penetapan perusahaan = staffUser
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await tx.execute(assign(tskAdminUser.id, { placement: a.pid }, null));
+    await tx.execute(assign(tskAdminUser.id, { company: a.coid }, staffUser.id));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    await tx.execute(sql.raw(`update residence_cards set note = 'ikut-perusahaan' where id = '${id1}'`));
+    xr.companyFallback = await num(tx, `select count(*)::int as n from residence_cards where id = '${id1}' and note = 'ikut-perusahaan'`);
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2!.id);
+    await tx.execute(sql.raw(`update residence_cards set note = 'tidak-boleh' where id = '${id1}'`));
+    xr.companyFallbackOther = await num(tx, `select count(*)::int as n from residence_cards where id = '${id1}' and note = 'tidak-boleh'`);
+    // kesetaraan card_editor SQL vs effectiveResponsible TS pada SEMUA penempatan aktif seed + penetapan di atas
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const today = String(((await tx.execute(sql`select (now() at time zone 'Asia/Tokyo')::date::text as d`)).rows[0] as { d: string }).d);
+    const pls = (await tx.execute(sql`select p.candidate_id::text as cid, p.id::text as pid, s.company_id::text as coid from placements p join client_sites s on s.id = p.site_id where p.status = 'ACTIVE' and p.org_id = ${tsk.id}::uuid`)).rows as Array<{ cid: string; pid: string; coid: string }>;
+    const asg = (await tx.execute(sql`select placement_id::text as pid, company_id::text as coid, staff_id::text as staff, effective_from::text as ef, created_at::text as ca from responsible_assignments where organization_id = ${tsk.id}::uuid`)).rows as Array<{ pid: string | null; coid: string | null; staff: string | null; ef: string; ca: string }>;
+    const mism: string[] = [];
+    for (const who of [staffUser.id, staff2!.id, tskAdminUser.id]) {
+      await actAs(tx, tsk.id, "TSK_STAFF", who);
+      for (const pl of pls) {
+        const rows = (list: typeof asg) => list.map((r) => ({ staffId: r.staff, effectiveFrom: r.ef, createdAt: r.ca }));
+        const expected = effectiveResponsible(rows(asg.filter((r) => r.pid === pl.pid)), rows(asg.filter((r) => r.coid === pl.coid)), today).staffId === who;
+        const got = ((await tx.execute(sql.raw(`select card_editor('${pl.cid}'::uuid) as ok`))).rows[0] as { ok: boolean }).ok;
+        if (expected !== got) mism.push(`${who.slice(0, 4)}:${pl.cid.slice(0, 4)} ts=${expected} sql=${got}`);
+      }
+    }
+    xr.equiv = { n: pls.length, mism };
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+
+    // --- tanpa DELETE; CHECK dan trigger penjaga
+    xr.noDelete = await attempt(tx, (t) => t.execute(sql.raw(`delete from residence_cards where id = '${id1}'`)));
+    const bad = (cols: Record<string, string>) => attempt(tx, (t) => t.execute(card(tskAdminUser.id, a.cid, a.fid, cols)));
+    xr.badStatus = await bad({ renewal_status: "'bogus'" });
+    xr.badResidence = await bad({ residence_status: "'ssw2'" });
+    xr.appliedNoDate = await bad({ renewal_status: "'applied'" });
+    xr.receivedNoBy = await bad({ renewal_status: "'received'", applied_on: "(current_date - 10)", received_on: "(current_date - 1)" });
+    xr.receivedOnWrongStatus = await bad({ renewal_status: "'preparing'", received_on: "(current_date - 1)" });
+    xr.datesOrder = await bad({ renewal_status: "'received'", applied_on: "(current_date - 1)", received_on: "(current_date - 10)", received_by: "'staff'" });
+    xr.futureApplied = await bad({ renewal_status: "'applied'", applied_on: "(current_date + 3)" });
+    xr.badPeriod = await bad({ period_months: "61" });
+    xr.handoverWorker = await bad({ renewal_status: "'received'", applied_on: "(current_date - 10)", received_on: "(current_date - 1)", received_by: "'worker'", handed_over_on: "current_date" });
+    xr.badBy = await bad({ renewal_status: "'received'", applied_on: "(current_date - 10)", received_on: "(current_date - 1)", received_by: "'pos'" });
+    xr.noPlacement = await attempt(tx, (t) => t.execute(card(tskAdminUser.id, outsider.id, a.fid)));
+    xr.noteTooLong = await bad({ note: "repeat('x', 2001)" });
+
+    // --- "Terima kartu baru" atomik: kartu diterima wajib punya pengganti pada akhir transaksi (dicek tertunda)
+    const recv = `update residence_cards set renewal_status = 'received', applied_on = current_date - 10, received_on = current_date - 1, received_by = 'staff' where id = '${id2}'`;
+    await tx.execute(sql.raw(recv));
+    const newCard = (prev: string, expiry: string) => card(tskAdminUser.id, b2.cid, b2.fid, { previous_card_id: `'${prev}'`, expiry_date: expiry });
+    const idNew = await idOf(newCard(id2, "(current_date + 465)"));
+    xr.atomicOk = await attempt(tx, (t) => t.execute(sql.raw("set constraints residence_cards_successor_check immediate")));
+    await tx.execute(sql.raw("set constraints residence_cards_successor_check deferred"));
+    xr.atomicMissing = await attempt(tx, async (t) => {
+      await t.execute(sql.raw(`update residence_cards set renewal_status = 'received', applied_on = current_date - 10, received_on = current_date - 1, received_by = 'worker' where id = '${id1}'`));
+      await t.execute(sql.raw("set constraints residence_cards_successor_check immediate"));
+    });
+    xr.successorNotReceived = await attempt(tx, (t) => t.execute(newCard(id1, "(current_date + 465)"))); // id1 belum diterima
+    xr.secondSuccessor = await attempt(tx, (t) => t.execute(newCard(id2, "(current_date + 500)"))); // sudah punya pengganti aktif
+    xr.otherCandidatePrev = await attempt(tx, (t) => t.execute(card(tskAdminUser.id, a.cid, a.fid, { previous_card_id: `'${id2}'`, expiry_date: "(current_date + 500)" })));
+    // kartu pengganti harus lebih akhir: pakai kartu diterima lain (id3)
+    const id3 = await idOf(card(tskAdminUser.id, b2.cid, b2.fid, { expiry_date: "(current_date + 30)" }));
+    await tx.execute(sql.raw(`update residence_cards set renewal_status = 'received', applied_on = current_date - 10, received_on = current_date - 1, received_by = 'worker' where id = '${id3}'`));
+    xr.successorNotLater = await attempt(tx, (t) => t.execute(newCard(id3, "(current_date + 30)")));
+    // kartu diterima final (kecuali tanggal serah, catatan); pengganti tidak bisa dibatalkan; kartu yang punya pengganti tidak bisa dibatalkan
+    xr.receivedLocked = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set expiry_date = expiry_date + 1 where id = '${id2}'`)));
+    xr.receivedLockedStatus = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set renewal_status = 'preparing', received_on = null, received_by = null where id = '${id2}'`)));
+    xr.handoverOk = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set handed_over_on = current_date, note = 'diserahkan' where id = '${id2}'`)));
+    xr.voidWithSuccessor = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set status = 'void', void_reason = 'salah' where id = '${id2}'`)));
+    xr.voidSuccessor = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set status = 'void', void_reason = 'salah' where id = '${idNew}'`)));
+    xr.successorEditable = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set expiry_date = expiry_date + 1 where id = '${idNew}'`)));
+    // pembatalan kartu biasa: butuh alasan, final
+    const id4 = await idOf(card(tskAdminUser.id, a.cid, a.fid));
+    xr.voidNoReason = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set status = 'void' where id = '${id4}'`)));
+    xr.voidOk = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set status = 'void', void_reason = 'dobel' where id = '${id4}'`)));
+    xr.voidFinal = await attempt(tx, (t) => t.execute(sql.raw(`update residence_cards set note = 'lagi' where id = '${id4}'`)));
+    xr.voidMeta = await num(tx, `select count(*)::int as n from residence_cards where id = '${id4}' and voided_by = '${tskAdminUser.id}' and voided_at is not null`);
+    // riwayat edit otomatis (trigger): versi naik, snapshot memuat nilai SEBELUM
+    xr.revisions = await num(tx, `select count(*)::int as n from activity_revisions where entity_type = 'residence_card' and entity_id = '${id1}'`);
+    xr.version = await num(tx, `select version_no::int as n from residence_cards where id = '${id1}'`);
+    xr.firstSnapshot = await num(tx, `select count(*)::int as n from activity_revisions where entity_type = 'residence_card' and entity_id = '${id1}' and version_no = 1 and snapshot ->> 'note' is null`);
+
+    // --- peran lain: 0 baris dan tidak bisa menulis (UPDATE tanpa WHERE tidak mengubah apa pun)
+    const [owner] = (await tx.execute(sql`select c.organization_id::text as org from candidates c where c.id = ${a.cid}::uuid`)).rows as Array<{ org: string }>;
+    for (const [who, org, role, uid] of [["tskB", tskB, "TSK_ADMIN", adminB], ["lpkAdmin", owner.org, "LPK_ADMIN", lpkAdminUser.id], ["sensei", owner.org, "LPK_SENSEI", senseiUser.id], ["superAdmin", platformOrg.id, "SUPER_ADMIN", null], ["roleNull", tsk.id, null, null]] as const) {
+      await actAs(tx, org, role, uid);
+      xr[`read/${who}`] = await num(tx, `select count(*)::int as n from residence_cards`);
+      xr[`insert/${who}`] = await attempt(tx, (t) => t.execute(card(uid ?? tskAdminUser.id, a.cid, a.fid)));
+      await tx.execute(sql.raw(`update residence_cards set note = 'diretas-${who}'`));
+    }
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    xr.untouched = await num(tx, `select count(*)::int as n from residence_cards where note like 'diretas-%'`);
+    xr.adminReads = await num(tx, `select count(*)::int as n from residence_cards where status = 'active'`);
+  });
+  xr.fns = await ownerDb.execute(sql`select count(*)::int as n from pg_proc where proname in ('candidates_block_delete', 'candidate_delete_summary') and prosrc like '%residence_cards%'`).then((r) => Number((r.rows[0] as { n: number }).n));
+  const X3 = (v: unknown) => typeof v === "string" && v.length > 0;
+  check(
+    "Kartu izin tinggal: 担当 efektif dan TSK_ADMIN menulis; staf lain TIDAK (INSERT ditolak, UPDATE dengan/ tanpa WHERE 0 baris) tetapi boleh membaca; created_by selalu pengguna sesi",
+    xr.createdByForced === 1 && xr.editorUpdate === 1 && X3(xr.otherInsert) && xr.otherUpdateBlocked === 0 && xr.otherReads === 1 && xr.adminUpdate === 1,
+    JSON.stringify([xr.createdByForced, xr.editorUpdate, String(xr.otherInsert).slice(0, 50), xr.otherUpdateBlocked, xr.otherReads, xr.adminUpdate]),
+  );
+  check(
+    "Kartu izin tinggal: pergantian 担当 (担当 lama tidak bisa menulis lagi, yang baru bisa); dikosongkan di tingkat penempatan = ikut penetapan perusahaan",
+    xr.oldEditorBlocked === 0 && X3(xr.oldEditorInsert) && xr.newEditor === 1 && xr.companyFallback === 1 && xr.companyFallbackOther === 0,
+    JSON.stringify([xr.oldEditorBlocked, String(xr.oldEditorInsert).slice(0, 40), xr.newEditor, xr.companyFallback, xr.companyFallbackOther]),
+  );
+  const eqv = xr.equiv as { n: number; mism: string[] };
+  check(
+    "Kartu izin tinggal: card_editor (SQL) sama dengan effectiveResponsible (TS) untuk SEMUA penempatan aktif dan tiga staf",
+    eqv.n >= 3 && eqv.mism.length === 0,
+    JSON.stringify(eqv),
+  );
+  check(
+    "Kartu izin tinggal: tanpa DELETE; CHECK dan trigger menolak status/jenis di luar daftar, pengajuan tanpa tanggal, diterima tanpa penerima, tanggal terbalik atau di masa depan, masa tinggal di luar 1-60, serah oleh pekerja, penerima tak dikenal, catatan > 2000, dan pekerja tanpa penempatan",
+    [xr.noDelete, xr.badStatus, xr.badResidence, xr.appliedNoDate, xr.receivedNoBy, xr.receivedOnWrongStatus, xr.datesOrder, xr.futureApplied, xr.badPeriod, xr.handoverWorker, xr.badBy, xr.noPlacement, xr.noteTooLong].every(X3),
+    JSON.stringify([xr.noDelete, xr.badStatus, xr.badResidence, xr.appliedNoDate, xr.receivedNoBy, xr.receivedOnWrongStatus, xr.datesOrder, xr.futureApplied, xr.badPeriod, xr.handoverWorker, xr.badBy, xr.noPlacement, xr.noteTooLong].map((v) => String(v).slice(0, 28))),
+  );
+  check(
+    "Kartu izin tinggal: terima kartu baru atomik (diterima + pengganti dalam satu transaksi lolos; diterima tanpa pengganti ditolak saat commit); pengganti hanya dari kartu yang diterima, sekali, tanggal habis lebih akhir",
+    xr.atomicOk === null && /kartu penggantinya/.test(String(xr.atomicMissing)) && /belum diterima/.test(String(xr.successorNotReceived)) && X3(xr.secondSuccessor) && X3(xr.otherCandidatePrev) && /lebih akhir/.test(String(xr.successorNotLater)),
+    JSON.stringify([xr.atomicOk, String(xr.atomicMissing).slice(0, 50), String(xr.successorNotReceived).slice(0, 40), String(xr.secondSuccessor).slice(0, 40), String(xr.otherCandidatePrev).slice(0, 40), String(xr.successorNotLater).slice(0, 40)]),
+  );
+  check(
+    "Kartu izin tinggal: kartu diterima final (hanya tanggal serah dan catatan bisa berubah); kartu yang punya pengganti dan pengganti dari kartu diterima tidak bisa dibatalkan; data pengganti masih bisa diperbaiki; pembatalan butuh alasan, final, dan tercatat pelakunya",
+    /tidak bisa diubah/.test(String(xr.receivedLocked)) && /tidak bisa diubah/.test(String(xr.receivedLockedStatus)) && xr.handoverOk === null && /pengganti/.test(String(xr.voidWithSuccessor)) && /tidak bisa dibatalkan/.test(String(xr.voidSuccessor)) && xr.successorEditable === null
+      && X3(xr.voidNoReason) && xr.voidOk === null && /tidak bisa diubah lagi/.test(String(xr.voidFinal)) && xr.voidMeta === 1,
+    JSON.stringify([String(xr.receivedLocked).slice(0, 30), String(xr.receivedLockedStatus).slice(0, 30), xr.handoverOk, String(xr.voidWithSuccessor).slice(0, 30), String(xr.voidSuccessor).slice(0, 30), xr.successorEditable, String(xr.voidNoReason).slice(0, 30), xr.voidOk, String(xr.voidFinal).slice(0, 30), xr.voidMeta]),
+  );
+  check(
+    "Kartu izin tinggal: riwayat edit otomatis (versi naik, snapshot memuat nilai SEBELUM); hapus kandidat memeriksa kartu (fungsi blokir + ringkasan)",
+    Number(xr.revisions) >= 4 && xr.version === Number(xr.revisions) + 1 && xr.firstSnapshot === 1 && xr.fns === 2,
+    JSON.stringify([xr.revisions, xr.version, xr.firstSnapshot, xr.fns]),
+  );
+  check(
+    "Kartu izin tinggal: TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris, tidak bisa menulis, dan UPDATE tanpa WHERE mereka tidak mengubah apa pun",
+    ["tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => xr[`read/${w}`] === 0 && X3(xr[`insert/${w}`])) && xr.untouched === 0 && Number(xr.adminReads) >= 3,
+    JSON.stringify([...Object.entries(xr).filter(([k]) => k.startsWith("read/") || k.startsWith("insert/")).map(([k, v]) => [k, typeof v === "string" ? v.slice(0, 24) : v]), xr.untouched, xr.adminReads]),
   );
 
   await pool.end();

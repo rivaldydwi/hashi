@@ -34,6 +34,42 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-07 · T-017 · 在留カード (A): skema, aturan, `cardStage`, dokumen desain mengikuti jawaban TSK + hasil deploy T-016
+
+**PR:** (branch `eng/T-017-zairyu-card-a`; nomor PR di komentar pembuka)
+**Status:** siap direview (tidak ada UI baru)
+
+**Hasil deploy T-016 lewat `scripts/deploy.sh`** (PR #14 di-merge `704dfc7`, setelah `PM: DISETUJUI` dan CI hijau di head `27e9527`; tanpa migrasi, jadi tanpa `--backup`)
+- Keluaran akhir skrip: `✓ deploy selesai. Commit berjalan: 704dfc7 (label image: 704dfc7); health: {"status":"ok","commit":"704dfc7"}`. Demo tidak disentuh. Uji manual Chrome "Terjemahkan" oleh Ipal sekarang bisa dilakukan di produksi (lihat entri T-016).
+
+**Yang dikerjakan**
+- **Migrasi 0025** (`drizzle/0025_residence_cards.sql`, skema di `src/db/schema.ts` `residenceCards`): tabel `residence_cards` sesuai tabel jawaban TSK: `residence_status` (hanya `ssw1`), `skill_field_id` (FK RESTRICT; bidang), `period_months` (1-60; pilihan 4/6/12 di `PERIOD_OPTIONS`), `renewal_status` enam nilai (`not_started`, `preparing`, `applied`, `additional_docs`, `received`, `rejected`), `applied_on`, `received_on`, `received_by` (`staff`/`worker`), `handed_over_on`, kartu pengganti `previous_card_id` (satu pengganti aktif per kartu), void + alasan, versi/riwayat. TANPA nomor dan foto kartu (T-020). CHECK: diterima ⇔ `received_on` ⇔ `received_by`, pengajuan wajib bertanggal, urutan tanggal, serah hanya oleh staf, catatan ≤ 2000, `void` butuh alasan.
+- **Trigger penjaga**: INSERT (pembuat = pengguna sesi, pekerja harus punya penempatan di organisasi itu, pengganti sah: asal `received`, pekerja/organisasi sama, tanggal habis lebih akhir, tanggal tidak di masa depan menurut Tokyo); UPDATE (kartu `received` final kecuali tanggal serah/diterima-oleh/catatan; kartu yang punya pengganti dan pengganti dari kartu diterima tidak bisa dibatalkan; versi + riwayat `activity_revisions` lewat trigger yang sudah ada, CHECK `entity_type` diperluas); **constraint trigger TERTUNDA**: kartu `received` wajib punya pengganti aktif saat commit ("Terima kartu baru" = satu transaksi).
+- **Hak tulis 担当 + Admin** (jawaban no. 7): fungsi `card_editor(candidate_id)` (`SECURITY DEFINER` sempit, hanya boolean) dengan logika yang sama dengan `effectiveResponsible` (per penempatan terbaru yang berlaku, kalau kosong per perusahaan; hari ini menurut zona organisasi; hanya penempatan aktif). RLS: baca = semua staf TSK org itu; INSERT/UPDATE = TSK_ADMIN atau `card_editor`; GRANT SELECT/INSERT/UPDATE (tanpa DELETE). `candidates_block_delete` dan `candidate_delete_summary` ikut memeriksa kartu.
+- **`src/db/zairyu.ts`** (murni): `cardStage` dengan tahap baru `waiting_result` (tidak naik lagi setelah diajukan; tanda `additionalDocs`; `specialUntil` = habis + 2 bulan bila tanggal habis sudah lewat), `special_overdue`, `rejected` (perhatian), `done`; `addMonths`/`addDays`/`daysBetween`, `currentCard`, `cardRecipients` (担当 + semua Admin), `PERIOD_OPTIONS`, `RENEWAL_STATUSES`, `STAGE_URGENCY`, `ATTENTION_STAGES`.
+- **Audit**: `residence_card.create/update/receive/void` di `ACTIONS` (id + ja) dan `AUDIT_VALUE_FIELDS.residence_card` (`residenceStatus`, `renewalStatus`, `stage`, `receivedBy`, `status`; tanpa tanggal, catatan, nama, nomor).
+- **Dokumen**: `docs/zairyu-card.md` diperbarui (jawaban TSK §9.1, tabel kolom, hak akses, tabel tahap + 17 kasus tepi dengan angka, rencana T-018 s.d. T-021); glosarium (結果待ち, 追加資料, 不許可); CLAUDE.md.
+
+**Verifikasi** (db-dev `hashi_dev`; produksi tidak disentuh)
+- `npm run typecheck` → lulus; `npm run build` → 0 peringatan; `npm run test:i18n` → lulus; `npm run verify:audit-coverage` → lulus (tidak ada server action baru)
+- `npm run test:unit` → 95 lulus (21 baru `zairyu.test.ts`: SEMUA kasus §4.3 dengan angka, termasuk batas H-30/H-14/H-7, akhir bulan/kabisat, Tokyo vs Jakarta, diajukan = `waiting_result`, 特例期間 + batas inklusif, `special_overdue`, 追加資料, 不許可, diambil pekerja; helper tanggal; kartu terkini; penerima)
+- `db:seed -- --reset` + `npm run test:rls` → lulus (dijalankan DUA kali, stabil); bagian X baru (9 pemeriksaan): 担当 dan Admin menulis, staf lain ditolak (INSERT; UPDATE dengan dan tanpa WHERE 0 baris) tetapi boleh membaca, `created_by` dipaksa pengguna sesi; pergantian 担当 (yang lama tidak bisa menulis lagi, yang baru bisa; dikosongkan di penempatan = ikut perusahaan); `card_editor` SQL = `effectiveResponsible` TS pada semua penempatan aktif seed × tiga staf; tanpa DELETE dan 13 penolakan CHECK/trigger; "terima kartu baru" atomik (lolos bersama pengganti, ditolak tanpa pengganti saat commit), pengganti hanya dari kartu diterima/sekali/lebih akhir; kartu diterima final, void dengan alasan/final/tercatat; riwayat edit; TSK lain, LPK_ADMIN, sensei, super admin, peran null 0 baris dan tidak bisa menulis; `residence_cards` masuk daftar cakupan bagian I dan uji RESTRICT (5 tabel)
+- **Migrasi dari nol**: database sementara `hashi_t017_test` (di `db-dev`, sudah dihapus) → `db:migrate` + `db:seed` + `test:rls` lulus, sama seperti job CI.
+- `npm run verify:seed` → lulus; `E2E_PORT=3120 npm run test:e2e` → 197 lulus (tidak ada UI baru; memastikan tidak ada regresi, termasuk hapus kandidat).
+
+**Kondisi server:** produksi `704dfc7` (T-016). T-017 menambah migrasi 0025 → **deploy dengan `scripts/deploy.sh --backup`** setelah `PM: DISETUJUI` bila PM meminta (tabel baru kosong, tidak memengaruhi fitur yang ada).
+
+**Kendala / catatan**
+- **Kartu `received` yang salah catat** tidak bisa dikoreksi lewat aplikasi (final, dan pengganti/kartu berantai tidak bisa dibatalkan); perbaikannya lewat admin database dan dicatat. Dipilih agar riwayat rantai kartu tidak bisa rusak; bisa dilonggarkan di T-018 bila TSK sering salah ketik (mis. izinkan koreksi tanggal oleh Admin saja).
+- Constraint trigger tertunda membuat insert kartu `received` tanpa pengganti hanya gagal saat COMMIT (bukan saat statement); server action T-018 harus melakukan terima + pengganti dalam satu transaksi, dan pesan galatnya dipetakan (`ERRCODE check_violation` → pesan "catat kartu baru").
+- T-021 (isi awal/massal) harus memasukkan rantai kartu LENGKAP (kartu lama `received` + penggantinya) dalam satu transaksi karena aturan di atas.
+- Dua baris di `responsible_assignments` yang dibuat di transaksi yang sama bisa punya `created_at` identik (tie); aplikasi menulis tiap penetapan di transaksi sendiri, jadi tidak terjadi di produksi; tes memakai `clock_timestamp()`.
+
+**Pertanyaan:** tidak ada.
+
+**Usulan berikutnya** (bukan tugas)
+- T-018 sebaiknya menyediakan koreksi tanggal untuk kartu `received` oleh Admin bila TSK memintanya setelah dipakai.
+
 ## 2026-10-07 · T-016 · Terjemahan peramban: label boleh, data jangan + hasil deploy T-012
 
 **PR:** #14 (branch `eng/T-016-translate-data`)
