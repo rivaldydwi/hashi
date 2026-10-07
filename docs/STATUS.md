@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-07 · T-019 · 在留カード (C): daftar, KPI, menu, data demo + hasil deploy T-018
 
-**PR:** (branch `eng/T-019-zairyu-card-c`; nomor PR di komentar pembuka)
+**PR:** #17 (branch `eng/T-019-zairyu-card-c`)
 **Status:** siap direview, dengan SATU penyimpangan dari spesifikasi yang perlu keputusan PM (seed tidak mencakup SEMUA tahap; lihat Kendala)
 
 **Hasil deploy T-018 lewat `scripts/deploy.sh --backup`** (PR #16 di-merge `6425218`, setelah `PM: DISETUJUI` bersyarat dan job e2e CI hijau di head `fea7240`)
