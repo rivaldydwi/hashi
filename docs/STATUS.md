@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-025 · Email pengingat di produksi (Brevo): pengaman penerima, kirim uji, panduan; menunggu SMTP key dari Ipal
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-025-email-brevo`)
+**PR:** #24 (branch `eng/T-025-email-brevo`)
 **Status:** siap direview. **Aktivasi di produksi BELUM**: butuh deploy kode worker baru (setelah `PM: DISETUJUI`) lalu SMTP key dari Ipal (`BUTUH IPAL`, lihat bawah). Tidak ada migrasi.
 
 **Hasil merge T-014** (PR #23 di-merge `ee13a0f` setelah `PM: DISETUJUI` dan CI hijau di head `4032436`): tanpa migrasi dan tanpa perubahan aplikasi, jadi TIDAK ada deploy produksi (produksi tetap `cde24a3`, health ok). `seed:pilot` di demo menunggu izin Ipal.
