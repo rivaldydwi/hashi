@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-029 · Halaman 404 bergaya Hashi + tautan email uji (+ hasil deploy T-026)
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-029-not-found`)
+**PR:** #28 (branch `eng/T-029-not-found`)
 **Status:** siap direview. Tanpa migrasi; deploy setelah `PM: DISETUJUI` (tanpa `--backup`), lalu Ipal bisa uji ulang dengan `--test-to`.
 
 **Hasil deploy T-026** (PR #27 di-merge `db8b0c3` setelah `PM: DISETUJUI` dan CI hijau di head `2e26993`; tanpa migrasi, tanpa `--backup`)
