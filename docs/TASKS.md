@@ -12,44 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-028 · Hemat menit GitHub Actions · `SIAP` (PRIORITAS: kerjakan setelah PR yang sedang terbuka selesai)
-
-Kuota menit Actions (repo privat, paket gratis 2.000 menit/bulan) habis 8 Okt. Satu putaran CI ±20 menit (job e2e ±17 + docker ±2), dan saat ini SETIAP push ke `main` atau branch PR menjalankan
-CI penuh, termasuk commit PM yang hanya mengubah `docs/TASKS.md` (puluhan putaran tanpa perubahan kode).
-
-Kerjakan di `.github/workflows/ci.yml`:
-- `paths-ignore` untuk `push` dan `pull_request`: `docs/**`, `**/*.md` (kecuali bila ada kode yang ikut berubah, otomatis tetap jalan karena filter per-commit/PR). Catat bahwa PR yang HANYA dokumen tidak punya CI (cukup review PM).
-- `concurrency: { group: ci-${{ github.ref }}, cancel-in-progress: true }` supaya push beruntun membatalkan putaran lama.
-- Jangan menjalankan CI di `push` ke `main` untuk merge commit yang head PR-nya SUDAH hijau? Terlalu rumit: cukup biarkan, tapi pastikan paths-ignore berlaku.
-- Cache yang jelas menghemat (npm via `actions/setup-node` cache, Playwright browser cache) bila belum ada; ukur menit sebelum/sesudah di STATUS.
-- Jangan melemahkan tes apa pun (aturan tetap).
-
-**Kriteria selesai**
-- [ ] Commit yang hanya mengubah `docs/` / `*.md` tidak memicu CI (bukti: run tidak muncul/di-skip), commit kode tetap memicu.
-- [ ] Menit per putaran sebelum/sesudah dilaporkan. CI hijau (setelah kuota tersedia).
-
----
-
-### T-025 · Aktifkan email pengingat di produksi (Brevo) · `SIAP`
-
-Keputusan Ipal (8 Okt): layanan SMTP = **Brevo** (smtp-relay.brevo.com:587). Ipal juga sudah menyalin `CARD_DATA_KEY` ke tempat aman (BUTUH IPAL T-020 selesai; data kartu nyata boleh setelah cadangan luar-server berjalan).
-
-Kerjakan:
-- **Pengaman penerima (kode)**: worker TIDAK mengirim ke alamat berdomain contoh/cadangan (`example.com/.org/.net`, `*.test`, `*.invalid`, `*.example`, `localhost`) dan ke pengguna nonaktif; dihitung `dilewati` di log (tanpa alamat). Tes unit.
-- **Kirim uji**: `node … scripts/reminder-worker.ts --test-to <alamat>` mengirim SATU email contoh (data palsu, tanpa membaca kartu) lalu keluar, untuk membuktikan SMTP. Tidak menulis log pengiriman/audit.
-- **Pemeriksaan sebelum aktif** (laporkan angkanya di STATUS, tanpa alamat): berapa pengguna TSK aktif di produksi, berapa yang alamatnya akan dilewati pengaman, dan apakah produksi masih berisi akun demo. Bila semua penerima = akun demo, **jangan aktifkan**: tulis `BUTUH IPAL` (perlu akun staf nyata dulu).
-- **Panduan untuk Ipal** di `docs/email.md`: (1) di Brevo buat SMTP key dan verifikasi alamat pengirim (Senders) atau domain (SPF/DKIM); (2) Ipal sendiri mengisi `.env` server: `SMTP_URL=smtp://<login>:<smtp-key>@smtp-relay.brevo.com:587` (karakter khusus di-URL-encode), `MAIL_FROM="Hashi <alamat-terverifikasi>"`, `APP_URL=<alamat Hashi yang dibuka staf>`; (3) jalankan kirim uji; (4) `docker compose up -d worker`. **Engineer tidak pernah melihat/menyalin SMTP key** (BUTUH IPAL); cukup memeriksa bahwa variabel terisi (tanpa mencetak nilainya).
-- Setelah Ipal mengisi: kirim uji ke alamat Ipal, lalu restart worker; bukti log `mode=kirim` + ringkasan putaran di STATUS.
-- **Update keputusan Ipal (8 Okt)**: Hashi masih tahap demo (belum launch), akses hanya lewat **Tailscale**. Ipal MENGIZINKAN engineer menulis `SMTP_URL` ke `.env` server bila Ipal memberikan SMTP key langsung di sesi engineer (paket gratis Brevo). Tetap: jangan pernah commit/cetak/log nilainya, `.env` mode 600, dan catat di STATUS hanya "SMTP_URL terisi". `APP_URL` = alamat Tailscale produksi port 3110 (Ipal sudah memberikan alamatnya: tanyakan ke Ipal di sesi engineer; jangan ditulis di repo karena repo akan dibuat publik). `MAIL_FROM` = pengirim terverifikasi di Brevo: alamat Gmail Ipal dengan nama "Hashi" (Brevo memperingatkan domain gratis: DMARC/DKIM tidak sesuai, jadi email bisa masuk spam atau ditolak; cukup untuk demo, sebelum launch pakai domain sendiri + SPF/DKIM; catat di `docs/email.md`). Karena produksi masih berisi akun demo, aktifkan pengiriman reminder hanya bila pengaman penerima di atas sudah ada; uji utama = `--test-to` ke alamat Ipal.
-
-**Kriteria selesai**
-- [ ] Pengaman penerima + `--test-to` + tes unit; typecheck, build, unit, CI hijau.
-- [ ] `docs/email.md` ada; STATUS memuat angka pemeriksaan penerima.
-- [ ] Setelah Ipal mengisi `.env`: email uji sampai (konfirmasi Ipal), worker produksi `mode=kirim`.
-
----
-
-### T-015 · `scripts/deploy.sh`: log build ke berkas · `SIAP` (setelah T-025)
+### T-015 · `scripts/deploy.sh`: log build ke berkas · `SIAP`
 
 Usulan engineer (T-007): output build Docker yang panjang menenggelamkan hasil penting. Log lengkap ke berkas (mis. `~/hashi-backups/deploy-<waktu>.log`, simpan 20 terakhir),
 terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + commit). Gagal = tampilkan 40 baris terakhir log + path berkasnya, kode keluar ≠ 0. Perilaku lain tidak berubah.
@@ -92,6 +55,24 @@ Keputusan Ipal (8 Okt): pengajuan perpanjangan lewat loket masih mungkin ("just 
 
 ---
 
+### T-028 · Hemat menit GitHub Actions · `SIAP` (setelah T-026; tidak mendesak lagi: repo PUBLIK sejak 8 Okt, menit Actions gratis)
+
+Kuota menit Actions (repo privat, paket gratis 2.000 menit/bulan) habis 8 Okt. Satu putaran CI ±20 menit (job e2e ±17 + docker ±2), dan saat ini SETIAP push ke `main` atau branch PR menjalankan
+CI penuh, termasuk commit PM yang hanya mengubah `docs/TASKS.md` (puluhan putaran tanpa perubahan kode).
+
+Kerjakan di `.github/workflows/ci.yml`:
+- `paths-ignore` untuk `push` dan `pull_request`: `docs/**`, `**/*.md` (kecuali bila ada kode yang ikut berubah, otomatis tetap jalan karena filter per-commit/PR). Catat bahwa PR yang HANYA dokumen tidak punya CI (cukup review PM).
+- `concurrency: { group: ci-${{ github.ref }}, cancel-in-progress: true }` supaya push beruntun membatalkan putaran lama.
+- Jangan menjalankan CI di `push` ke `main` untuk merge commit yang head PR-nya SUDAH hijau? Terlalu rumit: cukup biarkan, tapi pastikan paths-ignore berlaku.
+- Cache yang jelas menghemat (npm via `actions/setup-node` cache, Playwright browser cache) bila belum ada; ukur menit sebelum/sesudah di STATUS.
+- Jangan melemahkan tes apa pun (aturan tetap).
+
+**Kriteria selesai**
+- [ ] Commit yang hanya mengubah `docs/` / `*.md` tidak memicu CI (bukti: run tidak muncul/di-skip), commit kode tetap memicu.
+- [ ] Menit per putaran sebelum/sesudah dilaporkan. CI hijau (setelah kuota tersedia).
+
+---
+
 ### T-027 · README tiga bahasa (Indonesia, Inggris, Jepang) · `SIAP` (PALING AKHIR, setelah semua tugas di atas)
 
 Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Indonesia, Inggris, dan Jepang.
@@ -123,6 +104,7 @@ Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Ind
 
 ## Selesai
 
+- **T-025** Email pengingat di produksi, kode (PR #24): `isSafeRecipient` (akun demo/domain contoh dilewati), `--test-to`, `--check`, `docs/email.md`, checklist F0/F1b/F1c. AKTIVASI (SMTP key dari Ipal di sesi engineer, kirim uji, worker `mode=kirim`) dilaporkan di STATUS berikutnya. Repo dijadikan PUBLIK oleh Ipal (8 Okt): jangan menulis IP/email pribadi/isi `.env` di repo.
 - **T-014** Langkah 8 siap pilot (PR #23): `seed:pilot` (+200 kandidat dummy, 73 pekerja aktif, staf 48 pekerja = kuning, semua tahap 在留カード; idempoten, ditolak di produksi), `verify:pilot` (KPI = daftar), ukur waktu `perf:pages`: semua halaman ≤ 250 ms (batas 1000), `docs/pilot-checklist.md`. Tanpa migrasi, produksi tidak disentuh.
 - **T-021** Data perpanjangan 在留カード online siap salin (PR #22): halaman `/records/workers/<id>/renewal` butir 1-14 + Salin (和暦, romaji, butir kosong + tautan, peringatan paspor), nomor kartu hanya lewat "Tampilkan" ber-audit, tabel `worker_jp_profiles` (住居地 + telepon, milik TSK, migrasi 0029), audit `renewal_view`. PDF 手数料納付書 TIDAK dibuat: sejak 2026-10-01 biaya pengajuan online dibayar konbini/bank, bukan 収入印紙 (temuan engineer).
 - **T-022** Email pengingat 在留カード (PR #21): `src/db/card-reminders.ts` (tahap pemicu + 追加資料, sekali per kartu×tahap×penerima lewat `card_reminder_log` hanya jalur sistem, satu ringkasan per penerima per hari, id/ja sesuai locale, tanpa nomor kartu), service `worker` di compose `hashi` (08:00 Tokyo), mode kering tanpa `SMTP_URL`, Mailpit di dev/CI, audit `residence_card.reminder_sent`. Produksi KERING sampai Ipal memilih SMTP.
