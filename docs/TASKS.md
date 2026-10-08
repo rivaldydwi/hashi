@@ -50,6 +50,7 @@ nyata dari sisi LPK dan TSK, dengan tangkapan layar supaya mudah dipahami. Pemba
 - Tanpa secret, IP, alamat Tailscale, email pribadi, data nyata. `git grep` hasilnya di PR.
 - Hanya dokumen + skrip/tes tangkapan layar + perintah build PDF; JANGAN mengubah perilaku aplikasi. Bila menemukan bug/teks janggal saat memotret: catat di STATUS sebagai usulan, jangan diperbaiki di PR ini.
 - Ukuran: wajar (gambar PNG terkompresi; PDF idealnya < 20 MB).
+- Panduan TIDAK menyebut AI, Claude, PM/engineer, atau cara kerja internal tim (permintaan Ipal; dijaga tes di T-031).
 - Tambahkan tautan ke panduan di KETIGA README (`README.md`, `README.en.md`, `README.ja.md`; struktur judul tetap sama, `readme-trilingual.test.ts` harus lulus).
 
 **Kriteria selesai**
@@ -57,6 +58,26 @@ nyata dari sisi LPK dan TSK, dengan tangkapan layar supaya mudah dipahami. Pemba
 - [ ] Tangkapan layar bisa dibuat ulang dengan satu perintah (tercatat di README panduan); PDF dibuat ulang dengan `npm run build:guide`.
 - [ ] CI hijau (PR memuat skrip, jadi CI jalan). Tanpa deploy.
 - [ ] STATUS: jumlah halaman PDF, jumlah gambar, ukuran berkas, daftar temuan janggal (bila ada).
+
+---
+
+### T-031 · README dan panduan tanpa penyebutan AI / cara kerja internal · `SIAP` (setelah T-030; kecil, hanya dokumen + tes)
+
+Permintaan Ipal (8 Okt): README adalah wajah publik Hashi; pembaca (LPK, TSK, calon pengguna) bisa jadi khawatir bila tertulis bahwa semuanya dikerjakan AI.
+Hal yang berkaitan dengan "dikerjakan AI" dan cara kerja internal tim TIDAK ditulis di dokumen yang dibaca pihak luar.
+
+Kerjakan di `README.md`, `README.en.md`, `README.ja.md` (ketiganya sama, struktur judul tetap setara):
+- Hapus subbagian `### Cara kerja tim` seluruhnya (PM/engineer/Claude/claude.ai/VS Code/`PM: DISETUJUI`/`CLAUDE.md` "Peran dan aturan kerja").
+- Judul `## Dokumen dan cara kerja tim` -> `## Dokumen` (dan padanannya en/ja).
+- Tabel dokumen: hapus baris `docs/TASKS.md` · `docs/STATUS.md` (antrean/laporan internal); `docs/HISTORY.md` boleh tetap sebagai "riwayat dan keputusan teknis" tanpa kata PM/engineer.
+- Blok status di atas: hapus tautan "Antrean: docs/TASKS.md; laporan terbaru: docs/STATUS.md" (riwayat boleh tetap).
+- Rujukan "aturan lengkap ada di `CLAUDE.md`" di README.en/ja (bagian hak akses kandidat): arahkan ke `README.md` saja.
+- Tes penjaga di `tests/unit/readme-trilingual.test.ts`: ketiga README (dan `docs/panduan/README.md` bila ada) tidak memuat `Claude`, `claude.ai`, `Anthropic`, kata `AI` berdiri sendiri, `engineer`/`エンジニア`, `PM:`, maupun `CLAUDE.md` (tidak peka huruf besar/kecil untuk nama; `AI` sebagai kata utuh).
+- Jangan mengubah `CLAUDE.md`, `docs/TASKS.md`, `docs/STATUS.md`, atau riwayat git (tetap dipakai kerja internal).
+
+**Kriteria selesai**
+- [ ] Ketiga README bersih dari penyebutan AI/cara kerja internal, struktur tetap setara, tes penjaga baru lulus (dan gagal bila kata terlarang disisipkan: tunjukkan di STATUS).
+- [ ] CI hijau. Tanpa deploy.
 
 ---
 
