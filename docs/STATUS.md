@@ -34,6 +34,35 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-031 · README dan panduan tanpa penyebutan AI / cara kerja internal
+
+**PR:** #32 (branch `eng/T-031-readme-bersih`)
+**Status:** siap direview. Hanya dokumen + satu tes; tanpa migrasi, tanpa deploy.
+
+**Hasil PR sebelumnya:** T-030 di-merge `5d00a9b` (PR #31) setelah `PM: DISETUJUI` dan CI hijau di head. Tanpa deploy.
+
+**Yang dikerjakan** (`README.md`, `README.en.md`, `README.ja.md`; struktur tetap setara)
+- Subbagian `### Cara kerja tim` / `### How the team works` / `### チームの進め方` dihapus seluruhnya.
+- Judul `## Dokumen dan cara kerja tim` -> `## Dokumen` (en `## Documents`, ja `## ドキュメント`).
+- Tabel dokumen: baris `docs/TASKS.md` · `docs/STATUS.md` diganti baris `docs/HISTORY.md` saja ("riwayat dan keputusan teknis", tanpa kata PM/engineer).
+- Blok status di atas: tautan antrean/laporan dihapus, tautan riwayat tetap.
+- Rujukan `CLAUDE.md` di README.en/ja (bagian hak akses kandidat) dihapus; tetap menunjuk `README.md`.
+- `docs/panduan/README.md` dicek: sudah bersih, tidak ada perubahan.
+- `tests/unit/readme-trilingual.test.ts`: 2 tes baru. (1) ketiga README dan `docs/panduan/README.md` tidak memuat `Claude`, `Anthropic` (tanpa peka huruf besar/kecil), `AI` sebagai kata utuh, `engineer`, `エンジニア`, `PM:`, `PM` sebagai kata, `TASKS.md`/`STATUS.md` (kata `CLAUDE.md` tertangkap oleh `claude`). (2) uji penjaga itu sendiri: contoh yang disisipkan tertangkap dan kata wajar ("air", "Indonesia") tidak salah tangkap.
+- `CLAUDE.md`, `docs/TASKS.md`, `docs/STATUS.md`, riwayat git tidak diubah (selain entri ini di STATUS).
+
+**Verifikasi**
+- `npx tsx --test tests/unit/readme-trilingual.test.ts tests/unit/guide.test.ts` -> 11/11 lulus; `npm run typecheck` -> lulus. `git grep -niE 'claude|anthropic|engineer|エンジニア|PM:'` pada tiga README + panduan -> kosong.
+- Bukti tes penjaga bisa gagal: menambahkan baris "Dibuat oleh Claude." ke `README.ja.md` -> tes gagal dengan pesan `README.ja.md: memuat kata terlarang "Claude"`; setelah berkas dipulihkan, semua lulus.
+- Tes struktur judul tiga bahasa tetap lulus (H3 "Cara kerja tim" hilang di ketiganya).
+
+**Kendala / catatan**
+- PDF panduan tidak memuat kata-kata itu (diperiksa lewat teks sumbernya); tidak perlu dibangun ulang.
+- `docs/HISTORY.md` dan `CLAUDE.md` tetap berisi cara kerja internal dan masih terlihat di repo publik (hanya README dan panduan yang dijaga tes ini).
+
+**Usulan berikutnya**
+- Bila repo ingin lebih "bersih" untuk pihak luar: pertimbangkan memindahkan `CLAUDE.md`, `docs/TASKS.md`, `docs/STATUS.md`, `docs/HISTORY.md` ke repo privat atau branch terpisah (keputusan Ipal; tidak dikerjakan di sini).
+
 ## 2026-10-08 · T-030 · Buku panduan pemakaian (LPK + TSK) dengan tangkapan layar
 
 **PR:** #31 (branch `eng/T-030-panduan`)

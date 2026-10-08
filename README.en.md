@@ -9,8 +9,8 @@ One candidate profile, shared by the LPK and its partner TSK, with no re-typing.
 
 > Status (October 2026): steps 1-6 of the MVP specification, TSK activity records (7A), the 在留カード (residence card) tracker (encrypted number and photos, reminder emails,
 > online renewal data, the 手数料納付書 fee form PDF for the immigration counter), visa status and arrival date for LPK, and pilot data (200 dummy students) are done.
-> Next: the demo to TSK. **Off-server backups must be running before any real data goes in.** Task queue: [docs/TASKS.md](docs/TASKS.md);
-> latest report: [docs/STATUS.md](docs/STATUS.md); history and technical decisions: [docs/HISTORY.md](docs/HISTORY.md).
+> Next: the demo to TSK. **Off-server backups must be running before any real data goes in.**
+> History and technical decisions: [docs/HISTORY.md](docs/HISTORY.md).
 
 Two kinds of organisation use it together: the **LPK** (training institution; LPK admins and sensei) prepares student profiles, and the **TSK** (support organisation; TSK admins and TSK staff) screens candidates,
 places them with clients (配属先), and supports workers after they leave for Japan. Each organisation sees only its own data and what has been deliberately shared with it.
@@ -149,7 +149,7 @@ In short (details are in the technical sections and the feature documents):
 
 The application connects to the database as the **`hashi_app`** role, which cannot bypass RLS. Migrations and seeding use the **`hashi_owner`** role. All tenant data is read and written through `withTenant({ orgId, role, userId }, …)`, which sets `app.role` and `app.user_id` for the RLS policies.
 
-Candidate access in brief (the full rules are in [README.md](README.md), section "Hak akses data kandidat", and `CLAUDE.md`):
+Candidate access in brief (the full rules are in [README.md](README.md), section "Hak akses data kandidat"):
 
 - The LPK status (`stage`) and the TSK decision are **separate**. Only the LPK admin sets the status; each TSK sees and writes only its own decision rows. The LPK may read decisions but not write them.
 - TSK notes are `TSK_ONLY` by default or `SHARED_WITH_LPK`. Sensei never read them, and nobody can delete them.
@@ -220,13 +220,13 @@ docs/                    task queue, status, feature documents, glossary, brand,
 - **Login rate limit** (5 wrong attempts per 15 minutes per email) is kept in memory. That is enough for one server.
 - **Before real student data**: set `SHOW_DEMO_ACCOUNTS=false`, set up automatic off-site backups, and have a personal-data consent form ready (see the MVP specification).
 
-## Documents and how the team works
+## Documents
 
 Documentation in `docs/`:
 
 | File | Contents |
 | --- | --- |
-| [docs/TASKS.md](docs/TASKS.md) · [docs/STATUS.md](docs/STATUS.md) · [docs/HISTORY.md](docs/HISTORY.md) | Task queue (PM), engineer reports, history and technical decisions |
+| [docs/HISTORY.md](docs/HISTORY.md) | History and technical decisions |
 | [docs/panduan/README.md](docs/panduan/README.md) · [docs/panduan/panduan-hashi.pdf](docs/panduan/panduan-hashi.pdf) | Usage guide for LPK and TSK staff (in Indonesian, with screenshots and four worked cases). Screenshots are regenerated with `npm run guide:shots`, the PDF with `npm run build:guide` |
 | [docs/glossary.md](docs/glossary.md) | Glossary of Japanese, Indonesian and English terms |
 | [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md) | TSK activity records (業務記録, 面談, 定期面談, form 5-5) |
@@ -239,9 +239,3 @@ Documentation in `docs/`:
 | [docs/screenshots/](docs/screenshots/) | Screenshots (dummy data) |
 
 This README comes in three languages with the same heading structure: [Bahasa Indonesia](README.md), English (this file), [日本語](README.ja.md).
-
-### How the team works
-
-Ipal (the owner) decides; the **PM** (a Claude session at claude.ai/code) writes tasks in [docs/TASKS.md](docs/TASKS.md) and reviews pull requests;
-the **engineer** (Claude Code in VS Code on the Mini PC) works on tasks in `eng/<ID>-…` branches, reports in [docs/STATUS.md](docs/STATUS.md),
-and merges once the PM writes `PM: DISETUJUI` on the PR. Full rules: `CLAUDE.md`, section "Peran dan aturan kerja".

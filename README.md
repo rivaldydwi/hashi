@@ -9,8 +9,8 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 
 > Status (Oktober 2026): langkah 1-6 spesifikasi MVP, catatan kegiatan TSK (7A), pelacak 在留カード (nomor/foto terenkripsi, email pengingat, data perpanjangan online,
 > PDF 手数料納付書 untuk loket), status visa dan tanggal tiba untuk LPK, dan data pilot (200 siswa dummy) sudah ada.
-> Berikutnya: demo ke TSK. **Cadangan di luar server wajib berjalan sebelum data nyata masuk.** Antrean: [docs/TASKS.md](docs/TASKS.md);
-> laporan terbaru: [docs/STATUS.md](docs/STATUS.md); riwayat dan keputusan teknis: [docs/HISTORY.md](docs/HISTORY.md).
+> Berikutnya: demo ke TSK. **Cadangan di luar server wajib berjalan sebelum data nyata masuk.**
+> Riwayat dan keputusan teknis: [docs/HISTORY.md](docs/HISTORY.md).
 
 Dua jenis organisasi memakainya bersama: **LPK** (lembaga pelatihan; Admin LPK dan sensei) menyiapkan profil siswa, **TSK** (lembaga pendukung; Admin TSK dan staf TSK) menyeleksi,
 menempatkan ke klien (配属先), lalu mendampingi pekerja setelah berangkat. Setiap organisasi hanya melihat datanya sendiri dan apa yang sengaja dibagikan kepadanya.
@@ -484,13 +484,13 @@ docs/                    antrean tugas, laporan, dokumentasi fitur, glosarium, m
 - **Sebelum ada data siswa asli**: set `SHOW_DEMO_ACCOUNTS=false`, siapkan backup otomatis ke luar rumah,
   dan formulir persetujuan data pribadi. Lihat dokumen spesifikasi MVP.
 
-## Dokumen dan cara kerja tim
+## Dokumen
 
 Dokumentasi di `docs/`:
 
 | Berkas | Isi |
 | --- | --- |
-| [docs/TASKS.md](docs/TASKS.md) · [docs/STATUS.md](docs/STATUS.md) · [docs/HISTORY.md](docs/HISTORY.md) | Antrean tugas (PM), laporan engineer, riwayat dan keputusan teknis |
+| [docs/HISTORY.md](docs/HISTORY.md) | Riwayat dan keputusan teknis |
 | [docs/panduan/README.md](docs/panduan/README.md) · [docs/panduan/panduan-hashi.pdf](docs/panduan/panduan-hashi.pdf) | Buku panduan pemakaian untuk LPK dan TSK (dalam bahasa Indonesia, bergambar, empat contoh kasus). Tangkapan layar dibuat ulang dengan `npm run guide:shots`, PDF dengan `npm run build:guide` |
 | [docs/glossary.md](docs/glossary.md) | Kamus istilah Jepang, Indonesia, dan Inggris |
 | [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md) | Catatan kegiatan TSK (業務記録, 面談, 定期面談, form 5-5) |
@@ -503,9 +503,3 @@ Dokumentasi di `docs/`:
 | [docs/screenshots/](docs/screenshots/) | Tangkapan layar (data dummy) |
 
 README ini tersedia dalam tiga bahasa dengan struktur judul yang sama: Indonesia (ini), [English](README.en.md), [日本語](README.ja.md).
-
-### Cara kerja tim
-
-Ipal (pemilik) memutuskan; **PM** (sesi Claude di claude.ai/code) menulis tugas di [docs/TASKS.md](docs/TASKS.md) dan me-review PR;
-**engineer** (Claude Code di VS Code, Mini PC) mengerjakan tugas di branch `eng/<ID>-…`, melapor di [docs/STATUS.md](docs/STATUS.md),
-dan merge setelah PM menulis `PM: DISETUJUI` di PR. Aturan lengkap: `CLAUDE.md` bagian "Peran dan aturan kerja".
