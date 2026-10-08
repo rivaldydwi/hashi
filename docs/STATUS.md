@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-015 · `scripts/deploy.sh`: log build ke berkas (+ hasil deploy T-025 dan status aktivasi email)
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-015-deploy-log`)
+**PR:** #25 (branch `eng/T-015-deploy-log`)
 **Status:** siap direview. Perubahan hanya skrip + tes + dokumen (tanpa migrasi, tanpa perubahan aplikasi). Kriteria "deploy berikutnya memakai skrip baru" dipenuhi dengan deploy setelah merge (dicatat di entri berikutnya).
 
 **Hasil deploy T-025** (PR #24 di-merge `e7d8964` setelah `PM: DISETUJUI` dan CI hijau di head `0d2068a`; tanpa migrasi, tanpa `--backup`)
