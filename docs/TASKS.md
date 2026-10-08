@@ -50,6 +50,7 @@ nyata dari sisi LPK dan TSK, dengan tangkapan layar supaya mudah dipahami. Pemba
 - Tanpa secret, IP, alamat Tailscale, email pribadi, data nyata. `git grep` hasilnya di PR.
 - Hanya dokumen + skrip/tes tangkapan layar + perintah build PDF; JANGAN mengubah perilaku aplikasi. Bila menemukan bug/teks janggal saat memotret: catat di STATUS sebagai usulan, jangan diperbaiki di PR ini.
 - Ukuran: wajar (gambar PNG terkompresi; PDF idealnya < 20 MB).
+- Tambahkan tautan ke panduan di KETIGA README (`README.md`, `README.en.md`, `README.ja.md`; struktur judul tetap sama, `readme-trilingual.test.ts` harus lulus).
 
 **Kriteria selesai**
 - [ ] `docs/panduan/README.md` + `img/` + `panduan-hashi.pdf`, semua bagian di atas, 4 skenario bergambar.
