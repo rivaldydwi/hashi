@@ -12,25 +12,9 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-028 · Hemat menit GitHub Actions · `SIAP` (berikutnya; tidak mendesak lagi: repo PUBLIK sejak 8 Okt, menit Actions gratis)
+> **Aturan CI sejak T-028:** commit/PR yang HANYA mengubah `docs/**` atau `*.md` tidak menjalankan CI. PR seperti itu boleh di-merge cukup dengan `PM: DISETUJUI`; PR yang punya CI tetap wajib hijau.
 
-Kuota menit Actions (repo privat, paket gratis 2.000 menit/bulan) habis 8 Okt. Satu putaran CI ±20 menit (job e2e ±17 + docker ±2), dan saat ini SETIAP push ke `main` atau branch PR menjalankan
-CI penuh, termasuk commit PM yang hanya mengubah `docs/TASKS.md` (puluhan putaran tanpa perubahan kode).
-
-Kerjakan di `.github/workflows/ci.yml`:
-- `paths-ignore` untuk `push` dan `pull_request`: `docs/**`, `**/*.md` (kecuali bila ada kode yang ikut berubah, otomatis tetap jalan karena filter per-commit/PR). Catat bahwa PR yang HANYA dokumen tidak punya CI (cukup review PM).
-- `concurrency: { group: ci-${{ github.ref }}, cancel-in-progress: true }` supaya push beruntun membatalkan putaran lama.
-- Jangan menjalankan CI di `push` ke `main` untuk merge commit yang head PR-nya SUDAH hijau? Terlalu rumit: cukup biarkan, tapi pastikan paths-ignore berlaku.
-- Cache yang jelas menghemat (npm via `actions/setup-node` cache, Playwright browser cache) bila belum ada; ukur menit sebelum/sesudah di STATUS.
-- Jangan melemahkan tes apa pun (aturan tetap).
-
-**Kriteria selesai**
-- [ ] Commit yang hanya mengubah `docs/` / `*.md` tidak memicu CI (bukti: run tidak muncul/di-skip), commit kode tetap memicu.
-- [ ] Menit per putaran sebelum/sesudah dilaporkan. CI hijau (setelah kuota tersedia).
-
----
-
-### T-027 · README tiga bahasa (Indonesia, Inggris, Jepang) · `SIAP` (PALING AKHIR, setelah semua tugas di atas)
+### T-027 · README tiga bahasa (Indonesia, Inggris, Jepang) · `SIAP` (berikutnya)
 
 Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Indonesia, Inggris, dan Jepang.
 - `README.md` (Indonesia, utama) + `README.en.md` + `README.ja.md`, isi SETARA; baris tautan bahasa di atas tiap berkas (`Bahasa Indonesia | English | 日本語`).
@@ -41,7 +25,7 @@ Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Ind
 
 **Kriteria selesai**
 - [ ] Tiga berkas, judul setara (dites), tautan bahasa berfungsi, tidak ada secret/IP/email pribadi (`git grep` di PR).
-- [ ] CI hijau. Tanpa deploy.
+- [ ] CI hijau (PR ini memuat tes, jadi CI tetap jalan). Tanpa deploy.
 
 ---
 
@@ -62,6 +46,7 @@ Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Ind
 
 ## Selesai
 
+- **T-028** Hemat menit Actions (PR #29): `paths-ignore` dokumen (`docs/**`, `**/*.md`) untuk push `main` dan PR, `concurrency` cancel-in-progress; cache Playwright dicoba lalu dibuang (hemat ±6 dtk saja); putaran penuh tetap ±11-15 menit, hemat dari putaran yang tidak jalan.
 - **T-029** Halaman 404 bergaya Hashi (PR #28): `NotFoundView` di dalam dan di luar shell (id/ja; 404 hak akses = tampilan sama), `html{color-scheme:light}` (404 bawaan Next menyisipkan `body{color:#fff;background:#000}` di mode gelap), email uji `--test-to` menautkan `/records/cards` + label data palsu; e2e mode gelap.
 - **T-026** PDF 手数料納付書 jalur loket (PR #27): latar PDF kosong resmi (`assets/forms/`, `pdf-lib`), nama romaji (tidak pernah dipotong) + nomor 2 dilingkari, label "hanya loket", akses 担当/Admin, audit `fee_form_export`. Juga: aktivasi email T-025 SELESAI (Brevo, mode kirim; email uji sampai ke Ipal 8 Okt).
 - **T-024** Tampilan LPK status visa + tanggal tiba (PR #26): `placements.arrived_on` (migrasi 0030, tulis Admin TSK/担当, tidak di masa depan), fungsi sempit `lpk_worker_status` (hanya LPK_ADMIN pemilik, dibagikan, kemitraan aktif; tepat 3 nilai), `card_visa_state` = `visaState`, bagian "Setelah berangkat" di detail kandidat LPK; HTML LPK tanpa klien/job order/kartu (dites).
