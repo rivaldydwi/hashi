@@ -101,6 +101,15 @@ export default async function RenewalPage({ params }: { params: Promise<{ candid
           </li>
         ))}
       </ol>
+
+      <section className={`${cardClass} space-y-2 border-amber-300 p-4`} aria-labelledby="counter-title" data-testid="counter-section">
+        <h3 id="counter-title" className="text-[16px] font-semibold">{t("counter.title")}</h3>
+        <p className="text-sm text-ink-menu">{t("counter.warning")}</p>
+        <p className="text-xs text-ink-2">{t("counter.help")}</p>
+        <a href={`/records/export/fee-form/${candidateId}`} className={btnSecondary} data-testid="fee-form-link">
+          <span lang="ja">手数料納付書</span>&nbsp;({t("counter.button")})
+        </a>
+      </section>
     </div>
   );
 }

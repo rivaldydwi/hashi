@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { login, ownerQuery, unique } from "./helpers";
 
 // Data perpanjangan 在留カード online (T-021): butir 1-14 siap salin, data Jepang pekerja, nomor kartu hanya lewat aksi diaudit, 404 untuk non-担当/LPK/sensei, peringatan paspor,
@@ -197,4 +198,42 @@ test("tahap 結果待ち: daftar bawaan pengambilan kartu (pengajuan online: bia
   await expect(box).toContainText("materai tidak berlaku untuk pengajuan online");
   await expect(box).toContainText("loket");
   await page.context().close();
+});
+
+test("手数料納付書 (T-026, hanya loket): tombol berlabel jelas; PDF resmi dengan nama romaji + nomor 2 dilingkari; diaudit tanpa nilai; staf lain/LPK/sensei 404", async ({ browser }) => {
+  const page = await pageFor(browser, "tsk.staff@hashi.test");
+  await page.goto(url());
+  const sec = page.getByTestId("counter-section");
+  await expect(sec).toContainText("HANYA untuk pengajuan di loket");
+  await expect(sec).toContainText("tanpa formulir ini dan tanpa materai");
+  const link = page.getByTestId("fee-form-link");
+  await expect(link).toHaveAttribute("href", `/records/export/fee-form/${worker.id}`);
+  await expect(link).toContainText("loket");
+  const before = await ownerQuery<{ n: number }>("select count(*)::int as n from audit_logs where action = 'residence_card.fee_form_export' and created_at >= $1", [startedAt]);
+  const res = await page.request.get(`/records/export/fee-form/${worker.id}`);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toContain("application/pdf");
+  expect(res.headers()["content-disposition"]).toContain("attachment");
+  expect(res.headers()["content-disposition"]).toContain("tesuryo-nofusho-loket.pdf");
+  expect(res.headers()["content-disposition"]).not.toContain(tag); // nama pekerja tidak masuk nama file
+  const body = await res.body();
+  expect(body.subarray(0, 5).toString()).toBe("%PDF-");
+  const dir = `${process.cwd()}/node_modules/pdfjs-dist`;
+  const doc = await getDocument({ data: new Uint8Array(body), useSystemFonts: false, cMapUrl: `${dir}/cmaps/`, cMapPacked: true, standardFontDataUrl: `${dir}/standard_fonts/` }).promise;
+  expect(doc.numPages).toBe(1);
+  const tc = await (await doc.getPage(1)).getTextContent();
+  const text = tc.items.map((i) => ("str" in i ? i.str : "")).join(" ");
+  expect(text.replace(/\s+/g, "")).toContain("手数料納付書");
+  expect(text).toContain(`DEWI LESTARI ${tag}`);
+  const after = await ownerQuery<{ n: number }>("select count(*)::int as n from audit_logs where action = 'residence_card.fee_form_export' and created_at >= $1", [startedAt]);
+  expect(after[0].n).toBe(before[0].n + 1);
+  const leak = await ownerQuery<{ n: number }>("select count(*)::int as n from audit_logs where action = 'residence_card.fee_form_export' and created_at >= $1 and (coalesce(before::text, '') || coalesce(after::text, '')) ~* 'dewi|lestari'", [startedAt]);
+  expect(leak[0].n).toBe(0);
+  await page.context().close();
+
+  for (const [email, status] of [["tsk.staff2@hashi.test", 404], ["lpk1.admin@hashi.test", 404], ["lpk1.sensei@hashi.test", 404], ["tsk.admin@hashi.test", 200]] as const) {
+    const p = await pageFor(browser, email);
+    expect((await p.request.get(`/records/export/fee-form/${worker.id}`)).status(), email).toBe(status);
+    await p.context().close();
+  }
 });
