@@ -1,9 +1,22 @@
 name: CI
 
+# T-028: commit/PR yang HANYA mengubah dokumen tidak menjalankan CI (hemat menit). Filter dievaluasi per push (push) atau terhadap
+# SELURUH diff PR (pull_request): PR yang menyentuh satu berkas kode tetap menjalankan CI penuh.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+# Push beruntun ke ref yang sama membatalkan putaran lama (hanya hasil terbaru yang berguna).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
