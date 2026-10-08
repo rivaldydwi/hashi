@@ -35,7 +35,26 @@ Kerjakan:
 
 ---
 
-### T-015 · `scripts/deploy.sh`: log build ke berkas · `SIAP` (setelah T-014)
+### T-025 · Aktifkan email pengingat di produksi (Brevo) · `SIAP` (setelah T-014)
+
+Keputusan Ipal (8 Okt): layanan SMTP = **Brevo** (smtp-relay.brevo.com:587). Ipal juga sudah menyalin `CARD_DATA_KEY` ke tempat aman (BUTUH IPAL T-020 selesai; data kartu nyata boleh setelah cadangan luar-server berjalan).
+
+Kerjakan:
+- **Pengaman penerima (kode)**: worker TIDAK mengirim ke alamat berdomain contoh/cadangan (`example.com/.org/.net`, `*.test`, `*.invalid`, `*.example`, `localhost`) dan ke pengguna nonaktif; dihitung `dilewati` di log (tanpa alamat). Tes unit.
+- **Kirim uji**: `node … scripts/reminder-worker.ts --test-to <alamat>` mengirim SATU email contoh (data palsu, tanpa membaca kartu) lalu keluar, untuk membuktikan SMTP. Tidak menulis log pengiriman/audit.
+- **Pemeriksaan sebelum aktif** (laporkan angkanya di STATUS, tanpa alamat): berapa pengguna TSK aktif di produksi, berapa yang alamatnya akan dilewati pengaman, dan apakah produksi masih berisi akun demo. Bila semua penerima = akun demo, **jangan aktifkan**: tulis `BUTUH IPAL` (perlu akun staf nyata dulu).
+- **Panduan untuk Ipal** di `docs/email.md`: (1) di Brevo buat SMTP key dan verifikasi alamat pengirim (Senders) atau domain (SPF/DKIM); (2) Ipal sendiri mengisi `.env` server: `SMTP_URL=smtp://<login>:<smtp-key>@smtp-relay.brevo.com:587` (karakter khusus di-URL-encode), `MAIL_FROM="Hashi <alamat-terverifikasi>"`, `APP_URL=<alamat Hashi yang dibuka staf>`; (3) jalankan kirim uji; (4) `docker compose up -d worker`. **Engineer tidak pernah melihat/menyalin SMTP key** (BUTUH IPAL); cukup memeriksa bahwa variabel terisi (tanpa mencetak nilainya).
+- Setelah Ipal mengisi: kirim uji ke alamat Ipal, lalu restart worker; bukti log `mode=kirim` + ringkasan putaran di STATUS.
+- **Update keputusan Ipal (8 Okt)**: Hashi masih tahap demo (belum launch), akses hanya lewat **Tailscale**. Ipal MENGIZINKAN engineer menulis `SMTP_URL` ke `.env` server bila Ipal memberikan SMTP key langsung di sesi engineer (paket gratis Brevo). Tetap: jangan pernah commit/cetak/log nilainya, `.env` mode 600, dan catat di STATUS hanya "SMTP_URL terisi". `APP_URL=http://100.68.236.38:3110` (alamat Tailscale produksi, dikonfirmasi Ipal 8 Okt; hanya bisa dibuka dari tailnet). `MAIL_FROM` = pengirim terverifikasi di Brevo: alamat Gmail Ipal dengan nama "Hashi" (Brevo memperingatkan domain gratis: DMARC/DKIM tidak sesuai, jadi email bisa masuk spam atau ditolak; cukup untuk demo, sebelum launch pakai domain sendiri + SPF/DKIM; catat di `docs/email.md`). Karena produksi masih berisi akun demo, aktifkan pengiriman reminder hanya bila pengaman penerima di atas sudah ada; uji utama = `--test-to` ke alamat Ipal.
+
+**Kriteria selesai**
+- [ ] Pengaman penerima + `--test-to` + tes unit; typecheck, build, unit, CI hijau.
+- [ ] `docs/email.md` ada; STATUS memuat angka pemeriksaan penerima.
+- [ ] Setelah Ipal mengisi `.env`: email uji sampai (konfirmasi Ipal), worker produksi `mode=kirim`.
+
+---
+
+### T-015 · `scripts/deploy.sh`: log build ke berkas · `SIAP` (setelah T-025)
 
 Usulan engineer (T-007): output build Docker yang panjang menenggelamkan hasil penting. Log lengkap ke berkas (mis. `~/hashi-backups/deploy-<waktu>.log`, simpan 20 terakhir),
 terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + commit). Gagal = tampilkan 40 baris terakhir log + path berkasnya, kode keluar ≠ 0. Perilaku lain tidak berubah.
@@ -46,19 +65,50 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 
 ---
 
+### T-024 · Tampilan LPK: status visa + tanggal tiba pekerja (baca-saja, sangat terbatas) · `SIAP` (setelah T-015)
+
+Kebutuhan tercatat (CLAUDE.md "Keputusan untuk langkah 7"; jawaban TSK no. 9: LPK hanya melihat apa yang dibuat TSK). LPK_ADMIN pemilik kandidat ingin tahu muridnya sudah tiba dan visanya
+berlaku, TANPA melihat klien, job order, penempatan, kartu, atau data TSK lain.
+
+Kerjakan:
+- **Tanggal tiba**: kolom baru `placements.arrived_on` (date, opsional), diisi TSK (TSK_ADMIN atau 担当 efektif) di detail pekerja; tidak boleh di masa depan (zona TSK); audit nama kolom saja.
+- **Fungsi sempit** `lpk_worker_status(candidate_id)` (SECURITY DEFINER, `COALESCE` pada pemeriksaan peran, pola `candidate_delete_summary`): hanya untuk LPK_ADMIN pemilik kandidat, hanya bila ada
+  penempatan (DEPARTED) dan kandidat `shared_with_tsk` dengan kemitraan AKTIF; mengembalikan TEPAT: `arrived_on`, `visa_state` (kode: `none` / `valid` / `renewing` / `expired`, diturunkan
+  dari kartu aktif terbaru: berlaku = masa berlaku belum lewat; renewing = sudah diajukan/結果待ち; expired = lewat tanpa kartu baru), dan `valid_until` (tanggal habis kartu). TIDAK ada
+  nomor kartu, catatan, status rinci, nama TSK/klien/lokasi, job order, atau tanggal lain. Sensei, TSK, peran lain: null.
+- **UI LPK**: di detail kandidat (LPK_ADMIN saja) bagian kecil "Setelah berangkat": tanggal tiba + lencana status visa (StatusBadge + `statusHelp`, id/ja) + "berlaku sampai". Di daftar `/candidates`
+  boleh satu kolom/lencana kecil untuk kandidat berangkat (opsional bila memperlambat; ukur). Sensei: tidak dirender dan datanya tidak dibaca.
+- `verify-rls`: fungsi mengembalikan null untuk sensei, TSK, LPK lain, kemitraan nonaktif, `shared_with_tsk = false`; LPK_ADMIN tetap TIDAK bisa SELECT `placements`/`residence_cards` langsung.
+- e2e: LPK_ADMIN melihat tanggal tiba + status yang diisi TSK; HTML halaman LPK tidak memuat nama klien/lokasi/job order/nomor kartu (pola tes yang sudah ada); sensei tidak melihat bagian itu.
+
+**Kriteria selesai**
+- [ ] Migrasi kolom + fungsi; `verify-rls` bagian baru; tes unit penurunan `visa_state` (semua tahap kartu).
+- [ ] e2e LPK/TSK/sensei seperti di atas; typecheck, build, test:rls, e2e, CI hijau.
+- [ ] Deploy `--backup` (ada migrasi).
+
+---
+
+### T-026 · PDF 手数料納付書 untuk jalur loket (cadangan) · `SIAP` (setelah T-024)
+
+Keputusan Ipal (8 Okt): pengajuan perpanjangan lewat loket masih mungkin ("just in case"). Online = konbini/bank (T-021), loket = 収入印紙 + 手数料納付書.
+- Tombol "手数料納付書 (loket)" di halaman `/records/workers/<id>/renewal`: PDF A4 form resmi 別記第八十四号様式 (PDF kosong resmi https://www.moj.go.jp/isa/content/001458260.pdf sebagai latar, atau gambar ulang setia; jelaskan pilihan) dengan nama pekerja (romaji) dan nomor **2 (在留期間の更新許可)** dilingkari; kolom tanggal/nomor dibiarkan kosong. Label jelas "hanya untuk pengajuan di loket".
+- Hanya 担当 + TSK_ADMIN; audit `residence_card.fee_form_export` (tanpa nilai). Teks bantuan pengambilan kartu sudah membedakan online/loket (T-021).
+- Kriteria: tes unit penempatan teks, e2e unduh PDF (nama benar, staf lain 404), CI hijau.
+
+---
+
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
 - 在留カード: koreksi tanggal kartu yang sudah `received` oleh Admin (usulan engineer T-017), hanya bila TSK memintanya setelah dipakai.
 - Email pengingat 在留カード **ke pekerja** (butuh kolom email pekerja + persetujuan; setelah T-022).
-- Tampilan LPK: status visa + tanggal tiba (jawaban no. 9: hanya yang dibuat TSK). Setelah T-019.
 - Langkah 7 sisanya: checklist keberangkatan/kedatangan, bagian 管理・報告 di lembar 定期面談, profil pekerja lengkap, status visa + tanggal tiba untuk LPK (baca-saja), notifikasi email/LINE.
 - Catatan lanjutan: syarat "pekerja sama" hanya diperiksa saat dibuat; bila nanti perlu ketat, trigger di `activity_record_subjects` (temuan T-007, belum perlu).
 - `next.config`: `agentRules: false` supaya `next dev` tidak menulis blok aturan ke `CLAUDE.md` (temuan engineer T-013).
 - COE (在留資格認定証明書, termasuk form grup): ditunda atas keputusan Ipal (proses panjang).
 - 在留カード lanjutan: halaman 特定技能 ("V") + 所属機関等作成用 untuk perpanjangan, menunggu contoh dari Ghulam.
 - 在留カード: nomor/foto kartu LAMA setelah kartu baru diterima tetap tersimpan terenkripsi tapi tidak bisa dibuka di aplikasi (hanya kartu aktif). Perlu keputusan retensi (hapus otomatis setelah X bulan?) dengan TSK/行政書士 sebelum data nyata.
-- 在留カード: PDF 手数料納付書 untuk jalur LOKET (収入印紙) hanya bila TSK masih mengajukan di loket; tunggu konfirmasi Ghulam. Opsional: teks bantuan estimasi biaya (naik per 2026-10-01) dari sumber resmi.
+- 在留カード opsional: teks bantuan estimasi biaya (naik per 2026-10-01) dari sumber resmi.
 - Langkah 9: demo ke TSK.
 
 ## Selesai
