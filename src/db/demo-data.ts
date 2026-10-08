@@ -123,6 +123,8 @@ export type DemoCandidateInput = {
   birthDate: string; // YYYY-MM-DD
   fieldIndex: number; // indeks FIELDS
   today: string; // YYYY-MM-DD
+  /** Tambahan kunci PRNG supaya kandidat dengan indeks pipeline sama (data pilot, T-014) tetap berbeda; kosong = seed dasar (hasil tidak berubah). */
+  variant?: string;
 };
 
 export type DemoProfile = {
@@ -181,7 +183,7 @@ function passportCategory(orgIndex: number, i: number): "expired" | "soon" | "ok
 const VISA_REJECTED = new Set(["0.8", "1.6"]);
 
 export function buildProfile(c: DemoCandidateInput): DemoProfile {
-  const rng = makeRng(`profil:${c.orgIndex}:${c.i}`);
+  const rng = makeRng(`profil:${c.orgIndex}:${c.i}${c.variant ? `:${c.variant}` : ""}`);
   const fieldKey = FIELD_KEYS[c.fieldIndex % FIELD_KEYS.length];
   const geo = CITIES[c.orgIndex];
   const city = geo.cities[(c.i + c.orgIndex) % geo.cities.length];

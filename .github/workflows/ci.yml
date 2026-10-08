@@ -55,6 +55,16 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Tes e2e (browser)
         run: npm run test:e2e
+      # Data PILOT (T-014): dijalankan SETELAH tes lain karena menambah 200 kandidat (tes lain bergantung isi seed dasar). Dua kali = tidak menggandakan.
+      - name: Seed pilot (+200 kandidat, pekerja aktif, semua tahap kartu)
+        run: npm run seed:pilot
+      - name: Periksa data pilot (jumlah, kelengkapan, KPI = daftar)
+        run: npm run verify:pilot
+      - name: Seed pilot dijalankan LAGI = tidak menggandakan
+        run: |
+          npm run seed:pilot | tee /tmp/pilot2.log
+          grep -q "sudah ada" /tmp/pilot2.log
+          npm run verify:pilot
       - name: Simpan laporan tes kalau gagal
         if: failure()
         uses: actions/upload-artifact@v6

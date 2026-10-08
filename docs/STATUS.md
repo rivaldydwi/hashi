@@ -34,6 +34,70 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-014 · Langkah 8 siap pilot: 200 siswa dummy + cek kecepatan + daftar periksa (+ hasil deploy T-021)
+
+**PR:** #23 (branch `eng/T-014-pilot-seed`)
+**Status:** siap direview. Tidak ada migrasi dan tidak ada perubahan perilaku aplikasi (hanya skrip/seed/tes/dokumen), jadi tidak perlu deploy produksi; produksi tidak disentuh.
+
+**Hasil deploy T-021** (PR #22 di-merge `cde24a3` setelah `PM: DISETUJUI` dan CI hijau di head `66554c9`; ada migrasi 0029)
+- `scripts/deploy.sh --backup`: cadangan terenkripsi `hashi-20261008-093614-*` dibuat dulu, migrasi 0029 terpasang (`worker_jp_profiles`), keluaran akhir: commit berjalan `cde24a3`, health `{"status":"ok","commit":"cde24a3"}`; service `worker` ikut dibangun ulang dan tetap mode KERING (`SMTP_URL` kosong). Demo tidak disentuh (masih `eab9692`).
+- Masih menunggu Ipal: salinan `CARD_DATA_KEY` ke tempat aman, pilihan layanan SMTP; loket vs online (PM menanyakan ke Ipal/TSK).
+
+**Yang dikerjakan**
+- **`npm run seed:pilot`** (`scripts/seed-pilot.ts` -> `src/db/demo-pilot.ts`; hanya impor dari `src/db`): MENAMBAH 200 kandidat dummy lengkap (90 Bandung, 70 Surabaya, 40 Medan non-mitra): data pribadi, keluarga, pendidikan, riwayat kerja, sertifikat, 3 dokumen dummy kecil (600 berkas ditulis ke `docs-data`), 898 penilaian bulanan; status LPK Belajar 40 / Siap seleksi 140 / Mundur 20; sebagian besar READY yang terlihat BERANGKAT = **73 pekerja aktif**; keputusan TSK semua nilai (DEPARTED 73, SHORTLISTED 11, DOCUMENT_PROCESS 5, PASSED_CLIENT_INTERVIEW 5, SUBMITTED_TO_CLIENT 5, PASSED_TSK_INTERVIEW 4, REJECTED 2); 6 job order pilot (satu per bidang, 200 posisi supaya tetap OPEN); 24 catatan TSK; 146 catatan harian, 219 wawancara berkala, 25 catatan kuartal untuk pekerja pilot.
+- **Satu staf TSK memegang 48 pekerja** (`tsk.staff`: 47 per penempatan + 1 dari seed dasar) → peringatan beban KUNING di `/records/responsible` (45-50); tidak ada yang melewati 50. Staf lain 16 dan 11.
+- **Sebaran SEMUA tahap kartu 在留カード** (`CARD_PLAN`): persiapan, boleh mengajukan, H-30/14/7, lewat, menunggu hasil (biasa, dengan 特例期間, dengan 追加資料), lewat 特例期間, ditolak, tanpa tindakan (kartu jauh), dan tanpa data (4 pekerja). Saat seed tiap rencana dicek dengan `cardStage` (galat bila tahap meleset), dan tes unit memeriksa rencananya untuk SETIAP hari selama 3 tahun (akhir bulan, Februari, dst.) supaya seed tidak rapuh terhadap tanggal.
+- **Idempoten + deterministik**: PRNG ber-seed + id dari `uuidFor("pilot:…")`; kandidat pilot yang sudah ada dilewati BESERTA turunannya (satu transaksi, atomik). `buildProfile` mendapat `variant` (kunci PRNG tambahan; kosong = seed dasar tidak berubah, dibuktikan `verify:seed` dan e2e tetap hijau).
+- **`npm run verify:pilot`** (baca-saja, `scripts/verify-pilot.ts`): jumlah tepat 200 per organisasi (bukti tidak ganda), kelengkapan semua kolom turunan, 600 berkas ada di disk, sebaran status/keputusan, ≥ 70 pekerja aktif dengan catatan + wawancara, beban staf 45-50 level kuning, semua tahap kartu, **KPI = daftar** (kartu izin tinggal: Admin dan tiap staf; KPI kandidat: 16 kombinasi organisasi × filter, memakai fungsi yang SAMA dengan halaman).
+- **Ukur waktu server** (`npm run perf:pages`, `tests/perf/pages.spec.ts` + `playwright.perf.config.ts`; build standalone, OptiPlex, database dev dengan data pilot): tabel di bawah. **Semua ≤ 250 ms (batas 1000 ms)**, jadi tidak ada perbaikan indeks/N+1 yang diperlukan dan tidak ada `EXPLAIN ANALYZE` untuk dilampirkan.
+- **`docs/pilot-checklist.md`**: daftar periksa sebelum data nyata (cadangan di luar server + uji restore, `CARD_DATA_KEY`, `SHOW_DEMO_ACCOUNTS=false`, kata sandi, akun demo, data dummy tidak ada di produksi, 行政書士 untuk syarat gender/My Number/persetujuan/retensi, form 5-5 + lembar klien + data perpanjangan dicek staf TSK, SMTP, operasional, kinerja), tiap butir dengan cara memeriksa dan penanggung jawab. Hanya dokumen; `.env` tidak diubah.
+- CI (job `test`): setelah e2e, `seed:pilot` → `verify:pilot` → `seed:pilot` lagi (harus melapor "sudah ada") → `verify:pilot`. Ditaruh di akhir karena tes lain bergantung isi seed dasar.
+- Tangkapan layar di `docs/screenshots/T-014/`: `responsible-staf-48-kuning.png` (staf 48/50, kuning), `daftar-kandidat-bandung.png`, `daftar-kandidat-tsk.png`, `kartu-semua-tahap.png`.
+
+**Waktu halaman** (ms; 7 permintaan terukur + 1 pemanasan; selesai di-stream; OptiPlex; data pilot: 236 kandidat, 76 pekerja aktif)
+
+| Peran | Halaman | Pemanasan | Median | Terburuk | TTFB (median) |
+|---|---|---:|---:|---:|---:|
+| LPK_ADMIN | / (dashboard) | 248 | 195 | 199 | 22 |
+| LPK_ADMIN | /candidates | 59 | 66 | 85 | 62 |
+| LPK_ADMIN | /candidates?avg=4 (filter penilaian) | 102 | 87 | 96 | 83 |
+| LPK_ADMIN | /candidates?attendance=90&jlpt=N4 | 85 | 85 | 94 | 80 |
+| LPK_ADMIN | /candidates/<id> (detail) | 92 | 62 | 67 | 56 |
+| LPK_ADMIN | /assessments/pending | 64 | 65 | 77 | 62 |
+| LPK_ADMIN | /activity | 40 | 35 | 61 | 30 |
+| TSK_ADMIN | / (dashboard) | 190 | 111 | 131 | 14 |
+| TSK_ADMIN | /candidates | 57 | 66 | 71 | 62 |
+| TSK_ADMIN | /candidates?avg=4 (filter penilaian) | 84 | 82 | 85 | 77 |
+| TSK_ADMIN | /candidates/<id> (detail) | 89 | 73 | 84 | 68 |
+| TSK_ADMIN | /records/interviews | 153 | 125 | 162 | 107 |
+| TSK_ADMIN | /records/responsible | 54 | 47 | 54 | 38 |
+| TSK_ADMIN | /records/cards | 47 | 51 | 58 | 41 |
+| TSK_ADMIN | /records (daftar catatan) | 58 | 65 | 73 | 55 |
+| TSK_ADMIN | /records/workers/<id> | 83 | 75 | 84 | 67 |
+| TSK_ADMIN | /activity | 38 | 32 | 49 | 24 |
+
+- Catatan metode: yang diukur waktu server sampai HTML selesai di-stream (`request.timing().responseEnd`), bukan render di peramban; jaringan = localhost. Dashboard memakai streaming (TTFB kecil, selesai ±110-195 ms). Hasil ini di mesin yang sedang melayani produksi dan layanan lain, jadi sudah termasuk gangguan normal.
+
+**Bukti seed:pilot idempoten dan ditolak di produksi**
+- Dijalankan dua kali terhadap `hashi_dev`: kedua `{"candidates":200,...}` lalu `ℹ Semua 200 kandidat pilot sudah ada: tidak ada yang ditambahkan (idempoten).` + `{"candidates":0}`; `verify:pilot` tetap "tepat 200" setelah putaran kedua. CI melakukan hal yang sama di `hashi_test`.
+- Terhadap URL produksi (`.../hashi`): `✗ seed:pilot DITOLAK: DATABASE_URL mengarah ke database "hashi", bukan database dev/test.` (juga dites unit `tests/unit/seed-pilot.test.ts`: `hashi` ditolak, salah satu URL ke produksi sudah cukup, `_dev/_test/_demo` diterima). Skrip juga menolak bila ada organisasi non-dummy.
+
+**Verifikasi** (database dev `hashi_dev`)
+- `npm run typecheck` → lulus; `npm run test:unit` → 142/142 (baru `seed-pilot` 4); `npm run test:i18n` tidak berubah.
+- `db:seed -- --reset` → `verify:seed` lulus, `test:rls` lulus (seed dasar tidak berubah), `npm run build` 0 peringatan, `E2E_PORT=3120 npm run test:e2e` → 235 lulus; lalu `seed:pilot` → `verify:pilot` lulus (semua pemeriksaan hijau).
+
+**Kendala / catatan**
+- Pilot memakai data deterministik berpola (nama, sebaran), bukan data asli; cukup untuk volume, bukan untuk menilai kualitas isi.
+- Dengan ±236 kandidat, tabel dan daftar ditampilkan terpaginasi, jadi waktu `/candidates` tidak naik berarti. Bila jumlah data nyata melewati beberapa ratus, ukur ulang (butir H4 di checklist).
+- `seed:pilot` di demo (`_demo`) diizinkan db-guard tetapi tetap butuh izin Ipal (aturan CLAUDE.md); belum dijalankan.
+
+**Pertanyaan**
+- BUTUH IPAL (masih terbuka): salinan `CARD_DATA_KEY`; pilihan layanan SMTP. Dari checklist: A2 cadangan di luar server (wajib sebelum data nyata) dan D1-D4 (行政書士/retensi) menunggu keputusan Ipal.
+
+**Usulan berikutnya**
+- Jalankan `seed:pilot` di instance demo (setelah izin Ipal) supaya TSK melihat tampilan dengan volume pilot.
+
+
 ## 2026-10-08 · T-021 · Data perpanjangan 在留カード online siap salin + data Jepang pekerja (+ hasil deploy T-022)
 
 **PR:** #22 (branch `eng/T-021-renewal-data`)
