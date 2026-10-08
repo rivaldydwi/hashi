@@ -34,6 +34,32 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-028 · Hemat menit GitHub Actions
+
+**PR:** #29 (branch `eng/T-028-ci-minutes`)
+**Status:** siap direview. Hanya `.github/workflows/ci.yml` (+ entri ini); tanpa migrasi, tanpa deploy.
+
+**Yang dikerjakan** (`.github/workflows/ci.yml`)
+- `paths-ignore: ["docs/**", "**/*.md"]` pada `push` (ke `main`) DAN `pull_request`. Catatan perilaku: filter `pull_request` dievaluasi terhadap SELURUH diff PR, jadi PR yang menyentuh satu berkas kode tetap menjalankan CI penuh (termasuk PR ini, karena mengubah `ci.yml`); PR yang HANYA dokumen tidak punya CI (cukup review PM). Cabang PR tanpa PR tidak pernah memicu CI (sudah begitu: `push` hanya `main`).
+- `concurrency: { group: ci-${{ github.ref }}, cancel-in-progress: true }`: push beruntun ke ref yang sama membatalkan putaran lama.
+- npm sudah di-cache (`setup-node` `cache: npm`), tidak diubah. Tidak ada tes yang dilemahkan atau dilewati.
+- Dicoba lalu DIBUANG: cache browser Playwright (`actions/cache` pada `~/.cache/ms-playwright`). Saat cache kena, langkah pasang browser turun dari ±27 dtk ke ±21 dtk (`install-deps` apt tetap jalan), penghematan ±6 dtk per putaran, tidak sebanding dengan tambahan langkah/kunci cache. `.next/cache` tidak dicoba: build hanya ±35-45 dtk dan cache build lama berisiko membuat hasil basi.
+
+**Ukuran menit** (job `test` + job `docker`; satu putaran = jumlah keduanya, ditagih per job)
+- Sebelum (PR sukses terakhir, run 37725639944): test 777 dtk (e2e 626 dtk) + docker 102 dtk = ±14,7 menit ditagih.
+- Sesudah, run PR ini tanpa cache (37727402974 percobaan 1): test 544 dtk + docker 105 dtk = ±10,8 menit.
+- Sesudah, percobaan 2 (cache Playwright kena, sebelum cache dibuang): test 793 dtk (e2e 630 dtk) + docker 98 dtk = ±14,8 menit.
+- Kesimpulan jujur: waktu satu putaran penuh bervariasi 9-13 menit karena kecepatan runner (e2e saja 626-630 dtk di dua percobaan, selisih ada di langkah lain); peningkatan nyata datang dari BERKURANGNYA putaran (dokumen-saja tidak jalan, push beruntun membatalkan yang lama), bukan dari mempercepat satu putaran. Bukti "tidak muncul" untuk commit dokumen-saja baru bisa dilihat setelah merge (commit PM ke `docs/TASKS.md` di `main` tidak lagi memicu run); PR ini sendiri tidak bisa membuktikannya karena memuat `ci.yml`.
+
+**Verifikasi**
+- YAML valid (`yaml.safe_load`), triggers `push`+`pull_request`, `concurrency` terbaca. CI PR ini: percobaan 1 hijau (kedua job); head terakhir menjalankan CI lagi setelah cache dibuang.
+- Perlindungan cabang `main` tidak aktif (`gh api …/branches/main/protection` → 404), jadi status check yang dilewati tidak memblokir merge dokumen-saja.
+
+**Kondisi server:** tidak disentuh. Produksi tetap `7687e47` (T-029 sudah di-deploy; lihat entri T-029).
+
+**Usulan berikutnya**
+- Bila menit tetap jadi masalah: pecah job `test` (e2e ±10,5 menit) menjadi shard paralel hanya menurunkan waktu dinding, tidak menit; tidak diusulkan sekarang.
+
 ## 2026-10-08 · T-029 · Halaman 404 bergaya Hashi + tautan email uji (+ hasil deploy T-026)
 
 **PR:** #28 (branch `eng/T-029-not-found`)
