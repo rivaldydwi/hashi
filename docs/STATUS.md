@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-014 · Langkah 8 siap pilot: 200 siswa dummy + cek kecepatan + daftar periksa (+ hasil deploy T-021)
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-014-pilot-seed`)
+**PR:** #23 (branch `eng/T-014-pilot-seed`)
 **Status:** siap direview. Tidak ada migrasi dan tidak ada perubahan perilaku aplikasi (hanya skrip/seed/tes/dokumen), jadi tidak perlu deploy produksi; produksi tidak disentuh.
 
 **Hasil deploy T-021** (PR #22 di-merge `cde24a3` setelah `PM: DISETUJUI` dan CI hijau di head `66554c9`; ada migrasi 0029)
