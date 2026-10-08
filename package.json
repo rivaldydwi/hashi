@@ -25,7 +25,9 @@
     "seed:records": "tsx scripts/seed-records.ts",
     "seed:pilot": "tsx scripts/seed-pilot.ts",
     "verify:pilot": "tsx scripts/verify-pilot.ts",
-    "perf:pages": "playwright test -c playwright.perf.config.ts"
+    "perf:pages": "playwright test -c playwright.perf.config.ts",
+    "guide:shots": "npm run db:seed -- --reset && npm run seed:pilot && npm run build && GUIDE_SHOTS=1 playwright test -c playwright.guide.config.ts",
+    "build:guide": "tsx scripts/build-guide.ts"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",
@@ -53,6 +55,7 @@
     "@types/react-dom": "19.3.0",
     "dotenv": "18.0.4",
     "drizzle-kit": "0.31.11",
+    "marked": "^18.1.0",
     "pdfjs-dist": "^6.4.299",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",

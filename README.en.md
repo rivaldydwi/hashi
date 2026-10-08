@@ -15,6 +15,8 @@ One candidate profile, shared by the LPK and its partner TSK, with no re-typing.
 Two kinds of organisation use it together: the **LPK** (training institution; LPK admins and sensei) prepares student profiles, and the **TSK** (support organisation; TSK admins and TSK staff) screens candidates,
 places them with clients (配属先), and supports workers after they leave for Japan. Each organisation sees only its own data and what has been deliberately shared with it.
 
+**Want to try it yourself?** Follow the [illustrated usage guide](docs/panduan/README.md) ([PDF](docs/panduan/panduan-hashi.pdf), in Indonesian): how to use each feature for the LPK and the TSK, plus four step-by-step worked cases.
+
 ### Technology
 
 | Part | Technology |
@@ -225,6 +227,7 @@ Documentation in `docs/`:
 | File | Contents |
 | --- | --- |
 | [docs/TASKS.md](docs/TASKS.md) · [docs/STATUS.md](docs/STATUS.md) · [docs/HISTORY.md](docs/HISTORY.md) | Task queue (PM), engineer reports, history and technical decisions |
+| [docs/panduan/README.md](docs/panduan/README.md) · [docs/panduan/panduan-hashi.pdf](docs/panduan/panduan-hashi.pdf) | Usage guide for LPK and TSK staff (in Indonesian, with screenshots and four worked cases). Screenshots are regenerated with `npm run guide:shots`, the PDF with `npm run build:guide` |
 | [docs/glossary.md](docs/glossary.md) | Glossary of Japanese, Indonesian and English terms |
 | [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md) | TSK activity records (業務記録, 面談, 定期面談, form 5-5) |
 | [docs/lembar-klien.md](docs/lembar-klien.md) | Client sheet PDFs (DRAFT format) |

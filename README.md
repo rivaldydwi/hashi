@@ -15,6 +15,8 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 Dua jenis organisasi memakainya bersama: **LPK** (lembaga pelatihan; Admin LPK dan sensei) menyiapkan profil siswa, **TSK** (lembaga pendukung; Admin TSK dan staf TSK) menyeleksi,
 menempatkan ke klien (配属先), lalu mendampingi pekerja setelah berangkat. Setiap organisasi hanya melihat datanya sendiri dan apa yang sengaja dibagikan kepadanya.
 
+**Mau mencoba sendiri?** Ikuti [buku panduan bergambar](docs/panduan/README.md) ([PDF](docs/panduan/panduan-hashi.pdf)): cara memakai tiap fitur untuk LPK dan TSK, plus empat contoh kasus langkah demi langkah.
+
 ### Teknologi
 
 | Bagian | Teknologi |
@@ -489,6 +491,7 @@ Dokumentasi di `docs/`:
 | Berkas | Isi |
 | --- | --- |
 | [docs/TASKS.md](docs/TASKS.md) · [docs/STATUS.md](docs/STATUS.md) · [docs/HISTORY.md](docs/HISTORY.md) | Antrean tugas (PM), laporan engineer, riwayat dan keputusan teknis |
+| [docs/panduan/README.md](docs/panduan/README.md) · [docs/panduan/panduan-hashi.pdf](docs/panduan/panduan-hashi.pdf) | Buku panduan pemakaian untuk LPK dan TSK (dalam bahasa Indonesia, bergambar, empat contoh kasus). Tangkapan layar dibuat ulang dengan `npm run guide:shots`, PDF dengan `npm run build:guide` |
 | [docs/glossary.md](docs/glossary.md) | Kamus istilah Jepang, Indonesia, dan Inggris |
 | [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md) | Catatan kegiatan TSK (業務記録, 面談, 定期面談, form 5-5) |
 | [docs/lembar-klien.md](docs/lembar-klien.md) | Lembar klien PDF (format DRAFT) |
