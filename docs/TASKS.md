@@ -12,27 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-029 · Halaman 404 di dalam aplikasi + tautan email uji · `SIAP`
-
-Laporan Ipal (8 Okt, tangkapan layar): email uji T-025 SAMPAI, tetapi tautan di email membuka `/records/workers/00000000-…-000000000001` (id palsu dari email uji) dan halaman tampil
-**hitam** dengan "404 This page could not be found." (halaman 404 bawaan Next.js). Selain itu judul halaman ("Catatan kegiatan") dan nama organisasi di sidebar jadi **putih di atas latar terang**
-(hampir tak terbaca). Dugaan PM: 404 bawaan Next menyisipkan `<style>` global yang, di peramban mode GELAP (`prefers-color-scheme: dark`), mengubah `body` menjadi `color:#fff; background:#000`,
-dan gaya itu bocor ke shell aplikasi. Hashi sendiri belum punya `not-found.tsx`. Periksa dugaan ini dulu, perbaiki akar masalahnya.
-
-Kerjakan:
-- `src/app/(app)/not-found.tsx` (dan `src/app/not-found.tsx` untuk di luar shell): gaya Hashi (token `@theme`, terang), pesan id/ja "Halaman tidak ditemukan atau Anda tidak punya akses" + tombol kembali ke Beranda,
-  tanpa rincian teknis. Semua `notFound()` yang ada otomatis memakainya (termasuk 404 hak akses: TETAP 404, jangan bocorkan apakah data ada).
-- Pastikan tidak ada gaya global dari halaman bawaan Next yang tersisa; tetapkan `color-scheme: light` di `:root`/`html` (Hashi belum mendukung mode gelap) supaya kontrol bawaan peramban juga terang.
-- **Email uji `--test-to`**: tautan contoh jangan menuju id palsu. Arahkan ke halaman yang ada, mis. `/records/cards` (daftar kartu), dan beri keterangan "contoh, data palsu" di email. Email pengingat sungguhan tetap menautkan ke detail pekerja.
-- e2e: buka id pekerja yang tidak ada dengan `colorScheme: 'dark'` di Playwright → 404 bergaya Hashi, judul + sidebar tetap terbaca (warna teks bukan putih di atas latar terang; cek computed style), status 404. Unit: tautan email uji.
-
-**Kriteria selesai**
-- [ ] 404 bergaya Hashi (id/ja), mode gelap peramban tidak merusak shell (dites), email uji menautkan halaman yang ada.
-- [ ] CI hijau; deploy (tanpa migrasi); Ipal bisa uji ulang dengan `--test-to`.
-
----
-
-### T-028 · Hemat menit GitHub Actions · `SIAP` (setelah T-029; tidak mendesak lagi: repo PUBLIK sejak 8 Okt, menit Actions gratis)
+### T-028 · Hemat menit GitHub Actions · `SIAP` (berikutnya; tidak mendesak lagi: repo PUBLIK sejak 8 Okt, menit Actions gratis)
 
 Kuota menit Actions (repo privat, paket gratis 2.000 menit/bulan) habis 8 Okt. Satu putaran CI ±20 menit (job e2e ±17 + docker ±2), dan saat ini SETIAP push ke `main` atau branch PR menjalankan
 CI penuh, termasuk commit PM yang hanya mengubah `docs/TASKS.md` (puluhan putaran tanpa perubahan kode).
@@ -82,6 +62,7 @@ Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Ind
 
 ## Selesai
 
+- **T-029** Halaman 404 bergaya Hashi (PR #28): `NotFoundView` di dalam dan di luar shell (id/ja; 404 hak akses = tampilan sama), `html{color-scheme:light}` (404 bawaan Next menyisipkan `body{color:#fff;background:#000}` di mode gelap), email uji `--test-to` menautkan `/records/cards` + label data palsu; e2e mode gelap.
 - **T-026** PDF 手数料納付書 jalur loket (PR #27): latar PDF kosong resmi (`assets/forms/`, `pdf-lib`), nama romaji (tidak pernah dipotong) + nomor 2 dilingkari, label "hanya loket", akses 担当/Admin, audit `fee_form_export`. Juga: aktivasi email T-025 SELESAI (Brevo, mode kirim; email uji sampai ke Ipal 8 Okt).
 - **T-024** Tampilan LPK status visa + tanggal tiba (PR #26): `placements.arrived_on` (migrasi 0030, tulis Admin TSK/担当, tidak di masa depan), fungsi sempit `lpk_worker_status` (hanya LPK_ADMIN pemilik, dibagikan, kemitraan aktif; tepat 3 nilai), `card_visa_state` = `visaState`, bagian "Setelah berangkat" di detail kandidat LPK; HTML LPK tanpa klien/job order/kartu (dites).
 - **T-015** `scripts/deploy.sh` log ke berkas (PR #25): log lengkap per langkah (mode 600, simpan 20), terminal ringkasan, gagal = 40 baris terakhir + path; tes unit dengan docker/curl palsu.
