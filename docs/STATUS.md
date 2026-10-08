@@ -34,6 +34,51 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-024 · Tampilan LPK: status visa + tanggal tiba pekerja (baca-saja, sangat terbatas) (+ hasil deploy T-015)
+
+**PR:** (diisi setelah dibuka) (branch `eng/T-024-lpk-visa-status`)
+**Status:** siap direview. Deploy produksi belum (menunggu `PM: DISETUJUI`; ada migrasi 0030, jadi `--backup`).
+
+**Hasil deploy T-015** (PR #25 di-merge `fcdef25` setelah `PM: DISETUJUI` dan CI hijau di head `a42b745`; tanpa migrasi, tanpa `--backup`) memakai SKRIP BARU:
+```
+→ git pull --ff-only
+  Already up to date.
+→ commit yang akan di-deploy: fcdef25 (main)
+→ commit yang berjalan sekarang: e7d8964 (health: http://127.0.0.1:3110/api/health)
+→ build image (docker compose -p hashi build, GIT_SHA=fcdef25)
+  build selesai
+→ migrasi + mulai layanan (docker compose -p hashi up -d)
+  migrasi selesai: npm notice
+→ menunggu /api/health memuat commit fcdef25 (maks 120s)
+✓ deploy selesai. Commit berjalan: fcdef25 (label image: fcdef25); health: {"status":"ok","commit":"fcdef25"}
+  log: ~/hashi-backups/deploy-20261008-112400.log
+```
+Log: 297 baris, 10 KB, mode 600, 7 penanda langkah, tanpa isi `.env`/kunci (diperiksa). Temuan kecil: ringkasan `migrasi selesai: npm notice` mengambil baris terakhir log migrate yang ternyata pemberitahuan npm, bukan baris yang berguna. Usulan perbaikan (satu baris: pilih baris `✓ Migration selesai` dulu, baru baris terakhir); belum dikerjakan agar tidak menyelip ke PR ini.
+
+**Yang dikerjakan** (migration `0030_placements_arrived_on`; desain `docs/zairyu-card.md` §12)
+- **Tanggal tiba**: kolom `placements.arrived_on` (opsional). Diisi TSK_ADMIN atau 担当 efektif lewat bagian "Tanggal tiba di Jepang" di `/records/workers/<id>` (`ArrivalSection`, action `saveArrival`); tidak boleh di masa depan menurut tanggal Tokyo (dicek di action DAN di trigger `placements_guard`); kosong = menghapus; staf TSK lain baca-saja, dan trigger menolak bila mereka mencoba (kolom penempatan lain tetap bisa diubah staf mana pun seperti sebelumnya, dites). Audit `placement.arrival_update`: hanya NAMA kolom `["arrivedOn"]`, tanggalnya tidak tercatat.
+- **Fungsi sempit `lpk_worker_status(candidate_id)`** (SECURITY DEFINER, `COALESCE` pada peran, pola `candidate_delete_summary`): hanya LPK_ADMIN PEMILIK kandidat, kandidat `shared_with_tsk`, ada penempatan di TSK dengan kemitraan AKTIF. Mengembalikan TEPAT tiga kunci: `arrived_on`, `visa_state` (`none | valid | renewing | expired`), `valid_until`. Selain itu NULL. Tidak ada nomor kartu, catatan, status proses rinci, tanggal pengajuan, nama TSK/klien/lokasi, job order.
+- **`visa_state`** dari kartu AKTIF terkini (kartu batal diabaikan): `none` = belum ada data kartu; `renewing` = sudah diajukan/menunggu hasil (termasuk 追加資料 dan 特例期間 dan lewat 特例期間); `valid` = tanggal habis belum lewat (hari terakhir masih berlaku); `expired` = lewat tanpa pengajuan. Ditolak/diterima mengikuti tanggal habis. SATU definisi: SQL `card_visa_state` dicerminkan TS `visaState` (`src/db/zairyu.ts`), dites setara untuk semua status × tanggal.
+- **UI LPK** (`WorkerStatusSection`, hanya LPK_ADMIN, di detail kandidat): tanggal tiba + lencana status visa (`StatusBadge kind="visa"`: ikon + teks + `statusHelp`, id dan ja; dicek `test:i18n` bersama status lain) + berlaku sampai. Sensei: tidak dirender dan datanya tidak dibaca. TSK tidak melihat bagian ini. **Lencana di daftar `/candidates` TIDAK dibuat** (opsional di TASKS; menambah pemanggilan fungsi per baris).
+- Dokumentasi: `docs/zairyu-card.md` §12, `CLAUDE.md`.
+
+**Verifikasi** (database dev `hashi_dev`)
+- `npm run typecheck` → lulus; `npm run test:i18n` → lulus (1751 kunci); `npm run test:unit` → 158/158 (baru `visa-state.test.ts` 6: tanpa kartu, batas hari terakhir/sehari sesudahnya, diajukan tetap renewing sesudah habis dan sesudah 特例期間, ditolak/diterima, SEMUA tahap `cardStage` → status yang masuk akal, kode lencana); `npm run verify:audit-coverage` → tanpa pelanggaran; `npm run build` → 0 peringatan.
+- `db:seed -- --reset` → `verify:seed` lulus; `npm run test:rls` → semua lulus, bagian AB baru (5 pemeriksaan): fungsi mengembalikan tepat tiga kunci dengan nilai benar dan tanpa catatan/klien/lokasi/job order/nomor; NULL untuk sensei, TSK (Admin/staf/lain), LPK lain (Surabaya, Medan), super admin, peran null, kemitraan nonaktif, kandidat tidak dibagikan, kandidat tanpa penempatan; LPK_ADMIN tetap 0 baris di `placements`/`residence_cards`; tanggal tiba hanya Admin/担当 (staf lain ditolak, kolom lain tetap boleh, masa depan ditolak); urutan kartu none → valid → renewing → (batal) none → expired; `card_visa_state` = `visaState` untuk 6 status × 8 tanggal.
+- `E2E_PORT=3120 npm run test:e2e` → 241 lulus tanpa `MISSING_MESSAGE` (5 tes baru `lpk-worker-status.spec.ts`: TSK mengisi tanggal tiba (masa depan ditolak SERVER, audit hanya nama kolom, staf lain baca-saja); LPK_ADMIN melihat tanggal tiba + status + berlaku sampai dan HTML tanpa klien/lokasi/job order/catatan kartu; status mengikuti kartu (Berlaku → Sedang diperpanjang → Sudah habis → Belum ada data); sensei tidak melihat dan datanya tidak ada di HTML, LPK lain 404, kemitraan nonaktif/tidak dibagikan menyembunyikan lalu memulihkan; TSK tidak melihat bagian LPK).
+- Dengan data pilot (`seed:pilot` + `verify:pilot` lulus): `/candidates/<id>` LPK_ADMIN median 61 ms, terburuk 65 ms (sebelum T-024: 62/67 ms), jadi tambahan satu pemanggilan fungsi tidak terukur.
+
+**Kendala / catatan**
+- Catatan seorang pekerja TANPA kartu tampil "Belum ada data" (bukan "tidak diketahui"); LPK tidak bisa membedakan "TSK belum mengisi kartu" dari "memang tidak ada".
+- Pekerja yang penempatannya sudah ENDED (pulang) tetap dihitung (penempatan terbaru); tanggal tiba tetap tampil. Bila TSK ingin menyembunyikan untuk yang sudah selesai, itu aturan tambahan.
+
+**Pertanyaan**
+- BUTUH IPAL (masih terbuka): aktivasi email (SMTP login + key, pengirim terverifikasi, `APP_URL`, alamat `--test-to`, di sesi engineer); cadangan di luar server; keputusan 行政書士/retensi (checklist A2, D1-D4).
+
+**Usulan berikutnya**
+- Perbaikan baris ringkasan migrasi di `deploy.sh` (lihat atas).
+
+
 ## 2026-10-08 · T-015 · `scripts/deploy.sh`: log build ke berkas (+ hasil deploy T-025 dan status aktivasi email)
 
 **PR:** #25 (branch `eng/T-015-deploy-log`)

@@ -148,3 +148,22 @@ export function compareCardItems(a: { stage: CardStage | null; daysLeft: number 
   if (da !== db) return da - db;
   return a.name.localeCompare(b.name);
 }
+
+// ---------------------------------------------------------------------------------------------------- status visa untuk LPK (T-024)
+/** Status visa yang BOLEH dilihat LPK (satu-satunya yang diturunkan dari kartu): none · valid · renewing · expired. Dicerminkan SQL `card_visa_state` (dites setara di verify-rls). */
+export const VISA_STATES = ["none", "valid", "renewing", "expired"] as const;
+export type VisaState = (typeof VISA_STATES)[number];
+/** Kode lencana status visa (kunci `statusHelp` dan `visaStates` di katalog pesan). */
+export type VisaCode = `VISA_${Uppercase<VisaState>}`;
+export const VISA_CODES: readonly VisaCode[] = VISA_STATES.map((s) => `VISA_${s.toUpperCase()}` as VisaCode);
+export const visaCodeOf = (s: VisaState): VisaCode => `VISA_${s.toUpperCase()}` as VisaCode;
+
+/**
+ * Dari kartu AKTIF terkini (null = belum ada data kartu): renewing = sudah diajukan / menunggu hasil (applied, additional_docs, termasuk 特例期間);
+ * selain itu valid bila tanggal habis belum lewat (hari itu masih berlaku), kalau tidak expired. Tanpa kartu = none. Tidak membocorkan tahap pengingat atau status rinci.
+ */
+export function visaState(card: { expiryDate: string; renewalStatus: RenewalStatus } | null, today: string): VisaState {
+  if (!card) return "none";
+  if (card.renewalStatus === "applied" || card.renewalStatus === "additional_docs") return "renewing";
+  return card.expiryDate >= today ? "valid" : "expired";
+}

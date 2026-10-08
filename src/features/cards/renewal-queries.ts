@@ -56,3 +56,9 @@ export async function loadRenewal(tx: Tx, me: Pick<CurrentUser, "id" | "role">, 
     },
   };
 }
+
+/** Tanggal tiba penempatan AKTIF pekerja (T-024); null = belum diisi atau tidak ada penempatan aktif. Lewat RLS TSK. */
+export async function loadArrivedOn(tx: Tx, candidateId: string): Promise<string | null> {
+  const [row] = await tx.select({ arrivedOn: placements.arrivedOn }).from(placements).where(and(eq(placements.candidateId, candidateId), eq(placements.status, "ACTIVE"))).limit(1);
+  return row?.arrivedOn ?? null;
+}

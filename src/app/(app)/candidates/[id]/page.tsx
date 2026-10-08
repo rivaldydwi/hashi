@@ -11,6 +11,8 @@ import { DecisionPanel, ListSectionCard, NotesPanel, PlacementPanel, SectionCard
 import { loadDetail } from "@/features/candidates/detail-queries";
 import { canSeeLevel, contentAccess, isTskRole, TSK_INTERVIEW_DECISIONS } from "@/features/candidates/permissions";
 import { AssessmentsSection } from "@/features/assessments/AssessmentsSection";
+import { loadLpkWorkerStatus } from "@/features/candidates/lpk-status";
+import { WorkerStatusSection } from "@/features/candidates/WorkerStatusSection";
 import { TskAssessmentsSection } from "@/features/assessments/TskAssessmentsSection";
 import { listMonthly, listTsk } from "@/features/assessments/queries";
 import { WorkerRecordsSection } from "@/features/records/ui/WorkerRecordsSection";
@@ -49,6 +51,8 @@ export default async function CandidateDetailPage({
   const tskSide = isTskRole(me.role);
   const monthly = lpkSide || tskSide ? await tenantQuery((tx) => listMonthly(tx, id)) : [];
   // Ringkasan data yang ikut terhapus (hanya Admin LPK pemilik; fungsi DB sempit)
+  // Status setelah berangkat (T-024): HANYA LPK_ADMIN, HANYA lewat fungsi sempit lpk_worker_status (null bila bukan pemilik/belum berangkat/tidak dibagikan/kemitraan nonaktif)
+  const workerStatus = me.role === "LPK_ADMIN" ? await tenantQuery((tx) => loadLpkWorkerStatus(tx, id)) : null;
   const deleteSummary = me.role === "LPK_ADMIN" ? await tenantQuery((tx) => loadDeleteSummary(tx, id)) : null;
   // Pilihan job order untuk form keputusan (hanya TSK; job order TSK ini yang sebidang dengan kandidat)
   const jobOrderOptions = tskSide ? await tenantQuery((tx) => jobOrderOptionsForField(tx, detail.candidate.fieldId)) : [];
@@ -144,6 +148,7 @@ export default async function CandidateDetailPage({
 
         {full && <DocumentsSection candidateId={candidate.id} docs={full.documents} canEdit={access.canEdit} />}
 
+        {workerStatus && <WorkerStatusSection status={workerStatus} />}
         {lpkSide && <AssessmentsSection candidateId={candidate.id} rows={monthly} me={me} />}
         {tskSide && <AssessmentsSection candidateId={candidate.id} rows={monthly} me={me} readOnly />}
         {(tskSide || me.role === "LPK_ADMIN") && (

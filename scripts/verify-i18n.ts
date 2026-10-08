@@ -3,6 +3,7 @@
 // Pemakaian: npm run test:i18n
 import { readFileSync } from "node:fs";
 import { candidateStage, documentType, selectionDecision } from "../src/db/schema";
+import { VISA_CODES } from "../src/db/zairyu";
 import { JOB_ORDER_FORMS } from "../src/features/job-orders/fields";
 import { CLIENT_SECTIONS } from "../src/features/clients/fields";
 import { ASSESSMENT_FIELDS } from "../src/features/assessments/fields";
@@ -63,7 +64,7 @@ for (const v of documentType.enumValues) {
 }
 
 // Setiap status (tahap LPK dan keputusan TSK) wajib punya penjelasan (statusHelp) di kedua bahasa: dipakai lencana status dan legenda.
-for (const code of [...candidateStage.enumValues, ...selectionDecision.enumValues]) {
+for (const code of [...candidateStage.enumValues, ...selectionDecision.enumValues, ...VISA_CODES]) {
   for (const [lang, dict] of [["id", id], ["ja", ja]] as const) if (!(`statusHelp.${code}` in dict)) problems.push(`penjelasan status hilang (${lang}): statusHelp.${code}`);
 }
 

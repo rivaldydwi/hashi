@@ -609,6 +609,7 @@ export const placements = pgTable(
       .references(() => clientSites.id, { onDelete: "restrict" }),
     jobOrderId: uuid("job_order_id").references(() => jobOrders.id, { onDelete: "restrict" }),
     startDate: date("start_date").notNull(), // 就労開始日
+    arrivedOn: date("arrived_on"), // tanggal tiba di Jepang (T-024); diisi TSK_ADMIN / 担当 efektif (trigger placements_guard); LPK_ADMIN pemilik melihatnya HANYA lewat fungsi sempit lpk_worker_status
     endDate: date("end_date"),
     status: placementStatus("status").notNull().default("ACTIVE"),
     note: text("note"),

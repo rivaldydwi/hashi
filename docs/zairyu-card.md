@@ -263,3 +263,14 @@ Keputusan Ipal (7 Okt 2026): perpanjangan diajukan **online** (在留申請オ�
 - **Tautan** ke halaman ini dari bagian kartu di detail pekerja dan dari baris `/records/cards` pada tahap `prepare` s.d. `expired` (hanya yang berhak).
 - **Pengambilan kartu (結果待ち)**: teks bantuan statis di bagian kartu (pemberitahuan hasil, paspor, kartu lama, biaya).
 - **手数料納付書 (PDF) TIDAK dibuat**: sejak **1 Oktober 2026** pengajuan ONLINE membayar biaya lewat **pembayaran konbini atau bank** setelah email panduan dari imigrasi (pengirim resmi no-reply@service-dgft.com); **収入印紙 tidak berlaku** untuk pengajuan online (sumber: halaman resmi 出入国在留管理庁 tentang perubahan biaya per 2026-10-01). Surat pembayaran biaya + materai hanya masih dipakai untuk pengajuan di LOKET. Karena alur yang diputuskan Ipal adalah online, formulir itu tidak relevan; daftar pengambilan kartu disesuaikan. Bila TSK masih butuh cadangan jalur loket, dibuat sebagai tugas terpisah.
+
+
+## 12. Status pekerja untuk LPK (T-024)
+
+LPK_ADMIN pemilik kandidat boleh tahu muridnya sudah tiba dan visanya berlaku, TANPA melihat klien, lokasi, job order, penempatan, kartu, atau data TSK lain (jawaban TSK no. 9: LPK hanya melihat apa yang dibuat TSK).
+
+- **Tanggal tiba**: `placements.arrived_on` (opsional), diisi TSK_ADMIN atau 担当 efektif di `/records/workers/<id>` ("Tanggal tiba di Jepang"); tidak boleh di masa depan (tanggal Tokyo); trigger `placements_guard` menolak staf lain (kolom penempatan lain tetap seperti semula).
+- **Fungsi sempit** `lpk_worker_status(candidate_id)`: hanya LPK_ADMIN pemilik, kandidat dibagikan, ada penempatan di TSK dengan kemitraan aktif. Mengembalikan TEPAT: `arrived_on`, `visa_state`, `valid_until`. Selain itu NULL.
+- **`visa_state`** dari kartu AKTIF terkini (batal diabaikan): `none` (belum ada data kartu), `renewing` (sudah diajukan / menunggu hasil, termasuk 追加資料 dan 特例期間), `valid` (tanggal habis belum lewat; hari terakhir masih berlaku), `expired` (lewat tanpa kartu baru dan tidak sedang diajukan). Kartu ditolak/diterima mengikuti tanggal habis. Definisi SATU: SQL `card_visa_state` = TS `visaState` (dites setara).
+- **UI**: bagian "Setelah berangkat" di detail kandidat (LPK_ADMIN saja): tanggal tiba + lencana status (ikon + teks + penjelasan) + berlaku sampai. Sensei: tidak dirender dan datanya tidak dibaca. Tidak ada lencana di daftar `/candidates` (opsional; tidak dikerjakan agar daftar tidak melambat).
+- Yang TIDAK pernah sampai ke LPK: nomor kartu, catatan, tahap pengingat/status proses rinci, tanggal pengajuan, nama TSK/klien/lokasi, job order. e2e memeriksa HTML halaman LPK.
