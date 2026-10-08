@@ -12,18 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-015 · `scripts/deploy.sh`: log build ke berkas · `SIAP`
-
-Usulan engineer (T-007): output build Docker yang panjang menenggelamkan hasil penting. Log lengkap ke berkas (mis. `~/hashi-backups/deploy-<waktu>.log`, simpan 20 terakhir),
-terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + commit). Gagal = tampilkan 40 baris terakhir log + path berkasnya, kode keluar ≠ 0. Perilaku lain tidak berubah.
-
-**Kriteria selesai**
-- [ ] Contoh output sukses dan gagal (mis. simulasi build gagal di branch uji, BUKAN di produksi) di PR; `shellcheck` bersih.
-- [ ] Deploy produksi berikutnya memakai skrip baru dan hasilnya (commit + health) tercatat di STATUS.
-
----
-
-### T-024 · Tampilan LPK: status visa + tanggal tiba pekerja (baca-saja, sangat terbatas) · `SIAP` (setelah T-015)
+### T-024 · Tampilan LPK: status visa + tanggal tiba pekerja (baca-saja, sangat terbatas) · `SIAP`
 
 Kebutuhan tercatat (CLAUDE.md "Keputusan untuk langkah 7"; jawaban TSK no. 9: LPK hanya melihat apa yang dibuat TSK). LPK_ADMIN pemilik kandidat ingin tahu muridnya sudah tiba dan visanya
 berlaku, TANPA melihat klien, job order, penempatan, kartu, atau data TSK lain.
@@ -104,6 +93,7 @@ Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Ind
 
 ## Selesai
 
+- **T-015** `scripts/deploy.sh` log ke berkas (PR #25): log lengkap per langkah (mode 600, simpan 20), terminal ringkasan, gagal = 40 baris terakhir + path; tes unit dengan docker/curl palsu.
 - **T-025** Email pengingat di produksi, kode (PR #24): `isSafeRecipient` (akun demo/domain contoh dilewati), `--test-to`, `--check`, `docs/email.md`, checklist F0/F1b/F1c. AKTIVASI (SMTP key dari Ipal di sesi engineer, kirim uji, worker `mode=kirim`) dilaporkan di STATUS berikutnya. Repo dijadikan PUBLIK oleh Ipal (8 Okt): jangan menulis IP/email pribadi/isi `.env` di repo.
 - **T-014** Langkah 8 siap pilot (PR #23): `seed:pilot` (+200 kandidat dummy, 73 pekerja aktif, staf 48 pekerja = kuning, semua tahap 在留カード; idempoten, ditolak di produksi), `verify:pilot` (KPI = daftar), ukur waktu `perf:pages`: semua halaman ≤ 250 ms (batas 1000), `docs/pilot-checklist.md`. Tanpa migrasi, produksi tidak disentuh.
 - **T-021** Data perpanjangan 在留カード online siap salin (PR #22): halaman `/records/workers/<id>/renewal` butir 1-14 + Salin (和暦, romaji, butir kosong + tautan, peringatan paspor), nomor kartu hanya lewat "Tampilkan" ber-audit, tabel `worker_jp_profiles` (住居地 + telepon, milik TSK, migrasi 0029), audit `renewal_view`. PDF 手数料納付書 TIDAK dibuat: sejak 2026-10-01 biaya pengajuan online dibayar konbini/bank, bukan 収入印紙 (temuan engineer).
