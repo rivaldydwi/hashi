@@ -12,30 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-024 · Tampilan LPK: status visa + tanggal tiba pekerja (baca-saja, sangat terbatas) · `SIAP`
-
-Kebutuhan tercatat (CLAUDE.md "Keputusan untuk langkah 7"; jawaban TSK no. 9: LPK hanya melihat apa yang dibuat TSK). LPK_ADMIN pemilik kandidat ingin tahu muridnya sudah tiba dan visanya
-berlaku, TANPA melihat klien, job order, penempatan, kartu, atau data TSK lain.
-
-Kerjakan:
-- **Tanggal tiba**: kolom baru `placements.arrived_on` (date, opsional), diisi TSK (TSK_ADMIN atau 担当 efektif) di detail pekerja; tidak boleh di masa depan (zona TSK); audit nama kolom saja.
-- **Fungsi sempit** `lpk_worker_status(candidate_id)` (SECURITY DEFINER, `COALESCE` pada pemeriksaan peran, pola `candidate_delete_summary`): hanya untuk LPK_ADMIN pemilik kandidat, hanya bila ada
-  penempatan (DEPARTED) dan kandidat `shared_with_tsk` dengan kemitraan AKTIF; mengembalikan TEPAT: `arrived_on`, `visa_state` (kode: `none` / `valid` / `renewing` / `expired`, diturunkan
-  dari kartu aktif terbaru: berlaku = masa berlaku belum lewat; renewing = sudah diajukan/結果待ち; expired = lewat tanpa kartu baru), dan `valid_until` (tanggal habis kartu). TIDAK ada
-  nomor kartu, catatan, status rinci, nama TSK/klien/lokasi, job order, atau tanggal lain. Sensei, TSK, peran lain: null.
-- **UI LPK**: di detail kandidat (LPK_ADMIN saja) bagian kecil "Setelah berangkat": tanggal tiba + lencana status visa (StatusBadge + `statusHelp`, id/ja) + "berlaku sampai". Di daftar `/candidates`
-  boleh satu kolom/lencana kecil untuk kandidat berangkat (opsional bila memperlambat; ukur). Sensei: tidak dirender dan datanya tidak dibaca.
-- `verify-rls`: fungsi mengembalikan null untuk sensei, TSK, LPK lain, kemitraan nonaktif, `shared_with_tsk = false`; LPK_ADMIN tetap TIDAK bisa SELECT `placements`/`residence_cards` langsung.
-- e2e: LPK_ADMIN melihat tanggal tiba + status yang diisi TSK; HTML halaman LPK tidak memuat nama klien/lokasi/job order/nomor kartu (pola tes yang sudah ada); sensei tidak melihat bagian itu.
-
-**Kriteria selesai**
-- [ ] Migrasi kolom + fungsi; `verify-rls` bagian baru; tes unit penurunan `visa_state` (semua tahap kartu).
-- [ ] e2e LPK/TSK/sensei seperti di atas; typecheck, build, test:rls, e2e, CI hijau.
-- [ ] Deploy `--backup` (ada migrasi).
-
----
-
-### T-026 · PDF 手数料納付書 untuk jalur loket (cadangan) · `SIAP` (setelah T-024)
+### T-026 · PDF 手数料納付書 untuk jalur loket (cadangan) · `SIAP`
 
 Keputusan Ipal (8 Okt): pengajuan perpanjangan lewat loket masih mungkin ("just in case"). Online = konbini/bank (T-021), loket = 収入印紙 + 手数料納付書.
 - Tombol "手数料納付書 (loket)" di halaman `/records/workers/<id>/renewal`: PDF A4 form resmi 別記第八十四号様式 (PDF kosong resmi https://www.moj.go.jp/isa/content/001458260.pdf sebagai latar, atau gambar ulang setia; jelaskan pilihan) dengan nama pekerja (romaji) dan nomor **2 (在留期間の更新許可)** dilingkari; kolom tanggal/nomor dibiarkan kosong. Label jelas "hanya untuk pengajuan di loket".
@@ -93,6 +70,7 @@ Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Ind
 
 ## Selesai
 
+- **T-024** Tampilan LPK status visa + tanggal tiba (PR #26): `placements.arrived_on` (migrasi 0030, tulis Admin TSK/担当, tidak di masa depan), fungsi sempit `lpk_worker_status` (hanya LPK_ADMIN pemilik, dibagikan, kemitraan aktif; tepat 3 nilai), `card_visa_state` = `visaState`, bagian "Setelah berangkat" di detail kandidat LPK; HTML LPK tanpa klien/job order/kartu (dites).
 - **T-015** `scripts/deploy.sh` log ke berkas (PR #25): log lengkap per langkah (mode 600, simpan 20), terminal ringkasan, gagal = 40 baris terakhir + path; tes unit dengan docker/curl palsu.
 - **T-025** Email pengingat di produksi, kode (PR #24): `isSafeRecipient` (akun demo/domain contoh dilewati), `--test-to`, `--check`, `docs/email.md`, checklist F0/F1b/F1c. AKTIVASI (SMTP key dari Ipal di sesi engineer, kirim uji, worker `mode=kirim`) dilaporkan di STATUS berikutnya. Repo dijadikan PUBLIK oleh Ipal (8 Okt): jangan menulis IP/email pribadi/isi `.env` di repo.
 - **T-014** Langkah 8 siap pilot (PR #23): `seed:pilot` (+200 kandidat dummy, 73 pekerja aktif, staf 48 pekerja = kuning, semua tahap 在留カード; idempoten, ditolak di produksi), `verify:pilot` (KPI = daftar), ukur waktu `perf:pages`: semua halaman ≤ 250 ms (batas 1000), `docs/pilot-checklist.md`. Tanpa migrasi, produksi tidak disentuh.
