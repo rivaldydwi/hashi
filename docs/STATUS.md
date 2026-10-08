@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-026 · PDF 手数料納付書 untuk jalur loket (+ hasil deploy T-024 dan aktivasi email T-025)
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-026-fee-form`)
+**PR:** #27 (branch `eng/T-026-fee-form`)
 **Status:** siap direview. Tanpa migrasi; deploy setelah `PM: DISETUJUI` (tanpa `--backup`).
 
 **Hasil deploy T-024** (PR #26 di-merge `8f64d88` setelah `PM: DISETUJUI` dan CI hijau di head `ec4b32a`; ada migrasi 0030)
