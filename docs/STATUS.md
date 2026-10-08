@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-027 · README tiga bahasa (Indonesia, Inggris, Jepang)
 
-**PR:** (nomor menyusul di komentar PR) (branch `eng/T-027-readme-3-bahasa`)
+**PR:** #30 (branch `eng/T-027-readme-3-bahasa`)
 **Status:** siap direview. Tanpa migrasi, tanpa deploy.
 
 **Hasil T-028** (PR #29 di-merge `8e9f886` setelah `PM: DISETUJUI`; CI head hijau). Hanya `ci.yml`, tidak ada deploy. `docs/TASKS.md` di `main` masih menandai T-028 `SIAP`: PM yang mengubahnya.
