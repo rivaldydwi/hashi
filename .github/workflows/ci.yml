@@ -1,9 +1,22 @@
 name: CI
 
+# T-028: commit/PR yang HANYA mengubah dokumen tidak menjalankan CI (hemat menit). Filter dievaluasi per push (push) atau terhadap
+# SELURUH diff PR (pull_request): PR yang menyentuh satu berkas kode tetap menjalankan CI penuh.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+# Push beruntun ke ref yang sama membatalkan putaran lama (hanya hasil terbaru yang berguna).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -51,8 +64,20 @@ jobs:
       - run: npm run test:unit
       - name: Cakupan audit (server action yang menulis harus tercatat)
         run: npm run verify:audit-coverage
+      # Browser Playwright di-cache menurut package-lock (versi playwright ikut di sana). Saat cache kena, unduhan ±150 MB dilewati;
+      # paket sistem (apt) tetap dipasang karena tidak ada di cache.
+      - name: Cache browser Playwright
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Pasang browser untuk tes e2e
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+      - name: Pasang dependensi sistem browser (browser dari cache)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       - name: Tes e2e (browser)
         run: npm run test:e2e
       # Data PILOT (T-014): dijalankan SETELAH tes lain karena menambah 200 kandidat (tes lain bergantung isi seed dasar). Dua kali = tidak menggandakan.
