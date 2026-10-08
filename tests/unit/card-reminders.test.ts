@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { afterSendTimeToday, buildDigest, nextRunAfter, planReminders, reminderStageOf, sentKey, tokyoDate, type ReminderItem } from "../../src/db/card-reminders";
+import { afterSendTimeToday, buildDigest, buildTestEmail, isSafeRecipient, nextRunAfter, parseTestTo, planReminders, reminderStageOf, sentKey, tokyoDate, type ReminderItem } from "../../src/db/card-reminders";
 import type { CardListRow } from "../../src/db/zairyu-queries";
 
 // Email pengingat 在留カード (T-022): pemilihan tahap, sekali per (kartu, tahap, penerima), ringkasan per penerima, isi email (tanpa nomor), jadwal 08:00 Tokyo.
@@ -86,4 +86,29 @@ test("jadwal: berikutnya selalu jam 08:00 Tokyo (= 23:00 UTC hari sebelumnya), s
   assert.equal(tokyoDate(new Date("2026-10-07T15:30:00Z")), "2026-10-08"); // 00:30 JST sudah tanggal berikutnya
   assert.equal(afterSendTimeToday(new Date("2026-10-07T22:59:00Z")), false); // 07:59 JST
   assert.equal(afterSendTimeToday(new Date("2026-10-07T23:00:00Z")), true); // tepat 08:00 JST
+});
+
+test("pengaman penerima: alamat contoh/demo/tidak sah dilewati; alamat nyata (termasuk Gmail dan subdomain wajar) boleh", () => {
+  for (const bad of ["tsk.admin@hashi.test", "a@example.com", "a@example.org", "a@example.net", "a@sub.example.com", "a@kantor.test", "a@x.invalid", "a@host.example", "a@localhost", "a@mesin.localhost", "a@EXAMPLE.COM", "  A@Hashi.Test  ", "", "tanpa-at", "a@", "@b.id", "a b@c.id", "a@bad_domain.id", null, undefined]) {
+    assert.equal(isSafeRecipient(bad as string), false, String(bad));
+  }
+  for (const ok of ["staf@tsk-contoh.co.jp", "nama@gmail.com", "a.b+tag@kantor.id", "x@mail.example-corp.com", "x@exampletest.com"]) assert.equal(isSafeRecipient(ok), true, ok);
+});
+
+test("--test-to: alamat sah dikembalikan, tidak diminta = null, kosong/rusak/diikuti opsi lain = invalid", () => {
+  assert.equal(parseTestTo(["node", "w.ts"]), null);
+  assert.equal(parseTestTo(["node", "w.ts", "--test-to", "ipal@gmail.com"]), "ipal@gmail.com");
+  assert.equal(parseTestTo(["node", "w.ts", "--once", "--test-to", " ipal@gmail.com "]), "ipal@gmail.com");
+  for (const bad of [["--test-to"], ["--test-to", ""], ["--test-to", "bukan-email"], ["--test-to", "--once"]]) assert.equal(parseTestTo(["node", "w.ts", ...bad]), "invalid", bad.join(" "));
+});
+
+test("email uji: data PALSU, bahasa id dan ja, tanpa nomor kartu, subjek berlabel uji", () => {
+  const id = buildTestEmail("id", "https://hashi.contoh.id");
+  assert.match(id.subject, /^\[Hashi\] Email uji:/);
+  assert.match(id.text, /data palsu/);
+  assert.doesNotMatch(id.text.replace(/https?:\S+/g, ""), /\d{8}/);
+  const ja = buildTestEmail("ja");
+  assert.match(ja.subject, /テストメール/);
+  assert.match(ja.text, /ダミー/);
+  assert.doesNotMatch(buildTestEmail("id").text, /https?:\/\//); // tanpa APP_URL = tanpa tautan
 });

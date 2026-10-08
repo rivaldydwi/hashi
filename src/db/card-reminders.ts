@@ -94,6 +94,51 @@ export function buildDigest(locale: Locale, recipientName: string, items: readon
   return { subject: T.subject[locale](items.length), text, html };
 }
 
+// ---------------------------------------------------------------------------------------------------- pengaman penerima + email uji (T-025)
+/**
+ * Pengaman penerima: alamat berdomain contoh/cadangan TIDAK dikirimi (akun demo `*@hashi.test`, `example.com/.org/.net`, `*.test`, `*.invalid`, `*.example`, `*.localhost`, `localhost`),
+ * dan alamat yang bentuknya tidak sah. Mencegah email keluar ke alamat palsu dan memantul (reputasi pengirim) selama data demo masih ada.
+ */
+export function isSafeRecipient(email: string | null | undefined): boolean {
+  const v = (email ?? "").trim().toLowerCase();
+  const m = /^[^\s@]+@([^\s@]+)$/.exec(v);
+  if (!m) return false;
+  const host = m[1].replace(/\.$/, "");
+  if (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(host)) return false;
+  if (host === "localhost" || /\.(test|invalid|example|localhost)$/.test(host)) return false;
+  return !/(^|\.)example\.(com|org|net)$/.test(host);
+}
+
+/** Argumen `--test-to <alamat>` (kirim SATU email uji lalu keluar). null = tidak diminta; "invalid" = alamat tidak sah/kosong. */
+export function parseTestTo(argv: readonly string[]): string | null | "invalid" {
+  const i = argv.indexOf("--test-to");
+  if (i < 0) return null;
+  const v = (argv[i + 1] ?? "").trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && !v.startsWith("--") ? v : "invalid";
+}
+
+/** Email uji (data PALSU, tanpa membaca kartu): membuktikan SMTP, bahasa, dan tampilan. */
+export function buildTestEmail(locale: Locale, baseUrl?: string | null): Digest {
+  const items: ReminderItem[] = [
+    { cardId: "uji-1", workerId: "00000000-0000-0000-0000-000000000001", workerName: locale === "ja" ? "テスト 太郎（ダミー）" : "Pekerja Contoh (data palsu)", stage: "h14", daysLeft: 12 },
+    { cardId: "uji-2", workerId: "00000000-0000-0000-0000-000000000002", workerName: locale === "ja" ? "テスト 花子（ダミー）" : "Pekerja Contoh Dua (data palsu)", stage: "additional_docs", daysLeft: null },
+  ];
+  const d = buildDigest(locale, locale === "ja" ? "ご担当者" : "Pengguna Hashi", items, baseUrl);
+  return { ...d, subject: `[Hashi] ${locale === "ja" ? "テストメール" : "Email uji"}: ${d.subject.replace("[Hashi] ", "")}` };
+}
+
+export type RecipientReadiness = { tskActive: number; adminsActive: number; wouldSend: number; wouldSkip: number; demoAccounts: number };
+/** Pemeriksaan sebelum pengiriman diaktifkan (hanya ANGKA, tanpa alamat): berapa penerima TSK aktif, berapa yang akan dilewati pengaman, dan apakah masih ada akun demo. */
+export async function recipientReadiness(db?: Db): Promise<RecipientReadiness> {
+  const rows = await withSystem(
+    (tx) => tx.select({ email: users.email, role: users.role }).from(users).innerJoin(organizations, eq(organizations.id, users.organizationId)).where(and(eq(organizations.type, "TSK"), eq(users.active, true))),
+    db,
+  );
+  const safe = rows.filter((r) => isSafeRecipient(r.email)).length;
+  const demo = await withSystem((tx) => tx.select({ email: users.email }).from(users), db);
+  return { tskActive: rows.length, adminsActive: rows.filter((r) => r.role === "TSK_ADMIN").length, wouldSend: safe, wouldSkip: rows.length - safe, demoAccounts: demo.filter((u) => /@hashi\.test$/i.test(u.email)).length };
+}
+
 // ---------------------------------------------------------------------------------------------------- jadwal
 /** Tanggal kalender di Tokyo (YYYY-MM-DD) pada saat `now`. */
 export const tokyoDate = (now: Date): string => new Date(now.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10);
@@ -114,11 +159,13 @@ export type RunOptions = {
   mailer?: Mailer | null;
   from?: string;
   baseUrl?: string | null;
+  /** HANYA untuk tes/dev (Mailpit): kirim juga ke alamat berdomain contoh/.test. Worker produksi tidak memasangnya (kecuali env REMINDER_ALLOW_TEST_RECIPIENTS=1, tidak ada di compose). */
+  allowTestRecipients?: boolean;
   now?: Date;
   db?: Db;
   log?: (line: string) => void;
 };
-export type RunSummary = { today: string; mode: "send" | "dry-run"; orgs: number; recipients: number; emails: number; items: number; failed: number };
+export type RunSummary = { today: string; mode: "send" | "dry-run"; orgs: number; recipients: number; emails: number; items: number; failed: number; skipped: number };
 
 /**
  * Jalankan satu putaran untuk SEMUA organisasi TSK. Data kartu dibaca lewat withTenant sebagai Admin TSK organisasi itu (aturan RLS yang sama dengan halaman: satu sumber dengan daftar/KPI).
@@ -129,7 +176,7 @@ export async function runCardReminders(opts: RunOptions = {}): Promise<RunSummar
   const today = tokyoDate(now);
   const log = opts.log ?? ((l: string) => console.log(l));
   const mode = opts.mailer ? "send" : "dry-run";
-  const summary: RunSummary = { today, mode, orgs: 0, recipients: 0, emails: 0, items: 0, failed: 0 };
+  const summary: RunSummary = { today, mode, orgs: 0, recipients: 0, emails: 0, items: 0, failed: 0, skipped: 0 };
   const orgs = await withSystem((tx) => tx.select({ id: organizations.id }).from(organizations).where(eq(organizations.type, "TSK")), opts.db);
 
   for (const org of orgs) {
@@ -149,6 +196,10 @@ export async function runCardReminders(opts: RunOptions = {}): Promise<RunSummar
     for (const [userId, items] of plan) {
       const to = byId.get(userId);
       if (!to) continue; // penerima nonaktif / bukan staf organisasi ini: tidak dikirimi
+      if (!opts.allowTestRecipients && !isSafeRecipient(to.email)) {
+        summary.skipped++; // alamat contoh/demo: dilewati, tidak dihitung sebagai penerima dan tidak dicatat di log pengiriman
+        continue;
+      }
       summary.recipients++;
       summary.items += items.length;
       if (!opts.mailer) {
@@ -184,6 +235,6 @@ export async function runCardReminders(opts: RunOptions = {}): Promise<RunSummar
       );
     }
   }
-  log(`[reminder] ${today} selesai mode=${mode} org=${summary.orgs} penerima=${summary.recipients} email=${summary.emails} item=${summary.items} gagal=${summary.failed}`);
+  log(`[reminder] ${today} selesai mode=${mode} org=${summary.orgs} penerima=${summary.recipients} email=${summary.emails} item=${summary.items} gagal=${summary.failed} dilewati=${summary.skipped}`);
   return summary;
 }

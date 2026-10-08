@@ -62,7 +62,10 @@ Perintah memakai project compose `hashi` (produksi) dan hanya MEMBACA. Jangan me
 | # | Butir | Cara memeriksa | Siapa |
 |---|---|---|---|
 | F1 | Layanan SMTP dipilih, domain pengirim diverifikasi (SPF/DKIM) | Pilihan di STATUS T-022; uji kirim ke satu alamat | I |
-| F2 | `SMTP_URL`, `MAIL_FROM`, `APP_URL` terisi HANYA di `.env` server; service `worker` dimulai ulang | `docker compose -p hashi logs worker --tail=5` menampilkan `mode=kirim` (bukan `KERING`) | E |
+| F2 | `SMTP_URL`, `MAIL_FROM`, `APP_URL` terisi HANYA di `.env` server (panduan: `docs/email.md`); service `worker` dimulai ulang | `docker compose -p hashi logs worker --tail=5` menampilkan `mode=kirim` (bukan `KERING`) | E |
+| F0 | **Buat SMTP key Brevo BARU dan hapus yang lama** sebelum launch (key lama pernah dibagikan di chat, anggap bocor); `.env` server mode 600 | Brevo → SMTP keys: key lama tidak ada; `stat -c %a .env` = `600`; kirim uji `--test-to` berhasil dengan key baru (`docs/email.md` bagian 4) | I + E |
+| F1b | Pengirim memakai **domain sendiri** dengan SPF + DKIM (+ DMARC); pengirim Gmail hanya untuk demo | Brevo → Senders/Domains: status terverifikasi; kirim uji ke Gmail, Outlook, dan alamat TSK: masuk kotak masuk, bukan spam | I |
+| F1c | Ada akun staf TSK NYATA (pengaman penerima melewati alamat contoh/demo, jadi tanpa akun nyata tidak ada email keluar) | `docker compose -p hashi exec -T worker node --import tsx scripts/reminder-worker.ts --check` → "akan dikirimi" > 0 | I + E |
 | F3 | Email uji ke 担当 + Admin diterima dengan bahasa benar dan tanpa nomor kartu | Satu pekerja uji, jalankan satu putaran; hapus data uji sesudahnya | E + T |
 
 ## G. Operasional (Wajib)
