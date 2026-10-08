@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-030 · Buku panduan pemakaian (LPK + TSK) dengan tangkapan layar
 
-**PR:** (nomor menyusul) (branch `eng/T-030-panduan`)
+**PR:** #31 (branch `eng/T-030-panduan`)
 **Status:** siap direview. Tanpa migrasi, tanpa deploy, perilaku aplikasi TIDAK diubah.
 
 **Hasil PR sebelumnya:** T-028 di-merge `8e9f886` (PR #29) dan T-027 di-merge `a9baa5d` (PR #30), keduanya setelah `PM: DISETUJUI` dan CI hijau di head. Tidak ada deploy. T-030 diambil lebih dulu dari T-027 sesuai urutan di TASKS, tetapi T-027 sudah ter-merge sebelum tugas ini muncul, jadi tautan ke panduan ditambahkan ke ketiga README di PR ini.
