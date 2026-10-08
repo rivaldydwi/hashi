@@ -14,7 +14,52 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 > **Aturan CI sejak T-028:** commit/PR yang HANYA mengubah `docs/**` atau `*.md` tidak menjalankan CI. PR seperti itu boleh di-merge cukup dengan `PM: DISETUJUI`; PR yang punya CI tetap wajib hijau.
 
-### T-027 · README tiga bahasa (Indonesia, Inggris, Jepang) · `SIAP` (berikutnya)
+### T-030 · Buku panduan pemakaian (LPK + TSK) dengan tangkapan layar · `SIAP` (PALING ATAS, sebelum T-027)
+
+Permintaan Ipal (8 Okt): sebelum demo ke TSK, Ipal ingin buku panduan untuk MENCOBA aplikasi sendiri mengikuti langkah-langkahnya. Isi: cara memakai tiap fitur dan contoh kasus
+nyata dari sisi LPK dan TSK, dengan tangkapan layar supaya mudah dipahami. Pembaca = orang non-teknis (Ipal, staf LPK, staf TSK), bukan developer.
+
+**Bentuk**
+- Sumber: `docs/panduan/README.md` (Bahasa Indonesia, santai tapi jelas), gambar di `docs/panduan/img/` (PNG, lebar ±1280, ponsel ±390 bila relevan).
+- Hasil untuk dibaca/dicetak: `docs/panduan/panduan-hashi.pdf` (A4, daftar isi, gambar ikut, nomor halaman). Dibuat ulang dengan SATU perintah, mis. `npm run build:guide`
+  (render Markdown -> HTML -> PDF lewat Playwright/Chromium yang sudah ada; dependensi dev kecil boleh). PDF di-commit (Ipal mengunduh dari repo).
+- Tangkapan layar DIBUAT OTOMATIS oleh skrip Playwright (mis. `tests/guide/screenshots.spec.ts`, hanya jalan bila `GUIDE_SHOTS=1`), terhadap database DEV (`hashi_dev`, `db:seed` dasar,
+  boleh + `seed:pilot` untuk halaman daftar/KPI yang ramai). JANGAN mengambil dari produksi. Data dummy saja; tanpa IP/alamat Tailscale/email pribadi di gambar maupun teks.
+  Bila perlu menandai bagian layar (panah/kotak), cukup kotak sederhana lewat CSS sementara di skrip; jangan mengedit gambar manual.
+
+**Isi minimal**
+1. **Mulai**: apa itu Hashi (LPK ↔ TSK, alur kandidat sampai jadi pekerja), peran (Admin LPK, Sensei, Admin TSK, Staf TSK) dan apa yang boleh/tidak dilihat masing-masing (bahasa awam),
+   login + ganti bahasa + ganti kata sandi, akun demo (tabel akun `@hashi.test` seperti README; kata sandi demo yang SUDAH ada di README boleh disebut). Cara membaca beranda/KPI dan mengatur dashboard.
+2. **Panduan LPK** (Admin LPK + Sensei): tambah kandidat (form panjang, kelengkapan), detail kandidat & dokumen, berbagi ke TSK (konfirmasi persetujuan siswa), status belajar,
+   penilaian bulanan (+ daftar yang belum dinilai), filter daftar kandidat, melihat keputusan/catatan/penilaian TSK yang dibagikan, status visa + tanggal tiba setelah berangkat,
+   kelola pengguna, riwayat aktivitas + ekspor, hapus kandidat (dan kapan ditolak). Bedanya tampilan Sensei.
+3. **Panduan TSK** (Admin TSK + Staf): daftar kandidat mitra, shortlist/keputusan + catatan, penilaian interview/kunjungan, klien (perusahaan, lokasi, PIC) dan job order, ajukan kandidat ke job order,
+   lembar klien PDF (mode internal vs dibagikan), sampai DEPARTED -> pekerja aktif; catatan kegiatan (業務記録/notulen/kronologi/tindak lanjut/laporan harian/foto/PDF), wawancara berkala + form 5-5,
+   penanggung jawab pekerja + beban staf, pelacak kartu izin tinggal (在留カード: tahap, nomor/foto terenkripsi, "Terima kartu baru"), data perpanjangan online siap salin, PDF 手数料納付書 (hanya loket),
+   tanggal tiba, email pengingat (apa yang dikirim, kapan, ke siapa).
+4. **Contoh kasus (skenario langkah demi langkah, tiap langkah dengan gambar)**, minimal:
+   a. "Siswa baru sampai siap dilihat TSK" (LPK: tambah kandidat → lengkapi → nilai bulanan → bagikan ke TSK).
+   b. "Dari shortlist sampai berangkat" (TSK: buat klien + job order → shortlist → interview → ajukan → lulus klien → proses dokumen → berangkat → pekerja aktif; LPK melihat statusnya).
+   c. "Kartu izin tinggal hampir habis" (TSK: pengingat H-30 → data perpanjangan → menunggu hasil → terima kartu baru).
+   d. "Masalah di tempat kerja" (TSK: catatan kegiatan + tindak lanjut + wawancara berkala).
+   Tiap skenario menyebut akun demo yang dipakai, sehingga Ipal bisa mengulanginya di aplikasi demo.
+5. **Tanya jawab singkat + istilah** (tautkan `docs/glossary.md`): kenapa data X tidak terlihat (hak akses), kenapa tombol nonaktif, terjemahan peramban, mode gelap, apa yang dicatat audit.
+
+**Aturan**
+- Teks sesuai perilaku aplikasi SEKARANG (cek di layar, bukan dari ingatan); label tombol/menu ditulis persis seperti di UI (bahasa Indonesia; sebut label Jepang di kurung bila TSK memakainya).
+- Tanpa secret, IP, alamat Tailscale, email pribadi, data nyata. `git grep` hasilnya di PR.
+- Hanya dokumen + skrip/tes tangkapan layar + perintah build PDF; JANGAN mengubah perilaku aplikasi. Bila menemukan bug/teks janggal saat memotret: catat di STATUS sebagai usulan, jangan diperbaiki di PR ini.
+- Ukuran: wajar (gambar PNG terkompresi; PDF idealnya < 20 MB).
+
+**Kriteria selesai**
+- [ ] `docs/panduan/README.md` + `img/` + `panduan-hashi.pdf`, semua bagian di atas, 4 skenario bergambar.
+- [ ] Tangkapan layar bisa dibuat ulang dengan satu perintah (tercatat di README panduan); PDF dibuat ulang dengan `npm run build:guide`.
+- [ ] CI hijau (PR memuat skrip, jadi CI jalan). Tanpa deploy.
+- [ ] STATUS: jumlah halaman PDF, jumlah gambar, ukuran berkas, daftar temuan janggal (bila ada).
+
+---
+
+### T-027 · README tiga bahasa (Indonesia, Inggris, Jepang) · `SIAP` (setelah T-030; README menautkan panduan)
 
 Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Indonesia, Inggris, dan Jepang.
 - `README.md` (Indonesia, utama) + `README.en.md` + `README.ja.md`, isi SETARA; baris tautan bahasa di atas tiap berkas (`Bahasa Indonesia | English | 日本語`).
