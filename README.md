@@ -1,15 +1,32 @@
 # Hashi 橋
 
+**Bahasa Indonesia** | [English](README.en.md) | [日本語](README.ja.md)
+
+## Tentang Hashi
+
 Sistem profil & seleksi kandidat untuk **LPK** (Indonesia) dan **TSK / 登録支援機関** (Jepang).
 Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ulang.
 
-> Status (Oktober 2026): langkah 1-6 spesifikasi MVP selesai dan langkah 7A (catatan kegiatan TSK) selesai.
-> Sudah ada: fondasi (login, dua bahasa, isolasi data RLS), organisasi/pengguna/kemitraan, profil kandidat lengkap, penilaian LPK dan TSK,
-> klien (配属先) + job order + penempatan, lembar klien PDF (format DRAFT), catatan kegiatan TSK, dashboard yang bisa diatur, dan riwayat aktivitas.
-> Berikutnya: cadangan di luar server (wajib sebelum data nyata), pelacak 在留カード, lalu siap pilot. Antrean: [docs/TASKS.md](docs/TASKS.md);
+> Status (Oktober 2026): langkah 1-6 spesifikasi MVP, catatan kegiatan TSK (7A), pelacak 在留カード (nomor/foto terenkripsi, email pengingat, data perpanjangan online,
+> PDF 手数料納付書 untuk loket), status visa dan tanggal tiba untuk LPK, dan data pilot (200 siswa dummy) sudah ada.
+> Berikutnya: demo ke TSK. **Cadangan di luar server wajib berjalan sebelum data nyata masuk.** Antrean: [docs/TASKS.md](docs/TASKS.md);
 > laporan terbaru: [docs/STATUS.md](docs/STATUS.md); riwayat dan keputusan teknis: [docs/HISTORY.md](docs/HISTORY.md).
 
-## Fitur saat ini
+Dua jenis organisasi memakainya bersama: **LPK** (lembaga pelatihan; Admin LPK dan sensei) menyiapkan profil siswa, **TSK** (lembaga pendukung; Admin TSK dan staf TSK) menyeleksi,
+menempatkan ke klien (配属先), lalu mendampingi pekerja setelah berangkat. Setiap organisasi hanya melihat datanya sendiri dan apa yang sengaja dibagikan kepadanya.
+
+### Teknologi
+
+| Bagian | Teknologi |
+| --- | --- |
+| Aplikasi | Next.js 16 (App Router) + TypeScript + Tailwind CSS 4 |
+| Database | PostgreSQL 16 + Drizzle ORM |
+| Isolasi data | PostgreSQL Row-Level Security (RLS) |
+| Login | Auth.js v5 (email + kata sandi, sesi JWT 8 jam) |
+| Bahasa | next-intl (Indonesia / 日本語) |
+| Deploy | Docker Compose (OptiPlex) |
+
+## Fitur per peran
 
 | Siapa | Bisa apa |
 | --- | --- |
@@ -25,6 +42,8 @@ Satu profil kandidat, dipakai bersama oleh LPK dan TSK mitranya, tanpa ketik ula
 | **Admin LPK / TSK** (riwayat) | Riwayat aktivitas organisasi di `/activity` (tidak bisa diubah/dihapus), ekspor CSV |
 | **Semua pengguna** | Login, ganti bahasa, ganti kata sandi di *Akun saya* |
 | **Semua pengguna** | Dashboard per peran yang bisa diatur (urutan, ukuran, sembunyikan widget) |
+| **Admin TSK / penanggung jawab (担当)** (在留カード) | Pelacak kartu izin tinggal per pekerja (tahap pengingat, ajuan perpanjangan, terima kartu baru), nomor dan foto kartu terenkripsi, data perpanjangan online siap salin, PDF 手数料納付書 untuk loket, daftar `/records/cards`, dan email pengingat harian. Staf TSK lain hanya membaca ringkasan. Lihat [docs/zairyu-card.md](docs/zairyu-card.md) |
+| **Admin LPK** (pekerja yang sudah berangkat) | Melihat HANYA status visa dan tanggal tiba pekerja dari kandidatnya yang dibagikan ke TSK mitra aktif (bukan klien, job order, atau penempatan) |
 
 Cara kerja akun baru:
 
@@ -37,38 +56,35 @@ minimal satu admin aktif, reset kata sandi langsung mengeluarkan pengguna dari s
 nonaktif langsung tidak bisa masuk (dicek setiap request, tidak menunggu sesi habis). Semua perubahan
 tercatat di audit log.
 
-## Merek
+### Merek
 
 Logo, ikon, dan aturan pakainya ada di [docs/brand.md](docs/brand.md). Aset turunan dibangun dengan `npm run build:brand` dari `design/brand-source/`.
 
-## Catatan kegiatan (langkah 7A)
+### Catatan kegiatan (langkah 7A)
 
 Fitur khusus staf TSK: catatan kerja harian, notulen pertemuan, kronologi kasus (PDF untuk klien), wawancara berkala, tugas tindak lanjut, laporan harian ke leader, foto. Dokumentasi: [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md).
 Data demo tanpa reseed: `npm run seed:records`. **Catatan disimpan 5 tahun dan tidak bisa dihapus lewat aplikasi: cadangan di luar server wajib sebelum data nyata masuk.**
 
-## Lembar klien (langkah 6)
+### Lembar klien (langkah 6)
 
 Ekspor PDF berbahasa Jepang untuk klien dan job order (profil klien, lembar job order; mode internal / untuk dibagikan; label Jepang atau Jepang + Indonesia). Format masih DRAFT sampai dikonfirmasi TSK; semua label dan urutan bagian ada di
 `src/lib/pdf/client-sheet.config.ts`. Dokumentasi: [docs/lembar-klien.md](docs/lembar-klien.md). Data demo tanpa reseed: `npm run seed:client-sheet`.
 
-## Cara kerja tim
+## Tangkapan layar
 
-Ipal (pemilik) memutuskan; **PM** (sesi Claude di claude.ai/code) menulis tugas di [docs/TASKS.md](docs/TASKS.md) dan me-review PR;
-**engineer** (Claude Code di VS Code, Mini PC) mengerjakan tugas di branch `eng/<ID>-…`, melapor di [docs/STATUS.md](docs/STATUS.md),
-dan merge setelah PM menulis `PM: DISETUJUI` di PR. Aturan lengkap: `CLAUDE.md` bagian "Peran dan aturan kerja".
+Semua berisi data dummy (akun demo `*@hashi.test`), bukan data nyata. Lebih banyak ada di [docs/screenshots/](docs/screenshots/).
 
-## Stack
-
-| Bagian | Teknologi |
+| Beranda TSK (Indonesia) | Daftar kandidat LPK (Indonesia) |
 | --- | --- |
-| Aplikasi | Next.js 16 (App Router) + TypeScript + Tailwind CSS 4 |
-| Database | PostgreSQL 16 + Drizzle ORM |
-| Isolasi data | PostgreSQL Row-Level Security (RLS) |
-| Login | Auth.js v5 (email + kata sandi, sesi JWT 8 jam) |
-| Bahasa | next-intl (Indonesia / 日本語) |
-| Deploy | Docker Compose (OptiPlex) |
+| ![Beranda TSK](docs/screenshots/T-012/sesudah-tsk-id-desktop.png) | ![Daftar kandidat LPK](docs/screenshots/T-014/daftar-kandidat-bandung.png) |
 
-## Menjalankan di OptiPlex
+| Daftar 在留カード (Jepang) | Beranda LPK di ponsel (Jepang) |
+| --- | --- |
+| ![Daftar 在留カード](docs/screenshots/T-019/3-daftar-ja-admin.png) | ![Beranda LPK di ponsel](docs/screenshots/T-012/sesudah-lpk-ja-mobile.png) |
+
+## Cara menjalankan
+
+### Menjalankan di OptiPlex
 
 Butuh: Docker + Docker Compose, git.
 
@@ -94,7 +110,7 @@ curl -fsS http://127.0.0.1:3110/api/health
 
 Buka `http://<IP-OptiPlex-atau-Tailscale>:3100`.
 
-### Isi data demo (seed lengkap)
+#### Isi data demo (seed lengkap)
 
 `npm run db:seed` mengisi 36 kandidat (3 LPK × 12) **lengkap**, semuanya fiktif dan dibangkitkan dari PRNG ber-seed tetap
 (`src/db/demo-data.ts`; id dan isi sama setiap reseed pada hari yang sama): profil dan motivasi, riwayat Jepang (sebagian pernah ke
@@ -112,7 +128,7 @@ atau menghasilkan semua kandidat, atau berkas yatim di storage. Filter memakai f
 (`src/db/candidate-list.ts`). CI menjalankannya setelah seed. Catatan: filter "JLPT N5" berarti "N5 atau lebih tinggi", jadi
 memang mengembalikan semua kandidat (cukup tidak kosong).
 
-### Reseed per lingkungan
+#### Reseed per lingkungan
 
 Reseed menghapus SEMUA data (dan berkas dokumen lama), jadi hanya untuk data dummy. Cek dulu (baca-saja) bahwa organisasi dan pengguna
 di database itu hanya yang ada di seed; bila ada pengguna/organisasi lain, jangan reset.
@@ -133,7 +149,7 @@ docker compose run --rm migrate npm run verify:seed
 Berkas dokumen seed ditulis ke volume `docs-data` (service `migrate` memasangnya). Menjalankan seed dari image tools untuk db-dev
 (`docker run ... hashi-migrate`) menulis berkas ke dalam container: pasang `-v "$PWD/docs-data":/app/docs-data` bila ingin berkasnya tersimpan.
 
-### Akun demo
+#### Akun demo
 
 Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.env` sebelum seed).
 
@@ -147,7 +163,7 @@ Password semua akun: `hashi-demo-2026` (bisa diganti lewat `SEED_PASSWORD` di `.
 | `lpk3.admin@hashi.test` | Admin LPK Medan (bukan mitra) | 12 kandidat miliknya, tidak terlihat oleh TSK |
 | `admin@hashi.test` | Super admin | Ringkasan jumlah per organisasi, tanpa data pribadi |
 
-## Demo untuk pihak luar
+### Demo untuk pihak luar
 
 Untuk staf TSK yang mau mencoba Hashi lewat alamat publik, jalankan **instance demo terpisah**. Produksi (`hashi`) tidak disentuh:
 
@@ -183,7 +199,7 @@ meneruskannya, isi `AUTH_URL=https://alamat-demo` di `.env.demo` lalu `scripts/d
 > diberi alamat publik. Akun `admin@hashi.test` (super admin) jangan dibagikan ke pihak luar. Setelah sesi demo selesai,
 > matikan dengan `scripts/demo-down.sh` atau reset dengan `scripts/demo-reset.sh`.
 
-## Update ke versi terbaru
+### Update ke versi terbaru
 
 ```bash
 cd ~/hashi
@@ -196,7 +212,7 @@ curl -fsS http://127.0.0.1:3110/api/health
 Verifikasi di produksi cukup lewat **CI hijau** (`gh run list`) dan cek `/api/health`. Jangan menjalankan
 `test:rls` terhadap database produksi (lihat *Pengujian*).
 
-## Perintah sehari-hari
+### Perintah sehari-hari
 
 ```bash
 docker compose ps                         # status
@@ -214,32 +230,18 @@ docker compose exec -T db pg_dump -U hashi_owner -d hashi | gzip > hashi-$(date 
 
 Batas RAM: app 768 MB, database 512 MB (container `migrate` hanya hidup beberapa detik).
 
-## Dokumen kandidat dan backup
+## Keamanan dan data pribadi
 
-> **Cadangan terenkripsi (database + dokumen) dan cara memulihkan: [docs/backup.md](docs/backup.md)** (`scripts/backup.sh`, `scripts/restore.sh`).
-> Jadwal otomatis dan salinan di luar server belum dipasang (T-003). Perintah manual di bawah hanya untuk keperluan cepat.
+Ringkasan (rinciannya di bawah dan di dokumen fitur):
 
-File dokumen (PDF/JPG/PNG, maks. 10 MB) disimpan di **Docker named volume `docs-data`**, dipasang di
-`/app/docs-data` pada container `app`. Tata letak: `<org_id>/<candidate_id>/<document_id>.<pdf|jpg|png>`.
-Nama file di disk selalu id dokumen (bukan nama dari user), jenis file dicek dari isinya, dan unduhan hanya lewat
-aplikasi (dicek login + RLS, tercatat di audit log). Metadata dokumen ada di database, jadi **backup harus mencakup
-database DAN volume `docs-data`** (salah satunya saja tidak cukup untuk memulihkan).
+- **Isolasi antar organisasi dengan RLS PostgreSQL**: aplikasi terhubung sebagai role `hashi_app` yang tidak bisa melewati RLS; aturan hak akses juga dijaga trigger database, bukan hanya aplikasi.
+- **Data sensitif dibatasi per peran**: sensei hanya profil dasar; TSK hanya melihat kandidat yang dibagikan LPK (gerbang tunggal, bawaan tidak dibagikan, butuh konfirmasi "siswa sudah setuju").
+- **Nomor dan foto 在留カード dienkripsi** (AES-256-GCM) dan hanya terbuka untuk Admin TSK dan penanggung jawab pekerja; setiap pembukaan dicatat di audit. Kunci `CARD_DATA_KEY` ada di `.env`: **kunci hilang = data tidak bisa dipulihkan** ([docs/zairyu-card.md](docs/zairyu-card.md), [docs/backup.md](docs/backup.md)).
+- **Riwayat aktivitas tidak bisa diubah atau dihapus** (trigger menolak, termasuk untuk OWNER) dan tidak pernah memuat isi catatan, nama kandidat, atau nomor dokumen.
+- **Terjemahan peramban**: terjemahan otomatis (mis. "Terjemahkan" di Chrome) TIDAK diblokir supaya staf bisa membaca label dan tulisan bebas; yang dikunci hanya identitas (nama, alamat, telepon, kode, nomor dokumen). Pengecualian: catatan kesehatan dikunci karena Chrome mengirim teks terjemahan ke server Google.
+- **Produksi tidak pernah dibuka ke internet**; hanya instance demo (data dummy) yang boleh diberi alamat publik. Repo ini publik: jangan menaruh secret, alamat IP, atau data pribadi di dalamnya.
 
-```bash
-# Backup volume dokumen ke file .tgz di folder sekarang (nama volume = <nama-project>_docs-data)
-docker run --rm -v hashi_docs-data:/data:ro -v "$PWD":/backup node:22-alpine \
-  tar czf /backup/hashi-docs-$(date +%F).tgz -C /data .
-
-# Restore ke volume (kosong atau yang akan ditimpa). Sesuaikan nama arsip.
-docker run --rm -v hashi_docs-data:/data -v "$PWD":/backup:ro node:22-alpine \
-  sh -c 'cd /data && tar xzf /backup/hashi-docs-YYYY-MM-DD.tgz && chown -R 1000:1000 /data'
-```
-
-Arsip dibuat oleh root di dalam container. Perintah ini sudah dicoba pada folder uji (arsip berisi struktur
-`org/kandidat/file`; hasil restore identik dengan sumbernya, pemilik file 1000 = user `node` di image aplikasi).
-Backup database ada di bagian *Perintah sehari-hari*.
-
-## Keamanan data: cara kerja RLS
+### Keamanan data: cara kerja RLS
 
 Aplikasi terhubung ke database sebagai role **`hashi_app`** yang tidak bisa melewati RLS.
 Migration dan seed memakai role **`hashi_owner`**.
@@ -263,7 +265,7 @@ dan `app.bypass_rls`, lalu policy di `drizzle/0001_rls_policies.sql` dan
 keduanya tidak melihat data apa pun (gagal dengan aman). Peran `null` tidak boleh membaca data sensitif
 maupun menulis data kandidat.
 
-### Hak akses data kandidat
+#### Hak akses data kandidat
 
 Ada dua hal yang sengaja dipisah: **status di LPK** (`candidates.stage`: Belajar / Siap seleksi / Mundur, hanya
 diisi Admin LPK) dan **keputusan TSK** (tabel `candidate_selections`: shortlist, wawancara, dst., diisi TSK).
@@ -350,7 +352,34 @@ catatan dan visibility (dari, ke), **tidak pernah isi catatan**, karena log kand
 Audit log mencatat organisasi pelaku (`actor_org_id`). Perubahan atas kandidat disimpan di log **LPK pemilik**
 (dengan `candidate_id`), jadi LPK ikut melihat perubahan yang dilakukan TSK; TSK melihat aksinya sendiri.
 
-## Development (database terpisah)
+## Cadangan
+
+> **Cadangan terenkripsi (database + dokumen) dan cara memulihkan: [docs/backup.md](docs/backup.md)** (`scripts/backup.sh`, `scripts/restore.sh`).
+> Jadwal otomatis dan salinan di luar server belum dipasang (T-003). Perintah manual di bawah hanya untuk keperluan cepat.
+
+File dokumen (PDF/JPG/PNG, maks. 10 MB) disimpan di **Docker named volume `docs-data`**, dipasang di
+`/app/docs-data` pada container `app`. Tata letak: `<org_id>/<candidate_id>/<document_id>.<pdf|jpg|png>`.
+Nama file di disk selalu id dokumen (bukan nama dari user), jenis file dicek dari isinya, dan unduhan hanya lewat
+aplikasi (dicek login + RLS, tercatat di audit log). Metadata dokumen ada di database, jadi **backup harus mencakup
+database DAN volume `docs-data`** (salah satunya saja tidak cukup untuk memulihkan).
+
+```bash
+# Backup volume dokumen ke file .tgz di folder sekarang (nama volume = <nama-project>_docs-data)
+docker run --rm -v hashi_docs-data:/data:ro -v "$PWD":/backup node:22-alpine \
+  tar czf /backup/hashi-docs-$(date +%F).tgz -C /data .
+
+# Restore ke volume (kosong atau yang akan ditimpa). Sesuaikan nama arsip.
+docker run --rm -v hashi_docs-data:/data -v "$PWD":/backup:ro node:22-alpine \
+  sh -c 'cd /data && tar xzf /backup/hashi-docs-YYYY-MM-DD.tgz && chown -R 1000:1000 /data'
+```
+
+Arsip dibuat oleh root di dalam container. Perintah ini sudah dicoba pada folder uji (arsip berisi struktur
+`org/kandidat/file`; hasil restore identik dengan sumbernya, pemilik file 1000 = user `node` di image aplikasi).
+Backup database ada di bagian *Perintah sehari-hari*.
+
+## Pengembangan dan pengujian
+
+### Development (database terpisah)
 
 Database dev adalah service `db-dev` sendiri (container + volume + port `127.0.0.1:5433`), terpisah dari database
 produksi, jadi `docker compose up -d --build` di produksi tidak memutusnya.
@@ -359,19 +388,24 @@ produksi, jadi `docker compose up -d --build` di produksi tidak memutusnya.
 docker compose -f compose.yaml -f compose.dev.yaml up -d db-dev
 # .env: DATABASE_URL / MIGRATE_DATABASE_URL -> .../hashi_dev di 127.0.0.1:5433
 npm run db:migrate && npm run db:seed
+npm run dev                       # http://localhost:3100
 ```
 
-`npm run test:e2e` dan `npm run db:seed -- --reset` **menolak berjalan** kalau nama database tidak berakhiran
+`npm run test:e2e`, `npm run test:rls` dan `npm run db:seed -- --reset` **menolak berjalan** kalau nama database tidak berakhiran
 `_dev` atau `_test` (pengaman supaya tidak menulis data uji ke produksi). CI memakai database `hashi_test`.
 
-## Pengujian
+### Pengujian
 
-| Perintah | Menguji | Butuh |
-| --- | --- | --- |
-| `npm run test:rls` | 82 pemeriksaan database: isolasi data, peran, hak akses kandidat, keputusan & catatan TSK (per TSK), persetujuan data, kemitraan, audit log | database + seed |
-| `npm run test:e2e` | 15 skenario lewat browser: login, hak akses, alur admin lengkap | database + seed + `npm run build` |
+| Perintah | Menguji |
+| --- | --- |
+| `npm run typecheck` | TypeScript |
+| `npm run test:unit` | Tes unit (`node:test`) |
+| `npm run test:rls` | Aturan database: isolasi data, peran, hak akses kandidat, keputusan & catatan TSK, kemitraan, audit log (hanya database dev/test) |
+| `npm run test:i18n` | Kunci pesan Indonesia dan Jepang identik, teks Indonesia tanpa huruf Jepang telanjang |
+| `npm run verify:audit-coverage` | Setiap server action yang menulis juga menulis ke audit log |
+| `npm run test:e2e` | Skenario browser (Playwright); menambah data uji, jadi hanya database dev/test |
 
-Keduanya jalan otomatis di GitHub Actions setiap push (database `hashi_test`).
+Semuanya jalan otomatis di GitHub Actions untuk setiap perubahan kode (perubahan yang hanya dokumen tidak memicu CI). Tabel baru: migration Drizzle + migration SQL manual (`GRANT`, `ENABLE` + `FORCE ROW LEVEL SECURITY`, policy) + pemeriksaan di `scripts/verify-rls.ts`.
 
 **Jalankan hanya terhadap database dev/test, bukan produksi (`hashi`).** Walau `test:rls` me-rollback tulisannya,
 sebagian pemeriksaannya bergantung pada isi seed (mis. 21 dari 24 kandidat terlihat oleh TSK demo, 3 belum
@@ -407,7 +441,7 @@ Aturan yang diuji otomatis oleh `npm run test:rls` antara lain:
 - Tidak ada yang bisa membuat peran yang tidak sesuai organisasinya
 - Audit log tidak bisa dihapus oleh aplikasi
 
-### Menambah tabel baru
+#### Menambah tabel baru
 
 1. Tambahkan tabel di `src/db/schema.ts`, lalu `npm run db:generate`
 2. Buat migration SQL manual (`npx drizzle-kit generate --custom --name nama_tabel_rls`) berisi:
@@ -416,7 +450,7 @@ Aturan yang diuji otomatis oleh `npm run test:rls` antara lain:
 
 Tanpa langkah 2, aplikasi tidak bisa membaca tabel baru. Itu disengaja.
 
-## Development tanpa Docker
+### Development tanpa Docker
 
 ```bash
 npm install
@@ -425,30 +459,50 @@ npm run db:migrate && npm run db:seed
 npm run dev   # http://localhost:3100
 ```
 
-## Struktur folder
+### Struktur folder
 
 ```
-drizzle/                 migration SQL 0000-0021 (RLS, trigger, GRANT ditulis manual)
-docker/postgres/init/    script pembuatan role hashi_app
+drizzle/                 migration SQL (RLS, trigger, GRANT ditulis manual)
 messages/                teks antarmuka: id.json, ja.json (kunci identik)
-scripts/                 migrate, seed (+ seed:records, seed:client-sheet), verify-* (rls, seed, i18n, audit), skrip demo
-src/auth.ts              konfigurasi login
+scripts/                 migrate, seed, verify-* (rls, seed, i18n, audit), skrip demo/deploy/backup
 src/db/                  schema, withTenant/withSystem, query bersama, data demo, audit (satu-satunya yang boleh diimpor scripts/)
-src/features/            logika per fitur: candidates, assessments, clients, job-orders, client-sheet, records, documents,
-                         dashboard, audit, users, organizations, skill-fields, account
-src/lib/                 sesi, hak akses, audit(), PDF (lib/pdf), zona waktu
+src/features/            logika per fitur (candidates, assessments, clients, job-orders, records, cards, documents, dashboard, audit, users, ...)
+src/lib/                 sesi, hak akses, audit(), PDF, zona waktu
 src/components/          shell aplikasi dan komponen bersama
-src/app/(app)/           halaman setelah login (candidates, assessments, clients, job-orders, records, sheet, activity, users, admin, account)
-src/app/login/           halaman login
-tests/unit/              tes unit (node:test)
-tests/e2e/               tes browser (Playwright)
-docs/                    TASKS (antrean), STATUS (laporan engineer), HISTORY, dokumentasi fitur, glosarium, merek
+src/app/                 halaman (login dan grup (app) setelah login)
+tests/unit/ tests/e2e/   tes unit dan tes browser
+docs/                    antrean tugas, laporan, dokumentasi fitur, glosarium, merek, tangkapan layar
 ```
 
-## Catatan keputusan
+### Catatan keputusan
 
 - **Drizzle, bukan Prisma**: tanpa binary engine (image lebih kecil, build lebih cepat di OptiPlex),
   dan RLS lebih mudah dikelola karena migration berupa SQL biasa.
 - **Rate limit login** (5 kali salah per 15 menit per email) disimpan di memori. Cukup untuk satu server.
 - **Sebelum ada data siswa asli**: set `SHOW_DEMO_ACCOUNTS=false`, siapkan backup otomatis ke luar rumah,
   dan formulir persetujuan data pribadi. Lihat dokumen spesifikasi MVP.
+
+## Dokumen dan cara kerja tim
+
+Dokumentasi di `docs/`:
+
+| Berkas | Isi |
+| --- | --- |
+| [docs/TASKS.md](docs/TASKS.md) · [docs/STATUS.md](docs/STATUS.md) · [docs/HISTORY.md](docs/HISTORY.md) | Antrean tugas (PM), laporan engineer, riwayat dan keputusan teknis |
+| [docs/glossary.md](docs/glossary.md) | Kamus istilah Jepang, Indonesia, dan Inggris |
+| [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md) | Catatan kegiatan TSK (業務記録, 面談, 定期面談, form 5-5) |
+| [docs/lembar-klien.md](docs/lembar-klien.md) | Lembar klien PDF (format DRAFT) |
+| [docs/zairyu-card.md](docs/zairyu-card.md) | Pelacak 在留カード, enkripsi, email pengingat, perpanjangan online |
+| [docs/email.md](docs/email.md) | Menyiapkan SMTP untuk email pengingat |
+| [docs/backup.md](docs/backup.md) | Cadangan terenkripsi dan pemulihan |
+| [docs/pilot-checklist.md](docs/pilot-checklist.md) | Daftar periksa sebelum pilot dan data pilot dummy |
+| [docs/brand.md](docs/brand.md) | Logo, ikon, dan aturan pakai |
+| [docs/screenshots/](docs/screenshots/) | Tangkapan layar (data dummy) |
+
+README ini tersedia dalam tiga bahasa dengan struktur judul yang sama: Indonesia (ini), [English](README.en.md), [日本語](README.ja.md).
+
+### Cara kerja tim
+
+Ipal (pemilik) memutuskan; **PM** (sesi Claude di claude.ai/code) menulis tugas di [docs/TASKS.md](docs/TASKS.md) dan me-review PR;
+**engineer** (Claude Code di VS Code, Mini PC) mengerjakan tugas di branch `eng/<ID>-…`, melapor di [docs/STATUS.md](docs/STATUS.md),
+dan merge setelah PM menulis `PM: DISETUJUI` di PR. Aturan lengkap: `CLAUDE.md` bagian "Peran dan aturan kerja".
