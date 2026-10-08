@@ -12,6 +12,24 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
+### T-028 · Hemat menit GitHub Actions · `SIAP` (PRIORITAS: kerjakan setelah PR yang sedang terbuka selesai)
+
+Kuota menit Actions (repo privat, paket gratis 2.000 menit/bulan) habis 8 Okt. Satu putaran CI ±20 menit (job e2e ±17 + docker ±2), dan saat ini SETIAP push ke `main` atau branch PR menjalankan
+CI penuh, termasuk commit PM yang hanya mengubah `docs/TASKS.md` (puluhan putaran tanpa perubahan kode).
+
+Kerjakan di `.github/workflows/ci.yml`:
+- `paths-ignore` untuk `push` dan `pull_request`: `docs/**`, `**/*.md` (kecuali bila ada kode yang ikut berubah, otomatis tetap jalan karena filter per-commit/PR). Catat bahwa PR yang HANYA dokumen tidak punya CI (cukup review PM).
+- `concurrency: { group: ci-${{ github.ref }}, cancel-in-progress: true }` supaya push beruntun membatalkan putaran lama.
+- Jangan menjalankan CI di `push` ke `main` untuk merge commit yang head PR-nya SUDAH hijau? Terlalu rumit: cukup biarkan, tapi pastikan paths-ignore berlaku.
+- Cache yang jelas menghemat (npm via `actions/setup-node` cache, Playwright browser cache) bila belum ada; ukur menit sebelum/sesudah di STATUS.
+- Jangan melemahkan tes apa pun (aturan tetap).
+
+**Kriteria selesai**
+- [ ] Commit yang hanya mengubah `docs/` / `*.md` tidak memicu CI (bukti: run tidak muncul/di-skip), commit kode tetap memicu.
+- [ ] Menit per putaran sebelum/sesudah dilaporkan. CI hijau (setelah kuota tersedia).
+
+---
+
 ### T-025 · Aktifkan email pengingat di produksi (Brevo) · `SIAP`
 
 Keputusan Ipal (8 Okt): layanan SMTP = **Brevo** (smtp-relay.brevo.com:587). Ipal juga sudah menyalin `CARD_DATA_KEY` ke tempat aman (BUTUH IPAL T-020 selesai; data kartu nyata boleh setelah cadangan luar-server berjalan).
