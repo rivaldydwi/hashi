@@ -12,16 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-026 · PDF 手数料納付書 untuk jalur loket (cadangan) · `SIAP`
-
-Keputusan Ipal (8 Okt): pengajuan perpanjangan lewat loket masih mungkin ("just in case"). Online = konbini/bank (T-021), loket = 収入印紙 + 手数料納付書.
-- Tombol "手数料納付書 (loket)" di halaman `/records/workers/<id>/renewal`: PDF A4 form resmi 別記第八十四号様式 (PDF kosong resmi https://www.moj.go.jp/isa/content/001458260.pdf sebagai latar, atau gambar ulang setia; jelaskan pilihan) dengan nama pekerja (romaji) dan nomor **2 (在留期間の更新許可)** dilingkari; kolom tanggal/nomor dibiarkan kosong. Label jelas "hanya untuk pengajuan di loket".
-- Hanya 担当 + TSK_ADMIN; audit `residence_card.fee_form_export` (tanpa nilai). Teks bantuan pengambilan kartu sudah membedakan online/loket (T-021).
-- Kriteria: tes unit penempatan teks, e2e unduh PDF (nama benar, staf lain 404), CI hijau.
-
----
-
-### T-029 · Halaman 404 di dalam aplikasi + tautan email uji · `SIAP` (PRIORITAS: kerjakan sebelum T-028)
+### T-029 · Halaman 404 di dalam aplikasi + tautan email uji · `SIAP`
 
 Laporan Ipal (8 Okt, tangkapan layar): email uji T-025 SAMPAI, tetapi tautan di email membuka `/records/workers/00000000-…-000000000001` (id palsu dari email uji) dan halaman tampil
 **hitam** dengan "404 This page could not be found." (halaman 404 bawaan Next.js). Selain itu judul halaman ("Catatan kegiatan") dan nama organisasi di sidebar jadi **putih di atas latar terang**
@@ -86,10 +77,12 @@ Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Ind
 - 在留カード lanjutan: halaman 特定技能 ("V") + 所属機関等作成用 untuk perpanjangan, menunggu contoh dari Ghulam.
 - 在留カード: nomor/foto kartu LAMA setelah kartu baru diterima tetap tersimpan terenkripsi tapi tidak bisa dibuka di aplikasi (hanya kartu aktif). Perlu keputusan retensi (hapus otomatis setelah X bulan?) dengan TSK/行政書士 sebelum data nyata.
 - 在留カード opsional: teks bantuan estimasi biaya (naik per 2026-10-01) dari sumber resmi.
+- `deploy.sh`: baris ringkasan migrasi kadang menampilkan `npm notice` (usulan engineer T-026).
 - Langkah 9: demo ke TSK.
 
 ## Selesai
 
+- **T-026** PDF 手数料納付書 jalur loket (PR #27): latar PDF kosong resmi (`assets/forms/`, `pdf-lib`), nama romaji (tidak pernah dipotong) + nomor 2 dilingkari, label "hanya loket", akses 担当/Admin, audit `fee_form_export`. Juga: aktivasi email T-025 SELESAI (Brevo, mode kirim; email uji sampai ke Ipal 8 Okt).
 - **T-024** Tampilan LPK status visa + tanggal tiba (PR #26): `placements.arrived_on` (migrasi 0030, tulis Admin TSK/担当, tidak di masa depan), fungsi sempit `lpk_worker_status` (hanya LPK_ADMIN pemilik, dibagikan, kemitraan aktif; tepat 3 nilai), `card_visa_state` = `visaState`, bagian "Setelah berangkat" di detail kandidat LPK; HTML LPK tanpa klien/job order/kartu (dites).
 - **T-015** `scripts/deploy.sh` log ke berkas (PR #25): log lengkap per langkah (mode 600, simpan 20), terminal ringkasan, gagal = 40 baris terakhir + path; tes unit dengan docker/curl palsu.
 - **T-025** Email pengingat di produksi, kode (PR #24): `isSafeRecipient` (akun demo/domain contoh dilewati), `--test-to`, `--check`, `docs/email.md`, checklist F0/F1b/F1c. AKTIVASI (SMTP key dari Ipal di sesi engineer, kirim uji, worker `mode=kirim`) dilaporkan di STATUS berikutnya. Repo dijadikan PUBLIK oleh Ipal (8 Okt): jangan menulis IP/email pribadi/isi `.env` di repo.
