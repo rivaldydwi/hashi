@@ -22,7 +22,10 @@
     "verify:audit-coverage": "tsx scripts/verify-audit-coverage.ts",
     "build:brand": "tsx scripts/build-brand.ts",
     "seed:client-sheet": "tsx scripts/seed-client-sheet.ts",
-    "seed:records": "tsx scripts/seed-records.ts"
+    "seed:records": "tsx scripts/seed-records.ts",
+    "seed:pilot": "tsx scripts/seed-pilot.ts",
+    "verify:pilot": "tsx scripts/verify-pilot.ts",
+    "perf:pages": "playwright test -c playwright.perf.config.ts"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",
