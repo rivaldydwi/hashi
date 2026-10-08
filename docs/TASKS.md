@@ -46,12 +46,34 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 
 ---
 
+### T-024 · Tampilan LPK: status visa + tanggal tiba pekerja (baca-saja, sangat terbatas) · `SIAP` (setelah T-015)
+
+Kebutuhan tercatat (CLAUDE.md "Keputusan untuk langkah 7"; jawaban TSK no. 9: LPK hanya melihat apa yang dibuat TSK). LPK_ADMIN pemilik kandidat ingin tahu muridnya sudah tiba dan visanya
+berlaku, TANPA melihat klien, job order, penempatan, kartu, atau data TSK lain.
+
+Kerjakan:
+- **Tanggal tiba**: kolom baru `placements.arrived_on` (date, opsional), diisi TSK (TSK_ADMIN atau 担当 efektif) di detail pekerja; tidak boleh di masa depan (zona TSK); audit nama kolom saja.
+- **Fungsi sempit** `lpk_worker_status(candidate_id)` (SECURITY DEFINER, `COALESCE` pada pemeriksaan peran, pola `candidate_delete_summary`): hanya untuk LPK_ADMIN pemilik kandidat, hanya bila ada
+  penempatan (DEPARTED) dan kandidat `shared_with_tsk` dengan kemitraan AKTIF; mengembalikan TEPAT: `arrived_on`, `visa_state` (kode: `none` / `valid` / `renewing` / `expired`, diturunkan
+  dari kartu aktif terbaru: berlaku = masa berlaku belum lewat; renewing = sudah diajukan/結果待ち; expired = lewat tanpa kartu baru), dan `valid_until` (tanggal habis kartu). TIDAK ada
+  nomor kartu, catatan, status rinci, nama TSK/klien/lokasi, job order, atau tanggal lain. Sensei, TSK, peran lain: null.
+- **UI LPK**: di detail kandidat (LPK_ADMIN saja) bagian kecil "Setelah berangkat": tanggal tiba + lencana status visa (StatusBadge + `statusHelp`, id/ja) + "berlaku sampai". Di daftar `/candidates`
+  boleh satu kolom/lencana kecil untuk kandidat berangkat (opsional bila memperlambat; ukur). Sensei: tidak dirender dan datanya tidak dibaca.
+- `verify-rls`: fungsi mengembalikan null untuk sensei, TSK, LPK lain, kemitraan nonaktif, `shared_with_tsk = false`; LPK_ADMIN tetap TIDAK bisa SELECT `placements`/`residence_cards` langsung.
+- e2e: LPK_ADMIN melihat tanggal tiba + status yang diisi TSK; HTML halaman LPK tidak memuat nama klien/lokasi/job order/nomor kartu (pola tes yang sudah ada); sensei tidak melihat bagian itu.
+
+**Kriteria selesai**
+- [ ] Migrasi kolom + fungsi; `verify-rls` bagian baru; tes unit penurunan `visa_state` (semua tahap kartu).
+- [ ] e2e LPK/TSK/sensei seperti di atas; typecheck, build, test:rls, e2e, CI hijau.
+- [ ] Deploy `--backup` (ada migrasi).
+
+---
+
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
 - 在留カード: koreksi tanggal kartu yang sudah `received` oleh Admin (usulan engineer T-017), hanya bila TSK memintanya setelah dipakai.
 - Email pengingat 在留カード **ke pekerja** (butuh kolom email pekerja + persetujuan; setelah T-022).
-- Tampilan LPK: status visa + tanggal tiba (jawaban no. 9: hanya yang dibuat TSK). Setelah T-019.
 - Langkah 7 sisanya: checklist keberangkatan/kedatangan, bagian 管理・報告 di lembar 定期面談, profil pekerja lengkap, status visa + tanggal tiba untuk LPK (baca-saja), notifikasi email/LINE.
 - Catatan lanjutan: syarat "pekerja sama" hanya diperiksa saat dibuat; bila nanti perlu ketat, trigger di `activity_record_subjects` (temuan T-007, belum perlu).
 - `next.config`: `agentRules: false` supaya `next dev` tidak menulis blok aturan ke `CLAUDE.md` (temuan engineer T-013).
