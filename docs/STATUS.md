@@ -34,6 +34,30 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-027 · README tiga bahasa (Indonesia, Inggris, Jepang)
+
+**PR:** (nomor menyusul di komentar PR) (branch `eng/T-027-readme-3-bahasa`)
+**Status:** siap direview. Tanpa migrasi, tanpa deploy.
+
+**Hasil T-028** (PR #29 di-merge `8e9f886` setelah `PM: DISETUJUI`; CI head hijau). Hanya `ci.yml`, tidak ada deploy. `docs/TASKS.md` di `main` masih menandai T-028 `SIAP`: PM yang mengubahnya.
+
+**Yang dikerjakan**
+- `README.md` disusun ulang jadi 8 bagian `##` (Tentang Hashi · Fitur per peran · Tangkapan layar · Cara menjalankan · Keamanan dan data pribadi · Cadangan · Pengembangan dan pengujian · Dokumen dan cara kerja tim); isi lama tidak dibuang, judul lama diturunkan satu level. Baru: baris tautan bahasa, ringkasan keamanan (RLS, enkripsi kartu, audit, kebijakan terjemahan peramban), tangkapan layar (4 gambar dari `docs/screenshots/`, data dummy), tabel dokumen `docs/`, baris fitur untuk pelacak 在留カード dan status pekerja LPK. Status di atas yang sudah usang diperbarui; angka usang di tabel Pengujian ("82 pemeriksaan", "15 skenario") dan struktur folder (migration 0000-0021) diganti yang tidak memuat angka.
+- `README.en.md` dan `README.ja.md` (です・ます; istilah mengikuti `docs/glossary.md`): judul `##` dan `###` identik dengan versi Indonesia. Bagian teknis panjang (rincian RLS per tabel, seed, perintah env lengkap, akun demo beserta kata sandinya) diringkas dan menunjuk ke `README.md`.
+- `tests/unit/readme-trilingual.test.ts` (4 tes): struktur judul `#`-`###` sama (di luar blok kode; level 4 boleh diringkas), baris tautan bahasa, tautan/gambar relatif menunjuk berkas yang ada, tidak ada IP selain `127.0.0.1`, email pribadi, atau secret. Diuji dengan merusak satu judul di `README.en.md` (tes gagal) lalu dipulihkan.
+- `CLAUDE.md`: satu butir aturan "README tiga bahasa" (ubah satu = ubah ketiganya).
+
+**Verifikasi**
+- `npx tsx --test tests/unit/readme-trilingual.test.ts` → 4/4 lulus; `npm run test:unit` → 169/169; `npm run typecheck` → lulus; `npm run test:i18n` → lulus.
+- Tangkapan layar dilihat satu per satu: hanya data dummy (akun `*@hashi.test`, nama fiktif). Tidak ada secret/IP/email pribadi (dicek tes). `test:rls`, `build`, e2e tidak dijalankan lokal: hanya dokumen dan satu tes unit yang berubah; CI yang menjalankannya.
+
+**Kendala / catatan**
+- Terjemahan Inggris dan Jepang ditulis oleh engineer dari teks Indonesia; belum dicek penutur asli. Bagian Jepang memakai istilah di glosarium (配属先, 在留カード, 面談, 入管, 登録支援機関) dan perlu dibaca staf TSK/Ipal sebelum dibagikan ke pihak luar.
+- README.md masih memuat kata sandi akun demo (`hashi-demo-2026`) seperti sebelumnya (data dummy lokal, bukan secret); versi en/ja sengaja tidak mengulanginya.
+
+**Usulan berikutnya**
+- Antrean `docs/TASKS.md` kini kosong setelah T-027; menunggu PM (cadangan luar-server, keputusan 行政書士, demo ke TSK).
+
 ## 2026-10-08 · T-028 · Hemat menit GitHub Actions
 
 **PR:** #29 (branch `eng/T-028-ci-minutes`)
