@@ -43,6 +43,8 @@ export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
   // Kartu izin tinggal 在留カード (T-017): hanya kode status/tahap dan diterima-oleh; TANPA tanggal, nomor kartu, catatan, nama pekerja
   residence_card: ["residenceStatus", "renewalStatus", "stage", "receivedBy", "status", "side", "recipients"], // side = front | back (foto kartu, T-020); recipients = jumlah penerima pengingat email (T-022); TANPA nomor/alamat
   // Penanggung jawab pekerja (T-010): hanya cakupan (company | placement); id staf/pekerja/perusahaan tidak dicatat di nilai
+  // Data pekerja di Jepang (T-021): hanya NAMA kolom (kunci struktural `fields`); alamat dan telepon tidak pernah tercatat
+  worker_jp_profile: [],
   responsible_assignment: ["scope"],
   // Lembar klien (langkah 6): jenis dokumen, mode, bahasa label, jumlah halaman; TANPA nama perusahaan dan isi
   client_sheet_export: ["sheetKind", "mode", "labelLang", "pages"],

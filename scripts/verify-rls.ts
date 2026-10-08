@@ -1312,7 +1312,7 @@ async function main() {
     J(sh.leftoverPolicies) === "[]" && J(sh.leftoverFns) === J(["enforce_tsk_cannot_change_lpk_fields"]),
     `${J(sh.leftoverPolicies)} ${J(sh.leftoverFns)}`,
   );
-  const covered = ["activity_case_subjects", "activity_record_subjects", "audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories", "periodic_interview_quarter_notes", "periodic_interviews", "placements", "residence_card_photos", "residence_card_secrets", "residence_cards"];
+  const covered = ["activity_case_subjects", "activity_record_subjects", "audit_logs", "candidate_assessments", "candidate_certificates", "candidate_documents", "candidate_educations", "candidate_family_members", "candidate_notes", "candidate_private", "candidate_selections", "candidate_work_histories", "periodic_interview_quarter_notes", "periodic_interviews", "placements", "residence_card_photos", "residence_card_secrets", "residence_cards", "worker_jp_profiles"];
   check(
     "Tuntas: setiap tabel ber-candidate_id sudah tercakup tes berbagi (tabel baru ber-candidate_id harus ditambahkan ke bagian I)",
     J(sh.candidateTables) === J(covered),
@@ -3297,6 +3297,58 @@ async function main() {
     "Log pengingat kartu: semua peran aplikasi (Admin/staf TSK, TSK lain, LPK, sensei, super admin, peran null) membaca 0 baris dan INSERT/UPDATE/DELETE ditolak; data utuh",
     ["tskAdmin", "tskStaff", "tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => zr[`read/${w}`] === 0 && Z3(zr[`insert/${w}`]) && Z3(zr[`delete/${w}`]) && Z3(zr[`update/${w}`])) && zr.intact === 3,
     JSON.stringify([...Object.entries(zr).filter(([k]) => k.startsWith("read/")), zr.intact]),
+  );
+
+  // --- AA. Data pekerja di Jepang (T-021): baca = staf TSK organisasi sama; tulis = TSK_ADMIN atau 担当 efektif; LPK/sensei/super admin/peran null/TSK lain 0 baris; tanpa DELETE; penjaga ---
+  const jp: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const [a, b2] = (await tx.execute(sql`select p.candidate_id::text as cid, p.id::text as pid from placements p where p.status = 'ACTIVE' and p.org_id = ${tsk.id}::uuid order by p.id limit 2`)).rows as Array<{ cid: string; pid: string }>;
+    await tx.execute(sql.raw(`insert into responsible_assignments (organization_id, created_by, placement_id, staff_id, effective_from) values ('${tsk.id}', '${tskAdminUser.id}', '${a.pid}', '${staffUser.id}', current_date)`));
+    const ins = (by: string, cid: string, cols = "address_jp, phone_jp", vals = "'東京都新宿区1-2-3', '090-1234-5678'", org = tsk.id) =>
+      sql.raw(`insert into worker_jp_profiles (organization_id, created_by, candidate_id, ${cols}) values ('${org}', '${by}', '${cid}', ${vals}) returning id::text as id`);
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    const id1 = ((await tx.execute(ins(tskAdminUser.id, a.cid))).rows[0] as { id: string }).id; // created_by dipalsukan
+    jp.createdBy = await num(tx, `select count(*)::int as n from worker_jp_profiles where id = '${id1}' and created_by = '${staffUser.id}'`);
+    jp.dup = await attempt(tx, (t) => t.execute(ins(staffUser.id, a.cid)));
+    await tx.execute(sql.raw(`update worker_jp_profiles set phone_jp = '080-0000-0000' where id = '${id1}'`));
+    jp.editorUpdate = await num(tx, `select count(*)::int as n from worker_jp_profiles where id = '${id1}' and phone_jp = '080-0000-0000' and updated_by = '${staffUser.id}'`);
+    jp.tooLong = await attempt(tx, (t) => t.execute(sql.raw(`update worker_jp_profiles set address_jp = repeat('a', 301) where id = '${id1}'`)));
+    jp.lockedCandidate = await attempt(tx, (t) => t.execute(sql.raw(`update worker_jp_profiles set candidate_id = '${b2.cid}' where id = '${id1}'`)));
+    jp.noDelete = await attempt(tx, (t) => t.execute(sql.raw(`delete from worker_jp_profiles where id = '${id1}'`)));
+    jp.otherOrgInsert = await attempt(tx, (t) => t.execute(ins(staffUser.id, a.cid, "address_jp", "'x'", tskB)));
+    // staf lain: membaca boleh, menulis tidak (INSERT ditolak RLS; UPDATE dengan/tanpa WHERE tidak mengubah apa pun pada pekerja a)
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2!.id);
+    jp.otherReads = await num(tx, `select count(*)::int as n from worker_jp_profiles where id = '${id1}'`);
+    jp.otherInsert = await attempt(tx, (t) => t.execute(ins(staff2!.id, a.cid))); // staf2 BUKAN 担当 pekerja a (pekerja b2 bisa saja milik staf2 menurut seed); RLS ditolak lebih dulu daripada unik
+    await tx.execute(sql.raw(`update worker_jp_profiles set phone_jp = '000-diretas' where id = '${id1}'`));
+    await tx.execute(sql.raw(`update worker_jp_profiles set phone_jp = '000-diretas-tanpa-where' where candidate_id = '${a.cid}'`));
+    for (const [who, org, role, uid] of [["tskB", tskB, "TSK_ADMIN", adminB], ["lpkAdmin", lpk1.id, "LPK_ADMIN", lpkAdminUser.id], ["sensei", lpk1.id, "LPK_SENSEI", senseiUser.id], ["superAdmin", platformOrg.id, "SUPER_ADMIN", null], ["roleNull", tsk.id, null, null]] as const) {
+      await actAs(tx, org, role, uid);
+      jp[`read/${who}`] = await num(tx, `select count(*)::int as n from worker_jp_profiles`);
+      jp[`insert/${who}`] = await attempt(tx, (t) => t.execute(ins(uid ?? tskAdminUser.id, a.cid, "address_jp", "'x'")));
+      await tx.execute(sql.raw(`update worker_jp_profiles set phone_jp = '000-diretas-${who}'`));
+    }
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    jp.untouched = await num(tx, `select count(*)::int as n from worker_jp_profiles where phone_jp like '000-diretas%'`);
+    jp.adminReads = await num(tx, `select count(*)::int as n from worker_jp_profiles where id = '${id1}' and phone_jp = '080-0000-0000'`);
+    const id2 = ((await tx.execute(ins(tskAdminUser.id, b2.cid))).rows[0] as { id: string }).id; // Admin menulis untuk pekerja mana pun
+    jp.adminInsert = await num(tx, `select count(*)::int as n from worker_jp_profiles where id = '${id2}'`);
+    const [np] = (await tx.execute(sql`select c.id::text as cid from candidates c where not exists (select 1 from placements p where p.candidate_id = c.id) limit 1`)).rows as Array<{ cid: string }>;
+    jp.noPlacement = await attempt(tx, (t) => t.execute(ins(tskAdminUser.id, np.cid, "address_jp", "'x'")));
+  });
+  const J3 = (v: unknown) => typeof v === "string" && v.length > 0;
+  check(
+    "Data pekerja di Jepang: 担当 menulis (created_by/updated_by dari sesi), satu baris per pekerja, panjang dibatasi, pekerja terkunci, tanpa DELETE, organisasi lain ditolak; Admin menulis untuk pekerja mana pun",
+    jp.createdBy === 1 && /candidate_key/.test(String(jp.dup)) && jp.editorUpdate === 1 && /address_check/.test(String(jp.tooLong)) && /tidak bisa diubah/.test(String(jp.lockedCandidate)) && J3(jp.noDelete) && J3(jp.otherOrgInsert) && jp.adminInsert === 1 && jp.adminReads === 1 && /penempatan/.test(String(jp.noPlacement)),
+    JSON.stringify([jp.createdBy, String(jp.dup).slice(0, 40), jp.editorUpdate, String(jp.tooLong).slice(0, 40), String(jp.lockedCandidate).slice(0, 40), String(jp.noDelete).slice(0, 40), String(jp.otherOrgInsert).slice(0, 40), jp.adminInsert, jp.adminReads]),
+  );
+  check(
+    "Data pekerja di Jepang: staf TSK yang BUKAN 担当 membaca tetapi tidak menulis; TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris, INSERT ditolak, UPDATE tanpa WHERE tidak mengubah apa pun",
+    jp.otherReads === 1 && /row-level security/.test(String(jp.otherInsert)) && ["tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => jp[`read/${w}`] === 0 && J3(jp[`insert/${w}`])) && jp.untouched === 0,
+    JSON.stringify([jp.otherReads, String(jp.otherInsert).slice(0, 40), ...Object.entries(jp).filter(([k]) => k.startsWith("read/")), jp.untouched]),
   );
 
   await pool.end();

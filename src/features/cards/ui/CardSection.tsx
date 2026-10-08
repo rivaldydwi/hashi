@@ -1,7 +1,8 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Data } from "@/components/Data";
-import { cardClass } from "@/components/styles";
+import { btnSecondary, cardClass } from "@/components/styles";
 import { cardStage } from "@/db/zairyu";
+import Link from "next/link";
 import { Badge } from "@/features/records/ui/common";
 import { RevisionHistory, toSnake, type RevField } from "@/features/records/ui/RevisionHistory";
 import type { CardRow, CardSectionData } from "../queries";
@@ -77,6 +78,26 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
             {stage!.specialUntil && <p className="text-sm text-amber-900" data-testid="card-special">{t("flags.special", { date: slash(stage!.specialUntil) })}</p>}
             {current.note && <p className="whitespace-pre-wrap break-words text-sm text-ink-menu" data-testid="card-note">{current.note}</p>}
           </div>
+
+          {access.canEdit && current.status === "active" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href={`/records/workers/${candidateId}/renewal`} className={btnSecondary} data-testid="card-renewal-link">{t("renewalData.open")}</Link>
+              <span className="text-xs text-ink-2">{t("renewalData.openHelp")}</span>
+            </div>
+          )}
+
+          {stage!.stage === "waiting_result" && (
+            <div className="rounded-xl border border-line bg-page p-3 text-sm" data-testid="card-pickup-checklist">
+              <p className="font-semibold">{t("pickup.title")}</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-menu">
+                <li>{t("pickup.notice")}</li>
+                <li>{t("pickup.passport")}</li>
+                <li>{t("pickup.oldCard")}</li>
+                <li>{t("pickup.fee")}</li>
+              </ul>
+              <p className="mt-2 text-xs text-ink-2">{t("pickup.counterNote")}</p>
+            </div>
+          )}
 
           {current.status === "active" && (
             access.canEdit && secrets[current.id] ? (

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { btnSecondary } from "@/components/styles";
 import { revealCardNumber } from "../secret-actions";
+import { CopyButton } from "./CopyButton";
 
 const SHOW_SECONDS = 30;
 
@@ -52,7 +53,10 @@ export function NumberReveal({ cardId, masked }: { cardId: string; masked: strin
             {t("cards.secrets.show")}
           </button>
         ) : (
+          <>
+            <CopyButton value={value} testId="card-number-copy" />
           <button type="button" className={btnSecondary} onClick={hide} data-testid="card-number-hide">{t("cards.secrets.hide")}</button>
+          </>
         )}
       </div>
       <p className="text-xs text-ink-2">{value === null ? t("cards.secrets.showHelp") : t("cards.secrets.shownFor", { n: SHOW_SECONDS })}</p>

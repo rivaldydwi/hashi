@@ -1206,3 +1206,27 @@ export const cardReminderLog = pgTable(
     check("card_reminder_log_stage_check", sql`${t.stage} in ('prepare','can_apply','h30','h14','h7','expired','special_overdue','rejected','additional_docs')`),
   ],
 );
+
+// ---------------------------------------------------------------------------------------------
+// Data pekerja di Jepang untuk perpanjangan 在留カード (T-021, migration 0029): alamat tinggal (住居地) dan telepon/HP di Jepang. Milik TSK (org_id TSK), satu baris per pekerja; BUKAN di
+// candidate_private karena LPK tidak perlu melihat alamat Jepang. Baca = staf TSK organisasi sama; tulis = TSK_ADMIN atau 担当 efektif (`card_editor`), seperti kartu. Tanpa DELETE.
+// ---------------------------------------------------------------------------------------------
+export const workerJpProfiles = pgTable(
+  "worker_jp_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id").notNull().references(() => candidates.id, { onDelete: "restrict" }),
+    addressJp: text("address_jp"), // 住居地
+    phoneJp: text("phone_jp"), // 電話番号 / 携帯電話番号
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid("created_by").notNull().references(() => users.id),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => users.id),
+  },
+  (t) => [
+    uniqueIndex("worker_jp_profiles_candidate_key").on(t.candidateId),
+    check("worker_jp_profiles_address_check", sql`${t.addressJp} is null or length(${t.addressJp}) <= 300`),
+    check("worker_jp_profiles_phone_check", sql`${t.phoneJp} is null or length(${t.phoneJp}) <= 40`),
+  ],
+);

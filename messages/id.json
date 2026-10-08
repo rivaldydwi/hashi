@@ -2045,6 +2045,83 @@
       "photoSaved": "Foto kartu disimpan.",
       "photoRemoved": "Foto kartu dihapus.",
       "voidNote": "Jika kartu dibatalkan, nomor dihapus dan foto ikut dihapus."
+    },
+    "jp": {
+      "title": "Data pekerja di Jepang",
+      "intro": "Alamat tinggal dan telepon/HP di Jepang untuk perpanjangan kartu. Disimpan terpisah dari profil kandidat; pihak LPK tidak melihatnya.",
+      "address": "Tempat tinggal di Jepang",
+      "phone": "Telepon / HP di Jepang",
+      "edit": "Ubah data Jepang",
+      "save": "Simpan",
+      "saved": "Data pekerja di Jepang disimpan.",
+      "readOnly": "Hanya penanggung jawab pekerja dan Admin TSK yang bisa mengubah. Kamu bisa melihatnya.",
+      "note": "Alamat dan telepon hanya dipakai untuk mengisi formulir perpanjangan; tidak masuk daftar atau ekspor.",
+      "errors": {
+        "addressTooLong": "Alamat terlalu panjang (maksimum 300 karakter).",
+        "phoneInvalid": "Nomor telepon tidak sah (angka, spasi, +, -, kurung; 6 sampai 40 karakter)."
+      }
+    },
+    "pickup": {
+      "title": "Saat mengambil kartu baru (pengajuan online)",
+      "notice": "Pemberitahuan hasil dari imigrasi (hagaki atau email)",
+      "passport": "Paspor",
+      "oldCard": "Kartu izin tinggal yang lama",
+      "fee": "Biaya dibayar online lewat konbini atau bank setelah email panduan pembayaran dari imigrasi (pengirim resmi: no-reply@service-dgft.com; waspada email palsu). Sejak 1 Oktober 2026 materai tidak berlaku untuk pengajuan online.",
+      "counterNote": "Pengajuan di loket (bukan online) masih memakai surat pembayaran biaya (tesuryo noufusho) dan materai."
+    },
+    "renewalData": {
+      "open": "Data perpanjangan (online)",
+      "openShort": "Data perpanjangan",
+      "openHelp": "Isian siap salin untuk mengajukan perpanjangan lewat sistem online imigrasi.",
+      "back": "Kembali ke pekerja",
+      "title": "Data perpanjangan kartu: <n>{name}</n>",
+      "intro": "Butir 1 sampai 14 formulir perpanjangan masa tinggal (halaman data pemohon) untuk pengajuan online. Tekan Salin pada tiap nilai lalu tempel ke sistem online. Isi formulir selalu bahasa Jepang. Butir 15 dan 16 tidak disimpan di Hashi.",
+      "copy": "Salin",
+      "copied": "Tersalin",
+      "missing": "Belum terisi",
+      "allFilled": "Semua butir sudah terisi.",
+      "missingCount": "{n} butir belum terisi. Lengkapi dulu lewat tautan di bawah butirnya.",
+      "emptyValue": "Belum ada data.",
+      "reminderBadge": "Pengingat",
+      "reasonLabel": "Alasan perpanjangan (bisa diubah di sini)",
+      "reasonReset": "Kembalikan ke bawaan",
+      "reasonNotSaved": "Perubahan di kotak ini tidak disimpan.",
+      "cardNumberMissing": "Nomor kartu belum disimpan. Simpan di bagian nomor dan foto kartu pada halaman pekerja.",
+      "nameGuess": "Pemisahan marga/nama hanya perkiraan (nama Indonesia tidak punya marga baku). Cocokkan dengan paspor.",
+      "homeAddressHint": "Alamat dari profil kandidat. Sesuaikan penulisannya dengan isian di sistem online.",
+      "warnings": {
+        "passportExpired": "Paspor sudah kedaluwarsa. Perbarui paspor sebelum mengajukan perpanjangan.",
+        "passportBeforeCardExpiry": "Masa berlaku paspor habis sebelum atau pada tanggal habis kartu. Periksa dan perbarui paspor.",
+        "noCard": "Pekerja ini belum punya data kartu. Isi data kartu dulu."
+      },
+      "fix": {
+        "profile": "Lengkapi di profil kandidat",
+        "passport": "Lengkapi data paspor di profil kandidat",
+        "card": "Lengkapi di data kartu",
+        "jp": "Isi data pekerja di Jepang"
+      },
+      "items": {
+        "nationality": "Kewarganegaraan",
+        "birth": "Tanggal lahir",
+        "name": "Nama (huruf Latin kapital)",
+        "gender": "Jenis kelamin",
+        "marital": "Status menikah",
+        "occupation": "Pekerjaan",
+        "homeAddress": "Tempat tinggal di negara asal",
+        "addressJp": "Tempat tinggal di Jepang",
+        "phoneJp": "Telepon / HP",
+        "passport": "Paspor (nomor dan masa berlaku)",
+        "currentStatus": "Status izin tinggal saat ini (masa tinggal dan tanggal habis)",
+        "cardNumber": "Nomor kartu izin tinggal",
+        "desiredPeriod": "Masa tinggal yang diminta",
+        "reason": "Alasan perpanjangan",
+        "criminal": "Riwayat tindakan pidana",
+        "familyInJapan": "Keluarga dan teman serumah di Jepang"
+      },
+      "reminders": {
+        "criminal": "Tidak disimpan di Hashi. Isi langsung saat mengajukan sesuai keadaan pemohon.",
+        "familyInJapan": "Tidak disimpan di Hashi. Isi langsung saat mengajukan sesuai keadaan pemohon."
+      }
     }
   }
 }

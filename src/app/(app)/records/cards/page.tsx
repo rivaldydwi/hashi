@@ -10,6 +10,9 @@ import { Badge } from "@/features/records/ui/common";
 import { safeTimezone, ymdIn } from "@/lib/org-time";
 import { tenantQuery } from "@/lib/session";
 
+/** Tahap yang menampilkan tautan ke data perpanjangan online (T-021): persiapan s.d. lewat tanggal habis. */
+const RENEWAL_STAGES = ["prepare", "can_apply", "h30", "h14", "h7", "expired"];
+
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
@@ -105,7 +108,12 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
                   </td>
                   <td className={`${gridTd} min-w-36`}>{r.renewalStatus ? t(`renewal.${r.renewalStatus}`) : "—"}</td>
                   <td translate="no" className={`${gridTdText} min-w-28`} data-testid="card-row-responsible">{r.responsibleName ?? <span className="text-ink-2">—</span>}</td>
-                  <td className={gridTdShort}><Link href={`/records/workers/${r.workerId}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-accent-text hover:underline" data-testid="card-row-open">{t("list.open")}</Link></td>
+                  <td className={gridTdShort}>
+                    <Link href={`/records/workers/${r.workerId}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-accent-text hover:underline" data-testid="card-row-open">{t("list.open")}</Link>
+                    {RENEWAL_STAGES.includes(r.stage as never) && (me.role === "TSK_ADMIN" || r.responsibleId === me.id) && (
+                      <div><Link href={`/records/workers/${r.workerId}/renewal`} className="inline-flex min-h-11 items-center text-sm font-semibold text-accent-text hover:underline" data-testid="card-row-renewal">{t("renewalData.openShort")}</Link></div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

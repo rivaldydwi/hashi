@@ -12,37 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-021 · 在留カード: data permohonan perpanjangan siap salin (online) + 手数料納付書 · `SIAP`
-
-Keputusan Ipal (7 Okt): perpanjangan 在留カード diajukan **online** (在留申請オンラインシステム), **hanya perorangan** (form grup = COE, ditunda). Form acuan: 在留期間更新許可申請書,
-**halaman 申請人等作成用1** (umum untuk semua status). Halaman lanjutan versi 特定技能 ("V") dan 所属機関等作成用 BELUM termasuk tugas ini. Karena online, keluarannya **bukan PDF formulir**,
-tapi halaman per pekerja berisi isian butir 1-14 yang tinggal disalin ke sistem online.
-
-Kerjakan:
-- **Data pekerja yang belum ada**: alamat tinggal di Jepang (住居地) dan telepon/HP di Jepang. Simpan di tabel baru milik TSK (mis. `worker_jp_profiles`, satu baris per pekerja, `org_id` TSK, RLS
-  `activity_member` baca, tulis 担当 efektif + TSK_ADMIN seperti `card_editor`), BUKAN di `candidate_private` (LPK tidak perlu melihat alamat Jepang). Form ubah di `/records/workers/<id>`. Masuk bagian
-  `verify-rls` + bagian I bila ber-`candidate_id`.
-- **Halaman `/records/workers/<id>/renewal`** (担当 + TSK_ADMIN; staf lain/LPK/sensei 404): butir sesuai urutan form, label Jepang (+ Indonesia kecil), tiap nilai punya tombol **Salin**:
-  1 国籍 (インドネシア), 2 生年月日, 3 氏名 (romaji HURUF BESAR seperti paspor, marga/nama), 4 性別, 5 配偶者の有無, 6 職業 (default 会社員), 7 本国における居住地 (kota/kabupaten asal),
-  8 住居地, 9 電話番号/携帯, 10 旅券 番号 + 有効期限, 11 現に有する在留資格 (特定技能1号) + 在留期間 + 満了日, 12 在留カード番号 (T-020; menampilkannya = audit `residence_card.number_view`),
-  13 希望する在留期間 (bawaan = 在留期間 kartu sekarang), 14 更新の理由 (templat bawaan: lanjut bekerja sebagai 特定技能 di perusahaan penempatan; bisa diubah di halaman, TIDAK disimpan).
-  Tanggal: 西暦 (yyyy/mm/dd) dengan 和暦 di sampingnya. Butir 15 (riwayat pidana) dan 16 (keluarga di Jepang): **tidak disimpan**, hanya pengingat "isi saat pengajuan".
-- Butir kosong ditandai jelas + tautan ke tempat mengisinya (profil kandidat, kartu, data Jepang). Paspor kedaluwarsa / habis sebelum 満了日 = peringatan.
-- Tombol menuju halaman ini dari bagian kartu di detail pekerja dan dari baris `/records/cards` pada tahap `prepare` s.d. `expired`.
-- **手数料納付書 terisi**: PDF A4 (form resmi 別記第八十四号様式) dengan nama pekerja dan nomor **2 (在留期間の更新許可)** dilingkari, untuk dibawa saat mengambil kartu (収入印紙 ditempel manual).
-  Pakai PDF kosong resmi dari situs 出入国在留管理庁 (dokumen publik, boleh di-commit) sebagai latar, atau gambar ulang setia bila latar tidak praktis; jelaskan pilihannya di STATUS.
-  Di bagian kartu, saat status 結果待ち: daftar bawaan pengambilan (はがき/通知, 旅券, 在留カード lama, 手数料納付書 + 収入印紙) sebagai teks bantuan statis.
-- Audit: `residence_card.renewal_view` dan `residence_card.fee_form_export` (tanpa nilai); `worker_jp_profile.update` (nama kolom saja).
-- Data pada halaman = data. Ikuti aturan terjemahan peramban (identitas `translate="no"`, label tidak).
-
-**Kriteria selesai**
-- [ ] Tes unit pemetaan butir (romaji, tanggal 西暦/和暦, butir kosong, peringatan paspor).
-- [ ] e2e: 担当 melihat dan menyalin, staf lain 404, nomor kartu hanya muncul lewat aksi yang diaudit, PDF 手数料納付書 terunduh dengan nama yang benar.
-- [ ] `verify-rls` untuk tabel baru; typecheck, build, test:rls, e2e, CI hijau.
-
----
-
-### T-014 · Langkah 8 siap pilot: 200 siswa dummy + cek kecepatan · `SIAP` (setelah T-021)
+### T-014 · Langkah 8 siap pilot: 200 siswa dummy + cek kecepatan · `SIAP`
 
 Tujuan: membuktikan aplikasi tetap cepat dan benar dengan volume pilot, sebelum data nyata. **Hanya `db-dev`/`_test` dan (dengan izin Ipal) demo; produksi tidak disentuh.**
 
@@ -88,10 +58,12 @@ terminal hanya ringkasan per langkah (pull, cadangan, build, migrasi, health + c
 - COE (在留資格認定証明書, termasuk form grup): ditunda atas keputusan Ipal (proses panjang).
 - 在留カード lanjutan: halaman 特定技能 ("V") + 所属機関等作成用 untuk perpanjangan, menunggu contoh dari Ghulam.
 - 在留カード: nomor/foto kartu LAMA setelah kartu baru diterima tetap tersimpan terenkripsi tapi tidak bisa dibuka di aplikasi (hanya kartu aktif). Perlu keputusan retensi (hapus otomatis setelah X bulan?) dengan TSK/行政書士 sebelum data nyata.
+- 在留カード: PDF 手数料納付書 untuk jalur LOKET (収入印紙) hanya bila TSK masih mengajukan di loket; tunggu konfirmasi Ghulam. Opsional: teks bantuan estimasi biaya (naik per 2026-10-01) dari sumber resmi.
 - Langkah 9: demo ke TSK.
 
 ## Selesai
 
+- **T-021** Data perpanjangan 在留カード online siap salin (PR #22): halaman `/records/workers/<id>/renewal` butir 1-14 + Salin (和暦, romaji, butir kosong + tautan, peringatan paspor), nomor kartu hanya lewat "Tampilkan" ber-audit, tabel `worker_jp_profiles` (住居地 + telepon, milik TSK, migrasi 0029), audit `renewal_view`. PDF 手数料納付書 TIDAK dibuat: sejak 2026-10-01 biaya pengajuan online dibayar konbini/bank, bukan 収入印紙 (temuan engineer).
 - **T-022** Email pengingat 在留カード (PR #21): `src/db/card-reminders.ts` (tahap pemicu + 追加資料, sekali per kartu×tahap×penerima lewat `card_reminder_log` hanya jalur sistem, satu ringkasan per penerima per hari, id/ja sesuai locale, tanpa nomor kartu), service `worker` di compose `hashi` (08:00 Tokyo), mode kering tanpa `SMTP_URL`, Mailpit di dev/CI, audit `residence_card.reminder_sent`. Produksi KERING sampai Ipal memilih SMTP.
 - **T-020** 在留カード nomor + foto terenkripsi (PR #20): AES-256-GCM dengan AAD per kartu/foto + `key_id` (rotasi lewat `CARD_DATA_KEYS_OLD`), tabel terpisah `residence_card_secrets`/`residence_card_photos` (migrasi 0027, RLS baca+tulis hanya TSK_ADMIN + 担当), nomor tersamar + "Tampilkan" yang diaudit sebelum nilai kembali, foto terenkripsi di disk lewat route ber-audit, kartu batal = nomor/foto dibuang; aplikasi menolak start tanpa kunci; `ensure-card-key.sh`; `docs/backup.md` §7.
 - **T-023** Terjemahan peramban dikoreksi (PR #19): sifat kolom `data: identity|prose` di `candidate-sections.ts` (+ `fieldNature`, tes unit), teks bebas boleh diterjemahkan, identitas/nama staf/merek dikunci; `medicalNote` dikunci (data kesehatan), `visionNote` boleh (keputusan Ipal: syarat buta warna). Uji manual Chrome oleh Ipal setelah deploy.

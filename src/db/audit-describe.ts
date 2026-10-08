@@ -128,6 +128,8 @@ export const ACTIONS: Record<string, Def> = {
   "residence_card.photo_view": d("records", () => "Membuka foto kartu izin tinggal", () => "在留カードの画像を開きました"),
   "residence_card.photo_remove": d("records", () => "Menghapus foto kartu izin tinggal", () => "在留カードの画像を削除しました"),
   "residence_card.reminder_sent": d("records", () => "Email pengingat kartu izin tinggal terkirim (otomatis)", () => "在留カードのリマインダーメールを送信しました（自動）"),
+  "residence_card.renewal_view": d("records", () => "Membuka data perpanjangan kartu izin tinggal (siap salin)", () => "在留カード更新申請データを開きました"),
+  "worker_jp_profile.update": d("records", (v) => `Mengubah data pekerja di Jepang${v.fields ? ` (${v.fields})` : ""}`, (v) => `就労者の日本での連絡先情報を変更しました${v.fields ? `（${v.fields}）` : ""}`),
   "residence_card.void": d("records", () => "Membatalkan data kartu izin tinggal", () => "在留カード情報を取り消しました"),
   "activity_export": d("records", (v) => `Mengekspor catatan kegiatan ke PDF (${v.value})`, (v) => `活動記録をPDFに書き出しました（${v.value}）`),
   "audit.export": d("system", (v) => `Mengekspor riwayat aktivitas ke CSV (${v.value})`, (v) => `アクティビティ履歴をCSVに書き出しました（${v.value}）`),
