@@ -52,6 +52,11 @@
 }
 
 /* Akar tetap 16px supaya satuan rem Tailwind (spasi, tinggi h-11 = 44px untuk target sentuh) tidak menyusut; ukuran teks dasar 14px dipasang di body. */
+/* Hashi belum mendukung mode gelap: peramban TIDAK boleh membalik warna kontrol bawaan (input, scrollbar, dll.) atau halaman bawaan (T-029). */
+html {
+  color-scheme: light;
+}
+
 body {
   font-size: 14px;
   background: var(--color-page);

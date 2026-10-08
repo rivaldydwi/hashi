@@ -34,6 +34,39 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-029 · Halaman 404 bergaya Hashi + tautan email uji (+ hasil deploy T-026)
+
+**PR:** #28 (branch `eng/T-029-not-found`)
+**Status:** siap direview. Tanpa migrasi; deploy setelah `PM: DISETUJUI` (tanpa `--backup`), lalu Ipal bisa uji ulang dengan `--test-to`.
+
+**Hasil deploy T-026** (PR #27 di-merge `db8b0c3` setelah `PM: DISETUJUI` dan CI hijau di head `2e26993`; tanpa migrasi, tanpa `--backup`)
+- `scripts/deploy.sh`: build selesai, migrasi/start selesai, health `{"status":"ok","commit":"db8b0c3"}`; log `deploy-20261008-125153.log`. Setelah deploy worker tetap `mode=kirim (SMTP_URL terisi)` dan `SMTP_URL`/`MAIL_FROM`/`APP_URL` tetap terisi (`up -d` membaca `.env`); putaran `penerima=0 email=0` (semua penerima akun demo dilewati). Demo tidak disentuh.
+- Konfirmasi email uji T-025: Ipal melaporkan email SAMPAI (laporan T-029 di bawah).
+
+**Akar masalah (dugaan PM terbukti)**
+- Hashi belum punya `not-found.tsx`, jadi `notFound()` memakai halaman 404 bawaan Next.js, yang menyisipkan `<style>` global tak berlapis: `body{color:#fff;background:#000}` untuk peramban mode GELAP. Gaya itu menimpa `body` Hashi: area utama jadi hitam, judul halaman dan nama organisasi di sidebar jadi putih di atas latar terang (hampir tak terbaca).
+- Direproduksi dulu dengan e2e `colorScheme: "dark"` terhadap build sebelum perbaikan: tangkapan layar menunjukkan area utama hitam + "This page could not be found." + judul/nama organisasi putih; tes gagal. Setelah perbaikan lulus.
+
+**Yang dikerjakan**
+- `NotFoundView` (id/ja, `notFoundPage.*`, gaya token `@theme`, terang): "Halaman tidak ditemukan / Halaman ini tidak ada, atau kamu tidak punya akses ke sana" + tombol "Kembali ke Beranda", tanpa rincian teknis. Dipakai `src/app/not-found.tsx` (di luar shell) dan `src/app/(app)/not-found.tsx` (di dalam shell, sidebar dan header utuh). Semua `notFound()` yang ada otomatis memakainya; **404 hak akses TETAP 404 dengan pesan dan tampilan yang SAMA** (dites: sensei membuka halaman TSK, LPK membuka id pekerja yang ada/tidak ada).
+- `html { color-scheme: light }` di `globals.css` (Hashi belum mendukung mode gelap), supaya kontrol bawaan peramban juga terang.
+- **Email uji `--test-to`**: SEMUA tautan kini menuju `/records/cards` (halaman yang ada), bukan id pekerja palsu, dengan keterangan "[EMAIL UJI · DATA PALSU] Ini email contoh ... Tautan membuka daftar kartu izin tinggal" (id) / padanannya (ja). `buildDigest` mendapat opsi `linkPath`/`notice`; email pengingat SUNGGUHAN tetap menautkan `/records/workers/<id>` tanpa keterangan uji (dites).
+- Tangkapan layar hasil (peramban mode gelap): `docs/screenshots/T-029/404-mode-gelap.png` (404 bergaya Hashi, judul + sidebar terbaca). `CLAUDE.md` diperbarui (jangan menghapus `not-found.tsx`).
+
+**Verifikasi** (database dev `hashi_dev`)
+- `npm run typecheck` → lulus; `npm run test:i18n` → lulus (1758 kunci); `npm run test:unit` → 165/165 (baru: tautan email uji menuju halaman yang ada untuk id dan ja, tanpa tautan id pekerja, keterangan uji; email sungguhan tidak berubah); `npm run verify:audit-coverage` → tanpa pelanggaran; `npm run build` → 0 peringatan.
+- `db:seed -- --reset` → `verify:seed` lulus; `npm run test:rls` → semua lulus; `E2E_PORT=3120 npm run test:e2e` → 245 lulus tanpa `MISSING_MESSAGE` (3 tes baru `not-found.spec.ts`: 404 dalam shell dengan `colorScheme: "dark"` → status 404, tampilan Hashi, tombol Beranda, warna `body`/judul/nama organisasi BUKAN putih dan latar BUKAN hitam (computed style), `color-scheme: light`, tanpa `<style>` bawaan Next, tetap benar setelah navigasi klien ke Beranda; 404 hak akses sama dengan id tidak ada; 404 berbahasa Jepang dan alamat di luar shell juga terang).
+
+**Kendala / catatan**
+- Gaya global bocor lewat navigasi klien (tanpa muat ulang) pada 404 bawaan; karena kini tidak ada gaya bawaan Next yang disisipkan sama sekali, tes menjaga `styleTags=0`.
+
+**Pertanyaan**
+- BUTUH IPAL: setelah deploy, jalankan ulang `--test-to` (perintah di `docs/email.md`) dan pastikan tautan di email membuka daftar kartu. Masih terbuka: akun staf TSK nyata, cadangan di luar server, keputusan 行政書士/retensi.
+
+**Usulan berikutnya**
+- Perbaikan baris ringkasan migrasi di `deploy.sh` (sudah di cadangan PM).
+
+
 ## 2026-10-08 · T-026 · PDF 手数料納付書 untuk jalur loket (+ hasil deploy T-024 dan aktivasi email T-025)
 
 **PR:** #27 (branch `eng/T-026-fee-form`)

@@ -112,3 +112,18 @@ test("email uji: data PALSU, bahasa id dan ja, tanpa nomor kartu, subjek berlabe
   assert.match(ja.text, /ダミー/);
   assert.doesNotMatch(buildTestEmail("id").text, /https?:\/\//); // tanpa APP_URL = tanpa tautan
 });
+
+test("email uji: SEMUA tautan menuju halaman yang ada (/records/cards), bukan id pekerja palsu, dengan keterangan contoh/data palsu; email pengingat sungguhan tetap menautkan detail pekerja", () => {
+  const base = "https://hashi.contoh.id";
+  for (const locale of ["id", "ja"] as const) {
+    const t = buildTestEmail(locale, base);
+    const links = [...(t.text + t.html).matchAll(/https:\/\/hashi\.contoh\.id[^\s"<]*/g)].map((m) => m[0]);
+    assert.ok(links.length >= 2, locale);
+    assert.ok(links.every((l) => l === `${base}/records/cards`), `${locale}: ${links.join(", ")}`);
+    assert.ok(!/records\/workers\//.test(t.text + t.html), "tidak ada tautan ke id pekerja palsu");
+    assert.match(t.text, locale === "ja" ? /テスト送信・ダミーデータ/ : /EMAIL UJI · DATA PALSU/);
+  }
+  const real = buildDigest("id", "Staf A", items, base);
+  assert.ok(real.text.includes(`${base}/records/workers/11111111-1111-1111-1111-111111111111`));
+  assert.ok(!/EMAIL UJI/.test(real.text), "email sungguhan tanpa keterangan uji");
+});
