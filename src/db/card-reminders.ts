@@ -77,17 +77,17 @@ export type Digest = { subject: string; text: string; html: string };
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /** Ringkasan satu penerima (murni): subjek, teks, HTML. `baseUrl` kosong = tanpa tautan. */
-export function buildDigest(locale: Locale, recipientName: string, items: readonly ReminderItem[], baseUrl?: string | null): Digest {
+export function buildDigest(locale: Locale, recipientName: string, items: readonly ReminderItem[], baseUrl?: string | null, opts: { linkPath?: string; notice?: string } = {}): Digest {
   const base = baseUrl ? baseUrl.replace(/\/+$/, "") : null;
   const line = (i: ReminderItem) => `${i.workerName} — ${STAGE_TEXT[i.stage][locale]}${i.daysLeft !== null && i.stage !== "additional_docs" ? (locale === "ja" ? `（${T.daysLeft.ja(i.daysLeft)}）` : ` (${T.daysLeft.id(i.daysLeft)})`) : ""}`;
-  const link = (i: ReminderItem) => (base ? `${base}/records/workers/${i.workerId}` : null);
+  const link = (i: ReminderItem) => (base ? `${base}${opts.linkPath ?? `/records/workers/${i.workerId}`}` : null);
   const text = [
-    T.greeting[locale](recipientName), "", T.intro[locale], "",
+    T.greeting[locale](recipientName), "", ...(opts.notice ? [opts.notice, ""] : []), T.intro[locale], "",
     ...items.map((i) => `- ${line(i)}${link(i) ? `\n  ${T.open[locale]}: ${link(i)}` : ""}`),
     "", T.footer[locale], "",
   ].join("\n");
   const html = [
-    `<p>${esc(T.greeting[locale](recipientName))}</p>`, `<p>${esc(T.intro[locale])}</p>`, "<ul>",
+    `<p>${esc(T.greeting[locale](recipientName))}</p>`, ...(opts.notice ? [`<p><strong>${esc(opts.notice)}</strong></p>`] : []), `<p>${esc(T.intro[locale])}</p>`, "<ul>",
     ...items.map((i) => `<li>${esc(line(i))}${link(i) ? ` — <a href="${esc(link(i)!)}">${esc(T.open[locale])}</a>` : ""}</li>`),
     "</ul>", `<p style="color:#666;font-size:12px">${esc(T.footer[locale])}</p>`,
   ].join("\n");
@@ -123,7 +123,9 @@ export function buildTestEmail(locale: Locale, baseUrl?: string | null): Digest 
     { cardId: "uji-1", workerId: "00000000-0000-0000-0000-000000000001", workerName: locale === "ja" ? "テスト 太郎（ダミー）" : "Pekerja Contoh (data palsu)", stage: "h14", daysLeft: 12 },
     { cardId: "uji-2", workerId: "00000000-0000-0000-0000-000000000002", workerName: locale === "ja" ? "テスト 花子（ダミー）" : "Pekerja Contoh Dua (data palsu)", stage: "additional_docs", daysLeft: null },
   ];
-  const d = buildDigest(locale, locale === "ja" ? "ご担当者" : "Pengguna Hashi", items, baseUrl);
+  // tautan contoh menuju halaman yang ADA (daftar kartu), bukan id palsu; keterangan jelas bahwa ini contoh
+  const notice = locale === "ja" ? "【テスト送信・ダミーデータ】これは動作確認用のメールです。リンクは在留カード一覧に移動します。" : "[EMAIL UJI · DATA PALSU] Ini email contoh untuk memeriksa pengiriman. Tautan membuka daftar kartu izin tinggal.";
+  const d = buildDigest(locale, locale === "ja" ? "ご担当者" : "Pengguna Hashi", items, baseUrl, { linkPath: "/records/cards", notice });
   return { ...d, subject: `[Hashi] ${locale === "ja" ? "テストメール" : "Email uji"}: ${d.subject.replace("[Hashi] ", "")}` };
 }
 

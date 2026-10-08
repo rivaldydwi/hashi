@@ -2159,5 +2159,10 @@
     "arrivedNone": "Belum diisi pihak TSK",
     "visa": "Status visa",
     "validUntil": "Berlaku sampai"
+  },
+  "notFoundPage": {
+    "title": "Halaman tidak ditemukan",
+    "body": "Halaman ini tidak ada, atau kamu tidak punya akses ke sana. Periksa alamatnya atau kembali ke Beranda.",
+    "home": "Kembali ke Beranda"
   }
 }
