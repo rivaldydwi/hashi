@@ -11,7 +11,8 @@ import { dateTimeIn, safeTimezone, ymdIn } from "@/lib/org-time";
 import { responsibleOfWorker } from "@/db/responsibility-queries";
 import { tenantQuery } from "@/lib/session";
 import { loadCardSection } from "@/features/cards/queries";
-import { loadJpProfile } from "@/features/cards/renewal-queries";
+import { loadArrivedOn, loadJpProfile } from "@/features/cards/renewal-queries";
+import { ArrivalSection } from "@/features/cards/ui/ArrivalSection";
 import { JpProfileSection } from "@/features/cards/ui/JpProfileSection";
 import { CardSection } from "@/features/cards/ui/CardSection";
 import { getSkillFieldOptions } from "@/features/skill-fields/server";
@@ -39,10 +40,10 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
   const data = await tenantQuery(async (tx) => {
     const w = await workerBasics(tx, candidateId);
     if (!w) return null;
-    return { w, cards: await loadCardSection(tx, me, candidateId, today), jp: await loadJpProfile(tx, candidateId), resp: await responsibleOfWorker(tx, candidateId, today), tasks: await openTasksOfWorker(tx, candidateId), tl: await workerTimeline(tx, candidateId, { order, page, tz }) };
+    return { w, cards: await loadCardSection(tx, me, candidateId, today), jp: await loadJpProfile(tx, candidateId), arrivedOn: await loadArrivedOn(tx, candidateId), resp: await responsibleOfWorker(tx, candidateId, today), tasks: await openTasksOfWorker(tx, candidateId), tl: await workerTimeline(tx, candidateId, { order, page, tz }) };
   });
   if (!data) notFound();
-  const { w, resp, tasks, tl, cards, jp } = data;
+  const { w, resp, tasks, tl, cards, jp, arrivedOn } = data;
   const fieldOptions = await getSkillFieldOptions();
   const tresp = await getTranslations("responsible");
   const pages = Math.max(1, Math.ceil(tl.total / WORKER_TIMELINE_PAGE_SIZE));
@@ -78,6 +79,8 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
       <CardSection candidateId={candidateId} data={cards} fieldOptions={fieldOptions} today={today} tz={tz} />
 
       <JpProfileSection candidateId={candidateId} profile={jp} canEdit={cards.access.canEdit && cards.access.activeWorker} />
+
+      <ArrivalSection candidateId={candidateId} arrivedOn={arrivedOn} today={today} canEdit={cards.access.canEdit && cards.access.activeWorker} />
 
       <section className={`${cardClass} p-4 sm:p-5`} aria-labelledby="wt-title" data-testid="worker-open-tasks">
         <h3 id="wt-title" className="text-[16px] font-semibold">{t("whistory.openTasks")} <span className="text-sm font-normal text-ink-2">({tasks.length})</span></h3>

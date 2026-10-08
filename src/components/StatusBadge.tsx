@@ -1,11 +1,12 @@
 import { getTranslations } from "next-intl/server";
 import type { CandidateStage, SelectionDecision } from "@/db/schema";
+import type { VisaCode } from "@/db/zairyu";
 
 // Lencana status: IKON + TEKS + warna (warna tidak pernah satu-satunya pembeda) + penjelasan singkat (title dan teks bantuan untuk pembaca layar).
 // Kontras teks/latar >= 4,5:1 (kelas 800/900 di atas latar 50/100).
 
-export type StatusKind = "stage" | "decision";
-export type StatusCode = CandidateStage | SelectionDecision;
+export type StatusKind = "stage" | "decision" | "visa";
+export type StatusCode = CandidateStage | SelectionDecision | VisaCode;
 
 type Style = { box: string; icon: string };
 const STYLES: Record<StatusCode, Style> = {
@@ -20,6 +21,10 @@ const STYLES: Record<StatusCode, Style> = {
   DOCUMENT_PROCESS: { box: "bg-teal-50 text-teal-900", icon: "doc" },
   DEPARTED: { box: "bg-green-100 text-green-900", icon: "plane" },
   REJECTED: { box: "bg-rose-50 text-rose-900", icon: "x" },
+  VISA_NONE: { box: "bg-stone-100 text-stone-800", icon: "dash" },
+  VISA_VALID: { box: "bg-green-100 text-green-900", icon: "check" },
+  VISA_RENEWING: { box: "bg-sky-50 text-sky-900", icon: "doc" },
+  VISA_EXPIRED: { box: "bg-rose-50 text-rose-900", icon: "x" },
 };
 
 const ICONS: Record<string, string> = {
@@ -45,7 +50,7 @@ function StatusIcon({ name }: { name: string }) {
 
 /** Lencana status kandidat (stage LPK) atau keputusan TSK. `decision = null` ditampilkan sebagai NONE. */
 export async function StatusBadge({ kind, code }: { kind: StatusKind; code: StatusCode | null }) {
-  const t = await getTranslations(kind === "stage" ? "stages" : "decisions");
+  const t = await getTranslations(kind === "stage" ? "stages" : kind === "visa" ? "visaStates" : "decisions");
   const tHelp = await getTranslations("statusHelp");
   const value = (code ?? "NONE") as StatusCode;
   const st = STYLES[value];

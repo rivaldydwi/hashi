@@ -11,6 +11,7 @@
 //
 // Pemeriksaan yang menulis data dijalankan di dalam transaksi yang selalu di-rollback.
 
+import { addDays as zAddDays, visaState } from "../src/db/zairyu";
 import { effectiveResponsible } from "../src/db/responsibility";
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
@@ -3349,6 +3350,134 @@ async function main() {
     "Data pekerja di Jepang: staf TSK yang BUKAN 担当 membaca tetapi tidak menulis; TSK lain, LPK_ADMIN, sensei, super admin, dan peran null membaca 0 baris, INSERT ditolak, UPDATE tanpa WHERE tidak mengubah apa pun",
     jp.otherReads === 1 && /row-level security/.test(String(jp.otherInsert)) && ["tskB", "lpkAdmin", "sensei", "superAdmin", "roleNull"].every((w) => jp[`read/${w}`] === 0 && J3(jp[`insert/${w}`])) && jp.untouched === 0,
     JSON.stringify([jp.otherReads, String(jp.otherInsert).slice(0, 40), ...Object.entries(jp).filter(([k]) => k.startsWith("read/")), jp.untouched]),
+  );
+
+  // --- AB. Status pekerja untuk LPK (T-024): fungsi sempit lpk_worker_status (hanya LPK_ADMIN pemilik, dibagikan, penempatan di TSK bermitra AKTIF) mengembalikan TEPAT arrived_on/visa_state/valid_until,
+  // selain itu NULL; LPK tidak bisa SELECT placements/residence_cards; tanggal tiba hanya ditulis TSK_ADMIN/担当, tidak di masa depan; card_visa_state (SQL) = visaState (TS) ---
+  const ws: Record<string, unknown> = {};
+  await sandbox(async (tx) => {
+    const tskB = await makeTskB(tx);
+    const adminB = await makeUser(tx, tskB, "TSK_ADMIN");
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    const [a] = (await tx.execute(sql`select p.candidate_id::text as cid, p.id::text as pid, c.field_id::text as fid from placements p join candidates c on c.id = p.candidate_id where p.status = 'ACTIVE' and p.org_id = ${tsk.id}::uuid and c.organization_id = ${lpk1.id}::uuid order by p.id limit 1`)).rows as Array<{ cid: string; pid: string; fid: string }>;
+    const [np] = (await tx.execute(sql`select c.id::text as cid from candidates c where c.organization_id = ${lpk1.id}::uuid and c.shared_with_tsk and not exists (select 1 from placements p where p.candidate_id = c.id) limit 1`)).rows as Array<{ cid: string }>;
+    await tx.execute(sql.raw(`insert into responsible_assignments (organization_id, created_by, placement_id, staff_id, effective_from) values ('${tsk.id}', '${tskAdminUser.id}', '${a.pid}', '${staffUser.id}', current_date)`));
+    const status = async (cid: string): Promise<{ raw: string | null; obj: Record<string, unknown> | null }> => {
+      const r = ((await tx.execute(sql.raw(`select lpk_worker_status('${cid}'::uuid)::text as s`))).rows[0] as { s: string | null }).s;
+      return { raw: r, obj: r ? (JSON.parse(r) as Record<string, unknown>) : null };
+    };
+    // kartu aktif terkini: kedaluwarsa 100 hari lagi, belum diajukan
+    const cardId = ((await tx.execute(sql.raw(`insert into residence_cards (organization_id, created_by, candidate_id, skill_field_id, expiry_date, note) values ('${tsk.id}', '${tskAdminUser.id}', '${a.cid}', '${a.fid}', current_date + 100, 'catatan-rahasia-tsk') returning id::text as id`))).rows[0] as { id: string }).id;
+
+    // --- tanggal tiba: hanya Admin / 担当; staf lain ditolak; masa depan ditolak; kolom lain tetap boleh oleh staf lain
+    await actAs(tx, tsk.id, "TSK_STAFF", staff2!.id);
+    ws.otherArrival = await attempt(tx, (t) => t.execute(sql.raw(`update placements set arrived_on = current_date - 5 where id = '${a.pid}'`)));
+    ws.otherNote = await attempt(tx, (t) => t.execute(sql.raw(`update placements set note = 'catatan-staf-lain' where id = '${a.pid}'`)));
+    await actAs(tx, tsk.id, "TSK_STAFF", staffUser.id);
+    ws.editorFuture = await attempt(tx, (t) => t.execute(sql.raw(`update placements set arrived_on = (now() at time zone 'Asia/Tokyo')::date + 1 where id = '${a.pid}'`)));
+    ws.editorArrival = await attempt(tx, (t) => t.execute(sql.raw(`update placements set arrived_on = current_date - 20 where id = '${a.pid}'`)));
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    ws.adminArrival = await attempt(tx, (t) => t.execute(sql.raw(`update placements set arrived_on = current_date - 21 where id = '${a.pid}'`)));
+    ws.arrivedStored = await num(tx, `select count(*)::int as n from placements where id = '${a.pid}' and arrived_on = current_date - 21`);
+    ws.expectedArrived = ((await tx.execute(sql.raw("select (current_date - 21)::text as d"))).rows[0] as { d: string }).d;
+
+    // --- LPK_ADMIN pemilik: tepat tiga kunci, nilai benar, TANPA data lain
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    const ok = await status(a.cid);
+    ws.keys = ok.obj ? Object.keys(ok.obj).sort() : null;
+    ws.valid = ok.obj ? [String(ok.obj.arrived_on), ok.obj.visa_state, typeof ok.obj.valid_until] : null;
+    ws.noLeak = ok.raw ? !/catatan|nomor|number|site|company|job|tsk|note|status\b.*applied|renewal|stage|period/i.test(ok.raw.replace(/visa_state|valid_until|arrived_on/g, "")) : null;
+    ws.noPlacementNull = (await status(np.cid)).raw;
+    ws.directPlacements = await num(tx, "select count(*)::int as n from placements");
+    ws.directCards = await num(tx, "select count(*)::int as n from residence_cards");
+    ws.lpkUpdateArrival = await attempt(tx, (t) => t.execute(sql.raw(`update placements set arrived_on = current_date where id = '${a.pid}'`)));
+    ws.lpkSecretFn = await attempt(tx, (t) => t.execute(sql.raw("select 1 from residence_card_secrets")));
+
+    // --- peran lain: NULL
+    for (const [who, org, role, uid] of [["sensei", lpk1.id, "LPK_SENSEI", senseiUser.id], ["tskAdmin", tsk.id, "TSK_ADMIN", tskAdminUser.id], ["tskStaff", tsk.id, "TSK_STAFF", staffUser.id], ["tskB", tskB, "TSK_ADMIN", adminB], ["lpk2Admin", lpk2.id, "LPK_ADMIN", null], ["lpk3Admin", lpk3.id, "LPK_ADMIN", null], ["superAdmin", platformOrg.id, "SUPER_ADMIN", null], ["roleNull", lpk1.id, null, null]] as const) {
+      await actAs(tx, org, role, uid);
+      ws[`null/${who}`] = (await status(a.cid)).raw;
+    }
+
+    // --- kemitraan nonaktif dan tidak dibagikan: NULL (diubah lewat jalur sistem)
+    await actAsSystem(tx);
+    await tx.execute(sql.raw(`update partnerships set active = false where lpk_id = '${lpk1.id}' and tsk_id = '${tsk.id}'`));
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    ws.nullInactive = (await status(a.cid)).raw;
+    await actAsSystem(tx);
+    await tx.execute(sql.raw(`update partnerships set active = true where lpk_id = '${lpk1.id}' and tsk_id = '${tsk.id}'`));
+    await tx.execute(sql.raw(`update candidates set shared_with_tsk = false where id = '${a.cid}'`));
+    await actAs(tx, lpk1.id, "LPK_ADMIN", lpkAdminUser.id);
+    ws.nullNotShared = (await status(a.cid)).raw;
+    await actAsSystem(tx);
+    await tx.execute(sql.raw(`update candidates set shared_with_tsk = true where id = '${a.cid}'`));
+
+    // --- status visa mengikuti kartu aktif terkini (pekerja `b` TANPA kartu aktif, jadi urutan kejadian terkendali): none -> valid -> renewing -> (batal) none -> expired
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id); // kartu hanya terlihat oleh TSK: pilih pekerja tanpa kartu aktif DI SINI
+    const [b] = (await tx.execute(sql`select p.candidate_id::text as cid, c.organization_id::text as org, c.field_id::text as fid from placements p join candidates c on c.id = p.candidate_id
+      where p.status = 'ACTIVE' and p.org_id = ${tsk.id}::uuid and c.shared_with_tsk and not exists (select 1 from residence_cards r where r.candidate_id = p.candidate_id and r.status = 'active')
+        and exists (select 1 from partnerships ps where ps.lpk_id = c.organization_id and ps.tsk_id = p.org_id and ps.active) order by p.id limit 1`)).rows as Array<{ cid: string; org: string; fid: string }>;
+    if (!b) throw new Error("seed dasar harus punya pekerja aktif tanpa kartu aktif dari LPK mitra (butir 'tanpa data' di seed kartu)");
+    const asOwnerB = () => actAs(tx, b.org, "LPK_ADMIN", null);
+    const mkCard = async (offset: number) => {
+      await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+      return ((await tx.execute(sql.raw(`insert into residence_cards (organization_id, created_by, candidate_id, skill_field_id, expiry_date) values ('${tsk.id}', '${tskAdminUser.id}', '${b.cid}', '${b.fid}', current_date + (${offset})) returning id::text as id`))).rows[0] as { id: string }).id;
+    };
+    await asOwnerB();
+    ws.noCardNone = [(await status(b.cid)).obj?.visa_state, (await status(b.cid)).obj?.valid_until];
+    const c1 = await mkCard(50);
+    await asOwnerB();
+    ws.valid50 = (await status(b.cid)).obj?.visa_state;
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await tx.execute(sql.raw(`update residence_cards set renewal_status = 'applied', applied_on = current_date - 2 where id = '${c1}'`));
+    await asOwnerB();
+    ws.renewing = (await status(b.cid)).obj?.visa_state;
+    await actAs(tx, tsk.id, "TSK_ADMIN", tskAdminUser.id);
+    await tx.execute(sql.raw(`update residence_cards set status = 'void', void_reason = 'uji' where id = '${c1}'`));
+    await asOwnerB();
+    const afterVoid = await status(b.cid);
+    ws.noneAfterVoid = [afterVoid.obj?.visa_state, afterVoid.obj?.valid_until];
+    await mkCard(-3);
+    await asOwnerB();
+    ws.expired = (await status(b.cid)).obj?.visa_state;
+
+    // --- SQL card_visa_state = visaState (TS) untuk semua status proses x selisih tanggal
+    await actAsSystem(tx);
+    const mism: string[] = [];
+    for (const st of ["not_started", "preparing", "applied", "additional_docs", "received", "rejected"] as const) {
+      for (const off of [-400, -90, -3, -1, 0, 1, 30, 200]) {
+        const sqlV = ((await tx.execute(sql.raw(`select card_visa_state(current_date + ${off}, '${st}', current_date) as v`))).rows[0] as { v: string }).v;
+        const tsV = visaState({ expiryDate: zAddDays("2026-01-01", off), renewalStatus: st }, "2026-01-01");
+        if (sqlV !== tsV) mism.push(`${st}/${off}: ${sqlV} != ${tsV}`);
+      }
+    }
+    ws.equiv = mism;
+  });
+  const V3 = (v: unknown) => typeof v === "string" && v.length > 0;
+  check(
+    "Status pekerja LPK: LPK_ADMIN pemilik mendapat TEPAT tiga kunci (arrived_on, valid_until, visa_state), nilai benar, tanpa catatan/klien/lokasi/job order/nomor; kandidat tanpa penempatan = NULL",
+    JSON.stringify(ws.keys) === JSON.stringify(["arrived_on", "valid_until", "visa_state"]) && JSON.stringify(ws.valid) === JSON.stringify([ws.expectedArrived, "valid", "string"]) && ws.noLeak === true && ws.noPlacementNull === null,
+    JSON.stringify([ws.keys, ws.valid, ws.noLeak, ws.noPlacementNull]),
+  );
+  check(
+    "Status pekerja LPK: sensei, TSK (admin/staf/lain), LPK lain, super admin, dan peran null mendapat NULL; kemitraan nonaktif dan kandidat tidak dibagikan = NULL",
+    ["sensei", "tskAdmin", "tskStaff", "tskB", "lpk2Admin", "lpk3Admin", "superAdmin", "roleNull"].every((w) => ws[`null/${w}`] === null) && ws.nullInactive === null && ws.nullNotShared === null,
+    JSON.stringify(Object.entries(ws).filter(([k]) => k.startsWith("null"))),
+  );
+  check(
+    "Status pekerja LPK: LPK_ADMIN tetap TIDAK bisa SELECT placements/residence_cards (0 baris), tidak bisa mengubah penempatan, dan ditolak membaca tabel nomor kartu",
+    ws.directPlacements === 0 && ws.directCards === 0 && ws.lpkUpdateArrival === null && ws.lpkSecretFn === null,
+    JSON.stringify([ws.directPlacements, ws.directCards, String(ws.lpkUpdateArrival).slice(0, 40), String(ws.lpkSecretFn).slice(0, 40)]),
+  );
+  check(
+    "Tanggal tiba: hanya TSK_ADMIN/担当 yang mengubah (staf lain ditolak, kolom lain seperti catatan tetap boleh), tidak boleh di masa depan (tanggal Tokyo); tersimpan",
+    /hanya bisa diubah/.test(String(ws.otherArrival)) && ws.otherNote === null && /masa depan/.test(String(ws.editorFuture)) && ws.editorArrival === null && ws.adminArrival === null && ws.arrivedStored === 1,
+    JSON.stringify([String(ws.otherArrival).slice(0, 50), ws.otherNote, String(ws.editorFuture).slice(0, 50), ws.editorArrival, ws.adminArrival, ws.arrivedStored]),
+  );
+  check(
+    "Status visa mengikuti kartu aktif terkini: tanpa kartu = none, kartu berlaku = valid, diajukan = renewing, kartu batal diabaikan (none, tanpa valid_until), lewat tanpa pengajuan = expired; SQL card_visa_state = visaState (TS) untuk semua status x tanggal",
+    JSON.stringify(ws.noCardNone) === JSON.stringify(["none", null]) && ws.valid50 === "valid" && ws.renewing === "renewing" && JSON.stringify(ws.noneAfterVoid) === JSON.stringify(["none", null]) && ws.expired === "expired" && (ws.equiv as string[]).length === 0,
+    JSON.stringify([ws.noCardNone, ws.valid50, ws.renewing, ws.noneAfterVoid, ws.expired, ws.equiv]),
   );
 
   await pool.end();

@@ -29,7 +29,7 @@ export const AUDIT_VALUE_FIELDS: Record<string, readonly string[]> = {
   partnership: ["active"],
   skill_field: ["code"],
   job_order: ["status", "housing"], // housing = pilihan (provided/allowance/none/unspecified); gaji dan teks bebas TIDAK pernah
-  placement: ["status"],
+  placement: ["status"], // + kunci struktural `fields`: tanggal tiba (T-024) hanya dicatat sebagai NAMA kolom
   audit_export: ["rows", "from", "to"],
   // Catatan kegiatan TSK: hanya jenis/status/kategori; TIDAK PERNAH isi teks, nama pekerja, atau nama berkas
   activity_record: ["kind", "status", "workType", "continued"], // continued = dibuat sebagai lanjutan catatan lain (true; id/isi tidak dicatat)

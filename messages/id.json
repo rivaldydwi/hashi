@@ -1105,7 +1105,11 @@
     "PASSED_CLIENT_INTERVIEW": "Lulus interview dengan klien.",
     "DOCUMENT_PROCESS": "Dokumen visa dan keberangkatan sedang diurus.",
     "DEPARTED": "Sudah berangkat ke Jepang.",
-    "REJECTED": "TSK tidak melanjutkan kandidat ini."
+    "REJECTED": "TSK tidak melanjutkan kandidat ini.",
+    "VISA_NONE": "Belum ada data kartu izin tinggal dari pihak TSK.",
+    "VISA_VALID": "Masa berlaku kartu izin tinggal belum lewat.",
+    "VISA_RENEWING": "Perpanjangan kartu izin tinggal sudah diajukan dan sedang menunggu hasil.",
+    "VISA_EXPIRED": "Masa berlaku kartu izin tinggal sudah lewat dan belum ada kartu baru."
   },
   "errorPage": {
     "title": "Terjadi masalah",
@@ -2122,6 +2126,32 @@
         "criminal": "Tidak disimpan di Hashi. Isi langsung saat mengajukan sesuai keadaan pemohon.",
         "familyInJapan": "Tidak disimpan di Hashi. Isi langsung saat mengajukan sesuai keadaan pemohon."
       }
+    },
+    "arrival": {
+      "title": "Tanggal tiba di Jepang",
+      "intro": "Tanggal pekerja tiba di Jepang. Admin LPK pemilik kandidat bisa melihatnya (bersama status visa) tanpa melihat data klien atau penempatan.",
+      "label": "Tanggal tiba",
+      "hint": "Tidak boleh di masa depan. Kosongkan untuk menghapus.",
+      "save": "Simpan tanggal tiba",
+      "saved": "Tanggal tiba disimpan.",
+      "readOnly": "Hanya penanggung jawab pekerja dan Admin TSK yang bisa mengubah. Kamu bisa melihatnya.",
+      "errors": {
+        "future": "Tanggal tiba tidak boleh di masa depan."
+      }
     }
+  },
+  "visaStates": {
+    "VISA_NONE": "Belum ada data",
+    "VISA_VALID": "Berlaku",
+    "VISA_RENEWING": "Sedang diperpanjang",
+    "VISA_EXPIRED": "Sudah habis"
+  },
+  "workerStatus": {
+    "title": "Setelah berangkat",
+    "intro": "Informasi singkat dari pihak TSK setelah siswa berangkat. Hanya dua hal ini yang ditampilkan.",
+    "arrivedOn": "Tanggal tiba di Jepang",
+    "arrivedNone": "Belum diisi pihak TSK",
+    "visa": "Status visa",
+    "validUntil": "Berlaku sampai"
   }
 }
