@@ -64,3 +64,33 @@ test("tidak ada IP, email pribadi, atau secret di README", () => {
     assert.ok(!/^\s*(SMTP_URL|AUTH_SECRET|CARD_DATA_KEY)=\S+/m.test(md), `${f}: nilai .env`);
   }
 });
+
+// T-031: README adalah wajah publik Hashi. Penyebutan AI dan cara kerja internal tim (PM/engineer, alur PR) tidak boleh ada di dokumen yang dibaca pihak luar.
+// Nama dicocokkan tanpa peka huruf besar/kecil; "AI" hanya sebagai kata utuh (huruf besar). docs/TASKS.md, docs/STATUS.md, CLAUDE.md memang internal dan di luar pemeriksaan ini.
+const FORBIDDEN_PUBLIC: { name: string; re: RegExp }[] = [
+  { name: "Claude", re: /claude/i },
+  { name: "Anthropic", re: /anthropic/i },
+  { name: "AI (kata utuh)", re: /\bAI\b/ },
+  { name: "engineer", re: /engineer/i },
+  { name: "エンジニア", re: /エンジニア/ },
+  { name: "PM:", re: /\bPM:/ },
+  { name: "PM (peran)", re: /\bPM\b/ },
+  { name: "TASKS.md / STATUS.md", re: /(TASKS|STATUS)\.md/ },
+];
+
+test("README dan panduan tidak menyebut AI atau cara kerja internal tim", () => {
+  const files = [...Object.values(FILES), "docs/panduan/README.md"];
+  for (const f of files) {
+    const md = text(f);
+    for (const { name, re } of FORBIDDEN_PUBLIC) {
+      const m = re.exec(md);
+      assert.ok(!m, `${f}: memuat kata terlarang "${name}" (…${md.slice(Math.max(0, (m?.index ?? 0) - 20), (m?.index ?? 0) + 30).replace(/\n/g, " ")}…)`);
+    }
+  }
+});
+
+test("penjaga kata terlarang benar-benar menangkap contoh yang disisipkan", () => {
+  const samples = ["ditulis oleh Claude Code", "dibuat dengan AI", "laporan engineer", "エンジニアの報告", "PM: DISETUJUI", "lihat claude.ai", "oleh Anthropic", "lihat CLAUDE.md", "antrean docs/TASKS.md"];
+  for (const s of samples) assert.ok(FORBIDDEN_PUBLIC.some(({ re }) => re.test(s)), `tidak tertangkap: ${s}`);
+  for (const s of ["air minum", "kantor pusat PMK", "Bahasa Indonesia"]) assert.ok(!FORBIDDEN_PUBLIC.some(({ re }) => re.test(s)), `salah tangkap: ${s}`);
+});

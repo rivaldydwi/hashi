@@ -9,8 +9,8 @@
 
 > 現状（2026年10月）：MVP仕様のステップ1〜6、TSKの活動記録（7A）、在留カード管理（カード番号・写真の暗号化、リマインダーメール、オンライン更新用データ、
 > 窓口用の手数料納付書PDF）、LPK向けのビザ状況と到着日の表示、パイロット用データ（ダミーの学生200名）まで完成しています。
-> 次はTSK向けのデモです。**実データを入れる前に、サーバー外へのバックアップを必ず稼働させてください。** タスク一覧：[docs/TASKS.md](docs/TASKS.md)、
-> 最新の報告：[docs/STATUS.md](docs/STATUS.md)、経緯と技術的な決定：[docs/HISTORY.md](docs/HISTORY.md)。
+> 次はTSK向けのデモです。**実データを入れる前に、サーバー外へのバックアップを必ず稼働させてください。** 
+> 経緯と技術的な決定：[docs/HISTORY.md](docs/HISTORY.md)。
 
 2種類の組織が一緒に使います。**LPK**（訓練校。LPK管理者と先生〔sensei〕）が学生のプロフィールを整え、**TSK**（支援機関。TSK管理者とTSKスタッフ）が候補者を選考し、
 配属先（クライアント）へ紹介し、渡航後は就労者を支援します。各組織が見られるのは、自組織のデータと、明示的に共有されたデータだけです。
@@ -149,7 +149,7 @@ docker compose run --rm migrate npm run db:seed -- --reset   # デモデータ�
 
 アプリはデータベースに **`hashi_app`** ロールで接続します。このロールは RLS を回避できません。マイグレーションとシードは **`hashi_owner`** ロールを使います。テナントのデータはすべて `withTenant({ orgId, role, userId }, …)` を通して読み書きされ、RLSポリシーのために `app.role` と `app.user_id` が設定されます。
 
-候補者へのアクセスの概要です（全規則は [README.md](README.md) の「Hak akses data kandidat」と `CLAUDE.md` にあります）。
+候補者へのアクセスの概要です（全規則は [README.md](README.md) の「Hak akses data kandidat」にあります）。
 
 - LPKのステータス（`stage`）とTSKの判断は**別々**です。ステータスを設定できるのはLPK管理者だけで、各TSKは自組織の判断の行だけを見て書き込めます。LPKは判断を読めますが、書き込めません。
 - TSKの備考は、初期値が `TSK_ONLY`、または `SHARED_WITH_LPK` です。先生は決して読めず、誰も削除できません。
@@ -220,13 +220,13 @@ docs/                    タスク一覧、報告、機能ドキュメント、�
 - **ログインのレート制限**（同じメールで15分間に5回失敗）はメモリ上に保持します。サーバー1台なら十分です。
 - **実際の学生データを入れる前に**：`SHOW_DEMO_ACCOUNTS=false` にし、自動のオフサイトバックアップを用意し、個人情報の同意書を準備してください（MVP仕様書を参照）。
 
-## ドキュメントとチームの進め方
+## ドキュメント
 
 `docs/` 内のドキュメント：
 
 | ファイル | 内容 |
 | --- | --- |
-| [docs/TASKS.md](docs/TASKS.md) · [docs/STATUS.md](docs/STATUS.md) · [docs/HISTORY.md](docs/HISTORY.md) | タスク一覧（PM）、エンジニアの報告、経緯と技術的な決定 |
+| [docs/HISTORY.md](docs/HISTORY.md) | 経緯と技術的な決定 |
 | [docs/panduan/README.md](docs/panduan/README.md) · [docs/panduan/panduan-hashi.pdf](docs/panduan/panduan-hashi.pdf) | LPK・TSKスタッフ向けの利用ガイド（インドネシア語、スクリーンショット付き、4つの事例）。スクリーンショットは `npm run guide:shots`、PDFは `npm run build:guide` で再生成します |
 | [docs/glossary.md](docs/glossary.md) | 日本語・インドネシア語・英語の用語集 |
 | [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md) | TSKの活動記録（業務記録、面談、定期面談、様式5-5） |
@@ -239,9 +239,3 @@ docs/                    タスク一覧、報告、機能ドキュメント、�
 | [docs/screenshots/](docs/screenshots/) | スクリーンショット（ダミーデータ） |
 
 このREADMEは3言語で、見出しの構成は同じです：[Bahasa Indonesia](README.md)、[English](README.en.md)、日本語（このファイル）。
-
-### チームの進め方
-
-Ipal（オーナー）が決定し、**PM**（claude.ai/code 上のClaudeセッション）が [docs/TASKS.md](docs/TASKS.md) にタスクを書いてプルリクエストをレビューし、
-**エンジニア**（ミニPCのVS Code上のClaude Code）が `eng/<ID>-…` ブランチでタスクを進めて [docs/STATUS.md](docs/STATUS.md) に報告し、
-PMがPRに `PM: DISETUJUI` と書いた後にマージします。詳しい規則は `CLAUDE.md` の「Peran dan aturan kerja」にあります。
