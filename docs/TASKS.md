@@ -14,7 +14,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 > **Aturan CI sejak T-028:** commit/PR yang HANYA mengubah `docs/**` atau `*.md` tidak menjalankan CI. PR seperti itu boleh di-merge cukup dengan `PM: DISETUJUI`; PR yang punya CI tetap wajib hijau.
 
-### T-030 · Buku panduan pemakaian (LPK + TSK) dengan tangkapan layar · `SIAP` (PALING ATAS, sebelum T-027)
+### T-030 · Buku panduan pemakaian (LPK + TSK) dengan tangkapan layar · `SIAP` (berikutnya)
 
 Permintaan Ipal (8 Okt): sebelum demo ke TSK, Ipal ingin buku panduan untuk MENCOBA aplikasi sendiri mengikuti langkah-langkahnya. Isi: cara memakai tiap fitur dan contoh kasus
 nyata dari sisi LPK dan TSK, dengan tangkapan layar supaya mudah dipahami. Pembaca = orang non-teknis (Ipal, staf LPK, staf TSK), bukan developer.
@@ -60,21 +60,6 @@ nyata dari sisi LPK dan TSK, dengan tangkapan layar supaya mudah dipahami. Pemba
 
 ---
 
-### T-027 · README tiga bahasa (Indonesia, Inggris, Jepang) · `SIAP` (setelah T-030; README menautkan panduan)
-
-Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Indonesia, Inggris, dan Jepang.
-- `README.md` (Indonesia, utama) + `README.en.md` + `README.ja.md`, isi SETARA; baris tautan bahasa di atas tiap berkas (`Bahasa Indonesia | English | 日本語`).
-- Isi: apa itu Hashi (LPK ↔ TSK), fitur utama per peran (LPK_ADMIN, sensei, TSK_ADMIN, TSK_STAFF), tangkapan layar (pakai yang di `docs/screenshots/`, data dummy saja), cara menjalankan (dev, produksi, demo),
-  keamanan & data pribadi (RLS, enkripsi kartu, audit, kebijakan terjemahan peramban), cadangan, dan daftar dokumen di `docs/`. Bagian teknis yang panjang (perintah, env) boleh tetap satu versi + ringkas di versi lain, tapi struktur judul sama.
-- Istilah Jepang mengikuti `docs/glossary.md` (TSK = 登録支援機関, 在留カード, 面談, 入管); versi Jepang memakai bahasa sopan (です・ます). Tanpa secret, alamat IP, email pribadi, atau data nyata.
-- Tes kecil: pemeriksa (unit atau skrip) bahwa ketiga berkas punya jumlah/urutan judul `##` yang sama.
-
-**Kriteria selesai**
-- [ ] Tiga berkas, judul setara (dites), tautan bahasa berfungsi, tidak ada secret/IP/email pribadi (`git grep` di PR).
-- [ ] CI hijau (PR ini memuat tes, jadi CI tetap jalan). Tanpa deploy.
-
----
-
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
@@ -92,6 +77,7 @@ Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Ind
 
 ## Selesai
 
+- **T-027** README tiga bahasa (PR #30): `README.md` / `README.en.md` / `README.ja.md` (です・ます) berstruktur judul sama (dites `readme-trilingual.test.ts`: struktur, tautan bahasa, tautan relatif, tanpa IP/email/secret). Terjemahan en/ja belum dicek penutur asli.
 - **T-028** Hemat menit Actions (PR #29): `paths-ignore` dokumen (`docs/**`, `**/*.md`) untuk push `main` dan PR, `concurrency` cancel-in-progress; cache Playwright dicoba lalu dibuang (hemat ±6 dtk saja); putaran penuh tetap ±11-15 menit, hemat dari putaran yang tidak jalan.
 - **T-029** Halaman 404 bergaya Hashi (PR #28): `NotFoundView` di dalam dan di luar shell (id/ja; 404 hak akses = tampilan sama), `html{color-scheme:light}` (404 bawaan Next menyisipkan `body{color:#fff;background:#000}` di mode gelap), email uji `--test-to` menautkan `/records/cards` + label data palsu; e2e mode gelap.
 - **T-026** PDF 手数料納付書 jalur loket (PR #27): latar PDF kosong resmi (`assets/forms/`, `pdf-lib`), nama romaji (tidak pernah dipotong) + nomor 2 dilingkari, label "hanya loket", akses 担当/Admin, audit `fee_form_export`. Juga: aktivasi email T-025 SELESAI (Brevo, mode kirim; email uji sampai ke Ipal 8 Okt).
