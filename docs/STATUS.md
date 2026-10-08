@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-031 · README dan panduan tanpa penyebutan AI / cara kerja internal
 
-**PR:** (nomor menyusul) (branch `eng/T-031-readme-bersih`)
+**PR:** #32 (branch `eng/T-031-readme-bersih`)
 **Status:** siap direview. Hanya dokumen + satu tes; tanpa migrasi, tanpa deploy.
 
 **Hasil PR sebelumnya:** T-030 di-merge `5d00a9b` (PR #31) setelah `PM: DISETUJUI` dan CI hijau di head. Tanpa deploy.
