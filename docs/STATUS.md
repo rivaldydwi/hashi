@@ -34,6 +34,67 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-015 · `scripts/deploy.sh`: log build ke berkas (+ hasil deploy T-025 dan status aktivasi email)
+
+**PR:** #25 (branch `eng/T-015-deploy-log`)
+**Status:** siap direview. Perubahan hanya skrip + tes + dokumen (tanpa migrasi, tanpa perubahan aplikasi). Kriteria "deploy berikutnya memakai skrip baru" dipenuhi dengan deploy setelah merge (dicatat di entri berikutnya).
+
+**Hasil deploy T-025** (PR #24 di-merge `e7d8964` setelah `PM: DISETUJUI` dan CI hijau di head `0d2068a`; tanpa migrasi, tanpa `--backup`)
+- `scripts/deploy.sh`: commit berjalan `e7d8964`, health `{"status":"ok","commit":"e7d8964"}`. Demo tidak disentuh.
+- `worker --check` di produksi: pengguna TSK aktif=3 (admin=1), akan dikirimi=0, akan DILEWATI pengaman=3, akun demo `@hashi.test`=8, mode=KERING. Log worker: `mode=KERING`, putaran berikutnya 08:00 Asia/Tokyo.
+- **Aktivasi email BELUM** (BUTUH IPAL): menunggu SMTP login + key Brevo (diberikan langsung di sesi engineer atau diisi Ipal ke `.env`), alamat pengirim terverifikasi untuk `MAIL_FROM`, `APP_URL`, dan alamat tujuan `--test-to`. Setelah itu: tulis `.env` (nilai tidak dicetak), `up -d worker`, `--test-to`, bukti log `mode=kirim` + `dilewati=3` di STATUS.
+- Repo kini PUBLIK (keputusan Ipal): alamat Tailscale dihapus dari `docs/email.md` dan entri STATUS T-025 (riwayat git lama masih memuatnya; alamat itu hanya terjangkau dari tailnet). Aturan: tidak menulis IP/alamat privat, email pribadi, atau nilai `.env` di repo/PR.
+
+**Yang dikerjakan** (`scripts/deploy.sh`)
+- **Log lengkap ke berkas**: `${HASHI_DEPLOY_LOG_DIR:-${HASHI_BACKUP_DIR:-~/hashi-backups}}/deploy-<tanggal>-<jam>.log` (mode 600), memuat keluaran penuh cadangan, build Docker, migrasi/start, dan health (plus status container dan 50 baris log `app` bila health gagal, dan log service `migrate` bila start gagal). Simpan **20 terakhir** (`HASHI_DEPLOY_LOG_KEEP`); yang dihapus HANYA berkas `deploy-<tanggal>-<jam>.log` (berkas cadangan/`backup.log` tidak tersentuh, dites).
+- **Terminal = ringkasan per langkah**: pull (satu baris), cadangan (2 baris terakhirnya), build (`build selesai`), migrasi (`migrasi selesai: <baris terakhir log migrate>`), health + commit, lalu path log. Build dan start dipisah (`docker compose build` lalu `up -d`; setara `up -d --build` sebelumnya) supaya build dan migrasi terlapor sendiri-sendiri.
+- **Gagal = 40 baris terakhir log + path berkas**, kode keluar ≠ 0 (kode asli langkahnya; minimal 1): langkah cadangan (deploy batal sebelum build), build (`up` tidak dijalankan), migrasi/start, health. Perilaku lain tidak berubah: syarat awal (branch `main`, working tree bersih, pull `--ff-only`, `APP_PORT`, `CARD_DATA_KEY`), `--backup`, `--timeout`, `--check` (tidak membuat log dan tidak menyentuh docker), baris akhir `✓ deploy selesai. Commit berjalan: …`.
+- Dua bug kecil tertangkap tes saat menulis: `$?` di dalam `if ! cmd; then` selalu 0, dan `$?` setelah grup `{ echo; }`; keduanya diperbaiki dengan menyimpan kode keluar dulu.
+
+**Contoh keluaran** (dari tes dengan `docker`/`curl` palsu di repo sementara, BUKAN produksi; `DEPLOY_TEST_VERBOSE=1 npx tsx --test tests/unit/deploy-script.test.ts`)
+
+Sukses:
+```
+→ git pull --ff-only
+  Already up to date.
+→ commit yang akan di-deploy: 4acf02e (main)
+→ commit yang berjalan sekarang: 4acf02e (health: http://127.0.0.1:3110/api/health)
+→ build image (docker compose -p hashi build, GIT_SHA=4acf02e)
+  build selesai
+→ migrasi + mulai layanan (docker compose -p hashi up -d)
+  migrasi selesai: ✓ Migration selesai
+→ menunggu /api/health memuat commit 4acf02e (maks 5s)
+✓ deploy selesai. Commit berjalan: 4acf02e (label image: 4acf02e); health: {"status":"ok","commit":"4acf02e"}
+  log: /tmp/hashi-deploy-test-…/sukses/logs/deploy-20261008-110949.log
+```
+Build gagal (simulasi; keluar kode 1; hanya 40 baris terakhir):
+```
+→ build image (docker compose -p hashi build, GIT_SHA=ec0fbdc)
+✗ deploy: langkah 'build image' GAGAL (kode 1). 40 baris terakhir log:
+  | #84 [app] RUN langkah build bising nomor 84
+  | …
+  | #120 [app] RUN langkah build bising nomor 120
+  | ERROR: simulasi build gagal: npm ci exit 1
+  | ### GAGAL kode 1
+  log lengkap: /tmp/hashi-deploy-test-…/build-gagal/logs/deploy-20261008-110954.log
+```
+(120 baris keluaran build tidak muncul di terminal pada kasus sukses; tes memastikannya.)
+
+**Verifikasi**
+- `shellcheck` (image resmi `koalaman/shellcheck:stable`, `-x scripts/deploy.sh`) → bersih (exit 0; satu direktif `source=/dev/null` untuk berkas rahasia pengguna).
+- `tests/unit/deploy-script.test.ts` (7 tes, repo git sementara + `docker`/`curl` palsu di PATH, tanpa menyentuh container/produksi): sukses (ringkasan, log mode 600, tanpa isi `.env`, build sebelum up), pemangkasan (25 → 20, berkas lain utuh), build gagal, migrasi gagal (log migrate dilampirkan), health gagal, `--backup` (ringkasan + gagal membatalkan sebelum build), `--check`. `npm run test:unit` → 152/152; `npm run typecheck` → lulus.
+- e2e/rls tidak dijalankan: tidak ada perubahan aplikasi atau database.
+
+**Kendala / catatan**
+- Log deploy bisa memuat nama service/container dan keluaran Docker, tetapi skrip tidak mencetak `.env`. Karena repo publik, jangan menempelkan log mentah ke PR; ringkas atau periksa dulu.
+
+**Pertanyaan**
+- BUTUH IPAL: data aktivasi email di atas (T-025). Masih terbuka dari tugas lalu: cadangan di luar server dan keputusan 行政書士/retensi (checklist A2, D1-D4).
+
+**Usulan berikutnya**
+- Tidak ada tambahan.
+
+
 ## 2026-10-08 · T-025 · Email pengingat di produksi (Brevo): pengaman penerima, kirim uji, panduan; menunggu SMTP key dari Ipal
 
 **PR:** #24 (branch `eng/T-025-email-brevo`)
@@ -60,7 +121,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 **Langkah berikutnya (urutan)**
 1. `PM: DISETUJUI` → merge → `scripts/deploy.sh` (kode worker berubah; tanpa migrasi; cadangan tidak wajib, tetapi boleh `--backup`).
-2. Ipal memberikan SMTP key (di sesi engineer) atau mengisi `.env` sendiri; engineer menulis `SMTP_URL` ke `.env` (mode 600, nilai tidak dicetak/di-commit/di-log; di STATUS hanya "SMTP_URL terisi"), `MAIL_FROM` (Gmail Ipal terverifikasi di Brevo, nama "Hashi"), `APP_URL=http://100.68.236.38:3110`, lalu `docker compose -p hashi up -d worker`.
+2. Ipal memberikan SMTP key (di sesi engineer) atau mengisi `.env` sendiri; engineer menulis `SMTP_URL` ke `.env` (mode 600, nilai tidak dicetak/di-commit/di-log; di STATUS hanya "SMTP_URL terisi"), `MAIL_FROM` (Gmail Ipal terverifikasi di Brevo, nama "Hashi"), `APP_URL` (alamat Tailscale; tidak ditulis di repo publik), lalu `docker compose -p hashi up -d worker`.
 3. `--test-to` ke alamat Ipal → konfirmasi Ipal email sampai; bukti log `mode=kirim` + ringkasan putaran (`dilewati=3`) di STATUS entri berikutnya.
 
 **Kendala / catatan**

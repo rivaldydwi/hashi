@@ -28,10 +28,10 @@ Pemeriksaan kesiapan (angka saja, tanpa alamat): `docker compose -p hashi exec -
    ```
    SMTP_URL=smtp://<login-smtp-brevo>:<smtp-key>@smtp-relay.brevo.com:587
    MAIL_FROM=Hashi <alamat-pengirim-terverifikasi>
-   APP_URL=http://100.68.236.38:3110
+   APP_URL=<alamat Hashi yang dibuka staf, mis. alamat Tailscale produksi>
    ```
    - `<login-smtp-brevo>` = "SMTP login" di halaman SMTP Brevo (biasanya berbentuk `xxxx@smtp-brevo.com`); karakter khusus di login/key di-URL-encode (`@` → `%40`, `:` → `%3A`, `/` → `%2F`, `+` → `%2B`, `%` → `%25`).
-   - `APP_URL` = alamat Hashi yang dibuka staf (sekarang alamat Tailscale produksi: hanya bisa dibuka dari tailnet).
+   - `APP_URL` = alamat Hashi yang dibuka staf (selama demo: alamat Tailscale produksi, hanya bisa dibuka dari tailnet). Jangan menuliskan alamat sebenarnya di repo ini (repo PUBLIK); isi hanya di `.env` server.
 3. Terapkan: `docker compose -p hashi up -d worker` (membuat ulang service dengan `.env` baru; tidak menyentuh container lain).
 4. **Kirim uji** ke alamatmu sendiri (mengirim SATU email berisi data palsu; tidak membaca kartu; tidak menulis log pengiriman/audit):
    `docker compose -p hashi exec -T worker node --import tsx scripts/reminder-worker.ts --test-to alamat-kamu@contoh.id`
