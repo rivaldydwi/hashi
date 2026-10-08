@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-08 · T-024 · Tampilan LPK: status visa + tanggal tiba pekerja (baca-saja, sangat terbatas) (+ hasil deploy T-015)
 
-**PR:** (diisi setelah dibuka) (branch `eng/T-024-lpk-visa-status`)
+**PR:** #26 (branch `eng/T-024-lpk-visa-status`)
 **Status:** siap direview. Deploy produksi belum (menunggu `PM: DISETUJUI`; ada migrasi 0030, jadi `--backup`).
 
 **Hasil deploy T-015** (PR #25 di-merge `fcdef25` setelah `PM: DISETUJUI` dan CI hijau di head `a42b745`; tanpa migrasi, tanpa `--backup`) memakai SKRIP BARU:
