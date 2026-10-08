@@ -34,6 +34,45 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-026 · PDF 手数料納付書 untuk jalur loket (+ hasil deploy T-024 dan aktivasi email T-025)
+
+**PR:** (diisi setelah dibuka) (branch `eng/T-026-fee-form`)
+**Status:** siap direview. Tanpa migrasi; deploy setelah `PM: DISETUJUI` (tanpa `--backup`).
+
+**Hasil deploy T-024** (PR #26 di-merge `8f64d88` setelah `PM: DISETUJUI` dan CI hijau di head `ec4b32a`; ada migrasi 0030)
+- `scripts/deploy.sh --backup`: cadangan `hashi-20261008-122154-*` (database 737 entri, dokumen 146 berkas, 792K), build selesai, migrasi 0030 terpasang (kolom `placements.arrived_on` + fungsi `lpk_worker_status` dan `card_visa_state` terverifikasi di produksi), health `{"status":"ok","commit":"8f64d88"}`; log `deploy-20261008-122154.log`. Demo tidak disentuh.
+
+**Aktivasi email T-025 (selesai)**
+- Ipal memberikan SMTP login + key Brevo di sesi engineer dan menambahkan IP server di Brevo (Authorized IPs); pengirim terverifikasi dan `APP_URL` diberikan Ipal di sesi. `.env` server (mode 600, di-ignore git) kini memuat `SMTP_URL`, `MAIL_FROM`, `APP_URL` (hanya "terisi" yang dicatat di sini; nilai dan alamat TIDAK ditulis karena repo publik).
+- Sebelum IP diizinkan, login ditolak `525 5.7.1 Unauthorized IP address`; sesudahnya `verify()` SMTP lolos, worker dibuat ulang (`up -d worker`): log `mode=kirim (SMTP_URL terisi)`, ringkasan putaran `selesai mode=send org=1 penerima=0 email=0 item=0 gagal=0 dilewati=0`, putaran berikutnya 08:00 Asia/Tokyo.
+- **Email uji**: `--test-to` ke alamat Ipal → `email uji TERKIRIM ke 1 alamat (data palsu; tidak ada log pengiriman/audit)`. Menunggu konfirmasi Ipal bahwa email sampai (kotak masuk atau spam).
+- `--check` produksi: pengguna TSK aktif=3, akan dikirimi=0, akan DILEWATI pengaman=3, akun demo=8, mode=kirim. **Pengingat nyata belum terkirim ke siapa pun** sampai ada akun staf TSK nyata (pengaman penerima). Dicatat: sampai deploy berikutnya, `up -d` biasa membuat worker mode kirim juga (sudah diperiksa aman: semua penerima dilewati).
+- SMTP key sempat tampil di chat sesi ini: buat key baru dan hapus yang lama sebelum launch (checklist F0).
+
+**Yang dikerjakan (T-026)**
+- **Tombol "手数料納付書 (loket)"** di bagian bawah `/records/workers/<id>/renewal`, di kotak "Pengajuan di loket (bukan online)" dengan peringatan jelas: "HANYA untuk pengajuan di loket. Pengajuan online ... membayar lewat konbini atau bank, tanpa formulir ini dan tanpa materai" (id + ja). Menuju `GET /records/export/fee-form/<id>`.
+- **Pilihan teknis: latar = PDF kosong RESMI** 出入国在留管理庁 (別記第八十四号様式; https://www.moj.go.jp/isa/content/001458260.pdf, 8,6 KB, diambil 2026-10-08, disimpan di `assets/forms/tesuryo-nofusho-84.pdf` dengan `README.md` sumber/tanggal; ikut image runner, dicek). Dipakai APA ADANYA lewat `pdf-lib` (dependensi baru, MIT, murni JS) alih-alih menggambar ulang, supaya identik dengan formulir yang diterima loket. Hashi hanya menambah: **nama pekerja** (romaji huruf besar seperti paspor) di kolom 納付者氏名 dan **lingkaran pada nomor 2** (在留期間の更新許可). Tanggal, nomor, jumlah, dan 収入印紙 dibiarkan kosong. Koordinat (`FEE_FORM`) diukur dari formulir resmi (`pdftotext -bbox` + render 100 dpi) dan diperiksa visual (tangkapan layar di bawah).
+- **Tata letak nama** (`layoutName`, murni): satu baris sebesar mungkin (maks 11 pt); bila tidak muat di 7,5 pt dibungkus per kata ke beberapa baris di atas garis. Nama **tidak pernah dipotong** (sempat memotong nama 52 huruf saat uji visual, diperbaiki). Nama file tetap `tesuryo-nofusho-loket.pdf` (tanpa nama pekerja).
+- **Label "hanya untuk loket"** ada di tombol, teks halaman, dan metadata PDF (judul/subjek); TIDAK dicetak di kertas supaya salinan yang diserahkan ke loket tetap bersih.
+- **Akses + audit**: hanya 担当 efektif + TSK_ADMIN (staf TSK lain, LPK, sensei: 404). Audit `residence_card.fee_form_export` (tanpa nama/nilai), dicatat SEBELUM PDF dibuat; terdaftar di `ACTIONS` (id + ja). `docs/zairyu-card.md` §13, `CLAUDE.md`, checklist diperbarui.
+
+**Tangkapan layar hasil (lokal, nama contoh)**: nomor 2 terlingkar dan nama pas di kolom, baris tunggal untuk nama normal; nama sangat panjang dibungkus beberapa baris (diperiksa dengan `pdftoppm`).
+
+**Verifikasi** (database dev `hashi_dev`)
+- `npm run typecheck` → lulus; `npm run test:i18n` → lulus (1755 kunci); `npm run test:unit` → 164/164 (baru `fee-form` 6: tata letak, tanpa pemotongan, nama aman, PDF 1 halaman A4 dengan teks resmi utuh + nama di kolom dan posisi benar + bidang lain kosong, lingkaran/nama menambah operasi gambar, metadata "loket", nama panjang utuh); `npm run verify:audit-coverage` → tanpa pelanggaran; `npm run build` → 0 peringatan; image runner dibangun dan berkas latar ada di `/app/assets/forms`.
+- `db:seed -- --reset` → `verify:seed` lulus; `npm run test:rls` → semua lulus (tanpa perubahan basis data); `E2E_PORT=3120 npm run test:e2e` → 242 lulus (tes baru di `renewal.spec.ts`: label loket jelas, unduh 200 `application/pdf` + `attachment` + nama file tetap tanpa nama pekerja, teks resmi + nama romaji terbaca di PDF, audit +1 tanpa nama, 担当 dan Admin 200, staf lain/LPK/sensei 404).
+
+**Kendala / catatan**
+- Jumlah uang dibiarkan kosong (bergantung masa izin dan tarif yang berubah per 2026-10-01; diisi di loket).
+- Bila TSK ingin nomor lain dilingkari (mis. perubahan status), itu tugas terpisah.
+
+**Pertanyaan**
+- BUTUH IPAL: konfirmasi email uji sampai (kotak masuk atau spam). Masih terbuka: akun staf TSK nyata (agar pengingat sungguhan terkirim), cadangan di luar server, keputusan 行政書士/retensi (checklist A2, D1-D4).
+
+**Usulan berikutnya**
+- Perbaikan baris ringkasan migrasi di `deploy.sh` (menampilkan `npm notice`).
+
+
 ## 2026-10-08 · T-024 · Tampilan LPK: status visa + tanggal tiba pekerja (baca-saja, sangat terbatas) (+ hasil deploy T-015)
 
 **PR:** #26 (branch `eng/T-024-lpk-visa-status`)

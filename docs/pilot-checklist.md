@@ -53,7 +53,7 @@ Perintah memakai project compose `hashi` (produksi) dan hanya MEMBACA. Jangan me
 |---|---|---|---|
 | E1 | **Form 5-5**: kalimat butir (status DRAFT) dicek staf TSK terhadap form resmi terbaru | Staf TSK membuka PDF contoh (`/records/export/form55/...`) dan membandingkan; catat koreksi (`src/db/form55.ts`) | T |
 | E2 | **Lembar klien PDF** (format DRAFT) dikoreksi staf TSK | PDF contoh dari `/sheet/company/<id>` dan `/sheet/job-order/<id>` ditinjau | T |
-| E3 | **Data perpanjangan online** (butir 1-14; label dan templat alasan) dicek staf TSK, dan keputusan loket vs online | Halaman `/records/workers/<id>/renewal` ditinjau; konfirmasi apakah loket masih dipakai (PDF 手数料納付書 hanya untuk loket) | T + P |
+| E3 | **Data perpanjangan online** (butir 1-14; label dan templat alasan) dicek staf TSK, dan keputusan loket vs online | Halaman `/records/workers/<id>/renewal` ditinjau; konfirmasi apakah loket masih dipakai (PDF 手数料納付書 hanya untuk loket: tombol terpisah, T-026) | T + P |
 | E4 | **Jadwal pengingat kartu** (persiapan 4 bulan, 3 bulan, H-30/14/7, 特例期間) sesuai kebiasaan TSK | `docs/zairyu-card.md`; konfirmasi tertulis staf TSK | T |
 | E5 | Daftar bidang kerja (`skill_fields`) dan opsi 在留期間 (4/6/12 bulan) benar | Halaman super admin `/admin/skill-fields`; `PERIOD_OPTIONS` di `src/db/zairyu.ts` | T + E |
 

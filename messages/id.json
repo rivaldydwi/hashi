@@ -2125,6 +2125,12 @@
       "reminders": {
         "criminal": "Tidak disimpan di Hashi. Isi langsung saat mengajukan sesuai keadaan pemohon.",
         "familyInJapan": "Tidak disimpan di Hashi. Isi langsung saat mengajukan sesuai keadaan pemohon."
+      },
+      "counter": {
+        "title": "Pengajuan di loket (bukan online)",
+        "warning": "HANYA untuk pengajuan di loket imigrasi. Pengajuan online (halaman ini) membayar lewat konbini atau bank, tanpa formulir ini dan tanpa materai.",
+        "help": "Mengunduh surat pembayaran biaya resmi (Annex 84) dengan nama pekerja dan nomor 2 (perpanjangan masa tinggal) sudah dilingkari. Tanggal, nomor, dan jumlah dibiarkan kosong; tempel materai (shunyu inshi) sendiri. Pengunduhan tercatat di riwayat aktivitas.",
+        "button": "loket"
       }
     },
     "arrival": {
