@@ -21,7 +21,27 @@ Keputusan Ipal (8 Okt): pengajuan perpanjangan lewat loket masih mungkin ("just 
 
 ---
 
-### T-028 · Hemat menit GitHub Actions · `SIAP` (setelah T-026; tidak mendesak lagi: repo PUBLIK sejak 8 Okt, menit Actions gratis)
+### T-029 · Halaman 404 di dalam aplikasi + tautan email uji · `SIAP` (PRIORITAS: kerjakan sebelum T-028)
+
+Laporan Ipal (8 Okt, tangkapan layar): email uji T-025 SAMPAI, tetapi tautan di email membuka `/records/workers/00000000-…-000000000001` (id palsu dari email uji) dan halaman tampil
+**hitam** dengan "404 This page could not be found." (halaman 404 bawaan Next.js). Selain itu judul halaman ("Catatan kegiatan") dan nama organisasi di sidebar jadi **putih di atas latar terang**
+(hampir tak terbaca). Dugaan PM: 404 bawaan Next menyisipkan `<style>` global yang, di peramban mode GELAP (`prefers-color-scheme: dark`), mengubah `body` menjadi `color:#fff; background:#000`,
+dan gaya itu bocor ke shell aplikasi. Hashi sendiri belum punya `not-found.tsx`. Periksa dugaan ini dulu, perbaiki akar masalahnya.
+
+Kerjakan:
+- `src/app/(app)/not-found.tsx` (dan `src/app/not-found.tsx` untuk di luar shell): gaya Hashi (token `@theme`, terang), pesan id/ja "Halaman tidak ditemukan atau Anda tidak punya akses" + tombol kembali ke Beranda,
+  tanpa rincian teknis. Semua `notFound()` yang ada otomatis memakainya (termasuk 404 hak akses: TETAP 404, jangan bocorkan apakah data ada).
+- Pastikan tidak ada gaya global dari halaman bawaan Next yang tersisa; tetapkan `color-scheme: light` di `:root`/`html` (Hashi belum mendukung mode gelap) supaya kontrol bawaan peramban juga terang.
+- **Email uji `--test-to`**: tautan contoh jangan menuju id palsu. Arahkan ke halaman yang ada, mis. `/records/cards` (daftar kartu), dan beri keterangan "contoh, data palsu" di email. Email pengingat sungguhan tetap menautkan ke detail pekerja.
+- e2e: buka id pekerja yang tidak ada dengan `colorScheme: 'dark'` di Playwright → 404 bergaya Hashi, judul + sidebar tetap terbaca (warna teks bukan putih di atas latar terang; cek computed style), status 404. Unit: tautan email uji.
+
+**Kriteria selesai**
+- [ ] 404 bergaya Hashi (id/ja), mode gelap peramban tidak merusak shell (dites), email uji menautkan halaman yang ada.
+- [ ] CI hijau; deploy (tanpa migrasi); Ipal bisa uji ulang dengan `--test-to`.
+
+---
+
+### T-028 · Hemat menit GitHub Actions · `SIAP` (setelah T-029; tidak mendesak lagi: repo PUBLIK sejak 8 Okt, menit Actions gratis)
 
 Kuota menit Actions (repo privat, paket gratis 2.000 menit/bulan) habis 8 Okt. Satu putaran CI ±20 menit (job e2e ±17 + docker ±2), dan saat ini SETIAP push ke `main` atau branch PR menjalankan
 CI penuh, termasuk commit PM yang hanya mengubah `docs/TASKS.md` (puluhan putaran tanpa perubahan kode).
