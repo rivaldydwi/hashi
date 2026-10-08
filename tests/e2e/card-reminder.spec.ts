@@ -27,7 +27,8 @@ async function inbox(): Promise<Msg[]> {
   return Promise.all(list.messages.map(async (m) => ({ to: m.To.map((t) => t.Address), subject: m.Subject, text: ((await (await fetch(`${API}/message/${m.ID}`)).json()) as { Text: string }).Text })));
 }
 const about = (msgs: Msg[], name: string) => msgs.filter((m) => m.text.includes(name));
-const go = (extra: Partial<Parameters<typeof runCardReminders>[0]> = {}) => runCardReminders({ mailer, from: "Hashi <hashi@hashi.test>", baseUrl: "https://hashi.test", db: handle.db, log: () => {}, ...extra });
+// akun uji berdomain *.test: pengaman penerima (T-025) biasanya melewatinya, jadi tes mengizinkannya KECUALI tes pengaman itu sendiri
+const go = (extra: Partial<Parameters<typeof runCardReminders>[0]> = {}) => runCardReminders({ mailer, from: "Hashi <hashi@hashi.test>", baseUrl: "https://hashi.test", db: handle.db, log: () => {}, allowTestRecipients: true, ...extra });
 
 async function scratchWorker(label: string, expiryDays: number, staffId: string | null) {
   const name = `Uji Pengingat ${label} ${run}`;
@@ -142,5 +143,21 @@ test("mode kering (tanpa mailer): tidak ada email, tidak ada log pengiriman, bar
   expect((await inbox()).length).toBe(before);
   expect((await ownerQuery<{ n: number }>("select count(*)::int as n from card_reminder_log"))[0].n).toBe(rowsBefore);
   expect(lines.some((l) => /mode=dry-run akan dikirim/.test(l))).toBe(true);
+  expect(lines.join("\n")).not.toMatch(/@|hashi\.test/);
+});
+
+test("pengaman penerima (T-025): tanpa izin uji, alamat *.test dilewati: tidak ada email, tidak ada log pengiriman, log ringkasan tanpa alamat", async () => {
+  await ownerQuery("update residence_cards set expiry_date = $2::date where id = $1", [w1.card, d(20)]); // tahap baru h30 (belum pernah dikirim)
+  const before = (await inbox()).length;
+  const rowsBefore = (await ownerQuery<{ n: number }>("select count(*)::int as n from card_reminder_log"))[0].n;
+  const lines: string[] = [];
+  const s = await go({ allowTestRecipients: false, log: (l) => lines.push(l) });
+  expect(s.mode).toBe("send");
+  expect(s.emails).toBe(0);
+  expect(s.recipients).toBe(0);
+  expect(s.skipped).toBeGreaterThanOrEqual(2); // staf A, staf2, dan Admin berdomain .test
+  expect((await inbox()).length).toBe(before);
+  expect((await ownerQuery<{ n: number }>("select count(*)::int as n from card_reminder_log"))[0].n).toBe(rowsBefore);
+  expect(lines.join("\n")).toMatch(/dilewati=\d+/);
   expect(lines.join("\n")).not.toMatch(/@|hashi\.test/);
 });

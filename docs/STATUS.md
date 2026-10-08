@@ -34,6 +34,46 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-025 · Email pengingat di produksi (Brevo): pengaman penerima, kirim uji, panduan; menunggu SMTP key dari Ipal
+
+**PR:** (diisi setelah dibuka) (branch `eng/T-025-email-brevo`)
+**Status:** siap direview. **Aktivasi di produksi BELUM**: butuh deploy kode worker baru (setelah `PM: DISETUJUI`) lalu SMTP key dari Ipal (`BUTUH IPAL`, lihat bawah). Tidak ada migrasi.
+
+**Hasil merge T-014** (PR #23 di-merge `ee13a0f` setelah `PM: DISETUJUI` dan CI hijau di head `4032436`): tanpa migrasi dan tanpa perubahan aplikasi, jadi TIDAK ada deploy produksi (produksi tetap `cde24a3`, health ok). `seed:pilot` di demo menunggu izin Ipal.
+
+**Yang dikerjakan**
+- **Pengaman penerima** (`isSafeRecipient`, `src/db/card-reminders.ts`): worker tidak mengirim ke `*@hashi.test` (akun demo), `example.com/.org/.net` (dan subdomain), `*.test`, `*.invalid`, `*.example`, `*.localhost`, `localhost`, dan alamat yang bentuknya tidak sah; pengguna nonaktif sudah tidak diikutkan. Yang dilewati dihitung `dilewati=N` di log putaran (tanpa alamat), tidak dihitung sebagai penerima dan TIDAK dicatat di log pengiriman. Hanya tes/dev yang bisa mematikannya (`allowTestRecipients`, atau env `REMINDER_ALLOW_TEST_RECIPIENTS=1` yang TIDAK ada di `compose.yaml`, jadi tidak aktif di produksi).
+- **Kirim uji**: `scripts/reminder-worker.ts --test-to <alamat>` mengirim SATU email contoh (data PALSU, tanpa membaca kartu atau database, tanpa log pengiriman/audit) lalu keluar; tanpa `SMTP_URL` menolak dengan pesan jelas; galat SMTP dicetak tanpa kredensial (pola `//login:key@` disamarkan). Alamat tidak sah → kode keluar 2.
+- **Pemeriksaan kesiapan** `--check`: mencetak ANGKA saja (pengguna TSK aktif, admin, akan dikirimi, akan DILEWATI, akun demo @hashi.test, mode) tanpa alamat.
+- **`docs/email.md`**: panduan untuk Ipal (Brevo: buat SMTP key + verifikasi pengirim; isi `.env` `SMTP_URL`/`MAIL_FROM`/`APP_URL` dengan URL-encode; `up -d worker`; kirim uji; cek log), pencabutan/penggantian key, batasan tahap demo (pengirim Gmail → DMARC/DKIM tidak sesuai, bisa masuk spam; sebelum launch domain sendiri + SPF/DKIM), dan tabel pemecahan masalah. `.env.example` diperbarui.
+- **`docs/pilot-checklist.md`** (permintaan PM): butir F0 "buat SMTP key Brevo BARU dan hapus yang lama sebelum launch" (key saat ini pernah dibagikan di chat), F1b domain sendiri + SPF/DKIM, F1c akun staf nyata. `CLAUDE.md` diperbarui.
+
+**Pemeriksaan penerima di PRODUKSI** (hanya membaca angka lewat `psql` SELECT count, tanpa alamat; 2026-10-08)
+- Pengguna TSK aktif: **3**; yang alamatnya akan DILEWATI pengaman (domain `.test`): **3** (semuanya); yang akan dikirimi: **0**.
+- Semua pengguna: 8, dan 8-nya akun demo `@hashi.test`; organisasi: 5 (semua demo). **Produksi masih berisi akun demo saja**, sehingga bila SMTP diaktifkan sekarang tidak ada email nyata yang terkirim (aman: pengaman penerima menahannya).
+- Setelah deploy, `--check` di produksi akan memberi angka yang sama dan menjadi bukti ulang.
+
+**Verifikasi** (database dev `hashi_dev`)
+- `npm run typecheck` → lulus; `npm run test:unit` → 145/145 (baru: `isSafeRecipient` termasuk huruf besar/spasi/subdomain/`exampletest.com` yang HARUS boleh, `--test-to`, email uji id/ja); `npm run verify:audit-coverage` → tanpa pelanggaran; `npm run build` → 0 peringatan.
+- `E2E_PORT=3120 npm run test:e2e` → 236 lulus (tes baru `card-reminder`: tanpa izin uji, penerima `*.test` dilewati: 0 email, 0 baris log, log `dilewati=N` tanpa alamat; tes lama memakai `allowTestRecipients`).
+- Manual dengan Mailpit/db-dev: `--check` (`pengguna TSK aktif=3 … DILEWATI=3 … mode=KERING`); `--test-to` tanpa SMTP_URL → pesan jelas; alamat rusak → pesan jelas; `--test-to` ke Mailpit → `email uji TERKIRIM` dan 1 pesan `[Hashi] Email uji: …`; SMTP mati → `GAGAL: Error (connect ECONNREFUSED …)` tanpa kredensial.
+
+**Langkah berikutnya (urutan)**
+1. `PM: DISETUJUI` → merge → `scripts/deploy.sh` (kode worker berubah; tanpa migrasi; cadangan tidak wajib, tetapi boleh `--backup`).
+2. Ipal memberikan SMTP key (di sesi engineer) atau mengisi `.env` sendiri; engineer menulis `SMTP_URL` ke `.env` (mode 600, nilai tidak dicetak/di-commit/di-log; di STATUS hanya "SMTP_URL terisi"), `MAIL_FROM` (Gmail Ipal terverifikasi di Brevo, nama "Hashi"), `APP_URL=http://100.68.236.38:3110`, lalu `docker compose -p hashi up -d worker`.
+3. `--test-to` ke alamat Ipal → konfirmasi Ipal email sampai; bukti log `mode=kirim` + ringkasan putaran (`dilewati=3`) di STATUS entri berikutnya.
+
+**Kendala / catatan**
+- Sebelum ada akun staf nyata, pengiriman otomatis tidak menjangkau siapa pun (disengaja). Uji utama = `--test-to`.
+- Pengirim Gmail: peringatan Brevo (DMARC/DKIM) bisa membuat email masuk spam; dicatat di `docs/email.md`.
+
+**Pertanyaan**
+- BUTUH IPAL: (1) berikan SMTP key Brevo (login SMTP + key) langsung di sesi engineer SETELAH deploy kode ini, atau isi `.env` sendiri sesuai `docs/email.md`; sebutkan alamat Gmail pengirim yang terverifikasi untuk `MAIL_FROM` dan alamat tujuan `--test-to`. (2) Buat akun staf TSK nyata (halaman Pengguna) bila ingin pengingat sungguhan terkirim (sekarang semua penerima akun demo). Masih terbuka: cadangan di luar server dan keputusan 行政書士/retensi (checklist A2, D1-D4).
+
+**Usulan berikutnya**
+- Tidak ada tambahan.
+
+
 ## 2026-10-08 · T-014 · Langkah 8 siap pilot: 200 siswa dummy + cek kecepatan + daftar periksa (+ hasil deploy T-021)
 
 **PR:** #23 (branch `eng/T-014-pilot-seed`)
