@@ -34,6 +34,43 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-08 · T-030 · Buku panduan pemakaian (LPK + TSK) dengan tangkapan layar
+
+**PR:** #31 (branch `eng/T-030-panduan`)
+**Status:** siap direview. Tanpa migrasi, tanpa deploy, perilaku aplikasi TIDAK diubah.
+
+**Hasil PR sebelumnya:** T-028 di-merge `8e9f886` (PR #29) dan T-027 di-merge `a9baa5d` (PR #30), keduanya setelah `PM: DISETUJUI` dan CI hijau di head. Tidak ada deploy. T-030 diambil lebih dulu dari T-027 sesuai urutan di TASKS, tetapi T-027 sudah ter-merge sebelum tugas ini muncul, jadi tautan ke panduan ditambahkan ke ketiga README di PR ini.
+
+**Yang dikerjakan**
+- `docs/panduan/README.md`: bab 0 (cara memakai + tabel akun demo), 1 Mulai (Hashi, peran, login/bahasa/kata sandi, beranda + KPI + atur dashboard), 2 Panduan LPK (12 bagian, termasuk tampilan Sensei), 3 Panduan TSK (13 bagian: kandidat, keputusan/catatan, penilaian, klien/job order, kandidat cocok + Ajukan, berangkat, lembar klien, catatan kegiatan, wawancara berkala + form 5-5, penanggung jawab, kartu izin tinggal lengkap termasuk data perpanjangan, 手数料納付書, tanggal tiba, email pengingat), 4 empat contoh kasus bergambar (A siswa baru sampai dibagikan, B shortlist sampai berangkat, C kartu hampir habis, D masalah di tempat kerja; tiap skenario menyebut akun demo), 5 tanya jawab + istilah (tautan ke `docs/glossary.md`). Label tombol/menu ditulis persis seperti di UI (dicek dengan katalog `messages/id.json` dan tangkapan layar).
+- Tangkapan layar OTOMATIS: `npm run guide:shots` = `db:seed --reset` + `seed:pilot` + `build` + `tests/guide/screenshots.spec.ts` (`playwright.guide.config.ts`, hanya jalan dengan `GUIDE_SHOTS=1`, dijaga `db-guard` agar hanya database dev/test/demo). Skenario benar-benar dijalankan lewat UI (siswa, klien, job order, kartu, catatan), data uji ditandai "Panduan". Kotak merah penunjuk dibuat sementara lewat CSS di skrip (`tests/guide/lib.ts`), tanpa edit gambar manual. Gambar dimampatkan (PNG palet via sharp). Contoh email pengingat diambil dengan menjalankan worker `--once` terhadap Mailpit lokal (SMTP dipaksa `127.0.0.1:1025`; nilai SMTP produksi di `.env` tidak dipakai, tidak ada email keluar).
+- PDF: `npm run build:guide` (`scripts/build-guide.ts`: marked -> HTML -> Chromium/Playwright -> PDF A4; sampul, daftar isi dengan nomor halaman dua putaran memakai pdfjs, nomor halaman di kaki, gagal bila ada gambar rujukan hilang atau gambar yatim). Dependensi dev baru: `marked`.
+- Tautan panduan di ketiga README (kalimat di bagian "Tentang" + baris tabel dokumen; struktur judul tetap, `readme-trilingual.test.ts` lulus). `CLAUDE.md`: satu butir "Buku panduan". `.gitignore`: berkas sementara build PDF.
+- `tests/unit/guide.test.ts` (5 tes): gambar ada dan tidak yatim, judul bernomor berurutan, 4 skenario bergambar, PDF ada/valid/<20 MB, tanpa IP/email pribadi/secret.
+
+**Ukuran** (kriteria selesai)
+- PDF: **83 halaman**, **5,4 MB**. Gambar: **83 berkas PNG unik** (121 penempatan di teks; beberapa dipakai ulang di skenario), `docs/panduan/img` 2,5 MB, `docs/panduan` total 8,0 MB.
+
+**Verifikasi**
+- `npm run guide:shots` (satu perintah, dari database yang di-reseed) → 13 tes lulus, dua kali berturut-turut dari reseed baru; `npm run build:guide` → 83 halaman; `npm run typecheck` → lulus; `npm run test:unit` → lulus (+5 tes baru); `npm run test:i18n` → lulus.
+- Semua 83 gambar diperiksa (lembar kontak, yang baru ditambahkan dilihat satuan): data dummy saja (akun `*@hashi.test`, nama fiktif), tanpa IP/Tailscale/email pribadi. Teks panduan dan README dicek dengan tes (`@hashi.test` satu-satunya domain email).
+- `test:rls`, `build` aplikasi (selain yang dijalankan `guide:shots`), dan e2e tidak dijalankan terpisah: kode aplikasi tidak berubah; CI yang menjalankannya.
+
+**Temuan janggal saat memotret (tidak diperbaiki di PR ini)**
+1. Tab "Catatan kegiatan" terpotong di lebar 1280 px ("Kasus (Kronologi kasus, Jikeir…"): tab terakhir ("Tindak lanjut" dan seterusnya) hanya terlihat dengan gulir mendatar yang tidak tampak jelas. Usulan: bungkus ke dua baris atau beri bayangan tepi.
+2. Kolom tanggal mengikuti bahasa peramban (bulan/tanggal/tahun di Chromium tanpa locale sistem Indonesia); bukan bug aplikasi, hanya dicatat di panduan.
+3. Kaki halaman memuat "Hashi · unknown" pada build standalone lokal (commit hanya diisi `deploy.sh`/CI): wajar, tetapi tampil di gambar.
+4. Jebakan lingkungan: proses `serve-standalone` sisa (dari tes yang dihentikan paksa) menahan koneksi "idle in transaction" ke db-dev sehingga `db:seed -- --reset` menggantung ±5 menit di TRUNCATE. Sudah dicatat di `CLAUDE.md`; saya mengakhiri koneksi dan proses sisa itu (milik sesi ini, hanya database dev).
+5. Daftar "Kandidat cocok" memuat kandidat yang sudah ditempatkan (tanpa tombol Ajukan, tertulis "Sudah ditempatkan"): sesuai desain, tetapi pada volume pilot daftar teratas didominasi mereka; bisa dipertimbangkan filter "belum ditempatkan".
+
+**Kendala / catatan**
+- Skenario berakhir dengan siswa BERANGKAT (tidak bisa dihapus oleh desain), jadi `guide:shots` wajib dimulai dari database yang baru di-reseed; spec menolak jalan bila siswa contoh sudah ada.
+- Email pengingat di demo tidak terkirim ke akun `@hashi.test` (pengaman T-025); panduan menyebutnya dan memakai contoh dari Mailpit lokal.
+- Panduan menyebut tampilan awal bahasa Jepang hanya untuk `tsk.admin`; akun lain bisa berbeda.
+
+**Usulan berikutnya**
+- Setelah demo ke TSK: tambahkan panduan versi Jepang bila staf TSK memintanya (teks sumber dan gambar sudah ada; gambar akan perlu dipotret ulang dengan bahasa Jepang).
+
 ## 2026-10-08 · T-027 · README tiga bahasa (Indonesia, Inggris, Jepang)
 
 **PR:** #30 (branch `eng/T-027-readme-3-bahasa`)

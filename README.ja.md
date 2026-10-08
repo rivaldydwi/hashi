@@ -15,6 +15,8 @@
 2種類の組織が一緒に使います。**LPK**（訓練校。LPK管理者と先生〔sensei〕）が学生のプロフィールを整え、**TSK**（支援機関。TSK管理者とTSKスタッフ）が候補者を選考し、
 配属先（クライアント）へ紹介し、渡航後は就労者を支援します。各組織が見られるのは、自組織のデータと、明示的に共有されたデータだけです。
 
+**実際に試してみたい方へ**：[スクリーンショット付きの利用ガイド](docs/panduan/README.md)（[PDF](docs/panduan/panduan-hashi.pdf)、インドネシア語）をご覧ください。LPKとTSKそれぞれの機能の使い方と、手順つきの4つの事例を載せています。
+
 ### 技術構成
 
 | 項目 | 技術 |
@@ -225,6 +227,7 @@ docs/                    タスク一覧、報告、機能ドキュメント、�
 | ファイル | 内容 |
 | --- | --- |
 | [docs/TASKS.md](docs/TASKS.md) · [docs/STATUS.md](docs/STATUS.md) · [docs/HISTORY.md](docs/HISTORY.md) | タスク一覧（PM）、エンジニアの報告、経緯と技術的な決定 |
+| [docs/panduan/README.md](docs/panduan/README.md) · [docs/panduan/panduan-hashi.pdf](docs/panduan/panduan-hashi.pdf) | LPK・TSKスタッフ向けの利用ガイド（インドネシア語、スクリーンショット付き、4つの事例）。スクリーンショットは `npm run guide:shots`、PDFは `npm run build:guide` で再生成します |
 | [docs/glossary.md](docs/glossary.md) | 日本語・インドネシア語・英語の用語集 |
 | [docs/catatan-kegiatan.md](docs/catatan-kegiatan.md) | TSKの活動記録（業務記録、面談、定期面談、様式5-5） |
 | [docs/lembar-klien.md](docs/lembar-klien.md) | クライアント資料のPDF（DRAFT形式） |

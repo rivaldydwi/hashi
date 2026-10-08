@@ -20,3 +20,5 @@ hashi-backups/
 hashi-restore-test/
 # izin Claude Code per mesin (tidak boleh ter-commit)
 .claude/settings.local.json
+# berkas sementara pembuat PDF buku panduan (dihapus otomatis)
+docs/panduan/.guide-build.html
