@@ -74,6 +74,21 @@ Keputusan Ipal (8 Okt): pengajuan perpanjangan lewat loket masih mungkin ("just 
 
 ---
 
+### T-027 · README tiga bahasa (Indonesia, Inggris, Jepang) · `SIAP` (PALING AKHIR, setelah semua tugas di atas)
+
+Permintaan Ipal (8 Okt): bila fitur sudah jadi, README tersedia dalam bahasa Indonesia, Inggris, dan Jepang.
+- `README.md` (Indonesia, utama) + `README.en.md` + `README.ja.md`, isi SETARA; baris tautan bahasa di atas tiap berkas (`Bahasa Indonesia | English | 日本語`).
+- Isi: apa itu Hashi (LPK ↔ TSK), fitur utama per peran (LPK_ADMIN, sensei, TSK_ADMIN, TSK_STAFF), tangkapan layar (pakai yang di `docs/screenshots/`, data dummy saja), cara menjalankan (dev, produksi, demo),
+  keamanan & data pribadi (RLS, enkripsi kartu, audit, kebijakan terjemahan peramban), cadangan, dan daftar dokumen di `docs/`. Bagian teknis yang panjang (perintah, env) boleh tetap satu versi + ringkas di versi lain, tapi struktur judul sama.
+- Istilah Jepang mengikuti `docs/glossary.md` (TSK = 登録支援機関, 在留カード, 面談, 入管); versi Jepang memakai bahasa sopan (です・ます). Tanpa secret, alamat IP, email pribadi, atau data nyata.
+- Tes kecil: pemeriksa (unit atau skrip) bahwa ketiga berkas punya jumlah/urutan judul `##` yang sama.
+
+**Kriteria selesai**
+- [ ] Tiga berkas, judul setara (dites), tautan bahasa berfungsi, tidak ada secret/IP/email pribadi (`git grep` di PR).
+- [ ] CI hijau. Tanpa deploy.
+
+---
+
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
