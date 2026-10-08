@@ -12,30 +12,7 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 ## Antrean
 
-### T-014 · Langkah 8 siap pilot: 200 siswa dummy + cek kecepatan · `SIAP`
-
-Tujuan: membuktikan aplikasi tetap cepat dan benar dengan volume pilot, sebelum data nyata. **Hanya `db-dev`/`_test` dan (dengan izin Ipal) demo; produksi tidak disentuh.**
-
-Kerjakan:
-- `npm run seed:pilot` (skrip baru di `scripts/`, hanya impor `src/db/`; ADDITIVE, deterministik, ditolak `db-guard` di luar `_dev`/`_test`/`_demo`): +200 kandidat lengkap
-  (sebaran status LPK, keputusan TSK, penilaian bulanan beberapa bulan, dokumen dummy kecil), sebagian berangkat jadi pekerja aktif dengan catatan kegiatan + wawancara berkala,
-  dan **satu staf TSK dengan ≥ 45 pekerja** supaya peringatan beban T-010 terlihat. Pekerja aktif pilot juga punya **sebaran semua tahap 在留カード** (none, prepare, can_apply, H-30/14/7, lewat, 結果待ち, 追加資料, 特例期間, special_overdue, 不許可, tanpa data; keputusan PM T-019), dan waktu `loadCardRows`/`/records/cards` ikut diukur. Jalankan dua kali = tidak menggandakan (idempoten).
-- `verify:seed` diperluas (mode pilot) atau pemeriksaan sendiri: jumlah, kelengkapan, dan angka KPI = daftar tetap berlaku pada volume ini.
-- Ukur waktu server (bukan perasaan) untuk: `/candidates` (tanpa dan dengan filter penilaian), detail kandidat, dashboard LPK_ADMIN dan TSK_ADMIN, `/records/interviews`, `/records/responsible`,
-  `/activity`. Catat median + terburuk dari ≥ 5 kali per halaman di STATUS. Batas: **≤ 1 detik** di OptiPlex untuk tiap halaman; yang lebih lambat diperbaiki (indeks, N+1, query berkorelasi).
-  Sertakan `EXPLAIN ANALYZE` untuk query yang diperbaiki.
-- `docs/pilot-checklist.md`: daftar periksa sebelum data nyata (cadangan luar-server berjalan + uji restore, `SHOW_DEMO_ACCOUNTS=false`, kata sandi akun bukan bawaan, akun demo dimatikan,
-  data dummy tidak ada di produksi, 行政書士 untuk syarat gender/My Number, pengecekan form 5-5 oleh staf TSK, dst.), setiap butir dengan cara memeriksanya. Hanya dokumen; jangan ubah `.env`.
-
-**Kriteria selesai**
-- [ ] `seed:pilot` idempoten + ditolak di database produksi (tes/bukti di PR); CI menjalankannya di `hashi_test` lalu `verify:seed`.
-- [ ] Tabel waktu per halaman di STATUS (sebelum/sesudah bila ada perbaikan), semua ≤ 1 detik.
-- [ ] Tangkapan layar `/records/responsible` dengan staf ≥ 45 (kuning) dan daftar kandidat 200+.
-- [ ] `docs/pilot-checklist.md` ada; typecheck, build, test:rls, e2e, CI hijau.
-
----
-
-### T-025 · Aktifkan email pengingat di produksi (Brevo) · `SIAP` (setelah T-014)
+### T-025 · Aktifkan email pengingat di produksi (Brevo) · `SIAP`
 
 Keputusan Ipal (8 Okt): layanan SMTP = **Brevo** (smtp-relay.brevo.com:587). Ipal juga sudah menyalin `CARD_DATA_KEY` ke tempat aman (BUTUH IPAL T-020 selesai; data kartu nyata boleh setelah cadangan luar-server berjalan).
 
@@ -113,6 +90,7 @@ Keputusan Ipal (8 Okt): pengajuan perpanjangan lewat loket masih mungkin ("just 
 
 ## Selesai
 
+- **T-014** Langkah 8 siap pilot (PR #23): `seed:pilot` (+200 kandidat dummy, 73 pekerja aktif, staf 48 pekerja = kuning, semua tahap 在留カード; idempoten, ditolak di produksi), `verify:pilot` (KPI = daftar), ukur waktu `perf:pages`: semua halaman ≤ 250 ms (batas 1000), `docs/pilot-checklist.md`. Tanpa migrasi, produksi tidak disentuh.
 - **T-021** Data perpanjangan 在留カード online siap salin (PR #22): halaman `/records/workers/<id>/renewal` butir 1-14 + Salin (和暦, romaji, butir kosong + tautan, peringatan paspor), nomor kartu hanya lewat "Tampilkan" ber-audit, tabel `worker_jp_profiles` (住居地 + telepon, milik TSK, migrasi 0029), audit `renewal_view`. PDF 手数料納付書 TIDAK dibuat: sejak 2026-10-01 biaya pengajuan online dibayar konbini/bank, bukan 収入印紙 (temuan engineer).
 - **T-022** Email pengingat 在留カード (PR #21): `src/db/card-reminders.ts` (tahap pemicu + 追加資料, sekali per kartu×tahap×penerima lewat `card_reminder_log` hanya jalur sistem, satu ringkasan per penerima per hari, id/ja sesuai locale, tanpa nomor kartu), service `worker` di compose `hashi` (08:00 Tokyo), mode kering tanpa `SMTP_URL`, Mailpit di dev/CI, audit `residence_card.reminder_sent`. Produksi KERING sampai Ipal memilih SMTP.
 - **T-020** 在留カード nomor + foto terenkripsi (PR #20): AES-256-GCM dengan AAD per kartu/foto + `key_id` (rotasi lewat `CARD_DATA_KEYS_OLD`), tabel terpisah `residence_card_secrets`/`residence_card_photos` (migrasi 0027, RLS baca+tulis hanya TSK_ADMIN + 担当), nomor tersamar + "Tampilkan" yang diaudit sebelum nilai kembali, foto terenkripsi di disk lewat route ber-audit, kartu batal = nomor/foto dibuang; aplikasi menolak start tanpa kunci; `ensure-card-key.sh`; `docs/backup.md` §7.
