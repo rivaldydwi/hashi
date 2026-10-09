@@ -14,7 +14,29 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 > **Aturan CI sejak T-028:** commit/PR yang HANYA mengubah `docs/**` atau `*.md` tidak menjalankan CI. PR seperti itu boleh di-merge cukup dengan `PM: DISETUJUI`; PR yang punya CI tetap wajib hijau.
 
-_(Antrean kosong: menunggu masukan Ipal setelah mencoba buku panduan.)_
+### T-032 · Demo publik untuk teman Ipal (instance `hashi-demo` + link publik) · `SIAP`
+
+**Izin Ipal (9 Okt, di chat PM):** menyalakan instance demo `hashi-demo`, mengisinya dengan data dummy (termasuk `seed:pilot`), dan membuka **HANYA demo (port 3111)** ke internet
+lewat link publik (Tailscale Funnel; Cloudflare Tunnel hanya bila Funnel tidak bisa). Ini butir `BUTUH IPAL` yang sudah dijawab; izin TIDAK berlaku untuk produksi.
+
+Kerjakan (operasional di OptiPlex; perubahan kode hanya bila perlu, lewat PR seperti biasa):
+1. `scripts/demo-up.sh` (bila belum jalan) lalu `seed:pilot` ke database `hashi_demo` lewat jalur demo (`dc()` di `scripts/demo-lib.sh`), supaya isinya seramai gambar di buku panduan.
+   Pastikan `SHOW_DEMO_ACCOUNTS=false` dan kata sandi acak (bukan `hashi-demo-2026`), sesuai pengaman `demo-up.sh`.
+2. Link publik ke `http://127.0.0.1:3111` SAJA (mis. `tailscale funnel --bg 3111` atau setara; JANGAN pernah 3110). Bila butuh `sudo`/akses yang engineer tidak punya:
+   tulis perintah persisnya di STATUS untuk dijalankan Ipal (tanpa nama host).
+3. Isi `AUTH_URL=https://<alamat publik>` di `.env.demo` bila login gagal di balik proxy (lihat README "Demo untuk pihak luar"), lalu `demo-up.sh` lagi.
+4. Uji dari luar tailnet (mis. `curl` ke alamat publik dari jaringan lain, atau minta Ipal buka di HP tanpa Tailscale): halaman login demo terbuka lewat HTTPS, login `tsk.admin@hashi.test` berhasil,
+   dan alamat publik yang sama TIDAK membuka produksi (3110 tidak bisa dicapai dari internet).
+5. **Rahasia:** alamat publik (nama host `*.ts.net`) dan kata sandi demo TIDAK BOLEH ditulis di repo (TASKS/STATUS/PR/kode), karena repo publik. Tampilkan hanya di terminal sesi engineer
+   untuk Ipal, atau cukup tulis di STATUS "kata sandi: baris `SEED_PASSWORD` di `.env.demo`; alamat: `tailscale funnel status`".
+6. STATUS: perintah yang dijalankan (tanpa rahasia), hasil uji butir 4, cara mematikan (`tailscale funnel ... off` + `scripts/demo-down.sh`) dan cara reset data (`scripts/demo-reset.sh` + `seed:pilot`).
+
+**Kriteria selesai**
+- [ ] Demo bisa dibuka teman Ipal lewat link publik HTTPS, login akun demo berhasil, data dummy ramai.
+- [ ] Produksi (3110) tetap tidak terjangkau dari internet (diuji); produksi tidak disentuh.
+- [ ] Tidak ada alamat publik/kata sandi di repo (`git grep` bersih). Bila ada PR (perubahan kode), CI hijau.
+
+---
 
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
