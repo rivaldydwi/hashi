@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-14 · T-032 · Demo publik untuk teman Ipal (hashi-demo + link publik)
 
-**PR:** (nomor menyusul) (branch `eng/T-032-demo-publik`)
+**PR:** #33 (branch `eng/T-032-demo-publik`)
 **Status:** siap direview. Operasional saja: tidak ada perubahan kode, tanpa migrasi produksi, produksi tidak disentuh. PR ini hanya memuat entri STATUS (tanpa CI karena hanya dokumen).
 
 **Izin:** izin Ipal tercatat di TASKS (menyalakan demo + membuka HANYA port 3111) dan Ipal mengonfirmasinya langsung di sesi engineer sebelum saya mulai.
