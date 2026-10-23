@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-23 · T-036 · Rapikan kecil: panah, emoji, teks login, panel filter
 
-**PR:** (diisi setelah PR dibuka) (branch `eng/T-036-rapikan-kecil`)
+**PR:** #38 (branch `eng/T-036-rapikan-kecil`)
 **Status:** siap direview. Tanpa migrasi. Deploy produksi setelah merge (diminta tugas).
 
 **Hasil PR sebelumnya:** T-035 di-merge `c18bb7d` (PR #37), **deploy produksi**: commit berjalan `9048ec8`, health `{"status":"ok","commit":"9048ec8"}` (log `deploy-20261023-171349.log`).
