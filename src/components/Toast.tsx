@@ -26,7 +26,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div aria-live="polite" aria-atomic="false" className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-2 px-4 min-[900px]:items-end min-[900px]:pr-6" data-testid="toast-region">
         {items.map((x) => (
-          <div key={x.id} data-testid="toast" className={`pointer-events-auto max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-sm ${x.tone === "error" ? "border-danger-line-strong bg-danger-bg text-danger-text" : "border-line bg-card text-ink"}`}>
+          <div key={x.id} data-testid="toast" className={`pointer-events-auto max-w-sm rounded-ctl border px-4 py-3 text-sm font-medium shadow-sm ${x.tone === "error" ? "border-danger-line-strong bg-danger-bg text-danger-text" : "border-line bg-card text-ink"}`}>
             {x.text}
           </div>
         ))}

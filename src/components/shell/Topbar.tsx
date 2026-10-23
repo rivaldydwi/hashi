@@ -37,7 +37,7 @@ export function Topbar({ titles, dateLabel, showSearch, action, customizable }: 
           <form action="/candidates" method="get" role="search" className="relative order-last w-full min-[700px]:order-none min-[700px]:w-72" data-testid="global-search">
             <label htmlFor="global-q" className="sr-only">{t("searchLabel")}</label>
             <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-2" />
-            <input id="global-q" name="q" type="search" maxLength={100} placeholder={t("searchPlaceholder")} className="block h-11 w-full rounded-xl border border-line-btn bg-card pl-9 pr-3 text-[14px] outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft" />
+            <input id="global-q" name="q" type="search" maxLength={100} placeholder={t("searchPlaceholder")} className="block h-11 w-full rounded-ctl border border-line-btn bg-card pl-9 pr-3 text-[14px] outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft" />
           </form>
         )}
         {customizable && pathname === "/" && (
@@ -45,13 +45,13 @@ export function Topbar({ titles, dateLabel, showSearch, action, customizable }: 
             href={editing ? "/" : "/?atur=1"}
             data-testid="customize-toggle"
             aria-pressed={editing}
-            className={`inline-flex h-11 items-center rounded-xl border px-4 text-[14px] font-semibold ${editing ? "border-accent bg-accent text-white hover:bg-accent-dark" : "border-line-btn bg-card text-ink-menu hover:bg-hover"}`}
+            className={`inline-flex h-11 items-center rounded-ctl border px-4 text-[14px] font-semibold ${editing ? "border-accent bg-accent text-white hover:bg-accent-dark" : "border-line-btn bg-card text-ink-menu hover:bg-hover"}`}
           >
             {editing ? t("done") : t("customize")}
           </Link>
         )}
         {action && (
-          <Link href={action.href} data-testid="primary-action" className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-dark">
+          <Link href={action.href} data-testid="primary-action" className="inline-flex h-11 items-center gap-1.5 rounded-ctl bg-accent px-4 text-[14px] font-semibold text-white hover:bg-accent-dark">
             <Icon name="plus" className="h-4 w-4" />
             {action.label}
           </Link>

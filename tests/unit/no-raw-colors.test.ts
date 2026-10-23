@@ -71,7 +71,7 @@ function contrast(a: string, b: string): number {
 const PAIRS: [string, string][] = [
   ["ink", "page"], ["ink", "card"], ["ink-2", "page"], ["ink-2", "card"], ["ink-menu", "card"],
   ["ink", "muted"], ["ink-menu", "muted-strong"], ["ink-2", "muted"],
-  ["white", "accent"], ["white", "accent-dark"], ["accent-text", "accent-soft"],
+  ["white", "accent"], ["white", "accent-dark"], ["accent-text", "accent-soft"], ["accent-text", "page"], ["accent-text", "card"], ["role-text", "role-bg"],
   ["danger-text", "danger-bg"], ["danger-text", "card"], ["white", "danger-solid"], ["white", "danger-solid-hover"],
   ["warn-text", "warn-bg"], ["warn-text", "warn-bg-strong"], ["warn-text", "card"],
   ["ok-text", "ok-bg"], ["info-text", "info-bg"], ["attn-text", "attn-bg"],
@@ -87,5 +87,14 @@ test("kontras teks token >= 4,5:1 (WCAG AA)", () => {
     const c = contrast(t[fg], t[bg]);
     return c >= 4.5 ? [] : [`${fg} di atas ${bg}: ${c.toFixed(2)}:1`];
   });
+  assert.deepEqual(bad, []);
+});
+
+// T-034 (keputusan Ipal 2026-10-23): palet aplikasi dari warna merek; krem + terakota lama tidak boleh kembali ke UI.
+test("palet lama (krem #faf8f5, terakota #c2410c dan turunannya) tidak dipakai lagi di src/", () => {
+  const old = /#(faf8f5|c2410c|9a3412|7c2d12|fdebdd|fff1e3)\b/i;
+  const bad = files(SRC).concat(join(SRC, "app", "globals.css"))
+    .filter((f) => !relative(ROOT, f).startsWith("src/lib/pdf/") && old.test(readFileSync(f, "utf8")))
+    .map((f) => relative(ROOT, f));
   assert.deepEqual(bad, []);
 });

@@ -28,7 +28,7 @@ function Kpi({ id, href, label, value, hint, calm, attention }: { id: string; hr
   const look = kpiLook(def?.tone ?? "neutral", value);
   const st = LOOK_STYLE[look];
   return (
-    <Link href={href} data-testid={id} data-look={look} title={hint ? `${label}: ${hint}` : label} className={`flex h-full min-h-[5.5rem] flex-col justify-between gap-1 rounded-2xl border px-3 py-2.5 transition ${st.box}`}>
+    <Link href={href} data-testid={id} data-look={look} title={hint ? `${label}: ${hint}` : label} className={`flex h-full min-h-[5.5rem] flex-col justify-between gap-1 rounded-card border px-3 py-2.5 transition ${st.box}`}>
       <span className={`flex items-start gap-1.5 text-[13px] font-medium leading-4 ${st.label}`}>
         <Icon name={look === "calm" ? "check" : (def?.icon ?? "dashboard")} className={`mt-px h-4 w-4 shrink-0 ${st.icon}`} />
         <span className="line-clamp-2">{label}</span>
@@ -62,7 +62,7 @@ const fmtAvg = (v: number | null) => (v == null ? "—" : v.toFixed(1));
 function TrendChart({ rows, labels }: { rows: NonNullable<DashboardData["trend"]>; labels: Record<"japanese" | "attitude" | "fitness" | "motivation", string> }) {
   const W = 320, H = 140, pad = 24;
   const keys = ["japanese", "attitude", "fitness", "motivation"] as const;
-  const colors = ["var(--color-accent)", "var(--color-blue)", "var(--color-data-1)", "var(--color-accent-dark)"];
+  const colors = ["var(--color-accent)", "var(--color-attn-icon)", "var(--color-data-1)", "var(--color-blue)"];
   const dash = ["", "6 3", "2 3", "10 3 2 3"];
   const x = (i: number) => pad + (rows.length <= 1 ? (W - 2 * pad) / 2 : (i * (W - 2 * pad)) / (rows.length - 1));
   const y = (v: number) => H - pad - ((v - 1) / 4) * (H - 2 * pad);
@@ -111,7 +111,7 @@ function Bar({ label, n, max, href }: { label: React.ReactNode; n: number; max: 
       <span className="w-8 text-right font-medium tabular-nums">{n}</span>
     </div>
   );
-  return href ? <Link href={href} className="block rounded-xl hover:bg-hover">{inner}</Link> : inner;
+  return href ? <Link href={href} className="block rounded-ctl hover:bg-hover">{inner}</Link> : inner;
 }
 
 export async function Widget({ id, data, timezone }: { id: string; data: DashboardData; timezone?: string }) {

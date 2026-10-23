@@ -19,7 +19,7 @@ export function WorkerPicker({ workers, selected, name = "subjects", id = "worke
     <div className="space-y-2" data-testid={`picker-${id}`}>
       <label htmlFor={`${id}-q`} className="sr-only">{t("pickers.searchWorker")}</label>
       <input id={`${id}-q`} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("pickers.searchWorker")} className={inputClass} />
-      <ul className="max-h-52 divide-y divide-line overflow-y-auto rounded-xl border border-line-btn bg-card">
+      <ul className="max-h-52 divide-y divide-line overflow-y-auto rounded-ctl border border-line-btn bg-card">
         {shown.length === 0 && <li className="px-3 py-3 text-sm text-ink-2">{t("pickers.noWorker")}</li>}
         {shown.map((w) => (
           <li key={w.id}>
@@ -48,7 +48,7 @@ export function StaffPicker({ staff, selected, name, legend, roleLabels }: { sta
       <legend className="mb-1 text-[13px] font-medium text-ink-menu">{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {staff.map((s) => (
-          <label key={s.id} className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm ${chosen.includes(s.id) ? "border-accent bg-accent-soft text-accent-text" : "border-line-btn bg-card text-ink-menu"}`}>
+          <label key={s.id} className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-ctl border px-3 text-sm ${chosen.includes(s.id) ? "border-accent bg-accent-soft text-accent-text" : "border-line-btn bg-card text-ink-menu"}`}>
             <input type="checkbox" name={name} value={s.id} checked={chosen.includes(s.id)} onChange={(e) => setChosen((c) => (e.target.checked ? [...c, s.id] : c.filter((x) => x !== s.id)))} className="h-4 w-4" data-testid={`${name}-${s.id}`} />
             {s.name} <span className="text-xs text-ink-2">({roleLabels[s.role] ?? s.role})</span>
           </label>

@@ -51,7 +51,7 @@ export default async function DailyRecordsPage({ searchParams }: { searchParams:
       <DailyReportCard state={data.report} date={today} tz={tz} staff={data.staff} meId={me.id} roleLabels={roleLabels} />
 
       {f.unread && (
-        <p className="mb-3 rounded-xl border border-line bg-card px-4 py-3 text-sm" data-testid="unread-summary" role="status">
+        <p className="mb-3 rounded-ctl border border-line bg-card px-4 py-3 text-sm" data-testid="unread-summary" role="status">
           {t("daily.unreadSummary", { records: data.list.total, reports: data.unreadReportRows.length })}
           {data.unreadReportRows.length > 0 && <> <Link href="/records/reports?view=unread" className="font-semibold text-accent-text underline">{t("report.openUnread")}</Link></>}
         </p>

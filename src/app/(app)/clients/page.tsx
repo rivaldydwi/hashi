@@ -32,7 +32,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Sear
         action={<Link href="/clients/new" className={btnPrimary} data-testid="company-add">+ {t("addCompany")}</Link>}
       />
       {sp.deleted && (
-        <p role="status" className="mb-4 rounded-lg bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="client-deleted">{t("deleted")}</p>
+        <p role="status" className="mb-4 rounded-ctl bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="client-deleted">{t("deleted")}</p>
       )}
       <form method="get" action="/clients" className={`${cardClass} mb-4 flex flex-wrap items-end gap-3 p-4`} data-testid="client-search" key={`${q}|${includeInactive}`}>
         <div className="min-w-56 flex-1 space-y-1.5">

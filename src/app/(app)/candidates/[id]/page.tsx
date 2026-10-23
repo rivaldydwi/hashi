@@ -82,7 +82,7 @@ export default async function CandidateDetailPage({
       />
 
       {sp.added && (
-        <p role="status" className="mb-4 rounded-lg bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="candidate-added">
+        <p role="status" className="mb-4 rounded-ctl bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="candidate-added">
           {t("added")}
         </p>
       )}
@@ -122,7 +122,7 @@ export default async function CandidateDetailPage({
         )}
 
         {tsk && !access.canEdit && access.readOnlyReason && (
-          <p role="note" className="rounded-lg bg-warn-bg px-4 py-3 text-sm text-warn-text" data-testid="readonly-note">
+          <p role="note" className="rounded-ctl bg-warn-bg px-4 py-3 text-sm text-warn-text" data-testid="readonly-note">
             {t(`readOnly.${access.readOnlyReason}`)}
           </p>
         )}

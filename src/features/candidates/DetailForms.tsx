@@ -200,7 +200,7 @@ export function SharingForm({ candidateId, shared }: { candidateId: string; shar
           <SubmitButton>{t("enable")}</SubmitButton>
         </form>
       ) : (
-        <details className="rounded-lg border border-danger-line bg-danger-bg/40 p-3">
+        <details className="rounded-ctl border border-danger-line bg-danger-bg/40 p-3">
           <summary className="cursor-pointer text-sm font-medium text-danger-text">{t("disable")}</summary>
           <form action={action} className="space-y-2 pt-2" data-testid="sharing-disable-form">
             <input type="hidden" name="candidateId" value={candidateId} />

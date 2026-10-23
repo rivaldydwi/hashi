@@ -39,13 +39,12 @@ export function Sidebar({
         <BrandLogo variant="full" tone="light" height={32} />
       </div>
 
-      <div className="mb-4 rounded-xl border border-line bg-page px-3 py-2.5" data-testid="org-card">
+      <div className="mb-4 rounded-ctl border border-line bg-page px-3 py-2.5" data-testid="org-card">
         <div translate="no" className="truncate text-[13px] font-semibold" title={org.name}>{org.name}</div>
         <span className="mt-1 inline-block rounded-full bg-role-bg px-2 py-0.5 text-[11px] font-semibold text-role-text">{org.roleLabel}</span>
       </div>
 
       <nav aria-label={t("menu")} className="flex-1">
-        <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-2">{t("menu")}</p>
         <ul className="space-y-0.5">
           {items.map((it) => {
             const on = it.href === active;
@@ -55,7 +54,7 @@ export function Sidebar({
                   href={it.href}
                   aria-current={on ? "page" : undefined}
                   data-testid="nav-item"
-                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-[14px] font-medium transition ${on ? "bg-accent-soft text-accent-text" : "text-ink-menu hover:bg-hover"}`}
+                  className={`flex min-h-11 items-center gap-3 rounded-ctl px-3 text-[14px] font-medium transition ${on ? "bg-accent-soft text-accent-text" : "text-ink-menu hover:bg-hover"}`}
                 >
                   <Icon name={it.icon} />
                   <span className="flex-1">{it.label}</span>
@@ -70,11 +69,11 @@ export function Sidebar({
 
         {soon.length > 0 && (
           <div className="mt-5" data-testid="nav-soon">
-            <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-2">{t("soon")}</p>
+            <p className="px-2 pb-1.5 text-xs font-semibold text-ink-2">{t("soon")}</p>
             <ul className="space-y-0.5">
               {soon.map((s) => (
                 <li key={s.key}>
-                  <span aria-disabled="true" className="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-xl px-3 text-[14px] font-medium text-ink-2">
+                  <span aria-disabled="true" className="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-ctl px-3 text-[14px] font-medium text-ink-2">
                     <Icon name={s.icon} />
                     <span className="flex-1">{s.label}</span>
                   </span>
@@ -88,7 +87,7 @@ export function Sidebar({
       <div className="mt-4 space-y-3 border-t border-line pt-3">
         <LanguageSwitcher />
         <details className="group relative" data-testid="account-menu">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 rounded-xl px-2 hover:bg-hover [&::-webkit-details-marker]:hidden" aria-label={t("accountMenu")}>
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 rounded-ctl px-2 hover:bg-hover [&::-webkit-details-marker]:hidden" aria-label={t("accountMenu")}>
             <span aria-hidden="true" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[13px] font-bold text-accent-text">{initials}</span>
             <span className="min-w-0 flex-1">
               <span translate="no" className="block truncate text-[13px] font-semibold">{user.name}</span>
@@ -96,10 +95,10 @@ export function Sidebar({
             </span>
             <Icon name="chevron" className="h-4 w-4 text-ink-2" />
           </summary>
-          <div className="absolute inset-x-0 bottom-full mb-2 rounded-xl border border-line bg-card p-1.5 shadow-sm">
-            <Link href="/account" className="flex min-h-11 items-center rounded-lg px-3 text-[14px] font-medium text-ink-menu hover:bg-hover">{t("myAccount")}</Link>
+          <div className="absolute inset-x-0 bottom-full mb-2 rounded-ctl border border-line bg-card p-1.5 shadow-sm">
+            <Link href="/account" className="flex min-h-11 items-center rounded-ctl px-3 text-[14px] font-medium text-ink-menu hover:bg-hover">{t("myAccount")}</Link>
             <form action={logout}>
-              <button type="submit" className="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-[14px] font-medium text-ink-menu hover:bg-hover">{tc("logout")}</button>
+              <button type="submit" className="flex min-h-11 w-full items-center rounded-ctl px-3 text-left text-[14px] font-medium text-ink-menu hover:bg-hover">{tc("logout")}</button>
             </form>
           </div>
         </details>

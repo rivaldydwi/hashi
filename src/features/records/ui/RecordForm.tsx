@@ -240,7 +240,7 @@ export function RecordForm({
               <h2 className="text-[17px] font-semibold">{t("f.timelineTitle")}</h2>
               <p className="text-sm text-ink-2">{t("f.timelineHint")}</p>
               {timeline.map((r, i) => (
-                <div key={i} className="space-y-2 rounded-xl border border-line-btn p-3" data-testid="timeline-draft">
+                <div key={i} className="space-y-2 rounded-ctl border border-line-btn p-3" data-testid="timeline-draft">
                   <div className="grid gap-2 sm:grid-cols-2">
                     <input aria-label={t("f.date")} type="date" value={r.date} onChange={(e) => setTimeline((x) => x.map((y, j) => (j === i ? { ...y, date: e.target.value } : y)))} className={inputClass} data-testid="tl-date" />
                     <input aria-label={t("f.time")} type="time" value={r.time} onChange={(e) => setTimeline((x) => x.map((y, j) => (j === i ? { ...y, time: e.target.value } : y)))} className={inputClass} />
@@ -274,7 +274,7 @@ export function RecordForm({
         </label>
         <ul className="space-y-2">
           {photos.map((p, i) => (
-            <li key={i} className="flex flex-wrap items-center gap-2 rounded-xl border border-line-btn p-2" data-testid="photo-draft">
+            <li key={i} className="flex flex-wrap items-center gap-2 rounded-ctl border border-line-btn p-2" data-testid="photo-draft">
               <span className="min-w-0 flex-1 truncate text-sm">{p.file.name}</span>
               <input aria-label={t("f.caption")} placeholder={t("f.caption")} value={p.caption} maxLength={300} lang="ja" onChange={(e) => setPhotos((x) => x.map((y, j) => (j === i ? { ...y, caption: e.target.value } : y)))} className={`${inputClass} sm:w-64`} />
               <label className="inline-flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={p.includeInPdf} onChange={(e) => setPhotos((x) => x.map((y, j) => (j === i ? { ...y, includeInPdf: e.target.checked } : y)))} className="h-5 w-5" />{t("f.includeInPdf")}</label>
@@ -285,7 +285,7 @@ export function RecordForm({
       </section>
 
       {state.status === "error" && (
-        <p role="alert" className="rounded-xl border border-danger-line-strong bg-danger-bg px-4 py-3 text-sm text-danger-text" data-testid="form-error">{tAll(state.key)}</p>
+        <p role="alert" className="rounded-ctl border border-danger-line-strong bg-danger-bg px-4 py-3 text-sm text-danger-text" data-testid="form-error">{tAll(state.key)}</p>
       )}
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={busy} aria-busy={busy} className={btnPrimary} data-testid="save-record">

@@ -21,7 +21,7 @@ export async function JpProfileSection({ candidateId, profile, canEdit }: { cand
         <div><dt className="text-ink-2">{t("phone")}</dt><dd className="font-medium" translate="no" data-testid="jp-phone-value">{profile?.phoneJp || "—"}</dd></div>
       </dl>
       {canEdit ? (
-        <details className="rounded-xl border border-line p-3">
+        <details className="rounded-ctl border border-line p-3">
           <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold" data-testid="jp-edit-toggle">{t("edit")}</summary>
           <ActionForm action={saveJpProfile} hidden={{ candidateId }} submitLabel={t("save")} className="mt-2 space-y-3" testId="jp-form">
             <div className="space-y-1.5"><label htmlFor="jp-address" className={labelClass}>{t("address")}</label><textarea id="jp-address" name="addressJp" rows={2} maxLength={300} lang="ja" defaultValue={profile?.addressJp ?? ""} className={`${inputClass} min-h-16 py-2`} data-testid="jp-address" /></div>

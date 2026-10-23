@@ -67,7 +67,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
           ) : (
             <ul className="mb-4 space-y-3">
               {contacts.map((c) => (
-                <li key={c.id} className="rounded-xl border border-line p-3" data-testid="contact" data-active={c.active}>
+                <li key={c.id} className="rounded-ctl border border-line p-3" data-testid="contact" data-active={c.active}>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span>
                       {c.roleTitle && <span className="mr-2 rounded bg-muted px-1.5 py-0.5 text-xs">{c.roleTitle}</span>}
@@ -88,7 +88,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
               ))}
             </ul>
           )}
-          <details className="rounded-lg border border-line p-3" open={contacts.length === 0}>
+          <details className="rounded-ctl border border-line p-3" open={contacts.length === 0}>
             <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="contact-add-toggle">+ {t("addContact")}</summary>
             <div className="pt-3"><ContactForm companyId={company.id} siteId={site.id} /></div>
           </details>

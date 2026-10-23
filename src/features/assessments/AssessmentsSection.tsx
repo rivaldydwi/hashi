@@ -81,7 +81,7 @@ export async function AssessmentsSection({ candidateId, rows, me, readOnly = fal
       <p className="mt-1 text-sm text-ink-2">{readOnly ? t("tsk.readOnlyIntro") : t("intro")}</p>
 
       {!readOnly && (
-        <details className="mt-3 rounded-lg border border-line p-3" open={rows.length === 0}>
+        <details className="mt-3 rounded-ctl border border-line p-3" open={rows.length === 0}>
           <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="assessment-add-toggle">+ {t("add")}</summary>
           <AssessmentForm candidateId={candidateId} values={toValues(null, today)} maxDate={today} />
         </details>
@@ -94,7 +94,7 @@ export async function AssessmentsSection({ candidateId, rows, me, readOnly = fal
           {/* Layar lebar: tabel */}
           <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm" data-testid="assessment-table">
-              <thead className="border-y border-line bg-page text-xs uppercase tracking-wide text-ink-2">
+              <thead className="border-y border-line bg-page text-xs font-semibold text-ink-2">
                 <tr>
                   <th className="px-3 py-2 font-medium">{t("colMonth")}</th>
                   {SCORE_NAMES.map((n) => (
@@ -135,7 +135,7 @@ export async function AssessmentsSection({ candidateId, rows, me, readOnly = fal
           {/* Ponsel: kartu */}
           <ul className="mt-4 space-y-3 md:hidden" data-testid="assessment-cards">
             {items.map(({ r, avg, trend }) => (
-              <li key={r.id} className="rounded-xl border border-line p-3" data-testid="assessment-card">
+              <li key={r.id} className="rounded-ctl border border-line p-3" data-testid="assessment-card">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{month(r.period)}</p>

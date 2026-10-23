@@ -6,10 +6,10 @@ export function PageSkeleton() {
     <div className="space-y-6" aria-busy="true" data-testid="page-skeleton">
       <span className="sr-only">…</span>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl border border-line bg-card" />)}
+        {[0, 1, 2, 3].map((i) => <div key={i} className="h-28 animate-pulse rounded-card border border-line bg-card" />)}
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {[0, 1].map((i) => <div key={i} className="h-56 animate-pulse rounded-2xl border border-line bg-card" />)}
+        {[0, 1].map((i) => <div key={i} className="h-56 animate-pulse rounded-card border border-line bg-card" />)}
       </div>
     </div>
   );

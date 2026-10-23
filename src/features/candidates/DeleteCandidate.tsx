@@ -45,7 +45,7 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
         {t("open")}
       </button>
 
-      <dialog ref={dialog} data-testid="delete-dialog" aria-labelledby="delete-title" className="m-auto w-full max-w-lg rounded-2xl p-0 shadow-xl backdrop:bg-ink/50">
+      <dialog ref={dialog} data-testid="delete-dialog" aria-labelledby="delete-title" className="m-auto w-full max-w-lg rounded-card p-0 shadow-xl backdrop:bg-ink/50">
         <form action={action} className="space-y-4 p-6">
           <input type="hidden" name="candidateId" value={candidateId} />
           <h3 id="delete-title" className="text-lg font-semibold text-danger-text">{t("title")}</h3>
@@ -53,7 +53,7 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
             <span className="font-medium" data-testid="delete-name">{name}</span>
             <span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-ink-menu" data-testid="delete-code">{code}</span>
           </p>
-          <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm font-medium text-danger-text">{t("irreversible")}</p>
+          <p className="rounded-ctl bg-danger-bg px-3 py-2 text-sm font-medium text-danger-text">{t("irreversible")}</p>
 
           <div>
             <p className="text-sm font-medium">{t("willBeDeleted")}</p>
@@ -69,12 +69,12 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
           </div>
 
           {shared && tskData > 0 && (
-            <p className="rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-text" data-testid="delete-tsk-warning">{t("tskWarning")}</p>
+            <p className="rounded-ctl bg-warn-bg px-3 py-2 text-sm text-warn-text" data-testid="delete-tsk-warning">{t("tskWarning")}</p>
           )}
           <p className="text-sm text-ink-menu">{t("suggestion")}</p>
 
           {summary.blocked ? (
-            <p role="alert" className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-text" data-testid="delete-blocked">{t("errors.blocked")}</p>
+            <p role="alert" className="rounded-ctl bg-danger-bg px-3 py-2 text-sm text-danger-text" data-testid="delete-blocked">{t("errors.blocked")}</p>
           ) : (
             <div className="space-y-1.5">
               <label htmlFor="delete-confirm" className={labelClass}>{t("confirmLabel", { code })}</label>
@@ -96,7 +96,7 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
               type="submit"
               disabled={!matches || pending || summary.blocked}
               data-testid="delete-submit"
-              className="inline-flex items-center rounded-lg bg-danger-solid px-4 py-2 text-sm font-medium text-white hover:bg-danger-solid-hover disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center rounded-ctl bg-danger-solid px-4 py-2 text-sm font-medium text-white hover:bg-danger-solid-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {pending ? t("deleting") : t("submit")}
             </button>

@@ -25,7 +25,7 @@ export default async function NewJobOrderPage({ searchParams }: { searchParams: 
       <PageHeader title={t("newTitle")} intro={site ? `${site.companyName} / ${site.name}` : t("chooseSiteIntro")} backHref={site ? "/job-orders/new" : "/job-orders"} backLabel={site ? t("chooseSite") : t("title")} />
       {site ? (
         site.fieldIds.length === 0 ? (
-          <p className="rounded-lg bg-warn-bg px-4 py-3 text-sm text-warn-text" data-testid="site-no-fields">{t("siteHasNoFields")}</p>
+          <p className="rounded-ctl bg-warn-bg px-4 py-3 text-sm text-warn-text" data-testid="site-no-fields">{t("siteHasNoFields")}</p>
         ) : (
           <div className={`${cardClass} max-w-3xl p-5`}>
             <JobOrderForm siteId={site.id} siteFieldIds={site.fieldIds} />

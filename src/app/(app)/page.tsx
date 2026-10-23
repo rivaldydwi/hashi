@@ -72,7 +72,7 @@ async function DashboardBody({ user, editing }: { user: CurrentUser; editing: bo
           </div>
         ))}
       </div>
-      {kpis.length + widgets.length === 0 && <p className="rounded-2xl border border-line bg-card p-6 text-sm text-ink-2" data-testid="dashboard-empty">{t("allHidden")}</p>}
+      {kpis.length + widgets.length === 0 && <p className="rounded-card border border-line bg-card p-6 text-sm text-ink-2" data-testid="dashboard-empty">{t("allHidden")}</p>}
     </div>
   );
 }

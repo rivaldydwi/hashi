@@ -68,7 +68,7 @@ export async function StatusLegend({ kind }: { kind: StatusKind }) {
   const t = await getTranslations("statusHelp");
   const codes: StatusCode[] = kind === "stage" ? ["STUDYING", "READY", "WITHDRAWN"] : ["NONE", "SHORTLISTED", "PASSED_TSK_INTERVIEW", "SUBMITTED_TO_CLIENT", "PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED", "REJECTED"];
   return (
-    <details className="mb-4 rounded-2xl border border-line bg-card" data-testid={`legend-${kind}`}>
+    <details className="mb-4 rounded-card border border-line bg-card" data-testid={`legend-${kind}`}>
       <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-medium text-ink-menu">{t(kind === "stage" ? "legendStage" : "legendDecision")}</summary>
       <ul className="divide-y divide-line border-t border-line">
         {codes.map((c) => (

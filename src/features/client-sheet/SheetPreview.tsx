@@ -5,7 +5,7 @@ export function SheetPreview({ sheet }: { sheet: Sheet }) {
   const th = "w-40 bg-page px-2 py-1.5 text-left align-top text-xs font-semibold";
   const td = "whitespace-pre-wrap break-words px-2 py-1.5 align-top text-sm";
   return (
-    <article lang="ja" className="space-y-3 rounded-lg border border-line bg-white p-4 text-ink" data-testid="sheet-preview" data-mode={sheet.mode} data-lang={sheet.lang}>
+    <article lang="ja" className="space-y-3 rounded-ctl border border-line bg-white p-4 text-ink" data-testid="sheet-preview" data-mode={sheet.mode} data-lang={sheet.lang}>
       <p className="text-xs text-ink-2" data-testid="sheet-badge">{sheet.badge}</p>
       <h3 className="text-base font-semibold" data-testid="sheet-title">{sheet.title}</h3>
       {sheet.subtitle && <p className="text-xs text-ink-2">{sheet.subtitle}</p>}

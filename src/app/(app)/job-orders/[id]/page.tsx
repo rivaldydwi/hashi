@@ -44,7 +44,7 @@ export default async function JobOrderPage({ params, searchParams }: { params: P
   const values = Object.fromEntries(JOB_ORDER_ALL_FIELDS.map((f) => [f.name, toFormValue(f, (jo as Record<string, unknown>)[f.name])]));
   const matches = tab === "match" ? await tenantQuery((tx) => matchCandidates(tx, jo, me.organizationId)) : [];
 
-  const tabClass = (active: boolean) => `rounded-lg px-4 py-2 text-sm font-medium ${active ? "bg-ink text-white" : "bg-white text-ink-menu border border-line-btn hover:bg-muted"}`;
+  const tabClass = (active: boolean) => `rounded-ctl px-4 py-2 text-sm font-medium ${active ? "bg-ink text-white" : "bg-white text-ink-menu border border-line-btn hover:bg-muted"}`;
   return (
     <>
       <PageHeader

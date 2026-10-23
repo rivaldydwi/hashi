@@ -55,7 +55,7 @@ export function StatusButtons({ jobOrderId, status }: { jobOrderId: string; stat
 export function DeleteJobOrder({ jobOrderId }: { jobOrderId: string }) {
   const t = useTranslations("jobOrders");
   return (
-    <details className="rounded-lg border border-danger-line bg-danger-bg/40 p-3" data-testid="delete-job-order">
+    <details className="rounded-ctl border border-danger-line bg-danger-bg/40 p-3" data-testid="delete-job-order">
       <summary className="cursor-pointer text-sm font-medium text-danger-text">{t("deletePermanent")}</summary>
       <ManualForm progressive action={deleteJobOrder} className="space-y-2 pt-2">
         {({ state, pending }) => (
