@@ -79,7 +79,7 @@ Ganti kata sandi lewat menu akun → **Akun saya**. Kata sandi baru minimal 10 k
 
 ### 1.4 Beranda dan kartu angka (KPI)
 
-Beranda berisi **kartu angka** di atas dan beberapa **panel** di bawahnya. Kartu yang menyala jingga artinya ada yang perlu kamu urus; kartu tenang (dengan centang dan kata "Beres") artinya tidak ada. Menekan kartu membuka daftar yang **persis sama** dengan angkanya.
+Beranda berisi **kartu angka** di atas dan beberapa **panel** di bawahnya. Kartu angka dikelompokkan menurut pekerjaan (judul kelompok di sebelah kiri, misalnya **Seleksi** atau **Catatan & tindak lanjut**). Ikon dan angka berwarna merah koral artinya ada yang perlu kamu urus; kartu tenang (dengan centang dan kata "Beres") artinya tidak ada. Kartu yang lebih lebar adalah kartu utama untuk peranmu. Menekan kartu membuka daftar yang **persis sama** dengan angkanya.
 
 Beranda Admin LPK:
 
@@ -90,7 +90,7 @@ Beranda Admin LPK:
 - **Paspor hampir habis**: paspor kedaluwarsa kurang dari 6 bulan atau sudah lewat.
 - **Profil belum lengkap**: data wajib seleksi masih kosong.
 
-Beranda Admin TSK memuat kartu seperti **Kandidat baru dibagikan**, **Menunggu keputusan**, **Job order terbuka**, **Pekerja aktif**, **Catatan belum dibaca**, **Wawancara berkala belum dilakukan**, **Tindak lanjut terbuka**, **Kartu perlu tindakan**, dan **Pekerja tanpa penanggung jawab**:
+Beranda Admin TSK memuat kartu seperti **Kandidat baru dibagikan**, **Menunggu keputusan**, **Job order terbuka**, **Pekerja aktif**, **Catatan belum dibaca**, **Wawancara berkala belum dilakukan**, **Tindak lanjut terbuka**, **Kartu perlu tindakan**, dan **Tanpa penanggung jawab** (kelompok Pekerja & kartu izin tinggal):
 
 ![Beranda Admin TSK](img/00-beranda-tsk.png)
 

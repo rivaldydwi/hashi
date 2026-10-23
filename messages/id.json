@@ -164,7 +164,7 @@
     "emptyOpenCases": "Tidak ada kasus terbuka.",
     "kpiStaffOver": "Staf melebihi batas",
     "kpiStaffOverHint": "Lebih dari 50 pekerja per staf (aturan April 2027)",
-    "kpiUnassigned": "Pekerja tanpa penanggung jawab",
+    "kpiUnassigned": "Tanpa penanggung jawab",
     "kpiUnassignedHint": "Belum ada staf yang menangani",
     "kpiCalm": "Beres",
     "kpiAttention": "Perlu tindakan",
@@ -175,8 +175,16 @@
     "kpiCardPrepareHint": "Persiapan atau sudah bisa diajukan",
     "kpiCardWaiting": "Kartu menunggu hasil",
     "kpiCardWaitingHint": "Sudah diajukan ke imigrasi",
-    "kpiCardMissing": "Pekerja tanpa data kartu",
-    "kpiCardMissingHint": "Data kartu belum dicatat"
+    "kpiCardMissing": "Tanpa data kartu",
+    "kpiCardMissingHint": "Data kartu belum dicatat",
+    "groups": {
+      "students": "Siswa",
+      "documents": "Dokumen siswa",
+      "selection": "Seleksi",
+      "workers": "Pekerja & kartu izin tinggal",
+      "records": "Catatan & tindak lanjut",
+      "system": "Sistem"
+    }
   },
   "users": {
     "title": "Pengguna",

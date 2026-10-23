@@ -11,11 +11,14 @@ import { widgetById } from "./catalog";
 
 const num = (n: number) => String(n);
 
-const LOOK_STYLE: Record<KpiLook, { box: string; icon: string; label: string; value: string }> = {
-  neutral: { box: "border-line bg-card hover:bg-hover", icon: "text-ink-2", label: "text-ink-menu", value: "text-ink" },
-  info: { box: "border-info-line bg-info-bg hover:brightness-95", icon: "text-info-text", label: "text-info-text", value: "text-info-text" },
-  attention: { box: "border-attn-line bg-attn-bg hover:brightness-95", icon: "text-attn-icon", label: "text-attn-text", value: "text-attn-text" },
-  calm: { box: "border-ok-line bg-ok-bg hover:brightness-95", icon: "text-ok-text", label: "text-ok-text", value: "text-ink-2" },
+// T-035: semua kartu berlatar netral; "perlu tindakan" ditandai kecil (ikon + angka coral), bukan latar penuh, supaya beberapa KPI
+// yang menyala sekaligus tidak membuat seluruh beranda berwarna. Bukan hanya warna: ikon centang + "beres" untuk yang tenang, teks sr-only untuk perhatian.
+const CARD_BOX = "border-line bg-card hover:bg-hover";
+const LOOK_STYLE: Record<KpiLook, { icon: string; label: string; value: string }> = {
+  neutral: { icon: "text-ink-2", label: "text-ink-menu", value: "text-ink" },
+  info: { icon: "text-info-text", label: "text-ink-menu", value: "text-ink" },
+  attention: { icon: "text-attn-icon", label: "text-attn-text", value: "text-attn-text" },
+  calm: { icon: "text-ok-text", label: "text-ink-menu", value: "text-ink-2" },
 };
 
 /**
@@ -28,13 +31,13 @@ function Kpi({ id, href, label, value, hint, calm, attention }: { id: string; hr
   const look = kpiLook(def?.tone ?? "neutral", value);
   const st = LOOK_STYLE[look];
   return (
-    <Link href={href} data-testid={id} data-look={look} title={hint ? `${label}: ${hint}` : label} className={`flex h-full min-h-[5.5rem] flex-col justify-between gap-1 rounded-card border px-3 py-2.5 transition ${st.box}`}>
+    <Link href={href} data-testid={id} data-look={look} title={hint ? `${label}: ${hint}` : label} className={`flex h-full min-h-[5.5rem] flex-col justify-between gap-1 rounded-card border px-3 py-2.5 transition ${CARD_BOX}`}>
       <span className={`flex items-start gap-1.5 text-[13px] font-medium leading-4 ${st.label}`}>
         <Icon name={look === "calm" ? "check" : (def?.icon ?? "dashboard")} className={`mt-px h-4 w-4 shrink-0 ${st.icon}`} />
         <span className="line-clamp-2">{label}</span>
       </span>
       <span className="flex items-baseline gap-2">
-        <span className={`text-3xl font-bold leading-9 tabular-nums ${st.value}`} data-testid={`${id}-value`}>{num(value)}</span>
+        <span className={`text-3xl font-bold leading-9 tabular-nums group-data-[primary=true]:text-4xl group-data-[primary=true]:leading-10 ${st.value}`} data-testid={`${id}-value`}>{num(value)}</span>
         <span className="line-clamp-2 text-xs leading-4 text-ink-menu">
           {look === "attention" && <span className="sr-only">{attention}. </span>}
           {look === "calm" ? calm : hint}

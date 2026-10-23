@@ -1,29 +1,59 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { login } from "./helpers";
 
-// Kartu KPI dashboard ringkas dan bernada (T-012). Tata letak: tinggi kartu, jumlah baris, kolom di ponsel. Nada: KPI tindakan menyala hanya bila nilainya > 0.
+// Kartu KPI dashboard ringkas dan bernada (T-012), dikelompokkan per alur kerja (T-035). Tata letak: tinggi kartu, jumlah baris, kolom di ponsel. Nada: KPI tindakan menyala hanya bila nilainya > 0.
 
 async function pageFor(browser: Browser, email: string, width: number, height = 900): Promise<Page> {
   const page = await (await browser.newContext({ viewport: { width, height } })).newPage();
   await login(page, email);
   return page;
 }
-const cards = (page: Page) => page.locator("[data-testid=kpi-row] > a");
+const cards = (page: Page) => page.locator("[data-testid=kpi-row] a[data-look]");
 const boxes = (page: Page) => cards(page).evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), h: Math.round(r.height), id: e.getAttribute("data-testid") }; }));
 
-test("TSK_ADMIN 1280px: semua KPI muat dalam <= 3 baris (13 KPI sejak T-019; sebelumnya 9 = 2 baris), tiap kartu <= 110 px dan sama tinggi dalam satu baris, widget berikutnya terlihat tanpa menggulir", async ({ browser }) => {
+test("TSK_ADMIN 1280px: KPI dalam kelompok alur kerja <= 4 baris (T-035: dulu 3 baris rata, pengelompokan menambah paling banyak satu baris), tiap kartu <= 110 px dan sama tinggi dalam satu baris, widget berikutnya terlihat tanpa menggulir", async ({ browser }) => {
   const page = await pageFor(browser, "tsk.admin@hashi.test", 1280);
   await expect(page.getByTestId("kpi-staff-over")).toBeVisible();
   const b = await boxes(page);
   expect(b.length).toBeGreaterThanOrEqual(7);
-  const rows = [...new Set(b.map((x) => x.top))];
-  // T-019 menambah 4 KPI kartu izin tinggal (urgent, prepare, waiting, missing): 13 KPI pada 5 kolom = 3 baris. Tinggi kartu, kesamaan tinggi per baris, dan "widget terlihat tanpa menggulir" tetap dijaga.
-  expect(rows.length, JSON.stringify(b)).toBeLessThanOrEqual(3);
   expect(b.length).toBeLessThanOrEqual(13);
+  const rows = [...new Set(b.map((x) => x.top))];
+  expect(rows.length, JSON.stringify(b)).toBeLessThanOrEqual(4);
   for (const x of b) { expect(x.h, x.id!).toBeLessThanOrEqual(110); expect(x.h, x.id!).toBeGreaterThanOrEqual(44); }
   for (const top of rows) expect(new Set(b.filter((x) => x.top === top).map((x) => x.h)).size, `tinggi sebaris ${top}`).toBe(1);
+  // kelompok berurutan tetap dan berjudul; setiap kartu ada di tepat satu kelompok
+  const groups = await page.locator("[data-testid^=kpi-group-]").evaluateAll((els) => els.map((e) => ({ id: e.getAttribute("data-testid"), title: e.querySelector("h2")?.textContent ?? "", n: e.querySelectorAll("a[data-look]").length })));
+  expect(groups.map((g) => g.id)).toEqual(["kpi-group-selection", "kpi-group-workers", "kpi-group-records"]);
+  for (const g of groups) expect(g.title.trim().length, g.id!).toBeGreaterThan(0);
+  expect(groups.reduce((n, g) => n + g.n, 0)).toBe(b.length);
   const first = await page.locator("[data-testid=widget-grid] > *").first().boundingBox();
   expect(first!.y, "widget pertama terlihat tanpa menggulir").toBeLessThan(900 - 60);
+  await page.context().close();
+});
+
+test("KPI utama per peran tampil lebih besar (dua kolom di desktop): TSK_ADMIN = menunggu keputusan, kartu perlu tindakan, wawancara berkala; staf berbeda", async ({ browser }) => {
+  const primaries = async (email: string) => {
+    const page = await pageFor(browser, email, 1280);
+    await expect(cards(page).first()).toBeVisible();
+    const out = await page.locator("[data-primary=true] a[data-look]").evaluateAll((els) => els.map((e) => ({ id: e.getAttribute("data-testid"), w: e.getBoundingClientRect().width })));
+    const normal = await page.locator("[data-primary=false] a[data-look]").first().evaluate((e) => e.getBoundingClientRect().width);
+    for (const p of out) expect(p.w, p.id!).toBeGreaterThan(normal * 1.8);
+    await page.context().close();
+    return out.map((p) => p.id);
+  };
+  expect(await primaries("tsk.admin@hashi.test")).toEqual(["kpi-awaiting", "kpi-card-urgent", "kpi-interviews-pending"]);
+  expect(await primaries("tsk.staff@hashi.test")).toEqual(["kpi-card-urgent", "kpi-records-unread", "kpi-followups-open"]);
+});
+
+test("perhatian ditandai kecil: kartu KPI tindakan yang > 0 berlatar netral (sama dengan kartu lain), angkanya berwarna", async ({ browser }) => {
+  const page = await pageFor(browser, "tsk.admin@hashi.test", 1280);
+  await expect(page.getByTestId("kpi-awaiting")).toBeVisible();
+  const looks = await cards(page).evaluateAll((els) => els.map((e) => ({ look: e.getAttribute("data-look"), bg: getComputedStyle(e).backgroundColor, value: getComputedStyle(e.querySelector("[data-testid$=-value]")!).color })));
+  const att = looks.filter((x) => x.look === "attention");
+  expect(att.length).toBeGreaterThan(0);
+  expect(new Set(looks.map((x) => x.bg)).size, "semua kartu satu latar").toBe(1);
+  const neutralValue = looks.find((x) => x.look === "info")!.value;
+  for (const a of att) expect(a.value).not.toBe(neutralValue);
   await page.context().close();
 });
 

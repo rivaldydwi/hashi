@@ -10,3 +10,19 @@ export function kpiLook(tone: KpiTone, value: number): KpiLook {
   if (tone === "attention") return value > 0 ? "attention" : "calm";
   return tone;
 }
+
+// ---- Kelompok KPI (T-035): kartu dikelompokkan menurut alur kerja, bukan satu grid rata. Kelompok + KPI utama ditetapkan di katalog.
+
+/** Kelompok alur kerja; urutan array = urutan tampil di beranda (judul: `dashboard.groups.<kelompok>`). */
+export const KPI_GROUPS = ["students", "documents", "selection", "workers", "records", "system"] as const;
+export type KpiGroup = (typeof KPI_GROUPS)[number];
+/** Batas KPI utama (tampil lebih besar) per peran: lebih dari ini = tidak ada lagi yang menonjol. */
+export const MAX_PRIMARY_PER_ROLE = 3;
+
+/**
+ * Kelompokkan KPI yang tampil. Urutan DI DALAM kelompok = urutan layout pengguna (mode atur), urutan kelompok = `KPI_GROUPS`;
+ * kelompok kosong dibuang. `groupOf` diberikan pemanggil supaya fungsi ini murni dan tidak bergantung katalog.
+ */
+export function groupKpis<T extends { id: string }>(items: readonly T[], groupOf: (id: string) => KpiGroup): Array<{ group: KpiGroup; items: T[] }> {
+  return KPI_GROUPS.map((group) => ({ group, items: items.filter((x) => groupOf(x.id) === group) })).filter((g) => g.items.length > 0);
+}

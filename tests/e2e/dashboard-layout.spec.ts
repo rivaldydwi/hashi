@@ -116,3 +116,21 @@ test.describe("ponsel", () => {
     expect(box!.width).toBeGreaterThanOrEqual(44);
   });
 });
+
+test("T-035: mode atur menampilkan KPI per kelompok; naik/turun hanya di dalam kelompok (tidak menyeberang ke kelompok lain)", async ({ page }) => {
+  await login(page, EMAIL);
+  await page.goto("/?atur=1");
+  await expect(page.getByTestId("layout-editor")).toBeVisible();
+  // LPK_ADMIN: kelompok "Siswa" (belum dinilai, siap seleksi belum dibagikan) lalu "Dokumen siswa" (paspor, profil belum lengkap)
+  await expect(page.locator("[data-testid=layout-editor] [data-testid^=kpi-group-]")).toHaveCount(2);
+  await expect(page.getByTestId("down-kpi-unshared")).toBeDisabled(); // terakhir di kelompoknya
+  await expect(page.getByTestId("up-kpi-passport")).toBeDisabled(); // pertama di kelompoknya
+  await page.getByTestId("down-kpi-passport").click();
+  await expect(page.getByTestId("layout-status")).toHaveText("Tersimpan");
+  const ids = (await stored()).items.map((i) => i.id);
+  expect(ids.indexOf("kpi-incomplete")).toBeLessThan(ids.indexOf("kpi-passport"));
+  // beranda: urutan baru berlaku di dalam kelompoknya
+  await page.goto("/");
+  const docs = await page.locator("[data-testid=kpi-group-documents] a[data-look]").evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
+  expect(docs).toEqual(["kpi-incomplete", "kpi-passport"]);
+});

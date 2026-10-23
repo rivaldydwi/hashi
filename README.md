@@ -78,11 +78,11 @@ Semua berisi data dummy (akun demo `*@hashi.test`), bukan data nyata. Lebih bany
 
 | Beranda TSK (Indonesia) | Daftar kandidat LPK (Indonesia) |
 | --- | --- |
-| ![Beranda TSK](docs/screenshots/T-034/beranda-tsk-id-desktop.png) | ![Daftar kandidat LPK](docs/screenshots/T-034/daftar-kandidat-bandung.png) |
+| ![Beranda TSK](docs/screenshots/T-035/beranda-tsk-id-desktop.png) | ![Daftar kandidat LPK](docs/screenshots/T-034/daftar-kandidat-bandung.png) |
 
 | Daftar 在留カード (Jepang) | Beranda LPK di ponsel (Jepang) |
 | --- | --- |
-| ![Daftar 在留カード](docs/screenshots/T-034/daftar-kartu-ja-admin.png) | ![Beranda LPK di ponsel](docs/screenshots/T-034/beranda-lpk-ja-ponsel.png) |
+| ![Daftar 在留カード](docs/screenshots/T-034/daftar-kartu-ja-admin.png) | ![Beranda LPK di ponsel](docs/screenshots/T-035/beranda-lpk-ja-ponsel.png) |
 
 ## Cara menjalankan
 
