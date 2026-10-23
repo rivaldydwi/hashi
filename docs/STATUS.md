@@ -34,6 +34,33 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-23 · T-033 · Token warna semantik + bersihkan warna Tailwind mentah
+
+**PR:** #34 (branch `eng/T-033-token-warna`)
+**Status:** siap direview. Tanpa migrasi, tanpa deploy (sesuai tugas).
+
+**Hasil PR sebelumnya:** T-032 di-merge `f3df77c` (PR #33) setelah `PM: DISETUJUI`; hanya dokumen, tanpa CI. Peran PM dijalankan sesi ini atas instruksi Ipal (2026-10-23).
+
+**Yang dikerjakan**
+- Token baru di `@theme` (`src/app/globals.css`): netral `muted`, `muted-strong`, `line-soft`; status `danger-{bg,bg-strong,line,line-strong,text,solid,solid-hover}`, `warn-{bg,bg-strong,line,text}`; lencana tahap `status-{shortlist,interview,docs,done}-{bg,text}`; `brand-mist` (teks panel merek login). `ok-*` dan `info-*` yang sudah ada dipakai ulang untuk emerald/sky (tidak membuat nama kedua).
+- 430 kelas warna Tailwind mentah di 65 berkas `src/` diganti ke token lewat satu tabel pemetaan (per jenis: latar/teks/garis), nilai token = warna Tailwind lama kecuali yang dipetakan ke token yang sudah ada. Termasuk `btnDanger`, `StatusBadge`, `job-orders/status.ts`, backdrop dialog hapus.
+- Heks di komponen: grafik tren beranda (`Widgets.tsx`) pakai `style={{ stroke/fill: "var(--color-…)" }}`; login `text-[#E6EAFF]`/`stroke="#C9D3FF"` -> `text-brand-mist`/`stroke-brand-periwinkle`. Sisa heks yang sengaja dibiarkan: `manifest.ts`/`layout.tsx` (warna tema PWA, bukan CSS), email pengingat `src/db/card-reminders.ts` (HTML email), `src/lib/pdf/`, `components/brand/`.
+- Tes `tests/unit/no-raw-colors.test.ts`: (1) tanpa kelas warna Tailwind mentah di `src/`, (2) tanpa heks di `.tsx` selain `components/brand/`, (3) uji penjaga, (4) kontras 26 pasangan teks/latar token >= 4,5:1 (dibaca dari `globals.css`; siap dipakai T-034).
+- `CLAUDE.md` (UI v1): aturan "warna hanya lewat token" + nama keluarga token.
+
+**Perubahan tampilan (disengaja kecil; perbandingan piksel 12 layar sebelum/sesudah, build `main` vs branch, data dev sama)**
+- Login dan beranda ponsel: 0% berbeda. Halaman lain: 0,01-1,9% piksel berbeda, selisih kanal maks 29-41 (pergeseran nada, tidak terlihat sebagai perubahan desain). Satu-satunya selisih besar (halaman pengguna) = jam "login terakhir" yang berubah karena skrip login ulang, bukan gaya.
+- Penyebabnya: `stone-*` dipetakan ke netral hangat yang sudah ada (`ink-2` #6b645b sedikit lebih gelap dari `stone-500`; `line`/`line-btn`), lencana emerald/sky memakai `ok-*`/`info-*` yang sedikit lebih kalem. `stone-400` (2 tempat, teks "tidak dibuka" di job order, kontras 2,5:1) sengaja dinaikkan ke `ink-2` (lolos AA).
+
+**Verifikasi**
+- `npm run typecheck` -> lulus. `npm run test:unit` -> 180/180 lulus (termasuk 4 tes baru). `npm run test:i18n` -> lulus (1758 kunci).
+- Bukti penjaga bisa gagal: menyisipkan `text-stone-500` ke `cardClass` -> tes gagal dengan `src/components/styles.ts: text-stone-500`; setelah dipulihkan lulus.
+- `npm run build` -> sukses, 0 peringatan.
+- `E2E_PORT=3120 npm run test:e2e` (db dev) -> putaran pertama 188 lulus, 24 gagal, 33 tidak jalan. Sebab: (a) db dev masih berisi data pilot/sisa uji (mis. "LPK melihat 12" menerima 104, locale pengguna berubah) = lingkungan; (b) SATU tes memeriksa nama kelas lama: `records-views.spec.ts` `toHaveClass(/text-rose/)` -> diganti `/text-danger/` (kuartal terlewat tetap merah). Setelah `db:seed -- --reset` di db dev dan build ulang: **245/245 lulus** (6,6 menit), 0 peringatan pg "already executing".
+
+**Usulan berikutnya**
+- T-034 tinggal mengganti nilai token; `PAIRS` di tes kontras sudah mencakup semua pasangan yang dipakai komponen.
+
 ## 2026-10-23 · fix · CI merah: `verify:seed` wawancara berkala bergantung tanggal
 
 **PR:** #35 (branch `eng/fix-seed-kuartal`)

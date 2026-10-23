@@ -10,7 +10,7 @@ const btnBase =
 
 export const btnPrimary = `${btnBase} bg-accent text-white hover:bg-accent-dark`;
 export const btnSecondary = `${btnBase} border border-line-btn bg-card text-ink-menu hover:bg-hover`;
-export const btnDanger = `${btnBase} border border-rose-300 bg-card text-rose-800 hover:bg-rose-50`;
+export const btnDanger = `${btnBase} border border-danger-line-strong bg-card text-danger-text hover:bg-danger-bg`;
 
 export const cardClass = "rounded-2xl border border-line bg-card";
 

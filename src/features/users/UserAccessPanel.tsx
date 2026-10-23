@@ -31,7 +31,7 @@ export function UserAccessPanel({
       <form action={resetAction} className="space-y-2">
         <input type="hidden" name="userId" value={userId} />
         {orgId && <input type="hidden" name="orgId" value={orgId} />}
-        <p className="text-sm text-stone-600">{t("users.resetNote")}</p>
+        <p className="text-sm text-ink-menu">{t("users.resetNote")}</p>
         <SubmitButton className={btnSecondary}>{t("users.resetPassword")}</SubmitButton>
         {resetState.status === "success" && resetState.tempPassword && resetState.email ? (
           <TempPasswordNotice password={resetState.tempPassword} email={resetState.email} />
@@ -40,13 +40,13 @@ export function UserAccessPanel({
         )}
       </form>
 
-      <hr className="border-stone-200" />
+      <hr className="border-line" />
 
       <form action={activeAction} className="space-y-2">
         <input type="hidden" name="userId" value={userId} />
         <input type="hidden" name="active" value={active ? "false" : "true"} />
         {orgId && <input type="hidden" name="orgId" value={orgId} />}
-        <p className="text-sm text-stone-600">{t("users.deactivateNote")}</p>
+        <p className="text-sm text-ink-menu">{t("users.deactivateNote")}</p>
         <SubmitButton className={active ? btnDanger : btnSecondary}>
           {active ? t("users.deactivate") : t("users.reactivate")}
         </SubmitButton>

@@ -25,26 +25,26 @@ export default async function NewJobOrderPage({ searchParams }: { searchParams: 
       <PageHeader title={t("newTitle")} intro={site ? `${site.companyName} / ${site.name}` : t("chooseSiteIntro")} backHref={site ? "/job-orders/new" : "/job-orders"} backLabel={site ? t("chooseSite") : t("title")} />
       {site ? (
         site.fieldIds.length === 0 ? (
-          <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900" data-testid="site-no-fields">{t("siteHasNoFields")}</p>
+          <p className="rounded-lg bg-warn-bg px-4 py-3 text-sm text-warn-text" data-testid="site-no-fields">{t("siteHasNoFields")}</p>
         ) : (
           <div className={`${cardClass} max-w-3xl p-5`}>
             <JobOrderForm siteId={site.id} siteFieldIds={site.fieldIds} />
           </div>
         )
       ) : sites.length === 0 ? (
-        <div className={`${cardClass} p-8 text-center text-sm text-stone-500`} data-testid="no-sites">
+        <div className={`${cardClass} p-8 text-center text-sm text-ink-2`} data-testid="no-sites">
           {t("noSites")} <Link href="/clients" className="font-medium text-brand-700 hover:underline">{t("goClients")}</Link>
         </div>
       ) : (
-        <ul className={`${cardClass} divide-y divide-stone-100`} data-testid="site-chooser">
+        <ul className={`${cardClass} divide-y divide-line-soft`} data-testid="site-chooser">
           {sites.map((s) => (
             <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 p-4" data-testid="site-option">
               <div>
                 <div className="font-medium">{s.companyName}</div>
-                <div className="text-sm text-stone-600">{s.name}</div>
+                <div className="text-sm text-ink-menu">{s.name}</div>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {s.fieldIds.map((id) => (
-                    <span key={id} className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800">{label.get(id) ?? "—"}</span>
+                    <span key={id} className="rounded-full bg-info-bg px-2 py-0.5 text-xs font-medium text-info-text">{label.get(id) ?? "—"}</span>
                   ))}
                 </div>
               </div>

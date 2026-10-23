@@ -7,9 +7,9 @@ import { ASSESSMENT_FIELDS, SCORE_NAMES, averageOf, formatAvg, trendOf, type Tre
 import type { MonthlyRow } from "./queries";
 
 const TREND_STYLE: Record<Trend, string> = {
-  up: "bg-emerald-50 text-emerald-800",
-  down: "bg-rose-50 text-rose-800",
-  same: "bg-stone-100 text-stone-700",
+  up: "bg-ok-bg text-ok-text",
+  down: "bg-danger-bg text-danger-text",
+  same: "bg-muted text-ink-menu",
 };
 const TREND_MARK: Record<Trend, string> = { up: "▲", down: "▼", same: "＝" };
 
@@ -55,22 +55,22 @@ export async function AssessmentsSection({ candidateId, rows, me, readOnly = fal
       <summary className="cursor-pointer font-medium text-brand-700">{readOnly ? t("detail") : t("detailAndEdit")}</summary>
       <dl className="mt-2 grid gap-2 sm:grid-cols-2">
         <div>
-          <dt className="text-xs text-stone-500">{ts("fields.note")}</dt>
+          <dt className="text-xs text-ink-2">{ts("fields.note")}</dt>
           <dd className="whitespace-pre-line" data-testid="assessment-note">{r.note ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-xs text-stone-500">{ts("fields.followUp")}</dt>
+          <dt className="text-xs text-ink-2">{ts("fields.followUp")}</dt>
           <dd className="whitespace-pre-line">{r.followUp ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-xs text-stone-500">{t("assessor")}</dt>
+          <dt className="text-xs text-ink-2">{t("assessor")}</dt>
           <dd>{r.assessorName ?? "—"} · {r.durationMinutes} {t("minutes")}</dd>
         </div>
       </dl>
       {canEdit(r) ? (
         <AssessmentForm candidateId={candidateId} assessmentId={r.id} values={toValues(r, today)} maxDate={today} />
       ) : (
-        !readOnly && <p className="mt-2 text-xs text-stone-500">{t("notEditable")}</p>
+        !readOnly && <p className="mt-2 text-xs text-ink-2">{t("notEditable")}</p>
       )}
     </details>
   );
@@ -78,23 +78,23 @@ export async function AssessmentsSection({ candidateId, rows, me, readOnly = fal
   return (
     <section id="penilaian" className={`${cardClass} scroll-mt-4 p-4 sm:p-5`} data-testid="section-assessments">
       <h2 className="font-medium">{readOnly ? t("tsk.readOnlyTitle") : ts("title")}</h2>
-      <p className="mt-1 text-sm text-stone-500">{readOnly ? t("tsk.readOnlyIntro") : t("intro")}</p>
+      <p className="mt-1 text-sm text-ink-2">{readOnly ? t("tsk.readOnlyIntro") : t("intro")}</p>
 
       {!readOnly && (
-        <details className="mt-3 rounded-lg border border-stone-200 p-3" open={rows.length === 0}>
+        <details className="mt-3 rounded-lg border border-line p-3" open={rows.length === 0}>
           <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="assessment-add-toggle">+ {t("add")}</summary>
           <AssessmentForm candidateId={candidateId} values={toValues(null, today)} maxDate={today} />
         </details>
       )}
 
       {rows.length === 0 ? (
-        <p className="mt-3 text-sm text-stone-500" data-testid="assessment-empty">{t("empty")}</p>
+        <p className="mt-3 text-sm text-ink-2" data-testid="assessment-empty">{t("empty")}</p>
       ) : (
         <>
           {/* Layar lebar: tabel */}
           <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm" data-testid="assessment-table">
-              <thead className="border-y border-stone-200 bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+              <thead className="border-y border-line bg-page text-xs uppercase tracking-wide text-ink-2">
                 <tr>
                   <th className="px-3 py-2 font-medium">{t("colMonth")}</th>
                   {SCORE_NAMES.map((n) => (
@@ -105,13 +105,13 @@ export async function AssessmentsSection({ candidateId, rows, me, readOnly = fal
                   <th className="px-3 py-2 font-medium">{t("colTest")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-line-soft">
                 {items.map(({ r, avg, trend }) => (
                   <>
                     <tr key={r.id} data-testid="assessment-row">
                       <td className="px-3 py-2 whitespace-nowrap">
                         <div className="font-medium">{month(r.period)}</div>
-                        <div className="text-xs text-stone-500">{day(r.assessedOn)}</div>
+                        <div className="text-xs text-ink-2">{day(r.assessedOn)}</div>
                       </td>
                       {SCORE_NAMES.map((n) => (
                         <td key={n} className="px-3 py-2 tabular-nums">{scoreText(r[n])}</td>
@@ -135,11 +135,11 @@ export async function AssessmentsSection({ candidateId, rows, me, readOnly = fal
           {/* Ponsel: kartu */}
           <ul className="mt-4 space-y-3 md:hidden" data-testid="assessment-cards">
             {items.map(({ r, avg, trend }) => (
-              <li key={r.id} className="rounded-xl border border-stone-200 p-3" data-testid="assessment-card">
+              <li key={r.id} className="rounded-xl border border-line p-3" data-testid="assessment-card">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{month(r.period)}</p>
-                    <p className="text-xs text-stone-500">{day(r.assessedOn)}</p>
+                    <p className="text-xs text-ink-2">{day(r.assessedOn)}</p>
                   </div>
                   <p className="text-right">
                     <span className="text-lg font-semibold tabular-nums">{formatAvg(avg)}</span>
@@ -149,22 +149,22 @@ export async function AssessmentsSection({ candidateId, rows, me, readOnly = fal
                 <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
                   {SCORE_NAMES.map((n) => (
                     <div key={n} className="flex justify-between gap-2">
-                      <dt className="text-stone-500">{ts(`fields.${n}`)}</dt>
+                      <dt className="text-ink-2">{ts(`fields.${n}`)}</dt>
                       <dd className="tabular-nums">{scoreText(r[n])}</dd>
                     </div>
                   ))}
                   <div className="flex justify-between gap-2">
-                    <dt className="text-stone-500">{ts("fields.attendancePct")}</dt>
+                    <dt className="text-ink-2">{ts("fields.attendancePct")}</dt>
                     <dd className="tabular-nums">{r.attendancePct === null ? "—" : `${r.attendancePct}%`}</dd>
                   </div>
                   {r.testName && (
                     <div className="col-span-2 flex justify-between gap-2">
-                      <dt className="text-stone-500">{t("colTest")}</dt>
+                      <dt className="text-ink-2">{t("colTest")}</dt>
                       <dd>{r.testName}{r.testScore !== null ? `: ${r.testScore}` : ""}</dd>
                     </div>
                   )}
                 </dl>
-                <div className="mt-2 border-t border-stone-100 pt-2"><Detail r={r} /></div>
+                <div className="mt-2 border-t border-line-soft pt-2"><Detail r={r} /></div>
               </li>
             ))}
           </ul>

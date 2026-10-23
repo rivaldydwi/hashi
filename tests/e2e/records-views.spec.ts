@@ -35,8 +35,8 @@ test.describe("wawancara berkala", () => {
       await expect(q).toContainText({ done: "Selesai", open: "Belum, tenggat", missed: "Terlewat" }[state]!); // setiap keadaan punya teks, bukan hanya ikon/warna
     }
     // kuartal berjalan (open) BUKAN merah; hanya yang sudah lewat (missed) merah
-    await expect(page.locator("[data-testid=quarter-state][data-state=open]").first()).not.toHaveClass(/text-rose/);
-    await expect(page.locator("[data-testid=quarter-state][data-state=missed]").first()).toHaveClass(/text-rose/);
+    await expect(page.locator("[data-testid=quarter-state][data-state=open]").first()).not.toHaveClass(/text-danger/);
+    await expect(page.locator("[data-testid=quarter-state][data-state=missed]").first()).toHaveClass(/text-danger/);
     for (const state of ["done", "na"]) {
       const cell = page.locator(`[data-testid=interview-cell][data-state=${state}]`).first();
       await expect(cell).toBeVisible();

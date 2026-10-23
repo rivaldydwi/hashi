@@ -30,33 +30,33 @@ export async function UserTable({
               <th className="px-5 py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100">
+          <tbody className="divide-y divide-line-soft">
             {rows.map((u) => (
-              <tr key={u.id} className={u.active ? "" : "bg-stone-50 text-stone-500"}>
+              <tr key={u.id} className={u.active ? "" : "bg-page text-ink-2"}>
                 <td className="cjk-phrase min-w-40 px-5 py-3">
                   <div className="font-medium">
                     <span translate="no">{u.name}</span>
                     {u.id === currentUserId && (
-                      <span className="ml-2 rounded bg-stone-100 px-1.5 py-0.5 text-xs font-normal text-stone-600">
+                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal text-ink-menu">
                         {t("users.you")}
                       </span>
                     )}
                   </div>
-                  <div translate="no" className="text-xs text-stone-500">{u.email}</div>
+                  <div translate="no" className="text-xs text-ink-2">{u.email}</div>
                 </td>
                 <td className="px-5 py-3 whitespace-nowrap">{t(`roles.${u.role}`)}</td>
                 <td className="px-5 py-3 whitespace-nowrap"><LanguageChips languages={u.languages} /></td>
                 <td className="px-5 py-3">
                   {!u.active ? (
-                    <span className="rounded-full bg-stone-200 px-2.5 py-0.5 text-xs font-medium text-stone-700">
+                    <span className="rounded-full bg-muted-strong px-2.5 py-0.5 text-xs font-medium text-ink-menu">
                       {t("users.inactive")}
                     </span>
                   ) : u.mustChangePassword ? (
-                    <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                    <span className="rounded-full bg-warn-bg px-2.5 py-0.5 text-xs font-medium text-warn-text">
                       {t("users.mustChange")}
                     </span>
                   ) : (
-                    <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                    <span className="rounded-full bg-ok-bg px-2.5 py-0.5 text-xs font-medium text-ok-text">
                       {t("users.active")}
                     </span>
                   )}

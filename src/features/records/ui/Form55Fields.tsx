@@ -114,7 +114,7 @@ export function Form55Fields({ defaults, method, responderRole, responderTitle, 
       </section>
 
       {nc === "yes" && (
-        <section className="space-y-4 rounded-xl border border-amber-300 bg-amber-50/40 p-3 sm:p-4" aria-labelledby="f55-s4" data-testid="f55-response">
+        <section className="space-y-4 rounded-xl border border-warn-line bg-warn-bg/40 p-3 sm:p-4" aria-labelledby="f55-s4" data-testid="f55-response">
           <h4 id="f55-s4" className="text-[15px] font-semibold">{t("s4")}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             {field("f55-occ", `${t("occurredOn")} *`, <input id="f55-occ" type="date" max={today} name={f55Name.occurredOn} defaultValue={r?.occurredOn ?? ""} required disabled={disabled} className={inputClass} data-testid="r-occurredOn" />)}

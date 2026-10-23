@@ -101,7 +101,7 @@ export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
       data-testid="candidate-create-form"
     >
       {state.status === "error" && (
-        <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-900" data-testid="form-error">
+        <div role="alert" className="rounded-xl border border-danger-line-strong bg-danger-bg px-4 py-3 text-sm text-danger-text" data-testid="form-error">
           <p className="font-medium">{tAll(state.key)}</p>
           {problems.length > 0 && state.key === "candidates.errors.invalid" && (
             <>
@@ -142,17 +142,17 @@ export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
       {LIST_SECTIONS.map((s) => (
         <section key={s.key} id={`sec-${s.key}`} className={`${cardClass} scroll-mt-32 p-4 sm:p-5`} data-testid={`create-section-${s.key}`}>
           <h2 className="mb-3 font-medium">{td(`${s.key}.title`)}</h2>
-          {rows[s.key].length === 0 && <p className="mb-3 text-sm text-stone-500">{tf("noRows")}</p>}
+          {rows[s.key].length === 0 && <p className="mb-3 text-sm text-ink-2">{tf("noRows")}</p>}
           <div className="space-y-3">
             {rows[s.key].map((rowKey, i) => (
               <div
                 key={rowKey}
-                className="rounded-lg border border-stone-200 bg-stone-50/50 p-3"
+                className="rounded-lg border border-line bg-page/50 p-3"
                 data-testid={`create-row-${s.key}`}
                 data-invalid={fieldErrors[`${s.key}.${rowKey}`] ? true : undefined}
               >
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-medium text-stone-700">{tf("rowN", { n: i + 1 })}</span>
+                  <span className="text-sm font-medium text-ink-menu">{tf("rowN", { n: i + 1 })}</span>
                   <button type="button" onClick={() => removeRow(s.key, rowKey)} className={`${btnDanger} !px-3 !py-1.5 text-xs`}>
                     {tf("removeRow")}
                   </button>
@@ -176,16 +176,16 @@ export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
 
       <section id="sec-extras" className={`${cardClass} scroll-mt-32 space-y-4 p-4 sm:p-5`} data-testid="create-section-extras" data-invalid={fieldErrors.extras ? true : undefined}>
         <h2 className="font-medium">{tf("extrasTitle")}</h2>
-        <fieldset className="space-y-2 rounded-lg border border-stone-200 p-3" data-testid="share-fieldset">
-          <legend className="px-1 text-sm font-medium text-stone-700">{t("shareTitle")}</legend>
+        <fieldset className="space-y-2 rounded-lg border border-line p-3" data-testid="share-fieldset">
+          <legend className="px-1 text-sm font-medium text-ink-menu">{t("shareTitle")}</legend>
           <label className="flex items-start gap-2 py-1 text-sm">
-            <input type="checkbox" name="shareWithTsk" checked={share} onChange={(e) => setShare(e.target.checked)} className="mt-0.5 h-5 w-5 rounded border-stone-300" data-testid="share-checkbox" />
+            <input type="checkbox" name="shareWithTsk" checked={share} onChange={(e) => setShare(e.target.checked)} className="mt-0.5 h-5 w-5 rounded border-line-btn" data-testid="share-checkbox" />
             <span>{t("shareLabel")}</span>
           </label>
-          <p className="text-xs text-stone-500">{t("shareHint")}</p>
+          <p className="text-xs text-ink-2">{t("shareHint")}</p>
           {share && (
-            <label className="flex items-start gap-2 py-1 text-sm text-stone-800">
-              <input type="checkbox" name="shareConfirm" required className="mt-0.5 h-5 w-5 rounded border-stone-300" data-testid="share-confirm" />
+            <label className="flex items-start gap-2 py-1 text-sm text-ink">
+              <input type="checkbox" name="shareConfirm" required className="mt-0.5 h-5 w-5 rounded border-line-btn" data-testid="share-confirm" />
               <span>{ts("confirmLabel")}</span>
             </label>
           )}
@@ -193,7 +193,7 @@ export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
         <div className="space-y-1.5">
           <label htmlFor="dataConsentDate" className={labelClass}>{t("consentDate")}</label>
           <input id="dataConsentDate" name="dataConsentDate" type="date" max={maxDate} className={inputClass} />
-          <p className="text-xs text-stone-500">{t("consentHint")}</p>
+          <p className="text-xs text-ink-2">{t("consentHint")}</p>
         </div>
         <div className="space-y-1.5">
           <label htmlFor="consentForm" className={labelClass}>{t("consentForm")}</label>
@@ -205,7 +205,7 @@ export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
             onChange={(e) => checkFileSize(e.currentTarget, tdocs("errors.tooBig"))}
             className={inputClass}
           />
-          <p className="text-xs text-stone-500">{t("consentFormHint")}</p>
+          <p className="text-xs text-ink-2">{t("consentFormHint")}</p>
         </div>
       </section>
 

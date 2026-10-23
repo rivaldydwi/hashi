@@ -21,14 +21,14 @@ export default async function ForcedChangePasswordPage() {
         <div className="mb-6 flex flex-col items-center text-center">
           <BrandLogo variant="full" tone="light" height={40} priority />
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">{t("account.forcedTitle")}</h1>
-          <p className="mt-1 text-sm text-stone-500">{t("account.forcedNote")}</p>
-          <p className="mt-2 text-sm font-medium text-stone-700">{me.email}</p>
+          <p className="mt-1 text-sm text-ink-2">{t("account.forcedNote")}</p>
+          <p className="mt-2 text-sm font-medium text-ink-menu">{me.email}</p>
         </div>
         <div className={`${cardClass} p-6 shadow-sm`}>
           <ChangePasswordForm />
         </div>
         <form action={logout} className="mt-4 text-center">
-          <button type="submit" className="text-sm text-stone-500 hover:text-stone-800">
+          <button type="submit" className="text-sm text-ink-2 hover:text-ink">
             {t("common.logout")}
           </button>
         </form>

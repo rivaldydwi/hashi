@@ -58,14 +58,14 @@ export function FieldInputs({
         const id = `${idPrefix ?? section}-${f.name}`;
         const bad = invalid.includes(f.name);
         const inputName = `${namePrefix}${f.name}`;
-        const cls = bad ? `${inputClass} !border-rose-500 !ring-2 !ring-rose-100` : inputClass;
+        const cls = bad ? `${inputClass} !border-danger-solid !ring-2 !ring-danger-bg-strong` : inputClass;
         const wide = f.kind === "textarea";
         const list = suggestions[f.name]?.length ? `${id}-list` : undefined;
         return (
           <div key={f.name} className={`space-y-1.5 ${wide ? "sm:col-span-2" : ""}`} data-invalid={bad || undefined}>
             {f.kind === "boolean" ? (
-              <label className="flex items-center gap-2 py-1 text-sm text-stone-800">
-                <input type="checkbox" id={id} name={inputName} defaultChecked={values[f.name] === true} className="h-5 w-5 rounded border-stone-300" />
+              <label className="flex items-center gap-2 py-1 text-sm text-ink">
+                <input type="checkbox" id={id} name={inputName} defaultChecked={values[f.name] === true} className="h-5 w-5 rounded border-line-btn" />
                 {t(`fields.${f.name}`)}
               </label>
             ) : (
@@ -112,9 +112,9 @@ export function FieldInputs({
                     ))}
                   </datalist>
                 )}
-                {hintNames.includes(f.name) && <p className="text-xs text-stone-500">{t(`hints.${f.name}`)}</p>}
+                {hintNames.includes(f.name) && <p className="text-xs text-ink-2">{t(`hints.${f.name}`)}</p>}
                 {autoFilled.includes(f.name) && <p className="text-xs text-accent-text" data-testid={`autofilled-${f.name}`}>{tf("autoFilled")}</p>}
-                {bad && <p className="text-xs text-rose-700">{tf("fieldInvalid")}</p>}
+                {bad && <p className="text-xs text-danger-text">{tf("fieldInvalid")}</p>}
               </>
             )}
           </div>
@@ -192,19 +192,19 @@ export function SharingForm({ candidateId, shared }: { candidateId: string; shar
         <form action={action} className="space-y-2" data-testid="sharing-enable-form">
           <input type="hidden" name="candidateId" value={candidateId} />
           <input type="hidden" name="share" value="on" />
-          <label className="flex items-start gap-2 text-sm text-stone-800">
-            <input type="checkbox" name="confirm" required className="mt-0.5 h-4 w-4 rounded border-stone-300" data-testid="sharing-confirm" />
+          <label className="flex items-start gap-2 text-sm text-ink">
+            <input type="checkbox" name="confirm" required className="mt-0.5 h-4 w-4 rounded border-line-btn" data-testid="sharing-confirm" />
             <span>{t("confirmLabel")}</span>
           </label>
           <FormAlert state={state} />
           <SubmitButton>{t("enable")}</SubmitButton>
         </form>
       ) : (
-        <details className="rounded-lg border border-rose-200 bg-rose-50/40 p-3">
-          <summary className="cursor-pointer text-sm font-medium text-rose-700">{t("disable")}</summary>
+        <details className="rounded-lg border border-danger-line bg-danger-bg/40 p-3">
+          <summary className="cursor-pointer text-sm font-medium text-danger-text">{t("disable")}</summary>
           <form action={action} className="space-y-2 pt-2" data-testid="sharing-disable-form">
             <input type="hidden" name="candidateId" value={candidateId} />
-            <p className="text-sm text-rose-900" role="alert">{t("disableWarning")}</p>
+            <p className="text-sm text-danger-text" role="alert">{t("disableWarning")}</p>
             <FormAlert state={state} />
             <SubmitButton className={btnDanger}>{t("disableConfirm")}</SubmitButton>
           </form>
@@ -313,7 +313,7 @@ export function NoteAddForm({ candidateId }: { candidateId: string }) {
         <label className="flex items-center gap-2 text-sm">
           <input type="radio" name="visibility" value="SHARED_WITH_LPK" /> {t("shared")}
         </label>
-        <p className="text-xs text-amber-800">{t("shareWarning")}</p>
+        <p className="text-xs text-warn-text">{t("shareWarning")}</p>
       </fieldset>
       <FormAlert state={state} />
       <SubmitButton>{t("save")}</SubmitButton>

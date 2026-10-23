@@ -54,7 +54,7 @@ export function TskAssessmentForm({
         <label className="flex items-center gap-2 text-sm">
           <input type="radio" name="visibility" value="SHARED_WITH_LPK" defaultChecked={visibility === "SHARED_WITH_LPK"} /> {t("tsk.shared")}
         </label>
-        <p className="text-xs text-amber-800">{t("tsk.shareWarning")}</p>
+        <p className="text-xs text-warn-text">{t("tsk.shareWarning")}</p>
       </fieldset>
       <FormAlert state={state} />
       <button type="submit" disabled={pending} className={btnPrimary} data-testid="assessment-submit">

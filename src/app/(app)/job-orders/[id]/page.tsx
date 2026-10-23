@@ -25,7 +25,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const Flag = ({ ok, label, testid }: { ok: boolean | null; label: string; testid: string }) =>
   ok === null ? null : (
-    <span data-testid={testid} data-ok={ok} className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${ok ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}>
+    <span data-testid={testid} data-ok={ok} className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${ok ? "bg-ok-bg text-ok-text" : "bg-danger-bg text-danger-text"}`}>
       {ok ? "✓" : "✗"} {label}
     </span>
   );
@@ -44,7 +44,7 @@ export default async function JobOrderPage({ params, searchParams }: { params: P
   const values = Object.fromEntries(JOB_ORDER_ALL_FIELDS.map((f) => [f.name, toFormValue(f, (jo as Record<string, unknown>)[f.name])]));
   const matches = tab === "match" ? await tenantQuery((tx) => matchCandidates(tx, jo, me.organizationId)) : [];
 
-  const tabClass = (active: boolean) => `rounded-lg px-4 py-2 text-sm font-medium ${active ? "bg-stone-900 text-white" : "bg-white text-stone-700 border border-stone-300 hover:bg-stone-100"}`;
+  const tabClass = (active: boolean) => `rounded-lg px-4 py-2 text-sm font-medium ${active ? "bg-ink text-white" : "bg-white text-ink-menu border border-line-btn hover:bg-muted"}`;
   return (
     <>
       <PageHeader
@@ -73,16 +73,16 @@ export default async function JobOrderPage({ params, searchParams }: { params: P
           </section>
           <section className={`${cardClass} space-y-3 p-5`}>
             <h2 className="font-medium">{t("statusTitle")}</h2>
-            <p className="text-sm text-stone-600">{t("statusHint")}</p>
+            <p className="text-sm text-ink-menu">{t("statusHint")}</p>
             <StatusButtons jobOrderId={jo.id} status={jo.status} />
             {me.role === "TSK_ADMIN" && <DeleteJobOrder jobOrderId={jo.id} />}
           </section>
         </div>
       ) : (
         <section className={`${cardClass} overflow-hidden`} data-testid="section-match">
-          <p className="px-5 pt-4 text-sm text-stone-600">{t("matchIntro")}</p>
+          <p className="px-5 pt-4 text-sm text-ink-menu">{t("matchIntro")}</p>
           {matches.length === 0 ? (
-            <p className="p-5 text-sm text-stone-500" data-testid="match-empty">{t("matchEmpty")}</p>
+            <p className="p-5 text-sm text-ink-2" data-testid="match-empty">{t("matchEmpty")}</p>
           ) : (
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-sm" data-testid="match-table">
@@ -95,34 +95,34 @@ export default async function JobOrderPage({ params, searchParams }: { params: P
                     <th className="px-5 py-2" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100">
+                <tbody className="divide-y divide-line-soft">
                   {matches.map((c) => (
                     <tr key={c.id} data-testid="match-row" data-candidate={c.fullName}>
                       <td translate="no" className="cjk-phrase min-w-40 px-5 py-3">
                         <Link href={`/candidates/${c.id}`} className="font-medium text-brand-700 hover:underline">{c.fullName}</Link>
-                        <div className="text-xs text-stone-500">{c.lpkName}</div>
+                        <div className="text-xs text-ink-2">{c.lpkName}</div>
                       </td>
                       <td className="cjk-phrase min-w-40 px-5 py-3">
                         <div className="flex flex-wrap gap-1">
                           <Flag ok={c.jlptOk} label={t("reqJlpt", { level: jo.minJlpt ?? "" })} testid="flag-jlpt" />
                           <Flag ok={c.jftOk} label={t("reqJft")} testid="flag-jft" />
                           <Flag ok={c.genderOk} label={t(`reqGender.${jo.genderRequirement ?? "MALE"}`)} testid="flag-gender" />
-                          {c.jlptOk === null && c.jftOk === null && c.genderOk === null && <span className="text-xs text-stone-500">{t("noRequirements")}</span>}
+                          {c.jlptOk === null && c.jftOk === null && c.genderOk === null && <span className="text-xs text-ink-2">{t("noRequirements")}</span>}
                         </div>
                       </td>
                       <td className="px-5 py-3 tabular-nums" data-testid="match-avg">{formatAvg(c.latestAvg)}</td>
                       <td className="px-5 py-3">
-                        {c.forThisJobOrder ? <span data-testid="match-this"><DecisionBadge decision={c.forThisJobOrder} /></span> : c.headline ? <span className="text-xs text-stone-500"><DecisionBadge decision={c.headline} /></span> : <span className="text-xs text-stone-400">—</span>}
+                        {c.forThisJobOrder ? <span data-testid="match-this"><DecisionBadge decision={c.forThisJobOrder} /></span> : c.headline ? <span className="text-xs text-ink-2"><DecisionBadge decision={c.headline} /></span> : <span className="text-xs text-ink-2">—</span>}
                       </td>
                       <td className="px-5 py-3 text-right">
                         {c.placed ? (
-                          <span className="text-xs text-stone-500" data-testid="match-placed">{t("alreadyPlaced")}</span>
+                          <span className="text-xs text-ink-2" data-testid="match-placed">{t("alreadyPlaced")}</span>
                         ) : c.forThisJobOrder && ["SUBMITTED_TO_CLIENT", "PASSED_CLIENT_INTERVIEW", "DOCUMENT_PROCESS", "DEPARTED"].includes(c.forThisJobOrder) ? (
-                          <span className="text-xs font-medium text-emerald-700" data-testid="match-proposed">{t("proposed")}</span>
+                          <span className="text-xs font-medium text-ok-text" data-testid="match-proposed">{t("proposed")}</span>
                         ) : jo.status === "OPEN" ? (
                           <ProposeButton jobOrderId={jo.id} candidateId={c.id} />
                         ) : (
-                          <span className="text-xs text-stone-400">{t("notOpen")}</span>
+                          <span className="text-xs text-ink-2">{t("notOpen")}</span>
                         )}
                       </td>
                     </tr>

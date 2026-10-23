@@ -104,7 +104,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
                     {r.stage ? (
                       <span className="inline-flex flex-wrap items-center gap-1"><Badge tone={STAGE_TONE[r.stage]} testId="card-row-stage">{t(`stage.${r.stage}`)}</Badge>{r.additionalDocs && <Badge tone="warn">{t("flags.additionalDocsShort")}</Badge>}</span>
                     ) : <Badge tone="warn" testId="card-row-stage">{t("list.none")}</Badge>}
-                    {r.specialUntil && <div className="mt-1 text-xs text-amber-900">{t("flags.special", { date: slash(r.specialUntil) })}</div>}
+                    {r.specialUntil && <div className="mt-1 text-xs text-warn-text">{t("flags.special", { date: slash(r.specialUntil) })}</div>}
                   </td>
                   <td className={`${gridTd} min-w-36`}>{r.renewalStatus ? t(`renewal.${r.renewalStatus}`) : "—"}</td>
                   <td translate="no" className={`${gridTdText} min-w-28`} data-testid="card-row-responsible">{r.responsibleName ?? <span className="text-ink-2">—</span>}</td>

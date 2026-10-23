@@ -37,23 +37,23 @@ export async function TskAssessmentsSection({ candidateId, rows, me, canIntervie
     <section className={`${cardClass} space-y-4 p-4 sm:p-5`} data-testid="section-tsk-assessments">
       <div>
         <h2 className="font-medium">{tsk ? t("tsk.title") : t("tsk.lpkTitle")}</h2>
-        <p className="mt-1 text-sm text-stone-500">{tsk ? t("tsk.intro") : t("tsk.lpkIntro")}</p>
+        <p className="mt-1 text-sm text-ink-2">{tsk ? t("tsk.intro") : t("tsk.lpkIntro")}</p>
       </div>
 
       {tsk && (
         <div className="grid gap-3 lg:grid-cols-2">
-          <details className="rounded-lg border border-stone-200 p-3">
+          <details className="rounded-lg border border-line p-3">
             <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="tsk-visit-toggle">+ {t("tsk.addVisit")}</summary>
             <TskAssessmentForm candidateId={candidateId} kind="TSK_VISIT" values={toValues(null, today)} visibility="TSK_ONLY" maxDate={today} />
           </details>
           {canInterview ? (
-            <details className="rounded-lg border border-stone-200 p-3">
+            <details className="rounded-lg border border-line p-3">
               <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="tsk-interview-toggle">+ {t("tsk.addInterview")}</summary>
               <TskAssessmentForm candidateId={candidateId} kind="TSK_INTERVIEW" values={toValues(null, today)} visibility="TSK_ONLY" maxDate={today} />
             </details>
           ) : (
-            <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 p-3 text-sm text-stone-500" data-testid="tsk-interview-locked" aria-disabled="true">
-              <p className="font-medium text-stone-600">+ {t("tsk.addInterview")}</p>
+            <div className="rounded-lg border border-dashed border-line-btn bg-page p-3 text-sm text-ink-2" data-testid="tsk-interview-locked" aria-disabled="true">
+              <p className="font-medium text-ink-menu">+ {t("tsk.addInterview")}</p>
               <p className="mt-1">{t("tsk.interviewLocked")}</p>
             </div>
           )}
@@ -61,21 +61,21 @@ export async function TskAssessmentsSection({ candidateId, rows, me, canIntervie
       )}
 
       {rows.length === 0 ? (
-        <p className="text-sm text-stone-500" data-testid="tsk-assessment-empty">{t("tsk.empty")}</p>
+        <p className="text-sm text-ink-2" data-testid="tsk-assessment-empty">{t("tsk.empty")}</p>
       ) : (
         <ul className="space-y-3" data-testid="tsk-assessment-list">
           {rows.map((r) => (
-            <li key={r.id} className="rounded-xl border border-stone-200 p-3" data-testid="tsk-assessment" data-kind={r.kind} data-visibility={r.visibility}>
+            <li key={r.id} className="rounded-xl border border-line p-3" data-testid="tsk-assessment" data-kind={r.kind} data-visibility={r.visibility}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-medium">{t(`tsk.kinds.${r.kind}`)}</p>
-                  <p className="text-xs text-stone-500">
+                  <p className="text-xs text-ink-2">
                     {day(r.assessedOn)} · {r.durationMinutes} {t("minutes")} · {tsk ? (r.assessorName ?? "—") : r.orgName}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {tsk && (
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.visibility === "TSK_ONLY" ? "bg-stone-100 text-stone-700" : "bg-sky-50 text-sky-800"}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.visibility === "TSK_ONLY" ? "bg-muted text-ink-menu" : "bg-info-bg text-info-text"}`}>
                       {r.visibility === "TSK_ONLY" ? t("tsk.tskOnly") : t("tsk.shared")}
                     </span>
                   )}
@@ -85,7 +85,7 @@ export async function TskAssessmentsSection({ candidateId, rows, me, canIntervie
               <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm sm:grid-cols-4">
                 {SCORE_NAMES.map((n) => (
                   <div key={n} className="flex justify-between gap-2">
-                    <dt className="text-stone-500">{ts(`fields.${n}`)}</dt>
+                    <dt className="text-ink-2">{ts(`fields.${n}`)}</dt>
                     <dd className="tabular-nums">{scoreText(r[n])}</dd>
                   </div>
                 ))}
@@ -94,20 +94,20 @@ export async function TskAssessmentsSection({ candidateId, rows, me, canIntervie
                 <dl className="mt-2 space-y-1 text-sm">
                   {r.note && (
                     <div>
-                      <dt className="text-xs text-stone-500">{ts("fields.note")}</dt>
+                      <dt className="text-xs text-ink-2">{ts("fields.note")}</dt>
                       <dd className="whitespace-pre-line" data-testid="tsk-assessment-note">{r.note}</dd>
                     </div>
                   )}
                   {r.followUp && (
                     <div>
-                      <dt className="text-xs text-stone-500">{ts("fields.followUp")}</dt>
+                      <dt className="text-xs text-ink-2">{ts("fields.followUp")}</dt>
                       <dd className="whitespace-pre-line">{r.followUp}</dd>
                     </div>
                   )}
                 </dl>
               )}
               {canEdit(r) && (
-                <details className="mt-2 border-t border-stone-100 pt-2 text-sm">
+                <details className="mt-2 border-t border-line-soft pt-2 text-sm">
                   <summary className="cursor-pointer font-medium text-brand-700">{t("detailAndEdit")}</summary>
                   <TskAssessmentForm candidateId={candidateId} kind={r.kind as "TSK_VISIT" | "TSK_INTERVIEW"} assessmentId={r.id} values={toValues(r, today)} visibility={r.visibility} maxDate={today} />
                 </details>

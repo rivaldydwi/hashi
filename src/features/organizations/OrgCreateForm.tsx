@@ -55,9 +55,9 @@ export function OrgCreateForm() {
         </div>
       </div>
 
-      <fieldset className="space-y-4 rounded-xl border border-stone-200 p-4">
+      <fieldset className="space-y-4 rounded-xl border border-line p-4">
         <legend className="px-1 text-sm font-medium">{t("orgs.firstAdmin")}</legend>
-        <p className="text-sm text-stone-500">{t("orgs.firstAdminNote")}</p>
+        <p className="text-sm text-ink-2">{t("orgs.firstAdminNote")}</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label htmlFor="adminName" className={labelClass}>{t("orgs.adminName")}</label>

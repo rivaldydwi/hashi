@@ -30,9 +30,9 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
   ];
 
   return (
-    <section className={`${cardClass} border-rose-200 p-5`} data-testid="danger-zone">
-      <h2 className="font-medium text-rose-800">{t("zoneTitle")}</h2>
-      <p className="mt-1 text-sm text-stone-600">{t("zoneIntro")}</p>
+    <section className={`${cardClass} border-danger-line p-5`} data-testid="danger-zone">
+      <h2 className="font-medium text-danger-text">{t("zoneTitle")}</h2>
+      <p className="mt-1 text-sm text-ink-menu">{t("zoneIntro")}</p>
       <button
         type="button"
         data-testid="delete-open"
@@ -45,19 +45,19 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
         {t("open")}
       </button>
 
-      <dialog ref={dialog} data-testid="delete-dialog" aria-labelledby="delete-title" className="m-auto w-full max-w-lg rounded-2xl p-0 shadow-xl backdrop:bg-stone-900/50">
+      <dialog ref={dialog} data-testid="delete-dialog" aria-labelledby="delete-title" className="m-auto w-full max-w-lg rounded-2xl p-0 shadow-xl backdrop:bg-ink/50">
         <form action={action} className="space-y-4 p-6">
           <input type="hidden" name="candidateId" value={candidateId} />
-          <h3 id="delete-title" className="text-lg font-semibold text-rose-800">{t("title")}</h3>
+          <h3 id="delete-title" className="text-lg font-semibold text-danger-text">{t("title")}</h3>
           <p className="text-sm">
             <span className="font-medium" data-testid="delete-name">{name}</span>
-            <span className="ml-2 rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs text-stone-600" data-testid="delete-code">{code}</span>
+            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-ink-menu" data-testid="delete-code">{code}</span>
           </p>
-          <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-900">{t("irreversible")}</p>
+          <p className="rounded-lg bg-danger-bg px-3 py-2 text-sm font-medium text-danger-text">{t("irreversible")}</p>
 
           <div>
             <p className="text-sm font-medium">{t("willBeDeleted")}</p>
-            <ul className="mt-1 space-y-0.5 text-sm text-stone-700" data-testid="delete-summary">
+            <ul className="mt-1 space-y-0.5 text-sm text-ink-menu" data-testid="delete-summary">
               {rows.map(([key, n]) => (
                 <li key={key} data-key={key} data-count={n} className="flex justify-between gap-3">
                   <span>{t(`items.${key}`)}</span>
@@ -65,16 +65,16 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
                 </li>
               ))}
             </ul>
-            <p className="mt-1 text-xs text-stone-500">{t("alsoPersonal")}</p>
+            <p className="mt-1 text-xs text-ink-2">{t("alsoPersonal")}</p>
           </div>
 
           {shared && tskData > 0 && (
-            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="delete-tsk-warning">{t("tskWarning")}</p>
+            <p className="rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-text" data-testid="delete-tsk-warning">{t("tskWarning")}</p>
           )}
-          <p className="text-sm text-stone-600">{t("suggestion")}</p>
+          <p className="text-sm text-ink-menu">{t("suggestion")}</p>
 
           {summary.blocked ? (
-            <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-900" data-testid="delete-blocked">{t("errors.blocked")}</p>
+            <p role="alert" className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-text" data-testid="delete-blocked">{t("errors.blocked")}</p>
           ) : (
             <div className="space-y-1.5">
               <label htmlFor="delete-confirm" className={labelClass}>{t("confirmLabel", { code })}</label>
@@ -96,7 +96,7 @@ export function DeleteCandidate({ candidateId, name, code, summary, shared }: { 
               type="submit"
               disabled={!matches || pending || summary.blocked}
               data-testid="delete-submit"
-              className="inline-flex items-center rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center rounded-lg bg-danger-solid px-4 py-2 text-sm font-medium text-white hover:bg-danger-solid-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {pending ? t("deleting") : t("submit")}
             </button>

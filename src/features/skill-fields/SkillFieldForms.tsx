@@ -60,7 +60,7 @@ export function SkillFieldRowForms({ id, nameId, nameJa, sortOrder, active, used
           <input type="hidden" name="id" value={id} />
           <SubmitButton className={btnDanger}>{t("delete")}</SubmitButton>
         </form>
-        {used > 0 && <span className="text-xs text-stone-500">{t("usedHint", { n: used })}</span>}
+        {used > 0 && <span className="text-xs text-ink-2">{t("usedHint", { n: used })}</span>}
       </div>
       <FormAlert state={saveState.status !== "idle" ? saveState : toggleState.status !== "idle" ? toggleState : delState} />
     </div>

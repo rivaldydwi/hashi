@@ -49,13 +49,13 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
       />
 
       {sp.deleted && (
-        <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid="candidate-deleted">
+        <p role="status" className="mb-4 rounded-lg bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="candidate-deleted">
           {t("deleted")}
         </p>
       )}
 
       {sp.added && (
-        <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid="candidate-added">
+        <p role="status" className="mb-4 rounded-lg bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="candidate-added">
           {t("added")}
         </p>
       )}
@@ -64,8 +64,8 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
       <ActiveFilterChips filters={filters} fieldLabel={(code) => fields.find((f) => f.code === code)?.label ?? code} />
       <StatusLegend kind={isTsk ? "decision" : "stage"} />
 
-      <p className="mb-2 text-sm text-stone-500" data-testid="candidate-total-label">
-        <span className="font-medium tabular-nums text-stone-800" data-testid="candidate-total">{list.total}</span>{" "}
+      <p className="mb-2 text-sm text-ink-2" data-testid="candidate-total-label">
+        <span className="font-medium tabular-nums text-ink" data-testid="candidate-total">{list.total}</span>{" "}
         {t("totalSuffix")}
       </p>
 
@@ -84,7 +84,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
           {filters.page > 1 ? (
             <Link href={pageHref(filters.page - 1)} className={btnSecondary}>← {t("prev")}</Link>
           ) : <span />}
-          <span className="text-stone-500">{t("pageOf", { page: filters.page, pages })}</span>
+          <span className="text-ink-2">{t("pageOf", { page: filters.page, pages })}</span>
           {filters.page < pages ? (
             <Link href={pageHref(filters.page + 1)} className={btnSecondary}>{t("next")} →</Link>
           ) : <span />}

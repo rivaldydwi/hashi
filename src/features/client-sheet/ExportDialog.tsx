@@ -55,10 +55,10 @@ export function ExportDialog({ models, baseHref, testid }: { models: SheetModels
           </div>
 
           {sheet.missing.length > 0 && (
-            <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900" role="note" data-testid="sheet-missing">{t("missingHint", { fields: sheet.missing.map((k) => t(`missing.${k}`)).join(", ") })}</p>
+            <p className="rounded-lg bg-warn-bg p-3 text-sm text-warn-text" role="note" data-testid="sheet-missing">{t("missingHint", { fields: sheet.missing.map((k) => t(`missing.${k}`)).join(", ") })}</p>
           )}
           {sheet.skipped.length > 0 && (
-            <p className="rounded-lg bg-stone-100 p-3 text-sm text-ink-2" role="note" data-testid="sheet-skipped">{t("skippedHint")} <span lang="ja">{sheet.skipped.join("、")}</span></p>
+            <p className="rounded-lg bg-muted p-3 text-sm text-ink-2" role="note" data-testid="sheet-skipped">{t("skippedHint")} <span lang="ja">{sheet.skipped.join("、")}</span></p>
           )}
           {mode === "share" && (
             <div className="rounded-lg border border-line p-3 text-sm" data-testid="sheet-excluded">

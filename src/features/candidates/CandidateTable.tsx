@@ -46,7 +46,7 @@ export async function CandidateTable({ rows, isTsk, stats }: { rows: CandidateLi
                 </td>
                 {!isTsk && (
                   <td data-label={t("colShared")} className={`${cell} text-xs`} data-testid="shared-cell">
-                    <span className={`rounded-full px-2.5 py-0.5 font-medium ${c.sharedWithTsk ? "bg-sky-50 text-sky-900" : "bg-stone-100 text-stone-800"}`}>
+                    <span className={`rounded-full px-2.5 py-0.5 font-medium ${c.sharedWithTsk ? "bg-info-bg text-info-text" : "bg-muted text-ink"}`}>
                       {c.sharedWithTsk ? t("shared") : t("notShared")}
                     </span>
                   </td>

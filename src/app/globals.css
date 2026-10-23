@@ -31,12 +31,42 @@
   --color-data-1: #8c8378;
   --color-data-2: #a39b90;
 
+  /* Netral tambahan (T-033): permukaan lencana/chip netral dan garis pemisah halus. */
+  --color-muted: #f3f0eb;
+  --color-muted-strong: #e7e2db;
+  --color-line-soft: #f2eee9;
+
+  /* Status semantik (T-033). Komponen TIDAK memakai kelas warna Tailwind mentah (dijaga tests/unit/no-raw-colors.test.ts).
+     ok-* dan info-* di atas dipakai juga untuk "berhasil" dan "informasi". Teks di atas -bg: kontras >= 4,5:1. */
+  --color-danger-bg: #fff1f2;
+  --color-danger-bg-strong: #ffe4e6;
+  --color-danger-line: #fecdd3;
+  --color-danger-line-strong: #fda4af;
+  --color-danger-text: #881337;
+  --color-danger-solid: #be123c;
+  --color-danger-solid-hover: #9f1239;
+  --color-warn-bg: #fffbeb;
+  --color-warn-bg-strong: #fef3c7;
+  --color-warn-line: #fcd34d;
+  --color-warn-text: #78350f;
+
+  /* Lencana tahap seleksi TSK (StatusBadge): satu warna per tahap supaya alur terbaca; ikon + teks tetap pembeda utama. */
+  --color-status-shortlist-bg: #eef2ff;
+  --color-status-shortlist-text: #312e81;
+  --color-status-interview-bg: #f5f3ff;
+  --color-status-interview-text: #4c1d95;
+  --color-status-docs-bg: #f0fdfa;
+  --color-status-docs-text: #134e4a;
+  --color-status-done-bg: #dcfce7;
+  --color-status-done-text: #14532d;
+
   /* Warna merek (sampling dari design/brand-source). HANYA untuk logo dan panel merek halaman login; aksen aplikasi tetap --color-accent. */
   --color-brand-navy: #0f1424;
   --color-brand-navy-icon: #1b2547;
   --color-brand-blue: #5b7cfa;
   --color-brand-periwinkle: #c9d3ff;
   --color-brand-coral: #ff6b5e;
+  --color-brand-mist: #e6eaff;
 
   /* Skala "brand" lama dipetakan ke aksen baru supaya tombol/tautan yang sudah ada ikut berganti gaya */
   --color-brand-50: #fdebdd;

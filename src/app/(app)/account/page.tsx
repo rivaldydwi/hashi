@@ -30,7 +30,7 @@ export default async function AccountPage() {
           <dl className="space-y-3 text-sm">
             {rows.map(([label, value]) => (
               <div key={label} className="grid grid-cols-3 gap-2">
-                <dt className="text-stone-500">{label}</dt>
+                <dt className="text-ink-2">{label}</dt>
                 <dd className="col-span-2 font-medium">{value}</dd>
               </div>
             ))}

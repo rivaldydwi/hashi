@@ -54,9 +54,9 @@ export function SheetSection({ section, labelNs, idPrefix, fields, values }: { s
   const t = useTranslations("sheet");
   const hasValue = fields.some((f) => String(values[f.name] ?? "") !== "");
   return (
-    <details className="rounded-lg border border-stone-200 p-3" open={hasValue} data-testid={`sheet-section-${section}`}>
+    <details className="rounded-lg border border-line p-3" open={hasValue} data-testid={`sheet-section-${section}`}>
       <summary className="cursor-pointer text-sm font-medium text-brand-700">{t("sectionTitle")}</summary>
-      <p className="mb-3 mt-1 text-xs text-stone-500">{t("sectionHint")}</p>
+      <p className="mb-3 mt-1 text-xs text-ink-2">{t("sectionHint")}</p>
       <FieldInputs section={section} labelNs={labelNs} idPrefix={idPrefix} fields={fields} values={values} />
     </details>
   );
@@ -100,13 +100,13 @@ export function SiteForm({ companyId, site }: { companyId: string; site?: { id: 
                 .filter((o) => o.active || site?.fieldIds.includes(o.id))
                 .map((o) => (
                   <label key={o.id} className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" name="fieldIds" value={o.id} data-code={o.code} defaultChecked={site?.fieldIds.includes(o.id)} className="h-4 w-4 rounded border-stone-300" />
+                    <input type="checkbox" name="fieldIds" value={o.id} data-code={o.code} defaultChecked={site?.fieldIds.includes(o.id)} className="h-4 w-4 rounded border-line-btn" />
                     {o.label}
-                    {!o.active && <span className="text-xs text-stone-500">({t("inactive")})</span>}
+                    {!o.active && <span className="text-xs text-ink-2">({t("inactive")})</span>}
                   </label>
                 ))}
             </div>
-            <p className="text-xs text-stone-500">{t("acceptedFieldsHint")}</p>
+            <p className="text-xs text-ink-2">{t("acceptedFieldsHint")}</p>
           </fieldset>
           <FormAlert state={state} />
           <Submit pending={pending}>{site ? t("save") : t("addSite")}</Submit>
@@ -160,15 +160,15 @@ export function DeleteButton({ kind, hidden, warning }: { kind: "company" | "sit
   const t = useTranslations("clients");
   const action: Action = kind === "company" ? deleteCompany : kind === "site" ? deleteSite : deleteContact;
   return (
-    <details className="rounded-lg border border-rose-200 bg-rose-50/40 p-3" data-testid={`delete-${kind}`}>
-      <summary className="cursor-pointer text-sm font-medium text-rose-700">{t("deletePermanent")}</summary>
+    <details className="rounded-lg border border-danger-line bg-danger-bg/40 p-3" data-testid={`delete-${kind}`}>
+      <summary className="cursor-pointer text-sm font-medium text-danger-text">{t("deletePermanent")}</summary>
       <ManualForm progressive action={action} className="space-y-2 pt-2">
         {({ state, pending }) => (
           <>
             {Object.entries(hidden).map(([k, v]) => (
               <input key={k} type="hidden" name={k} value={v} />
             ))}
-            <p className="text-sm text-rose-900">{warning}</p>
+            <p className="text-sm text-danger-text">{warning}</p>
             <FormAlert state={state} />
             <button type="submit" disabled={pending} className={btnDanger} data-testid={`delete-${kind}-confirm`}>{t("deleteConfirm")}</button>
           </>

@@ -42,7 +42,7 @@ export function DocumentUploadForm({ candidateId, count, defaultType }: { candid
             onChange={(e) => checkFileSize(e.currentTarget, t("errors.tooBig"))}
             className={inputClass}
           />
-          <p className="text-xs text-stone-500">{t("fileHint")}</p>
+          <p className="text-xs text-ink-2">{t("fileHint")}</p>
         </div>
         <div className="space-y-1.5">
           <label htmlFor="doc-issued" className={labelClass}>{t("issuedDate")}</label>

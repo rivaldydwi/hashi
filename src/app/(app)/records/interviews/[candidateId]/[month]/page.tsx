@@ -125,10 +125,10 @@ export default async function InterviewFormPage({ params }: { params: Promise<{ 
             <RevisionHistory revisions={detail!.revisions} current={toSnake(r as unknown as Record<string, unknown>)} fields={fields} names={names} tz={tz} testId="interview-history" />
           </section>
 
-          <details className="rounded-xl border border-rose-200 bg-rose-50/40 p-3">
-            <summary className="min-h-11 cursor-pointer text-sm font-semibold text-rose-900">{t("interviews.void")}</summary>
+          <details className="rounded-xl border border-danger-line bg-danger-bg/40 p-3">
+            <summary className="min-h-11 cursor-pointer text-sm font-semibold text-danger-text">{t("interviews.void")}</summary>
             <ActionForm action={voidPeriodicInterview} hidden={{ id: r.id }} submitLabel={t("detail.voidConfirm")} submitTone="danger" redirectTo="/records/interviews" className="mt-2 space-y-2" testId="void-interview-form">
-              <p className="text-sm text-rose-900">{t("detail.voidWarning")}</p>
+              <p className="text-sm text-danger-text">{t("detail.voidWarning")}</p>
               <label htmlFor="vi-reason" className={labelClass}>{t("detail.voidReason")} *</label>
               <textarea id="vi-reason" name="reason" required rows={2} lang="ja" maxLength={1000} className={`${inputClass} min-h-16 py-2`} />
             </ActionForm>

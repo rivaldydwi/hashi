@@ -61,8 +61,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <h2 className="mt-8 text-[30px] font-bold leading-tight text-white">{t("panelTitle")}</h2>
           <ul className="mt-8 space-y-4">
             {(["panel1", "panel2", "panel3"] as const).map((k) => (
-              <li key={k} className="flex items-start gap-3 text-base text-[#E6EAFF]">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#C9D3FF" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0"><path d={check} /></svg>
+              <li key={k} className="flex items-start gap-3 text-base text-brand-mist">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0 stroke-brand-periwinkle"><path d={check} /></svg>
                 {t(k)}
               </li>
             ))}

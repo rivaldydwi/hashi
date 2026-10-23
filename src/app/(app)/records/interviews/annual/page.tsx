@@ -70,7 +70,7 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
                     {quarters.map((c) => (
                       <td key={c.q} className={`${td} cjk-phrase min-w-36`} data-testid="annual-quarter" data-quarter={c.q} data-state={c.state} data-count={c.count}>
                         {c.state === "notRequired" || c.state === "notDue" ? <span className="text-ink-2">—</span> : (
-                          <span className={`font-medium ${c.state === "missed" ? "text-rose-800" : ""}`}>{c.state === "done" ? "✅" : c.state === "missed" ? "🔴" : c.state === "open" ? "⏳" : "➖"} {c.state === "open" ? t("interviews.qstate.open", { date: c.deadline.replace(/-/g, "/") }) : t(`interviews.qstate.${c.state}`)}
+                          <span className={`font-medium ${c.state === "missed" ? "text-danger-text" : ""}`}>{c.state === "done" ? "✅" : c.state === "missed" ? "🔴" : c.state === "open" ? "⏳" : "➖"} {c.state === "open" ? t("interviews.qstate.open", { date: c.deadline.replace(/-/g, "/") }) : t(`interviews.qstate.${c.state}`)}
                             {c.state === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: c.count })})</span>}</span>
                         )}
                       </td>
