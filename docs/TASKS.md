@@ -18,19 +18,7 @@ Sejak 2026-10-23 peran PM juga dijalankan sesi engineer di Mini PC atas instruks
 > **Tampilan (T-033 s/d T-036):** dasar = audit tampilan 23 Okt (ringkasan di entri STATUS 2026-10-23) dan **keputusan Ipal (2026-10-23):** "Pakai warna merek (navy/biru/coral) untuk seluruh aplikasi."
 > Urutan WAJIB: T-033 dulu (token), baru palet. Aturan yang tidak berubah: status selalu ikon + teks + warna, target sentuh 44px, `:focus-visible`, tabel Jepang (T-011), aturan terjemahan (T-016/T-023), KPI = daftar (T-012), tanpa mode gelap.
 
-### T-036 · Rapikan kecil: panah, emoji, teks login, panel filter · `SIAP`
-
-Kerjakan:
-1. Hapus panah "→" yang ditempel di teks tombol/tautan (10 tempat, antara lain `records/page.tsx`, `records/meetings/page.tsx`, `ContinuePanel.tsx`, `src/db/renewal.ts`); tautan "kembali" (←) boleh tetap. Bila panah menyatakan arah nyata di data (mis. "dari → ke"), biarkan dan jelaskan di STATUS.
-2. Emoji sebagai ikon (3 tempat, antara lain `records/responsible/page.tsx`) diganti ikon dari `Icon.tsx`.
-3. Login: judul yang menyebut tugasnya (mis. "Masuk ke Hashi" / 「Hashi にログイン」) menggantikan "Selamat datang kembali"; panel merek: logo + satu kalimat, tanpa daftar centang tiga butir dan tanpa cahaya radial. id + ja.
-4. Panel filter daftar kandidat: satu baris utama (cari, status, bidang) + "Filter lain" untuk rata-rata nilai, kehadiran, JLPT (terbuka otomatis bila salah satunya aktif). Chip filter aktif tetap.
-5. `guide:shots` membangun dengan `GIT_SHA` supaya gambar tidak menampilkan "Hashi · unknown".
-
-**Kriteria selesai**
-- [ ] Tidak ada "→" di label tombol/tautan dan tidak ada emoji sebagai ikon di `src/` (laporkan hasil cek, mis. grep).
-- [ ] Teks login id/ja (`test:i18n` lulus); filter tetap bekerja dengan URL lama (`?avg=…` dll.); e2e lulus.
-- [ ] Gambar panduan terkait dibuat ulang; CI hijau; deploy produksi setelah merge.
+_Antrean kosong (2026-10-23): tugas tampilan T-033 s/d T-036 selesai. Tugas berikutnya menunggu Ipal/PM (lihat Cadangan; "Seed tahan tanggal" sebaiknya sebelum 1 Jan 2027)._
 
 ---
 
@@ -53,6 +41,7 @@ Kerjakan:
 
 ## Selesai
 
+- **T-036** Rapikan kecil (PR #38): panah di navigasi dihapus (arah data tetap), emoji status -> ikon garis, login "Masuk ke Hashi" + panel merek sederhana, filter kandidat satu baris + "Filter lain" (details), gambar panduan berlabel commit; tes `no-emoji-ui`; scanner audit 31 -> 7 temuan (sisa wajar).
 - **T-035** Hierarki beranda (PR #37): KPI per kelompok alur kerja (katalog `group` + `primaryFor`, `groupKpis`), judul kelompok di kolom kiri, KPI utama dua kolom, semua kartu berlatar netral dan perhatian = ikon + angka coral; mode atur per kelompok; TSK_ADMIN 1280 px +1 baris; panduan + README diperbarui.
 - **T-034** Palet dari warna merek (PR #36): netral kebiruan, aksen biru merek digelapkan `#3653d6`, coral hanya `attn-*`, danger/warn tetap; radius 8/6 px (`rounded-card`/`rounded-ctl`); header tabel huruf biasa, label MENU dihapus; tes kontras + penjaga palet lama; `docs/brand.md` aturan baru; panduan (83 gambar + PDF) dan 4 gambar README dibuat ulang.
 - **T-033** Token warna semantik (PR #34): token `muted*`, `line-soft`, `danger-*`, `warn-*`, `status-*`, `brand-mist`; 430 kelas warna Tailwind mentah di 65 berkas diganti token; heks grafik/login ke token; `no-raw-colors.test.ts` (tanpa warna mentah, tanpa heks di .tsx selain aset merek, kontras 26 pasangan >= 4,5:1). Tampilan praktis sama (selisih piksel <= 1,9%). Perbaikan seed tanggal (PR #35) masuk lebih dulu karena CI main merah.
