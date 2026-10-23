@@ -6,7 +6,7 @@ bagian "Peran dan aturan kerja".
 **Status:** `SIAP` (boleh diambil) · `DITAHAN` (menunggu keputusan Ipal/pihak luar, jangan diambil) · `SELESAI` (PR sudah di-merge).
 Ambil tugas `SIAP` **paling atas**. Satu tugas = satu branch `eng/<ID>-<slug>` = satu PR berjudul `[<ID>] …`.
 
-Terakhir diperbarui PM: 2026-10-23 (T-032 selesai; tampilan T-033 s/d T-036 dari audit tampilan + keputusan Ipal).
+Terakhir diperbarui PM: 2026-10-23 (T-037 seed tahan tanggal, permintaan Ipal).
 Sejak 2026-10-23 peran PM juga dijalankan sesi engineer di Mini PC atas instruksi Ipal; tiap review tetap ditulis sebagai komentar `PM:` di PR.
 
 ---
@@ -15,16 +15,34 @@ Sejak 2026-10-23 peran PM juga dijalankan sesi engineer di Mini PC atas instruks
 
 > **Aturan CI sejak T-028:** commit/PR yang HANYA mengubah `docs/**` atau `*.md` tidak menjalankan CI. PR seperti itu boleh di-merge cukup dengan `PM: DISETUJUI`; PR yang punya CI tetap wajib hijau.
 
-> **Tampilan (T-033 s/d T-036):** dasar = audit tampilan 23 Okt (ringkasan di entri STATUS 2026-10-23) dan **keputusan Ipal (2026-10-23):** "Pakai warna merek (navy/biru/coral) untuk seluruh aplikasi."
-> Urutan WAJIB: T-033 dulu (token), baru palet. Aturan yang tidak berubah: status selalu ikon + teks + warna, target sentuh 44px, `:focus-visible`, tabel Jepang (T-011), aturan terjemahan (T-016/T-023), KPI = daftar (T-012), tanpa mode gelap.
+### T-037 · Seed demo tahan tanggal (CI tidak merah saat kuartal berganti) · `SIAP`
 
-_Antrean kosong (2026-10-23): tugas tampilan T-033 s/d T-036 selesai. Tugas berikutnya menunggu Ipal/PM (lihat Cadangan; "Seed tahan tanggal" sebaiknya sebelum 1 Jan 2027)._
+**Permintaan Ipal (2026-10-23).** Latar: PR #35. `verify:seed` gagal mendadak saat kuartal fiskal berganti karena seed dihitung dari "hari ini"; perbaikan PR #35 hanya menutup
+pola status. Uji dengan jam proses digeser menunjukkan seed + `verify:seed` masih gagal di 2026-08-15 dan 09-30, dan seed sendiri GAGAL untuk tanggal sekitar setahun lalu.
+Kuartal berikutnya mulai 1 Jan 2027. Tanggal masa depan tidak bisa diuji lewat database (trigger menolak tanggal di masa depan menurut jam database).
+
+Kerjakan:
+1. **Satu sumber tanggal seed**: `SEED_TODAY` (opsional, `YYYY-MM-DD`, ditolak bila di masa depan menurut tanggal Tokyo atau tidak sah) dibaca SATU fungsi di `src/db/` dan dipakai
+   `scripts/seed.ts` (termasuk `seedRecords`, data demo lain yang memakai "hari ini"/bulan berjalan) DAN `scripts/verify-seed.ts`. Tanpa `SEED_TODAY` perilaku sama seperti sekarang.
+2. **Bagian yang peka tanggal jadi fungsi murni** di `src/db/` (minimal wawancara berkala di `demo-records.ts`: bulan, status, form 5-5, catatan kuartal, pekerja berhenti) yang dites
+   unit untuk SETIAP hari satu tahun fiskal penuh (dan tahun fiskal berikutnya), memeriksa syarat yang sama dengan `verify:seed` (keempat status, alasan, bulan 対象外, form 5-5 dengan
+   基準不適合, kuartal `open` >= 1, kuartal `missed` >= 1). Boleh mengubah cara seed memilih tanggal (mis. hitung mundur dari kuartal berjalan); isi data demo boleh bergeser, tetapi
+   tes e2e yang bergantung isi seed tetap lulus.
+3. **Skrip lokal** `scripts/verify-seed-dates.sh` (HANYA db dev/test, dijaga `db-guard`): untuk daftar tanggal (bawaan: awal/akhir tiap kuartal 12 bulan terakhir + hari ini)
+   jalankan `db:seed -- --reset` + `verify:seed` dengan `SEED_TODAY`, ringkas lulus/gagal per tanggal, akhiri dengan reseed tanggal asli. Perbaiki seed sampai semua tanggal itu lulus;
+   bila ada tanggal yang secara wajar tidak bisa (mis. batasan database), jelaskan di STATUS.
+4. CI tidak ditambah putaran seed (hemat menit Actions, T-028); jaminan untuk tanggal mendatang datang dari tes unit butir 2. Dokumentasi singkat di `CLAUDE.md` (bagian "Seed demo lengkap").
+
+**Kriteria selesai**
+- [ ] `SEED_TODAY` dipakai seed dan `verify:seed` dari satu fungsi; tanggal masa depan/tidak sah ditolak dengan pesan jelas (dites unit).
+- [ ] Tes unit wawancara berkala lulus untuk setiap hari FY2026 dan FY2027.
+- [ ] `scripts/verify-seed-dates.sh` lulus untuk semua tanggal bawaan (hasil per tanggal di STATUS); `verify:seed` di tanggal asli lulus.
+- [ ] typecheck, unit, `test:rls`, build, `test:e2e` (db dev) lulus; CI hijau. Tanpa migrasi, tanpa deploy (tidak mengubah aplikasi).
 
 ---
 
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
-- **Seed tahan tanggal** (temuan perbaikan PR #35, PENTING sebelum 1 Jan 2027): `seedRecords` memakai tanggal eksplisit (`SEED_TODAY`, bukan jam proses), wawancara berkala dihitung mundur dari kuartal berjalan, dan CI/uji lokal menjalankan `verify:seed` di beberapa tanggal batas kuartal; seed + `verify:seed` gagal di 2026-08-15 dan 09-30 (kode lama juga).
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
 - 在留カード: koreksi tanggal kartu yang sudah `received` oleh Admin (usulan engineer T-017), hanya bila TSK memintanya setelah dipakai.
 - Email pengingat 在留カード **ke pekerja** (butuh kolom email pekerja + persetujuan; setelah T-022).
