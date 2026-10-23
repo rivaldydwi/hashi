@@ -18,26 +18,7 @@ Sejak 2026-10-23 peran PM juga dijalankan sesi engineer di Mini PC atas instruks
 > **Tampilan (T-033 s/d T-036):** dasar = audit tampilan 23 Okt (ringkasan di entri STATUS 2026-10-23) dan **keputusan Ipal (2026-10-23):** "Pakai warna merek (navy/biru/coral) untuk seluruh aplikasi."
 > Urutan WAJIB: T-033 dulu (token), baru palet. Aturan yang tidak berubah: status selalu ikon + teks + warna, target sentuh 44px, `:focus-visible`, tabel Jepang (T-011), aturan terjemahan (T-016/T-023), KPI = daftar (T-012), tanpa mode gelap.
 
-### T-034 · Palet dari warna merek + radius + header tabel · `SIAP`
-
-Keputusan Ipal: warna merek untuk seluruh aplikasi. Merek: navy `#0F1424`, navy ikon `#1B2547`, periwinkle `#C9D3FF`, biru `#5B7CFA`, coral `#FF6B5E` (latar gelap) / `#F2574B` (latar terang), teks logo `#2B3A67`.
-
-Kerjakan:
-1. Palet baru di `@theme` (hanya nilai token; komponen tidak perlu disentuh berkat T-033): aksen tindakan = biru merek yang digelapkan sampai teks putih di atasnya >= 4,5:1 dan teks aksen di atas latar halaman >= 4,5:1; `accent-soft` dari periwinkle; netral sedikit kebiruan menggantikan krem (`page`, `line`, `hover`, `ink*`); coral (varian latar terang, digelapkan bila perlu untuk teks) HANYA untuk tone `attention`/sinyal "perlu tindakan" dan bahaya, tidak untuk tombol utama. Skala `brand-50..700` lama ikut dipetakan.
-2. Radius: kartu ±8px, kontrol ±6px (token `--radius-card`/`--radius-ctl`, dan `cardClass`/`inputClass`/`btnBase` memakainya).
-3. Header tabel huruf biasa (bukan `uppercase tracking-wide`) di `tableHeadClass`; label "MENU" di sidebar dihapus (atau huruf biasa). Tes T-011 tetap lulus.
-4. Login: tombol dan aksen kolom kiri ikut palet baru, panel merek kanan tetap navy (sekarang satu identitas).
-5. Tes unit kontras `tests/unit/contrast.test.ts`: membaca token dari `globals.css` dan memeriksa pasangan teks/latar yang dipakai (ink/page, ink-2/page, ink-2/card, putih/accent, accent-text/page, attn/info/ok/danger/warn text/bg) >= 4,5:1.
-6. Perbarui `docs/brand.md` (aturan "warna merek hanya untuk logo" diganti aturan baru) dan, bila perlu, kalimat terkait di `CLAUDE.md`.
-7. Jalankan ulang `npm run guide:shots` + `npm run build:guide` (gambar panduan berubah) dan perbarui `docs/screenshots/` yang dipakai README dengan data dummy.
-
-**Kriteria selesai**
-- [ ] Tidak ada krem/terakota tersisa (`#faf8f5`, `#c2410c` dan turunannya tidak ada di `src/`); aksen aplikasi = keluarga warna merek; coral hanya untuk perhatian/bahaya.
-- [ ] Tes kontras lulus; tes T-011, T-012, T-029 (404 mode gelap) tetap lulus.
-- [ ] Gambar panduan + PDF + gambar README dibuat ulang dan di-commit; `tests/unit/guide.test.ts` lulus.
-- [ ] typecheck, unit, build 0 peringatan, e2e; CI hijau. **Deploy produksi** setelah merge (`scripts/deploy.sh`, catat commit di STATUS). Demo `hashi-demo` TIDAK diperbarui tanpa izin Ipal.
-
-### T-035 · Hierarki beranda: kartu KPI dikelompokkan dan perhatian ditandai kecil · `SIAP` (setelah T-034 SELESAI)
+### T-035 · Hierarki beranda: kartu KPI dikelompokkan dan perhatian ditandai kecil · `SIAP`
 
 Masalah: beranda TSK_ADMIN 13 kartu berbobot sama, 8 berlatar oranye penuh sekaligus (dengan data nyata hampir semua KPI tindakan > 0), jadi tidak ada titik mulai.
 
@@ -87,6 +68,7 @@ Kerjakan:
 
 ## Selesai
 
+- **T-034** Palet dari warna merek (PR #36): netral kebiruan, aksen biru merek digelapkan `#3653d6`, coral hanya `attn-*`, danger/warn tetap; radius 8/6 px (`rounded-card`/`rounded-ctl`); header tabel huruf biasa, label MENU dihapus; tes kontras + penjaga palet lama; `docs/brand.md` aturan baru; panduan (83 gambar + PDF) dan 4 gambar README dibuat ulang.
 - **T-033** Token warna semantik (PR #34): token `muted*`, `line-soft`, `danger-*`, `warn-*`, `status-*`, `brand-mist`; 430 kelas warna Tailwind mentah di 65 berkas diganti token; heks grafik/login ke token; `no-raw-colors.test.ts` (tanpa warna mentah, tanpa heks di .tsx selain aset merek, kontras 26 pasangan >= 4,5:1). Tampilan praktis sama (selisih piksel <= 1,9%). Perbaikan seed tanggal (PR #35) masuk lebih dulu karena CI main merah.
 - **T-032** Demo publik untuk teman Ipal (PR #33): `hashi-demo` di `main` terbaru + `seed:pilot` (236 kandidat), Funnel 443 hanya ke 3111 (dicek ulang PM 23 Okt: pemetaan lain hanya tailnet), login lewat HTTPS publik berhasil, 3110 tidak terjangkau, `.env.demo` aman, tanpa alamat/kata sandi di repo. Uji dari HP oleh Ipal belum dilaporkan.
 - **T-031** README dan panduan tanpa penyebutan AI/cara kerja internal (PR #32): bagian "Cara kerja tim" dan tautan TASKS/STATUS dihapus dari ketiga README; tes penjaga kata terlarang (README + `docs/panduan/README.md`).
