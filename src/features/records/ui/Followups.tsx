@@ -5,6 +5,7 @@ import { createFollowup, setFollowupStatus } from "../actions";
 import type { StaffUser } from "../queries";
 import { ActionForm } from "./ActionForm";
 import { Badge, dateLabelSync } from "./common";
+import { Icon } from "@/components/shell/Icon";
 
 export type FollowupView = { id: string; description: string; dueDate: string | null; status: string; assigneeId: string; createdBy: string; assigneeName: string };
 
@@ -26,7 +27,7 @@ export async function FollowupList({ items, me, today, empty }: { items: Followu
                 <span>{t.rich("tasks.assignee", { name: f.assigneeName, n: dataTag })}</span>
                 {f.dueDate && <span>{t("tasks.due", { date: dateLabelSync(f.dueDate, locale) })}</span>}
                 <Badge tone={f.status === "done" ? "ok" : f.status === "cancelled" ? "neutral" : "info"}>{t(`tasks.status.${f.status}`)}</Badge>
-                {overdue && <Badge tone="danger" testId="badge-overdue">⚠ {t("tasks.overdue")}</Badge>}
+                {overdue && <Badge tone="danger" testId="badge-overdue"><Icon name="alert" className="inline-block h-4 w-4 shrink-0 align-[-3px]" /> {t("tasks.overdue")}</Badge>}
               </p>
             </div>
             {can && (

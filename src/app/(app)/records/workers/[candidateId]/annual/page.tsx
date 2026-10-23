@@ -46,9 +46,9 @@ export default async function WorkerAnnualPage({ params, searchParams }: { param
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={`${base}?fy=${fy - 1}`} className={btnSecondary} data-testid="wannual-prev">← {fiscalTitle(fy - 1)}</Link>
+        <Link href={`${base}?fy=${fy - 1}`} className={btnSecondary} data-testid="wannual-prev">{fiscalTitle(fy - 1)}</Link>
         <h2 className="px-2 text-[19px] font-semibold" data-testid="wannual-title">{t.rich("annual.workerTitle", { name: w.name, n: (chunks) => <Data>{chunks}</Data> })} · {fiscalTitle(fy)}</h2>
-        <Link href={`${base}?fy=${fy + 1}`} className={btnSecondary}>{fiscalTitle(fy + 1)} →</Link>
+        <Link href={`${base}?fy=${fy + 1}`} className={btnSecondary}>{fiscalTitle(fy + 1)}</Link>
         <Link href={`/records/workers/${candidateId}`} className={`${btnSecondary} ml-auto`}>{t("whistory.historyLink")}</Link>
       </div>
       <p className="text-sm text-ink-2">{t("annual.workerIntro")}</p>

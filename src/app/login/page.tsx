@@ -19,8 +19,6 @@ const DEMO_ACCOUNTS = [
   "admin@hashi.test",
 ];
 
-const check = "m5 12 4.5 4.5L19 7";
-
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await auth();
   if (session?.user) redirect("/");
@@ -40,7 +38,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </header>
 
         <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center py-10">
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink lg:text-[32px]">{t("heading")}</h1>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink lg:text-[32px]">{t("title")}</h1>
           <p className="mt-2 text-[15px] text-ink-2">{t("subheading")}</p>
           <div className="mt-8">
             <LoginForm callbackUrl={safeCallbackPath(raw)} demo={demo} />
@@ -53,20 +51,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </footer>
       </section>
 
-      <aside aria-label={t("panelTitle")} className="relative hidden overflow-hidden bg-brand-navy lg:flex lg:flex-col lg:justify-center lg:px-16" data-testid="brand-panel">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-brand-blue opacity-[0.16] blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -left-20 h-96 w-96 rounded-full bg-brand-coral opacity-[0.13] blur-3xl" />
-        <div className="relative max-w-md">
+      {/* Panel merek (T-036): logo + satu kalimat. Tanpa daftar fitur dan efek cahaya: halaman ini untuk masuk, bukan promosi. */}
+      <aside aria-label={t("panelTitle")} className="hidden bg-brand-navy lg:flex lg:flex-col lg:justify-center lg:px-16" data-testid="brand-panel">
+        <div className="max-w-md">
           <BrandLogo variant="mark" tone="dark" height={96} decorative />
-          <h2 className="mt-8 text-[30px] font-bold leading-tight text-white">{t("panelTitle")}</h2>
-          <ul className="mt-8 space-y-4">
-            {(["panel1", "panel2", "panel3"] as const).map((k) => (
-              <li key={k} className="flex items-start gap-3 text-base text-brand-mist">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0 stroke-brand-periwinkle"><path d={check} /></svg>
-                {t(k)}
-              </li>
-            ))}
-          </ul>
+          <p className="mt-8 text-[28px] font-semibold leading-snug text-white">{t("panelTitle")}</p>
         </div>
       </aside>
     </main>

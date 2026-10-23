@@ -44,9 +44,9 @@ export default async function MeetingRecordsPage({ searchParams }: { searchParam
       <RecordList base="/records/meetings" rows={data.list.rows} tz={tz} filtered={active} emptyAction={{ href: "/records/new?kind=meeting", label: `+ ${t("meetings.add")}` }} />
       {pages > 1 && (
         <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Pagination">
-          {f.page > 1 ? <Link href={qs(f.page - 1)} className={btnSecondary}>← {t("list.prev")}</Link> : <span />}
+          {f.page > 1 ? <Link href={qs(f.page - 1)} className={btnSecondary}>{t("list.prev")}</Link> : <span />}
           <span className="text-ink-2">{t("list.pageOf", { page: f.page, pages })}</span>
-          {f.page < pages ? <Link href={qs(f.page + 1)} className={btnSecondary}>{t("list.next")} →</Link> : <span />}
+          {f.page < pages ? <Link href={qs(f.page + 1)} className={btnSecondary}>{t("list.next")}</Link> : <span />}
         </nav>
       )}
     </>

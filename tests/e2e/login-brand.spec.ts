@@ -5,17 +5,19 @@ import { DEMO_PASSWORD } from "./helpers";
 
 test("login tampil dalam bahasa Indonesia dan Jepang; pemilih bahasa bekerja sebelum login dan bertahan setelah reload", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Selamat datang kembali");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Masuk ke Hashi");
   await expect(page).toHaveTitle("Masuk · Hashi");
   await expect(page.getByTestId("brand-panel")).toContainText("Satu profil kandidat, dari LPK sampai TSK.");
+  // T-036: panel merek hanya logo + satu kalimat (tanpa daftar centang)
+  await expect(page.getByTestId("brand-panel").locator("li")).toHaveCount(0);
   await page.getByRole("button", { name: "日本語" }).first().click();
   await expect(page.locator("html")).toHaveAttribute("lang", "ja");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("おかえりなさい");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Hashiにログイン");
   await expect(page).toHaveTitle("ログイン · Hashi");
   await page.reload();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("おかえりなさい");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Hashiにログイン");
   await page.getByRole("button", { name: "Indonesia" }).first().click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Selamat datang kembali");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Masuk ke Hashi");
 });
 
 test("tampil/sembunyikan kata sandi: mengubah type dan aria-pressed, tanpa mengirim form", async ({ page }) => {

@@ -274,7 +274,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
             <li key={f.id}>
               <Link href={f.recordId ? `/records/${f.recordId}` : f.caseId ? `/records/cases/${f.caseId}` : "/records/tasks"} className="flex min-h-11 items-center justify-between gap-3 py-2 hover:bg-hover">
                 <span className="line-clamp-2 text-sm">{f.description}</span>
-                <span className={`shrink-0 text-xs ${f.dueDate && f.dueDate < (data.today ?? "") ? "font-semibold text-danger-text" : "text-ink-2"}`}>{f.dueDate ? `${f.dueDate < (data.today ?? "") ? "⚠ " : ""}${f.dueDate}` : ""}</span>
+                <span className={`shrink-0 text-xs ${f.dueDate && f.dueDate < (data.today ?? "") ? "font-semibold text-danger-text" : "text-ink-2"}`}>{f.dueDate && f.dueDate < (data.today ?? "") && <Icon name="alert" className="inline-block h-4 w-4 shrink-0 align-[-3px]" />} {f.dueDate ?? ""}</span>
               </Link>
             </li>
           )), t("emptyMyFollowups"))}

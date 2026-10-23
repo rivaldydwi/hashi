@@ -34,6 +34,32 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-23 · T-036 · Rapikan kecil: panah, emoji, teks login, panel filter
+
+**PR:** (diisi setelah PR dibuka) (branch `eng/T-036-rapikan-kecil`)
+**Status:** siap direview. Tanpa migrasi. Deploy produksi setelah merge (diminta tugas).
+
+**Hasil PR sebelumnya:** T-035 di-merge `c18bb7d` (PR #37), **deploy produksi**: commit berjalan `9048ec8`, health `{"status":"ok","commit":"9048ec8"}` (log `deploy-20261023-171349.log`).
+
+**Yang dikerjakan**
+- **Panah**: "→" di navigasi halaman (`Berikutnya →`, 6 halaman), navigasi tahun fiskal (3 halaman), dan "Lihat semua riwayat →" (`ContinuePanel`) dihapus; pasangan "←" pada navigasi yang sama juga dihapus supaya simetris. Dibiarkan (arah nyata): tautan kembali "← …" (`PageHeader`, kembali ke grid/halaman pekerja), "perusahaan/pekerja → staf" di riwayat penanggung jawab, "dari → ke" di kalimat audit, "Versi 1 → versi 2" di riwayat revisi. Panah di `src/db/renewal.ts` yang ditandai scanner hanya di komentar kode.
+- **Emoji -> ikon garis** (`Icon`, ikon baru `dash`): grid dan legenda 定期面談 (✅⏳🔴➖ -> check/clock/alert/dash), daftar tahunan, halaman penanggung jawab (✓⚠⛔), lencana "lewat tenggat" (⚠) di tindak lanjut dan widget beranda; 🎉 dihapus dari pesan "semua sudah dinilai" (id + ja). Tanda tipografi ✓ ● ✗ di lencana tetap (bukan emoji).
+- **Login**: judul "Masuk ke Hashi" / 「Hashiにログイン」 (kunci `login.title` yang sudah ada), subjudul "Gunakan email dan kata sandi yang kamu terima dari admin organisasimu." (ja setara); panel merek = logo + satu kalimat (tanpa daftar centang tiga butir dan tanpa dua cahaya radial). Kunci `login.heading`, `panel1-3` dihapus.
+- **Filter kandidat**: satu baris utama (cari, status, bidang, + keputusan untuk TSK) dengan tombol Terapkan/Reset di ujung baris; "Filter lain" (`<details>`, tanpa JavaScript) berisi rata-rata nilai, kehadiran, JLPT + teks bantuannya, terbuka otomatis dan menampilkan jumlah bila salah satunya aktif. Form GET dan URL lama (`?avg=…&jlpt=…`) tetap sama; isian di `<details>` tertutup tetap terkirim.
+- **Gambar panduan**: `playwright.guide.config.ts` mengisi `GIT_SHA` (dari git bila tidak diberikan), jadi sidebar gambar menampilkan "Hashi · <commit>", bukan "unknown".
+- Tes penjaga `tests/unit/no-emoji-ui.test.ts`: tanpa piktograf emoji di `.tsx` + katalog pesan (© ® ™ dikecualikan), tanpa "→" di ujung label tautan/tombol, uji penjaga. `CLAUDE.md` satu kalimat; panduan §2.1 menyebut "Filter lain".
+
+**Verifikasi**
+- `npm run typecheck` lulus; `npm run test:unit` 188/188 (3 tes baru); `npm run test:i18n` lulus (1761 kunci); `npm run build` 0 peringatan.
+- Penjaga terbukti gagal: menyisipkan `{t("list.next")} →</Link>` di `records/page.tsx` -> tes gagal menyebut baris itu; dipulihkan.
+- Scanner `avoid-ai-design` (detect, `src/`): 31 temuan (audit 23 Okt) -> 7: P0 0; sisa = `backdrop-blur` topbar/nav form menempel (2, wajar), pemisah data "A · B" (4, wajar), CP3 di komentar `renewal.ts` (positif palsu).
+- `E2E_PORT=3120 npm run test:e2e` (db dev setelah reseed): **248/248**. `login-brand` diperbarui (judul baru, panel tanpa daftar). Tes yang mengisi filter penilaian memakai URL ber-`avg`, jadi `<details>` terbuka (tidak diubah).
+- Pemeriksaan visual: login (id), filter tertutup/terbuka, grid wawancara (ja) dengan legenda ikon.
+- `guide:shots` + `build:guide` dibuat ulang (53 gambar, PDF 83 halaman; label commit terisi); gambar README daftar kandidat baru di `docs/screenshots/T-036/`.
+
+**Usulan berikutnya**
+- Antrean tampilan (T-033 s/d T-036) selesai. Sisa audit yang sengaja tidak dikerjakan: `backdrop-blur` dan pemisah "A · B" (wajar). Instance demo belum diperbarui ke tampilan baru (butuh izin Ipal).
+
 ## 2026-10-23 · T-035 · Hierarki beranda: KPI dikelompokkan, perhatian ditandai kecil
 
 **PR:** #37 (branch `eng/T-035-hierarki-beranda`)

@@ -11,11 +11,12 @@ import { ActionForm } from "@/features/records/ui/ActionForm";
 import { Badge, type Tone } from "@/features/records/ui/common";
 import { dateTimeIn, safeTimezone, ymdIn } from "@/lib/org-time";
 import { tenantQuery } from "@/lib/session";
+import { Icon } from "@/components/shell/Icon";
 
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LEVEL_TONE: Record<"ok" | "warn" | "over", Tone> = { ok: "ok", warn: "warn", over: "danger" };
-const LEVEL_ICON = { ok: "✓", warn: "⚠", over: "⛔" } as const;
+const LEVEL_ICON = { ok: "check", warn: "alert", over: "alert" } as const; // ikon garis (T-036); tingkat dibedakan teks + warna
 
 /**
  * Penanggung jawab pekerja (担当/責任者) dan beban kerja (T-010). Penanggung jawab per perusahaan klien (bawaan) dan per pekerja (menimpa); satu staf maksimal 50 pekerja mulai April 2027:
@@ -90,7 +91,7 @@ export default async function ResponsiblePage({ searchParams }: { searchParams: 
             <ul className="mt-3 space-y-1" data-testid="workload-warnings">
               {nearOrOver.map((x) => (
                 <li key={x.staff.id} role="status" className={`rounded-ctl px-3 py-2 text-sm ${x.level === "over" ? "bg-danger-bg text-danger-text" : "bg-warn-bg text-warn-text"}`} data-testid="workload-warning" data-level={x.level}>
-                  {LEVEL_ICON[x.level]} {t(x.level === "over" ? "warning.over" : "warning.warn", { name: x.staff.name, n: x.count, max: WORKLOAD.max, date: WORKLOAD.effectiveFrom.replace(/-/g, "/") })}
+                  <Icon name={LEVEL_ICON[x.level]} className="inline-block h-4 w-4 shrink-0 align-[-3px]" /> {t(x.level === "over" ? "warning.over" : "warning.warn", { name: x.staff.name, n: x.count, max: WORKLOAD.max, date: WORKLOAD.effectiveFrom.replace(/-/g, "/") })}
                 </li>
               ))}
             </ul>
@@ -103,7 +104,7 @@ export default async function ResponsiblePage({ searchParams }: { searchParams: 
                   <tr key={x.staff.id} data-testid="workload-row" data-staff={x.staff.id} data-count={x.count} data-level={x.level}>
                     <th scope="row" className="py-2 pr-3 font-medium">{x.staff.name} <span className="text-xs font-normal text-ink-2">{troles(x.staff.role as "TSK_ADMIN" | "TSK_STAFF")}</span></th>
                     <td className="py-2 pr-3 tabular-nums" data-testid="workload-count">{x.count} / {WORKLOAD.max}</td>
-                    <td className="py-2 pr-3"><Badge tone={LEVEL_TONE[x.level]} testId="workload-level">{LEVEL_ICON[x.level]} {t(`level.${x.level}`)}</Badge></td>
+                    <td className="py-2 pr-3"><Badge tone={LEVEL_TONE[x.level]} testId="workload-level"><Icon name={LEVEL_ICON[x.level]} className="inline-block h-4 w-4 shrink-0 align-[-3px]" /> {t(`level.${x.level}`)}</Badge></td>
                     <td className="py-2"><Link href={hrefFor({ staff: x.staff.id, mine: "" })} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-text hover:underline">{t("viewWorkers")}</Link></td>
                   </tr>
                 ))}

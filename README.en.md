@@ -76,7 +76,7 @@ All of them show dummy data (demo accounts `*@hashi.test`), not real data. More 
 
 | TSK home (Indonesian) | LPK candidate list (Indonesian) |
 | --- | --- |
-| ![TSK home](docs/screenshots/T-035/beranda-tsk-id-desktop.png) | ![LPK candidate list](docs/screenshots/T-034/daftar-kandidat-bandung.png) |
+| ![TSK home](docs/screenshots/T-035/beranda-tsk-id-desktop.png) | ![LPK candidate list](docs/screenshots/T-036/daftar-kandidat-bandung.png) |
 
 | 在留カード list (Japanese) | LPK home on a phone (Japanese) |
 | --- | --- |

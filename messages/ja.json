@@ -44,8 +44,7 @@
   "login": {
     "title": "Hashiにログイン",
     "tabTitle": "ログイン",
-    "heading": "おかえりなさい",
-    "subheading": "Hashiにログインして続けましょう。",
+    "subheading": "組織の管理者から受け取ったメールアドレスとパスワードを入力してください。",
     "email": "メールアドレス",
     "password": "パスワード",
     "submit": "ログイン",
@@ -56,9 +55,6 @@
     "hidePassword": "パスワードを隠す",
     "forgot": "パスワードをお忘れの場合は、組織の管理者にご連絡ください。",
     "panelTitle": "LPKからTSKまで、ひとつの候補者プロフィール。",
-    "panel1": "インドネシア語と日本語で整った候補者プロフィール",
-    "panel2": "TSKへの共有はLPK管理者のみ",
-    "panel3": "すべての変更はアクティビティ履歴に記録",
     "demoTitle": "デモアカウント",
     "demoHint": "アカウントを選ぶとメールアドレスが入力されます。",
     "demoPassword": "パスワード：{password}"
@@ -439,7 +435,8 @@
     "emptyBodyLpk": "最初の候補者を追加しましょう。空欄は後で補えます。",
     "emptyBodyTsk": "提携LPKから共有された候補者はまだいません。",
     "noMatchTitle": "条件に合う候補者がいません",
-    "noMatchBody": "フィルターを緩めるか、一部を解除してください。"
+    "noMatchBody": "フィルターを緩めるか、一部を解除してください。",
+    "moreFilters": "その他の条件"
   },
   "detail": {
     "saved": "保存しました。",
@@ -770,7 +767,7 @@
     "pendingTitle": "今月未評価",
     "pendingIntro": "{month}の月次評価がまだない学習中・選考準備完了の候補者です。",
     "pendingSuffix": "名が未評価",
-    "pendingEmpty": "今月はすべての候補者の評価が完了しています。🎉",
+    "pendingEmpty": "今月はすべての候補者の評価が完了しています。",
     "lastAssessed": "前回 {month}、平均 {avg}",
     "neverAssessed": "未評価",
     "assessNow": "今すぐ評価",

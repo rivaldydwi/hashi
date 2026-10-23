@@ -108,7 +108,7 @@ Menu Admin LPK: **Beranda, Kandidat, Penilaian, Pengguna, Riwayat aktivitas**.
 
 ### 2.1 Daftar kandidat dan filter
 
-Menu **Kandidat** menampilkan semua siswa LPK-mu. Kolom **TSK** menunjukkan apakah siswa **Dibagikan** atau **Belum dibagikan**. Pakai kotak filter: **Cari nama** (huruf latin atau katakana), **Status di LPK**, **Bidang**, **Rata-rata nilai minimal**, **Kehadiran minimal (%)**, dan **Level JLPT**. Rata-rata dan kehadiran dihitung dari tiga penilaian bulanan terbaru; siswa yang belum punya data itu tidak ikut hasil filter.
+Menu **Kandidat** menampilkan semua siswa LPK-mu. Kolom **TSK** menunjukkan apakah siswa **Dibagikan** atau **Belum dibagikan**. Pakai kotak filter: **Cari nama** (huruf latin atau katakana), **Status di LPK**, dan **Bidang**; tekan **Filter lain** untuk **Rata-rata nilai minimal**, **Kehadiran minimal (%)**, dan **Level JLPT** (bagian ini terbuka sendiri bila salah satunya sedang dipakai). Rata-rata dan kehadiran dihitung dari tiga penilaian bulanan terbaru; siswa yang belum punya data itu tidak ikut hasil filter.
 
 ![Daftar kandidat dengan kotak filter](img/a-01-daftar-kandidat.png)
 
