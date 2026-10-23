@@ -34,6 +34,34 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-23 · T-035 · Hierarki beranda: KPI dikelompokkan, perhatian ditandai kecil
+
+**PR:** (diisi setelah PR dibuka) (branch `eng/T-035-hierarki-beranda`)
+**Status:** siap direview. Tanpa migrasi. Deploy produksi setelah merge (diminta tugas).
+
+**Hasil PR sebelumnya:** T-034 di-merge `731e4df` (PR #36), **deploy produksi** lewat `scripts/deploy.sh`: commit berjalan `63d6de0`, health `{"status":"ok","commit":"63d6de0"}` (log `deploy-20261023-162803.log`).
+
+**Yang dikerjakan**
+- Katalog (`src/db/dashboard-catalog.ts`): setiap KPI punya `group` dan boleh `primaryFor`. Kelompok: LPK = Siswa (belum dinilai, siap belum dibagikan) · Dokumen siswa (paspor, profil belum lengkap); TSK = Seleksi · Pekerja & kartu izin tinggal · Catatan & tindak lanjut; super admin = Sistem. KPI utama: LPK_ADMIN belum dinilai + siap belum dibagikan; sensei belum dinilai; TSK_ADMIN menunggu keputusan + kartu perlu tindakan + wawancara berkala; TSK_STAFF kartu perlu tindakan + catatan belum dibaca + tindak lanjut.
+- Fungsi murni `groupKpis` + `KPI_GROUPS` + `MAX_PRIMARY_PER_ROLE` (`src/db/dashboard-kpi.ts`); helper `kpiGroupOf`/`isPrimaryKpi`.
+- Beranda (`src/app/(app)/page.tsx`): satu baris per kelompok, judul di kolom kiri (`md:`; di ponsel di atas) supaya pengelompokan tidak menambah tinggi; KPI utama dua kolom (dari `sm`) + angka lebih besar; di ponsel tetap 2 kolom.
+- Kartu (`Widgets.tsx`): SEMUA latar netral; perhatian = ikon + label + angka coral (`attn-*`), tenang = centang + "Beres", info = ikon biru; `kpiLook` tidak berubah.
+- Mode atur (`LayoutEditor.tsx`): KPI tampil per kelompok, naik/turun hanya di dalam kelompok. Bentuk tersimpan tidak berubah, jadi layout lama tetap terbaca (`resolveLayout` tidak disentuh).
+- Teks: dua label KPI dipendekkan karena kelompok sudah menyebut "Pekerja": "Tanpa penanggung jawab" / 担当者未設定, "Tanpa data kartu" / カード情報未登録. Panduan §1.4 diperbarui (kelompok, warna koral, kartu utama; kalimat "menyala jingga" sudah tidak berlaku sejak T-034).
+- Sisa radius `rounded-t-2xl` (mode atur) -> `rounded-t-card`.
+
+**Ukuran beranda (1280 px, data seed, jarak ke widget pertama)**
+- TSK_ADMIN: 324 -> 436 px (+112, satu baris kartu; batas tugas: paling banyak satu baris). TSK_STAFF: 248 -> 366 (+118). LPK_ADMIN: 130 -> 230 (dua kelompok). Widget pertama tetap terlihat tanpa menggulir. Ponsel 390 px: 2 kolom, tanpa gulir horizontal.
+- Percobaan pertama (garis pemisah + jarak antar-kelompok, kartu 9,5rem) +144 px dan label terpotong; disesuaikan: tanpa garis, kolom judul 7rem, kartu tetap 10rem, label dipendekkan.
+
+**Verifikasi**
+- `npm run typecheck` lulus; `npm run test:unit` 185/185 (4 tes baru: kelompok wajib, KPI utama 1..3 per peran, `groupKpis` urutan, tidak ada kartu hilang); `npm run test:i18n` lulus (1764 kunci); `npm run build` 0 peringatan.
+- `E2E_PORT=3120 npm run test:e2e` (db dev setelah reseed): **248/248**. Tes `dashboard-kpi` diperbarui: <= 4 baris (dulu <= 3), kelompok berjudul berurutan, setiap kartu di tepat satu kelompok, KPI utama TSK_ADMIN/TSK_STAFF lebih lebar, semua kartu satu latar dan angka perhatian berwarna lain. Tes baru `dashboard-layout`: naik/turun tidak menyeberang kelompok dan urutan baru berlaku di beranda.
+- `guide:shots` + `build:guide` dibuat ulang (54 gambar berubah, PDF 83 halaman); 2 gambar README beranda di `docs/screenshots/T-035/` (seed dasar + pilot).
+
+**Usulan berikutnya**
+- Tidak ada di luar T-036.
+
 ## 2026-10-23 · T-034 · Palet dari warna merek + radius + header tabel
 
 **PR:** #36 (branch `eng/T-034-palet-merek`)

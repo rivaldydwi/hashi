@@ -164,7 +164,7 @@
     "emptyOpenCases": "対応中のケースはありません。",
     "kpiStaffOver": "上限を超えた職員",
     "kpiStaffOverHint": "職員1人あたり50名超（2027年4月からの基準）",
-    "kpiUnassigned": "担当者が未設定の就労者",
+    "kpiUnassigned": "担当者未設定",
     "kpiUnassignedHint": "担当する職員が未定",
     "kpiCalm": "問題なし",
     "kpiAttention": "要対応",
@@ -175,8 +175,16 @@
     "kpiCardPrepareHint": "準備中または申請が可能",
     "kpiCardWaiting": "在留カードの結果待ち",
     "kpiCardWaitingHint": "入管に申請済み",
-    "kpiCardMissing": "カード情報が未登録の就労者",
-    "kpiCardMissingHint": "カード情報が未入力"
+    "kpiCardMissing": "カード情報未登録",
+    "kpiCardMissingHint": "カード情報が未入力",
+    "groups": {
+      "students": "学生",
+      "documents": "書類",
+      "selection": "選考",
+      "workers": "就労者・在留カード",
+      "records": "記録・フォローアップ",
+      "system": "システム"
+    }
   },
   "users": {
     "title": "ユーザー管理",

@@ -76,11 +76,11 @@ All of them show dummy data (demo accounts `*@hashi.test`), not real data. More 
 
 | TSK home (Indonesian) | LPK candidate list (Indonesian) |
 | --- | --- |
-| ![TSK home](docs/screenshots/T-034/beranda-tsk-id-desktop.png) | ![LPK candidate list](docs/screenshots/T-034/daftar-kandidat-bandung.png) |
+| ![TSK home](docs/screenshots/T-035/beranda-tsk-id-desktop.png) | ![LPK candidate list](docs/screenshots/T-034/daftar-kandidat-bandung.png) |
 
 | 在留カード list (Japanese) | LPK home on a phone (Japanese) |
 | --- | --- |
-| ![在留カード list](docs/screenshots/T-034/daftar-kartu-ja-admin.png) | ![LPK home on a phone](docs/screenshots/T-034/beranda-lpk-ja-ponsel.png) |
+| ![在留カード list](docs/screenshots/T-034/daftar-kartu-ja-admin.png) | ![LPK home on a phone](docs/screenshots/T-035/beranda-lpk-ja-ponsel.png) |
 
 ## How to run
 

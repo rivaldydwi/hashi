@@ -4,7 +4,8 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import type { CurrentUser } from "@/lib/session";
 import { loadDashboard } from "@/features/dashboard/data";
 import { loadLayout } from "@/features/dashboard/queries";
-import { widgetById } from "@/features/dashboard/catalog";
+import { isPrimaryKpi, kpiGroupOf, widgetById } from "@/features/dashboard/catalog";
+import { groupKpis } from "@/db/dashboard-kpi";
 import { kpiGridClass } from "@/components/styles";
 import { Widget } from "@/features/dashboard/Widgets";
 import { LayoutEditor } from "@/features/dashboard/LayoutEditor";
@@ -61,8 +62,24 @@ async function DashboardBody({ user, editing }: { user: CurrentUser; editing: bo
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight text-ink">{t("greeting", { name: user.name ?? "" })}</h1>
       {kpis.length > 0 && (
-        <div className={kpiGridClass} data-testid="kpi-row">
-          {kpis.map((k) => <Widget key={k.id} id={k.id} data={data} timezone={tz} />)}
+        // T-035: KPI dikelompokkan per alur kerja. Judul kelompok di kolom kiri (desktop) supaya pengelompokan tidak menambah tinggi; KPI utama peran = dua kolom
+        // (di ponsel hanya angka lebih besar, supaya tiga KPI utama tidak menambah tiga baris penuh).
+        <div className="space-y-3" data-testid="kpi-groups">
+          {groupKpis(kpis, kpiGroupOf).map((g) => (
+            <section key={g.group} aria-labelledby={`kpi-group-${g.group}`} data-testid={`kpi-group-${g.group}`} className="grid gap-2 md:grid-cols-[7rem_minmax(0,1fr)] md:gap-4">
+              <h2 id={`kpi-group-${g.group}`} className="cjk-phrase text-sm font-semibold text-ink-2 md:pt-2.5">{t(`groups.${g.group}`)}</h2>
+              <div className={kpiGridClass} data-testid="kpi-row">
+                {g.items.map((k) => {
+                  const primary = isPrimaryKpi(k.id, user.role);
+                  return (
+                    <div key={k.id} data-primary={primary} className={`group ${primary ? "sm:col-span-2" : ""}`}>
+                      <Widget id={k.id} data={data} timezone={tz} />
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       )}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="widget-grid">

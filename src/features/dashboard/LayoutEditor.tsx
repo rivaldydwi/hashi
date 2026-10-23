@@ -4,12 +4,17 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { defaultLayout, toStored, type ResolvedItem } from "@/db/dashboard-layout";
+import { kpiGroupOf } from "@/db/dashboard-catalog";
+import { groupKpis } from "@/db/dashboard-kpi";
 import type { Role } from "@/db/schema";
 import { btnSecondary, kpiGridClass } from "@/components/styles";
 import { useToast } from "@/components/Toast";
 import { saveDashboardLayout, resetDashboardLayout } from "./actions";
 
 type Status = "idle" | "saving" | "saved" | "failed";
+
+/** Urutan bisa ditukar hanya di "jalur" yang sama: KPI di kelompok alur kerjanya (beranda menampilkannya per kelompok), widget dengan widget. */
+const sameLane = (a: ResolvedItem, b: ResolvedItem) => a.kind === b.kind && (a.kind === "widget" || kpiGroupOf(a.id) === kpiGroupOf(b.id));
 
 const ctl = "inline-flex h-11 min-w-11 items-center justify-center rounded-ctl border border-line-btn bg-card px-3 text-[13px] font-medium text-ink-menu hover:bg-hover disabled:opacity-40 disabled:hover:bg-card";
 
@@ -19,6 +24,7 @@ const ctl = "inline-flex h-11 min-w-11 items-center justify-center rounded-ctl b
  */
 export function LayoutEditor({ role, initial, slots, labels }: { role: Role; initial: ResolvedItem[]; slots: Record<string, ReactNode>; labels: Record<string, string> }) {
   const t = useTranslations("dashboard.edit");
+  const tGroup = useTranslations("dashboard.groups");
   const router = useRouter();
   const toast = useToast();
   const [items, setItems] = useState(initial);
@@ -45,9 +51,9 @@ export function LayoutEditor({ role, initial, slots, labels }: { role: Role; ini
   const change = (next: ResolvedItem[]) => { setItems(next); persist(next); };
   const move = (id: string, dir: -1 | 1) => {
     const i = items.findIndex((x) => x.id === id);
-    // tukar dengan tetangga TERDEKAT yang terlihat dan sejenis (KPI dengan KPI, widget dengan widget)
+    // tukar dengan tetangga TERDEKAT yang terlihat dan sejenis (KPI dengan KPI di KELOMPOK yang sama (T-035), widget dengan widget)
     let j = i + dir;
-    while (j >= 0 && j < items.length && (items[j].kind !== items[i].kind || items[j].hidden)) j += dir;
+    while (j >= 0 && j < items.length && !(sameLane(items[j], items[i]) && !items[j].hidden)) j += dir;
     if (j < 0 || j >= items.length) return;
     const next = [...items];
     [next[i], next[j]] = [next[j], next[i]];
@@ -71,12 +77,12 @@ export function LayoutEditor({ role, initial, slots, labels }: { role: Role; ini
   const hidden = items.filter((x) => x.hidden);
   const canMove = (x: ResolvedItem, dir: -1 | 1) => {
     const i = items.findIndex((y) => y.id === x.id);
-    for (let j = i + dir; j >= 0 && j < items.length; j += dir) if (items[j].kind === x.kind && !items[j].hidden) return true;
+    for (let j = i + dir; j >= 0 && j < items.length; j += dir) if (sameLane(items[j], x) && !items[j].hidden) return true;
     return false;
   };
 
   const controls = (x: ResolvedItem) => (
-    <div className="flex flex-wrap items-center gap-2 rounded-t-2xl border border-b-0 border-dashed border-accent bg-accent-soft px-3 py-2" data-testid={`edit-bar-${x.id}`}>
+    <div className="flex flex-wrap items-center gap-2 rounded-t-card border border-b-0 border-dashed border-accent bg-accent-soft px-3 py-2" data-testid={`edit-bar-${x.id}`}>
       <span className="w-full text-[13px] font-semibold text-accent-text">{labels[x.id]}</span>
       {x.kind === "widget" && (
         <div role="group" aria-label={t("sizeOf", { name: labels[x.id] })} className="flex gap-1">
@@ -107,12 +113,19 @@ export function LayoutEditor({ role, initial, slots, labels }: { role: Role; ini
       </div>
 
       {kpis.length > 0 && (
-        <div className={kpiGridClass} data-testid="kpi-row">
-          {kpis.map((x) => (
-            <div key={x.id} className="flex flex-col">
-              {controls(x)}
-              <div className="pointer-events-none [&>*]:rounded-t-none" inert>{slots[x.id]}</div>
-            </div>
+        <div className="space-y-4" data-testid="kpi-groups">
+          {groupKpis(kpis, kpiGroupOf).map((g) => (
+            <section key={g.group} data-testid={`kpi-group-${g.group}`}>
+              <h2 className="mb-2 text-sm font-semibold text-ink-2">{tGroup(g.group)}</h2>
+              <div className={kpiGridClass} data-testid="kpi-row">
+                {g.items.map((x) => (
+                  <div key={x.id} className="flex flex-col">
+                    {controls(x)}
+                    <div className="pointer-events-none [&>*]:rounded-t-none" inert>{slots[x.id]}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
