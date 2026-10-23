@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-23 · T-033 · Token warna semantik + bersihkan warna Tailwind mentah
 
-**PR:** (diisi setelah PR dibuka) (branch `eng/T-033-token-warna`)
+**PR:** #34 (branch `eng/T-033-token-warna`)
 **Status:** siap direview. Tanpa migrasi, tanpa deploy (sesuai tugas).
 
 **Hasil PR sebelumnya:** T-032 di-merge `f3df77c` (PR #33) setelah `PM: DISETUJUI`; hanya dokumen, tanpa CI. Peran PM dijalankan sesi ini atas instruksi Ipal (2026-10-23).
