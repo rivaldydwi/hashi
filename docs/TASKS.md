@@ -85,6 +85,7 @@ Kerjakan:
 
 ## Cadangan (belum diurutkan; PM yang memindahkan ke antrean)
 
+- **Seed tahan tanggal** (temuan perbaikan PR #35, PENTING sebelum 1 Jan 2027): `seedRecords` memakai tanggal eksplisit (`SEED_TODAY`, bukan jam proses), wawancara berkala dihitung mundur dari kuartal berjalan, dan CI/uji lokal menjalankan `verify:seed` di beberapa tanggal batas kuartal; seed + `verify:seed` gagal di 2026-08-15 dan 09-30 (kode lama juga).
 - **Cadangan luar-server** (ditunda atas keputusan Ipal; WAJIB sebelum data nyata/pilot): pilihan di `docs/backup.md` §5.
 - 在留カード: koreksi tanggal kartu yang sudah `received` oleh Admin (usulan engineer T-017), hanya bila TSK memintanya setelah dipakai.
 - Email pengingat 在留カード **ke pekerja** (butuh kolom email pekerja + persetujuan; setelah T-022).
