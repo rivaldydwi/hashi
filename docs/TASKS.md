@@ -6,7 +6,8 @@ bagian "Peran dan aturan kerja".
 **Status:** `SIAP` (boleh diambil) · `DITAHAN` (menunggu keputusan Ipal/pihak luar, jangan diambil) · `SELESAI` (PR sudah di-merge).
 Ambil tugas `SIAP` **paling atas**. Satu tugas = satu branch `eng/<ID>-<slug>` = satu PR berjudul `[<ID>] …`.
 
-Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
+Terakhir diperbarui PM: 2026-10-23 (T-032 selesai; tampilan T-033 s/d T-036 dari audit tampilan + keputusan Ipal).
+Sejak 2026-10-23 peran PM juga dijalankan sesi engineer di Mini PC atas instruksi Ipal; tiap review tetap ditulis sebagai komentar `PM:` di PR.
 
 ---
 
@@ -14,27 +15,71 @@ Terakhir diperbarui PM: 2026-10-06 (masukan staf TSK: T-007 s/d T-010).
 
 > **Aturan CI sejak T-028:** commit/PR yang HANYA mengubah `docs/**` atau `*.md` tidak menjalankan CI. PR seperti itu boleh di-merge cukup dengan `PM: DISETUJUI`; PR yang punya CI tetap wajib hijau.
 
-### T-032 · Demo publik untuk teman Ipal (instance `hashi-demo` + link publik) · `SIAP`
+> **Tampilan (T-033 s/d T-036):** dasar = audit tampilan 23 Okt (ringkasan di entri STATUS 2026-10-23) dan **keputusan Ipal (2026-10-23):** "Pakai warna merek (navy/biru/coral) untuk seluruh aplikasi."
+> Urutan WAJIB: T-033 dulu (token), baru palet. Aturan yang tidak berubah: status selalu ikon + teks + warna, target sentuh 44px, `:focus-visible`, tabel Jepang (T-011), aturan terjemahan (T-016/T-023), KPI = daftar (T-012), tanpa mode gelap.
 
-**Izin Ipal (9 Okt, di chat PM):** menyalakan instance demo `hashi-demo`, mengisinya dengan data dummy (termasuk `seed:pilot`), dan membuka **HANYA demo (port 3111)** ke internet
-lewat link publik (Tailscale Funnel; Cloudflare Tunnel hanya bila Funnel tidak bisa). Ini butir `BUTUH IPAL` yang sudah dijawab; izin TIDAK berlaku untuk produksi.
+### T-033 · Token warna semantik + bersihkan warna Tailwind mentah · `SIAP`
 
-Kerjakan (operasional di OptiPlex; perubahan kode hanya bila perlu, lewat PR seperti biasa):
-1. `scripts/demo-up.sh` (bila belum jalan) lalu `seed:pilot` ke database `hashi_demo` lewat jalur demo (`dc()` di `scripts/demo-lib.sh`), supaya isinya seramai gambar di buku panduan.
-   Pastikan `SHOW_DEMO_ACCOUNTS=false` dan kata sandi acak (bukan `hashi-demo-2026`), sesuai pengaman `demo-up.sh`.
-2. Link publik ke `http://127.0.0.1:3111` SAJA (mis. `tailscale funnel --bg 3111` atau setara; JANGAN pernah 3110). Bila butuh `sudo`/akses yang engineer tidak punya:
-   tulis perintah persisnya di STATUS untuk dijalankan Ipal (tanpa nama host).
-3. Isi `AUTH_URL=https://<alamat publik>` di `.env.demo` bila login gagal di balik proxy (lihat README "Demo untuk pihak luar"), lalu `demo-up.sh` lagi.
-4. Uji dari luar tailnet (mis. `curl` ke alamat publik dari jaringan lain, atau minta Ipal buka di HP tanpa Tailscale): halaman login demo terbuka lewat HTTPS, login `tsk.admin@hashi.test` berhasil,
-   dan alamat publik yang sama TIDAK membuka produksi (3110 tidak bisa dicapai dari internet).
-5. **Rahasia:** alamat publik (nama host `*.ts.net`) dan kata sandi demo TIDAK BOLEH ditulis di repo (TASKS/STATUS/PR/kode), karena repo publik. Tampilkan hanya di terminal sesi engineer
-   untuk Ipal, atau cukup tulis di STATUS "kata sandi: baris `SEED_PASSWORD` di `.env.demo`; alamat: `tailscale funnel status`".
-6. STATUS: perintah yang dijalankan (tanpa rahasia), hasil uji butir 4, cara mematikan (`tailscale funnel ... off` + `scripts/demo-down.sh`) dan cara reset data (`scripts/demo-reset.sh` + `seed:pilot`).
+Saat ini ±410 kelas warna Tailwind mentah di 62 berkas `src/` (`stone` 223, `rose` 86, `amber` 41, `emerald` 34, `sky` 22, `green` 4) di luar token `@theme`, jadi palet baru (T-034) tidak akan sampai ke sana.
+
+Kerjakan:
+1. Token semantik di `src/app/globals.css` (`@theme`): `danger`, `warn`, `ok`, `info` masing-masing minimal `-bg`, `-line`, `-text` (pakai ulang `attn-*`/`info-*`/`ok-*` yang ada bila maknanya sama; jangan membuat dua nama untuk satu peran). Netral (`stone-*`) dipetakan ke token yang ada (`page`, `card`, `line`, `line-btn`, `hover`, `ink`, `ink-2`, `ink-menu`) atau token netral baru bila memang ada peran yang belum punya.
+2. Ganti SEMUA kelas warna Tailwind mentah di `src/` ke token (termasuk `btnDanger` di `components/styles.ts`). Nilai token dipilih sedekat mungkin dengan warna lama: tugas ini TIDAK bermaksud mengubah tampilan.
+3. Tes unit `tests/unit/no-raw-colors.test.ts`: menolak kelas `(bg|text|border|ring|divide|outline|fill|stroke|from|via|to|accent|caret|decoration|placeholder)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-<angka>` di `src/**/*.{ts,tsx}`, dengan uji penjaga (contoh sisipan tertangkap). Warna heks di komponen hanya boleh di `components/brand/` dan `src/lib/pdf/` (PDF bukan UI web).
+4. Bandingkan sebelum/sesudah: tangkapan layar beranda LPK + TSK, daftar kandidat, detail kandidat, satu halaman catatan kegiatan, satu halaman kartu izin tinggal (desktop + ponsel). Laporkan di STATUS mana yang berbeda dan kenapa.
 
 **Kriteria selesai**
-- [ ] Demo bisa dibuka teman Ipal lewat link publik HTTPS, login akun demo berhasil, data dummy ramai.
-- [ ] Produksi (3110) tetap tidak terjangkau dari internet (diuji); produksi tidak disentuh.
-- [ ] Tidak ada alamat publik/kata sandi di repo (`git grep` bersih). Bila ada PR (perubahan kode), CI hijau.
+- [ ] Tidak ada kelas warna Tailwind mentah di `src/` (tes baru lulus, dan gagal bila disisipi contoh).
+- [ ] Tampilan praktis sama (perbedaan dijelaskan di STATUS); kontras teks token baru >= 4,5:1 di atas latarnya.
+- [ ] `npm run typecheck`, tes unit, `npm run build` (0 peringatan), `test:e2e` (db dev) lulus; CI hijau. Tanpa migrasi, tanpa deploy.
+
+### T-034 · Palet dari warna merek + radius + header tabel · `SIAP` (setelah T-033 SELESAI)
+
+Keputusan Ipal: warna merek untuk seluruh aplikasi. Merek: navy `#0F1424`, navy ikon `#1B2547`, periwinkle `#C9D3FF`, biru `#5B7CFA`, coral `#FF6B5E` (latar gelap) / `#F2574B` (latar terang), teks logo `#2B3A67`.
+
+Kerjakan:
+1. Palet baru di `@theme` (hanya nilai token; komponen tidak perlu disentuh berkat T-033): aksen tindakan = biru merek yang digelapkan sampai teks putih di atasnya >= 4,5:1 dan teks aksen di atas latar halaman >= 4,5:1; `accent-soft` dari periwinkle; netral sedikit kebiruan menggantikan krem (`page`, `line`, `hover`, `ink*`); coral (varian latar terang, digelapkan bila perlu untuk teks) HANYA untuk tone `attention`/sinyal "perlu tindakan" dan bahaya, tidak untuk tombol utama. Skala `brand-50..700` lama ikut dipetakan.
+2. Radius: kartu ±8px, kontrol ±6px (token `--radius-card`/`--radius-ctl`, dan `cardClass`/`inputClass`/`btnBase` memakainya).
+3. Header tabel huruf biasa (bukan `uppercase tracking-wide`) di `tableHeadClass`; label "MENU" di sidebar dihapus (atau huruf biasa). Tes T-011 tetap lulus.
+4. Login: tombol dan aksen kolom kiri ikut palet baru, panel merek kanan tetap navy (sekarang satu identitas).
+5. Tes unit kontras `tests/unit/contrast.test.ts`: membaca token dari `globals.css` dan memeriksa pasangan teks/latar yang dipakai (ink/page, ink-2/page, ink-2/card, putih/accent, accent-text/page, attn/info/ok/danger/warn text/bg) >= 4,5:1.
+6. Perbarui `docs/brand.md` (aturan "warna merek hanya untuk logo" diganti aturan baru) dan, bila perlu, kalimat terkait di `CLAUDE.md`.
+7. Jalankan ulang `npm run guide:shots` + `npm run build:guide` (gambar panduan berubah) dan perbarui `docs/screenshots/` yang dipakai README dengan data dummy.
+
+**Kriteria selesai**
+- [ ] Tidak ada krem/terakota tersisa (`#faf8f5`, `#c2410c` dan turunannya tidak ada di `src/`); aksen aplikasi = keluarga warna merek; coral hanya untuk perhatian/bahaya.
+- [ ] Tes kontras lulus; tes T-011, T-012, T-029 (404 mode gelap) tetap lulus.
+- [ ] Gambar panduan + PDF + gambar README dibuat ulang dan di-commit; `tests/unit/guide.test.ts` lulus.
+- [ ] typecheck, unit, build 0 peringatan, e2e; CI hijau. **Deploy produksi** setelah merge (`scripts/deploy.sh`, catat commit di STATUS). Demo `hashi-demo` TIDAK diperbarui tanpa izin Ipal.
+
+### T-035 · Hierarki beranda: kartu KPI dikelompokkan dan perhatian ditandai kecil · `SIAP` (setelah T-034 SELESAI)
+
+Masalah: beranda TSK_ADMIN 13 kartu berbobot sama, 8 berlatar oranye penuh sekaligus (dengan data nyata hampir semua KPI tindakan > 0), jadi tidak ada titik mulai.
+
+Kerjakan:
+1. Tone `attention` tidak lagi mewarnai seluruh latar kartu: penanda kecil (ikon + angka berwarna coral dan/atau garis/titik), latar kartu netral. `kpiLook` tetap satu-satunya sumber keputusan tampilan; "Beres" saat 0 tetap.
+2. Kelompok kartu menurut alur kerja dengan judul kelompok (id + ja), mis. TSK: Seleksi · Pekerja & kartu izin tinggal · Catatan & tindak lanjut; LPK: Siswa · Dokumen. Kelompok ditetapkan di katalog (`dashboard-catalog.ts`), bukan di komponen.
+3. 1-3 KPI utama per peran tampil lebih besar (properti di katalog). Mode atur (`/?atur=1`) tetap bekerja: sembunyikan/urutkan di dalam kelompok; layout tersimpan lama tetap terbaca (`resolveLayout` tidak gagal).
+4. Ponsel tetap 2 kolom; tidak ada scroll horizontal.
+
+**Kriteria selesai**
+- [ ] Angka KPI = daftar `/candidates?view=…`/`/records/cards` tetap (tes yang ada lulus); katalog tunggal tetap.
+- [ ] Tes unit katalog (setiap KPI punya kelompok; KPI utama <= 3 per peran) + e2e tata letak T-012 disesuaikan, tinggi beranda TSK_ADMIN di 1280 px tidak bertambah lebih dari satu baris.
+- [ ] Gambar panduan yang memuat beranda dibuat ulang; CI hijau; deploy produksi setelah merge.
+
+### T-036 · Rapikan kecil: panah, emoji, teks login, panel filter · `SIAP` (setelah T-035 SELESAI)
+
+Kerjakan:
+1. Hapus panah "→" yang ditempel di teks tombol/tautan (10 tempat, antara lain `records/page.tsx`, `records/meetings/page.tsx`, `ContinuePanel.tsx`, `src/db/renewal.ts`); tautan "kembali" (←) boleh tetap. Bila panah menyatakan arah nyata di data (mis. "dari → ke"), biarkan dan jelaskan di STATUS.
+2. Emoji sebagai ikon (3 tempat, antara lain `records/responsible/page.tsx`) diganti ikon dari `Icon.tsx`.
+3. Login: judul yang menyebut tugasnya (mis. "Masuk ke Hashi" / 「Hashi にログイン」) menggantikan "Selamat datang kembali"; panel merek: logo + satu kalimat, tanpa daftar centang tiga butir dan tanpa cahaya radial. id + ja.
+4. Panel filter daftar kandidat: satu baris utama (cari, status, bidang) + "Filter lain" untuk rata-rata nilai, kehadiran, JLPT (terbuka otomatis bila salah satunya aktif). Chip filter aktif tetap.
+5. `guide:shots` membangun dengan `GIT_SHA` supaya gambar tidak menampilkan "Hashi · unknown".
+
+**Kriteria selesai**
+- [ ] Tidak ada "→" di label tombol/tautan dan tidak ada emoji sebagai ikon di `src/` (laporkan hasil cek, mis. grep).
+- [ ] Teks login id/ja (`test:i18n` lulus); filter tetap bekerja dengan URL lama (`?avg=…` dll.); e2e lulus.
+- [ ] Gambar panduan terkait dibuat ulang; CI hijau; deploy produksi setelah merge.
 
 ---
 
@@ -50,11 +95,13 @@ Kerjakan (operasional di OptiPlex; perubahan kode hanya bila perlu, lewat PR sep
 - 在留カード lanjutan: halaman 特定技能 ("V") + 所属機関等作成用 untuk perpanjangan, menunggu contoh dari Ghulam.
 - 在留カード: nomor/foto kartu LAMA setelah kartu baru diterima tetap tersimpan terenkripsi tapi tidak bisa dibuka di aplikasi (hanya kartu aktif). Perlu keputusan retensi (hapus otomatis setelah X bulan?) dengan TSK/行政書士 sebelum data nyata.
 - 在留カード opsional: teks bantuan estimasi biaya (naik per 2026-10-01) dari sumber resmi.
+- Demo: opsi `--pilot` di `demo-up.sh`/`demo-reset.sh` supaya reset tidak kembali ke 36 kandidat (usulan engineer T-032).
 - `deploy.sh`: baris ringkasan migrasi kadang menampilkan `npm notice` (usulan engineer T-026).
 - Langkah 9: demo ke TSK.
 
 ## Selesai
 
+- **T-032** Demo publik untuk teman Ipal (PR #33): `hashi-demo` di `main` terbaru + `seed:pilot` (236 kandidat), Funnel 443 hanya ke 3111 (dicek ulang PM 23 Okt: pemetaan lain hanya tailnet), login lewat HTTPS publik berhasil, 3110 tidak terjangkau, `.env.demo` aman, tanpa alamat/kata sandi di repo. Uji dari HP oleh Ipal belum dilaporkan.
 - **T-031** README dan panduan tanpa penyebutan AI/cara kerja internal (PR #32): bagian "Cara kerja tim" dan tautan TASKS/STATUS dihapus dari ketiga README; tes penjaga kata terlarang (README + `docs/panduan/README.md`).
 - **T-030** Buku panduan bergambar (PR #31): `docs/panduan/README.md` + 83 gambar otomatis (`guide:shots`) + `panduan-hashi.pdf` 83 halaman (`build:guide`), panduan LPK/TSK + 4 skenario; dikirim ke Ipal 8 Okt. Temuan untuk nanti: tab Catatan kegiatan terpotong di 1280 px; filter "belum ditempatkan" di Kandidat cocok.
 - **T-027** README tiga bahasa (PR #30): `README.md` / `README.en.md` / `README.ja.md` (です・ます) berstruktur judul sama (dites `readme-trilingual.test.ts`: struktur, tautan bahasa, tautan relatif, tanpa IP/email/secret). Terjemahan en/ja belum dicek penutur asli.
