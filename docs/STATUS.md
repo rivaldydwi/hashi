@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-23 · fix · CI merah: `verify:seed` wawancara berkala bergantung tanggal
 
-**PR:** (diisi setelah PR dibuka) (branch `eng/fix-seed-kuartal`)
+**PR:** #35 (branch `eng/fix-seed-kuartal`)
 **Status:** siap direview. Prioritas di atas T-033 (PR #34 tertahan oleh kegagalan yang sama). Tanpa migrasi, tanpa deploy.
 
 **Gejala:** CI PR #34 gagal di "Periksa kelengkapan seed demo" (dua job): `✗ Wawancara berkala … campuran status (問題なし dominan, 要フォロー, 問題あり, 未実施)` dan `✗ Form 5-5 … minimal satu 基準不適合`. Direproduksi di `main` lokal (db dev): bukan akibat T-033. CI `main` terakhir hijau 8 Okt; seed dibuat relatif terhadap hari ini, jadi mulai rusak saat bulan/kuartal berganti.
