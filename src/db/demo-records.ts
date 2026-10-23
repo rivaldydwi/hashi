@@ -247,11 +247,14 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
   const fy = fiscalYearOf(opts.today);
   const months = fiscalMonths(fy);
   const curMonth = `${opts.today.slice(0, 7)}-01`;
-  // Pola global (berlaku lintas pekerja) supaya SEMUA status muncul walau tiap pekerja hanya punya beberapa bulan: 問題なし dominan
-  const statuses = ["no_issue", "no_issue", "follow_up", "no_issue", "issue", "no_issue", "not_done", "no_issue", "no_issue"];
+  // Pola global (berlaku lintas pekerja) supaya SEMUA status muncul walau tiap pekerja hanya punya beberapa bulan: 問題なし dominan.
+  // Keempat status ada di 5 baris PERTAMA dan baris 対象外 tidak memakai slot pola, jadi hasilnya tidak bergantung tanggal seed
+  // (dulu slot 要フォロー bisa jatuh di baris 対象外 sehingga hilang; verify:seed gagal sejak Q3 FY2026).
+  const statuses = ["no_issue", "follow_up", "no_issue", "issue", "not_done", "no_issue", "no_issue", "no_issue", "no_issue"];
   const reasons = ["agency", "support", "worker"];
   const contents = ["仕事は順調で、人間関係も良好。体調に問題はない。", "寮での生活に慣れてきた。食事も問題なし。", "残業が多く疲れているが、休日は十分に休めている。", "日本語の勉強を続けており、仕事での会話も増えてきた。", "給与明細の内容を確認し、疑問は解消した。", "休日に友人と出かけており、生活は安定している。"];
   let pi = 0;
+  let slot = 0;
   for (const [wi, w] of [w0, w1, w2].entries()) {
     const start = `${String(w.startDate).slice(0, 7)}-01`;
     let rowsMonths = months.filter((m) => m >= start && m < curMonth);
@@ -260,14 +263,15 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
     if (wi === 2 && beforeThisQuarter.length > 0) rowsMonths = beforeThisQuarter;
     if (rowsMonths.length === 0) notes.push(`Pekerja ${wi + 1} baru mulai bekerja bulan ini: belum ada wawancara berkala.`);
     for (const [mi, m] of rowsMonths.entries()) {
-      const st = statuses[pi % statuses.length];
       const na = wi === 1 && mi === 1; // satu bulan 対象外 (mis. pulang sementara)
+      const st = na ? "no_issue" : statuses[slot++ % statuses.length]; // status baris 対象外 tidak disimpan (resultStatus null)
       const lastDay = 10 + ((mi * 5 + wi * 3) % 15);
       const date = `${m.slice(0, 7)}-${String(lastDay).padStart(2, "0")}`;
       const staffPick = [s1, s2, admin][(mi + wi) % 3];
-      // Form 5-5 (T-009): wawancara yang dilaksanakan terisi; satu dari empat sengaja dibiarkan kosong (data lama / belum diisi)
+      // Form 5-5 (T-009): wawancara yang dilaksanakan terisi; sebagian 問題なし sengaja dibiarkan kosong (data lama / belum diisi).
+      // 要フォロー dan 問題あり SELALU berform supaya contoh 基準不適合 + penanganannya selalu ada.
       const conducted = !na && st !== "not_done";
-      const f55 = conducted && (mi + wi) % 4 !== 3 ? demoForm55(st, date) : null;
+      const f55 = conducted && !(st === "no_issue" && (mi + wi) % 4 === 3) ? demoForm55(st, date) : null;
       await tx.insert(periodicInterviews).values({
         id: T(`pi:${wi}:${m}`), organizationId: orgId, createdBy: staffPick.id, candidateId: w.id, periodMonth: m, applicable: !na,
         interviewDate: na || st === "not_done" ? null : date, resultStatus: na ? null : st, reason: na || st === "not_done" ? null : reasons[(mi + wi) % 3],

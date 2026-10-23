@@ -34,6 +34,27 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-23 · fix · CI merah: `verify:seed` wawancara berkala bergantung tanggal
+
+**PR:** (diisi setelah PR dibuka) (branch `eng/fix-seed-kuartal`)
+**Status:** siap direview. Prioritas di atas T-033 (PR #34 tertahan oleh kegagalan yang sama). Tanpa migrasi, tanpa deploy.
+
+**Gejala:** CI PR #34 gagal di "Periksa kelengkapan seed demo" (dua job): `✗ Wawancara berkala … campuran status (問題なし dominan, 要フォロー, 問題あり, 未実施)` dan `✗ Form 5-5 … minimal satu 基準不適合`. Direproduksi di `main` lokal (db dev): bukan akibat T-033. CI `main` terakhir hijau 8 Okt; seed dibuat relatif terhadap hari ini, jadi mulai rusak saat bulan/kuartal berganti.
+
+**Sebab** (`src/db/demo-records.ts`, bagian wawancara berkala): pola status dibagikan berurutan ke SEMUA baris termasuk baris 対象外 (statusnya tidak disimpan). Bergantung jumlah bulan sejak tiap pekerja mulai, slot 要フォロー jatuh di baris 対象外 sehingga hilang; satu-satunya 問題あり kebetulan baris yang sengaja tanpa form 5-5, sehingga tidak ada contoh 基準不適合.
+
+**Perbaikan**
+- Baris 対象外 tidak memakai slot pola; urutan pola diubah supaya keempat status muncul di 5 baris pertama yang dilaksanakan (問題なし tetap dominan).
+- Form 5-5 hanya dikosongkan pada sebagian baris 問題なし; 要フォロー/問題あり selalu berform. "Wawancara terlaksana tanpa form" tetap ada (baris 問題なし + pekerja yang sudah berhenti).
+
+**Verifikasi**
+- `verify:seed` dengan jam proses digeser (preload `Date` lokal, db dev, `db:seed -- --reset` tiap tanggal): perbaikan LULUS di 2026-04-02, 05-31, 06-30, 07-01, 10-01, 10-22 dan hari ini. Masih gagal di 2026-08-15 dan 09-30 (kode `main` juga gagal di sana, lebih banyak): kuartal `missed` pekerja berhenti dan jumlah bulan yang terlalu sedikit untuk tiga pekerja yang baru mulai. Tanggal-tanggal itu sudah lewat; tidak diperbaiki di sini supaya PR kecil.
+- Tanggal masa depan (Nov-Mar) TIDAK bisa diuji dengan cara ini: trigger database menolak tanggal di masa depan menurut jam database, dan uji mundur setahun gagal di seed sendiri (data lain berbenturan dengan jam database asli).
+- Tanggal asli: `db:seed -- --reset` + `verify:seed` lulus; `test:rls` lulus; `npm run build` sukses; e2e `records-views`, `form55`, `interview-quarters`, `records-flow`, `dashboard`, `dashboard-kpi`: 49/49 lulus. `typecheck` lulus.
+
+**Usulan berikutnya**
+- Seed demo masih rapuh terhadap tanggal (tiga pekerja aktif mulai bekerja relatif terhadap hari ini; kuartal `missed` pekerja berhenti bergantung tenggat). Usul tugas: buat bagian wawancara berkala menghitung mundur dari kuartal berjalan (bukan dari tanggal mulai pekerja) dan tambahkan pemeriksaan seed untuk tanggal-tanggal batas kuartal di CI (mis. `SEED_TODAY` eksplisit di `seedRecords`, bukan jam proses), supaya CI tidak merah mendadak saat kuartal berganti (berikutnya: 1 Jan 2027).
+
 ## 2026-10-23 · (usulan, bukan tugas) · Audit tampilan + keputusan Ipal: warna merek untuk seluruh aplikasi
 
 **PR:** ditulis di #33 karena itu satu-satunya branch engineer yang terbuka; isi entri ini di luar lingkup T-032 (hanya usulan, tanpa perubahan kode).
