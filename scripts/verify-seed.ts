@@ -17,10 +17,12 @@ import { storageRootFor } from "../src/db/demo-files";
 import { AUDIT_PAGE_SIZE, listAudit, parseAuditFilters } from "../src/db/audit-history";
 import { ACTIONS } from "../src/db/audit-describe";
 import { activeWorkers, allWorkers, followupIds, openInterviewQuarters, quartersOfFiscalYear, unreadRecordIds, unreadReportIds } from "../src/db/records-queries";
-import { fiscalYearOf } from "../src/db/records-core";
+import { fiscalYearOf, quarterOfMonth } from "../src/db/records-core";
 import { responsibilityOverview } from "../src/db/responsibility-queries";
 import { cardKpiCounts, filterCardRows, loadCardRows } from "../src/db/zairyu-queries";
 import { todayInTskTz } from "../src/db/time";
+import { applySeedToday } from "../src/db/seed-date";
+import { assertTestDatabase } from "./db-guard";
 import { demoAttachmentPath } from "../src/db/demo-files";
 import { access } from "node:fs/promises";
 import { INCOMPLETE_CANDIDATE_COLUMNS, INTENTIONALLY_INCOMPLETE } from "../src/db/demo-data";
@@ -85,6 +87,10 @@ async function walkFiles(root: string): Promise<Set<string>> {
 }
 
 async function main() {
+  // T-037: SEED_TODAY (HANYA dev/test) = periksa seolah-olah hari itu, sama dengan seed yang dijalankan dengan nilai yang sama.
+  if (process.env.SEED_TODAY) assertTestDatabase("SEED_TODAY");
+  const seedDay = applySeedToday();
+  if (seedDay) console.log(`ℹ SEED_TODAY=${seedDay}: pemeriksaan seolah-olah tanggal itu`);
   const owner = process.env.MIGRATE_DATABASE_URL;
   const app = process.env.DATABASE_URL;
   if (!owner || !app) throw new Error("MIGRATE_DATABASE_URL dan DATABASE_URL harus di-set");
@@ -331,8 +337,11 @@ async function main() {
     const curQ = await asTsk(admin, (tx) => quartersOfFiscalYear(tx, fiscalYearOf(today), today));
     const gridPending = curQ.reduce((nn, x) => nn + x.quarters.filter((c) => c.state === "open").length, 0);
     check("KPI 定期面談 = jumlah kuartal BERJALAN (open) di grid (satu fungsi: quartersOfFiscalYear); kuartal terlewat (missed) tidak masuk KPI", gridPending === pending.length && pending.length > 0, `KPI ${pending.length}, grid ${gridPending}`);
-    const missedAll = curQ.reduce((nn, x) => nn + x.quarters.filter((c) => c.state === "missed").length, 0);
-    check("Wawancara berkala: seed memuat >= 1 kuartal open (berjalan) dan >= 1 kuartal missed (terlewat)", pending.length >= 1 && missedAll >= 1, `open ${pending.length}, missed ${missedAll}`);
+    // Kuartal terlewat hanya mungkin pada kuartal yang SUDAH lewat: di Q1 (April-Juni) semuanya milik tahun fiskal lalu (T-037; dulu pemeriksaan ini mustahil lulus di Q1).
+    const showFy = quarterOfMonth(`${today.slice(0, 7)}-01`) === 1 ? fiscalYearOf(today) - 1 : fiscalYearOf(today);
+    const showQ = showFy === fiscalYearOf(today) ? curQ : await asTsk(admin, (tx) => quartersOfFiscalYear(tx, showFy, today));
+    const missedAll = showQ.reduce((nn, x) => nn + x.quarters.filter((c) => c.state === "missed").length, 0);
+    check("Wawancara berkala: seed memuat >= 1 kuartal open (berjalan) dan >= 1 kuartal missed (terlewat; FY berjalan, atau FY lalu bila kuartal berjalan Q1)", pending.length >= 1 && missedAll >= 1, `open ${pending.length}, missed ${missedAll} (FY ${showFy})`);
     // Penanggung jawab pekerja (T-010): KPI/daftar = satu fungsi; ada pekerja tanpa penanggung jawab, ada penetapan per perusahaan dan per pekerja; ENDED tidak dihitung dalam beban
     const ov = await asTsk(admin, (tx) => responsibilityOverview(tx, today));
     const ov2 = await asTsk(admin, (tx) => responsibilityOverview(tx, today));

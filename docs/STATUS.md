@@ -34,6 +34,36 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-23 · T-037 · Seed demo tahan tanggal
+
+**PR:** (diisi setelah PR dibuka) (branch `eng/T-037-seed-tanggal`)
+**Status:** siap direview. Tanpa migrasi, tanpa deploy (aplikasi tidak berubah; hanya seed, pemeriksaan seed, dan tes).
+
+**Hasil PR sebelumnya:** T-036 di-merge `3b47ba6` (PR #38), **deploy produksi**: commit berjalan `9128bc7`, health `{"status":"ok","commit":"9128bc7"}` (log `deploy-20261023-180034.log`).
+
+**KOREKSI laporan PR #35** (entri "fix · CI merah" di bawah): klaim "perbaikan LULUS di 2026-04-02, 05-31, 06-30, 07-01" SALAH. Skrip uji waktu itu hanya mencari baris "✗"; di tanggal-tanggal itu SEED SENDIRI gagal ("paspor tidak masuk akal untuk 1.2"), `verify:seed` lalu memeriksa sisa data lama, dan hasilnya terbaca "lulus" palsu. Diulang dengan kode keluar: hanya 2026-10-01 dan setelahnya yang benar-benar lulus. Skrip T-037 mencatat kode keluar seed dan verify per tanggal.
+
+**Temuan (sebab CI bisa merah mendadak)**
+1. **Paspor demo** (`buildProfile`): tanggal lahir absolut, kedaluwarsa relatif terhadap hari ini. Paspor 5 tahun dengan sisa > 4 tahun TERBIT DI MASA DEPAN; aturan "umur 17 saat terbit" dibandingkan per tahun. Pemindaian setiap hari Apr 2026-Mar 2028: 414 kegagalan (kandidat 1.2 dan beberapa kandidat pilot, mis. sampai 2026-11-23), artinya `seed:pilot` di CI bisa gagal di tanggal tertentu.
+2. **`verify:seed` "≥ 1 kuartal missed di FY berjalan" mustahil di Q1** (April-Juni: belum ada kuartal yang lewat di FY itu) -> CI merah setiap 1 April. Hal yang sama untuk e2e `records-views` (grid bawaan harus memuat done, open, DAN missed).
+3. **Wawancara seed** hanya dari bulan-bulan FY berjalan + tanggal mulai pekerja yang kebetulan (target mulai job order): di awal April nol baris; pekerja berhenti "130 sampai 30 hari lalu" kadang hanya satu kuartal lewat atau beda FY.
+
+**Yang dikerjakan**
+- `src/db/demo-interviews.ts` `planDemoInterviews(today)` (MURNI): relatif terhadap kuartal berjalan K: w0 mulai di K-3 (bulan pertama K-1 = 対象外), w1 mulai di K-2 tanpa wawancara di K-1 (= missed), w2 mulai di K-1 tanpa wawancara di K (= open); tanggal wawancara selalu di antara tanggal mulai dan hari ini; pekerja berhenti = dua kuartal yang sudah lewat dalam SATU FY (done lalu missed); `showcaseFy` = FY tempat missed + 対象外 dijamin (FY lalu bila K = Q1). `demo-records.ts` memakainya (menyetel tanggal mulai tiga penempatan ACTIVE, baris, form 5-5, catatan kuartal, pekerja berhenti).
+- Paspor: paspor 5 tahun dibatasi sisa 4 tahun (penarikan angka acak sama, data lain tidak bergeser), aturan umur per TANGGAL dengan batas 15 tahun (paspor Indonesia juga terbit untuk anak; paspor 10 tahun tetap hanya bila 17+). Rumus tanggal lahir seed dasar/pilot jadi `seedBirthDate`/`pilotBirthDate` (satu sumber untuk seed dan tes).
+- `verify:seed`: pemeriksaan missed memakai FY berjalan, atau FY lalu bila kuartal berjalan Q1 (aturan ditulis di verify, tidak diambil dari perencana seed). e2e `records-views`: open di grid bawaan, missed + 対象外 + done di halaman FY yang benar (pernyataan sama).
+- `SEED_TODAY` (`src/db/seed-date.ts`: validasi + geser jam PROSES seed/verify sejumlah hari utuh; dijaga `db-guard`; masa depan/tidak sah ditolak dengan pesan jelas) dipakai `scripts/seed.ts` dan `scripts/verify-seed.ts`. Alasan menggeser jam proses (bukan parameter): fungsi kueri aplikasi yang dipakai verify menghitung dari "sekarang". Jam database tidak digeser.
+- `scripts/verify-seed-dates.sh`: tanggal bawaan `defaultSeedCheckDates` (awal/akhir tiap kuartal 12 bulan terakhir + hari ini), kode keluar seed dan verify per tanggal, diakhiri reseed tanggal asli. CI tidak menjalankannya (T-028).
+- Tes unit baru: `demo-interviews.test.ts` (setiap hari 1 Apr 2026 - 31 Mar 2028, 731 hari, memakai `quarterState`/`monthMark` asli: semua syarat verify + e2e), `demo-dates.test.ts` (paspor 36 + 200 kandidat setiap hari; validasi `SEED_TODAY`; tanggal bawaan skrip). `CLAUDE.md` bagian "Seed demo lengkap".
+
+**Verifikasi**
+- `scripts/verify-seed-dates.sh`: SEMUA lulus (seed=0, verify=0, 0 pemeriksaan gagal) di 2025-12-31, 2026-01-01, 03-31, 04-01, 06-30, 07-01, 09-30, 10-01, 10-23; log menunjukkan SEED_TODAY terpakai (mis. 2026-04-01: "missed 2 (FY 2025)").
+- Tes penjaga terbukti gagal: tanpa "w1 dilewati di K-1" -> `today=2026-07-01: missed di FY 2026`; tanpa batas 4 tahun paspor -> 414 masalah termasuk "1.2".
+- typecheck; `test:unit` 193/193; `test:i18n`; `test:rls` lulus; `npm run build` 0 peringatan; `test:e2e` (db dev, reseed) **248/248**; `verify:seed` tanggal asli lulus; `seed:pilot` + `verify:pilot` lulus.
+
+**Kendala / catatan**
+- Tanggal sebelum ±Juli 2026 tidak diuji lewat database di luar daftar bawaan (data lain berpatokan tanggal absolut); untuk tanggal mendatang jaminannya tes unit. Isi data demo bergeser (tanggal mulai tiga pekerja aktif, KPI wawancara berkala sekarang 1 kuartal berjalan); gambar panduan TIDAK dibuat ulang (tidak ada perubahan UI).
+
 ## 2026-10-23 · T-036 · Rapikan kecil: panah, emoji, teks login, panel filter
 
 **PR:** #38 (branch `eng/T-036-rapikan-kecil`)

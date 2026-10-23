@@ -9,7 +9,7 @@ import {
   activityRecordReads, activityRecordRecipients, activityRecordSubjects, activityRecords, caseTimelineEvents, candidateSelections, candidates, clientCompanies,
   clientSiteContacts, clientSites, jobOrders, organizations, partnerships, periodicInterviewQuarterNotes, periodicInterviews, placements, residenceCards, responsibleAssignments, users,
 } from "./schema";
-import { fiscalMonths, fiscalYearOf, quarterOfMonth } from "./records-core";
+import { planDemoInterviews } from "./demo-interviews";
 import { addDays, uuidFor } from "./demo-rng";
 
 export const DUMMY_ORG_NAME = /^(Hashi Platform|TSK Demo Tokyo|LPK Demo Bandung|LPK Demo Surabaya|LPK Non-Mitra Medan)$|E2E/;
@@ -71,6 +71,7 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
     .sort((a, b) => a.name.localeCompare(b.name));
   if (workers.length < 3) throw new Error(`Hanya ${workers.length} pekerja aktif; butuh minimal 3`);
   const [w0, w1, w2] = workers;
+  const ws = [w0, w1, w2];
   const companies = await tx.select({ id: clientCompanies.id, name: clientCompanies.name }).from(clientCompanies).where(eq(clientCompanies.orgId, orgId));
   const siteCompany = new Map((await tx.select({ id: clientSites.id, company: clientSites.companyId }).from(clientSites)).map((s) => [s.id, s.company]));
 
@@ -244,51 +245,33 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
   }
 
   // ================= Wawancara berkala =================
-  const fy = fiscalYearOf(opts.today);
-  const months = fiscalMonths(fy);
-  const curMonth = `${opts.today.slice(0, 7)}-01`;
-  // Pola global (berlaku lintas pekerja) supaya SEMUA status muncul walau tiap pekerja hanya punya beberapa bulan: 問題なし dominan.
-  // Keempat status ada di 5 baris PERTAMA dan baris 対象外 tidak memakai slot pola, jadi hasilnya tidak bergantung tanggal seed
-  // (dulu slot 要フォロー bisa jatuh di baris 対象外 sehingga hilang; verify:seed gagal sejak Q3 FY2026).
-  const statuses = ["no_issue", "follow_up", "no_issue", "issue", "not_done", "no_issue", "no_issue", "no_issue", "no_issue"];
-  const reasons = ["agency", "support", "worker"];
-  const contents = ["仕事は順調で、人間関係も良好。体調に問題はない。", "寮での生活に慣れてきた。食事も問題なし。", "残業が多く疲れているが、休日は十分に休めている。", "日本語の勉強を続けており、仕事での会話も増えてきた。", "給与明細の内容を確認し、疑問は解消した。", "休日に友人と出かけており、生活は安定している。"];
-  let pi = 0;
-  let slot = 0;
-  for (const [wi, w] of [w0, w1, w2].entries()) {
-    const start = `${String(w.startDate).slice(0, 7)}-01`;
-    let rowsMonths = months.filter((m) => m >= start && m < curMonth);
-    // Pekerja ke-3 sengaja belum diwawancara di KUARTAL BERJALAN (kuartal "open": masih bisa dikejar sebelum tenggat), asal ia punya wawancara di kuartal sebelumnya
-    const beforeThisQuarter = rowsMonths.filter((m) => quarterOfMonth(m) !== quarterOfMonth(curMonth));
-    if (wi === 2 && beforeThisQuarter.length > 0) rowsMonths = beforeThisQuarter;
-    if (rowsMonths.length === 0) notes.push(`Pekerja ${wi + 1} baru mulai bekerja bulan ini: belum ada wawancara berkala.`);
-    for (const [mi, m] of rowsMonths.entries()) {
-      const na = wi === 1 && mi === 1; // satu bulan 対象外 (mis. pulang sementara)
-      const st = na ? "no_issue" : statuses[slot++ % statuses.length]; // status baris 対象外 tidak disimpan (resultStatus null)
-      const lastDay = 10 + ((mi * 5 + wi * 3) % 15);
-      const date = `${m.slice(0, 7)}-${String(lastDay).padStart(2, "0")}`;
-      const staffPick = [s1, s2, admin][(mi + wi) % 3];
-      // Form 5-5 (T-009): wawancara yang dilaksanakan terisi; sebagian 問題なし sengaja dibiarkan kosong (data lama / belum diisi).
-      // 要フォロー dan 問題あり SELALU berform supaya contoh 基準不適合 + penanganannya selalu ada.
-      const conducted = !na && st !== "not_done";
-      const f55 = conducted && !(st === "no_issue" && (mi + wi) % 4 === 3) ? demoForm55(st, date) : null;
-      await tx.insert(periodicInterviews).values({
-        id: T(`pi:${wi}:${m}`), organizationId: orgId, createdBy: staffPick.id, candidateId: w.id, periodMonth: m, applicable: !na,
-        interviewDate: na || st === "not_done" ? null : date, resultStatus: na ? null : st, reason: na || st === "not_done" ? null : reasons[(mi + wi) % 3],
-        content: na ? null : st === "not_done" ? null : contents[(mi + wi) % contents.length], staffId: na ? null : staffPick.id, note: na ? "一時帰国のため対象外" : st === "follow_up" ? "次回の面談で再確認する" : null,
-        method: conducted ? ((mi + wi) % 2 === 0 ? "in_person" : "online") : null, responderRole: conducted ? (staffPick === admin ? "support_manager" : "support_staff") : null,
-        responderTitle: conducted ? (staffPick === admin ? "支援責任者" : "支援担当") : null, form55: f55,
-        createdAt: new Date(`${date}T10:00:00${JST_OFFSET}`),
-      }).onConflictDoNothing();
-      pi++;
-    }
-    // catatan kuartal (備考): Q1 untuk semua pekerja, Q2 untuk dua pekerja pertama bila kuartalnya sudah lewat
-    const curQ = quarterOfMonth(curMonth);
-    for (const q of [1, 2].filter((x) => (x === 1 || wi < 2) && x <= curQ)) {
-      await tx.insert(periodicInterviewQuarterNotes).values({ id: T(`pq:${wi}:${q}`), organizationId: orgId, createdBy: admin.id, candidateId: w.id, fiscalYear: fy, quarter: q, note: q === 1 ? "第1四半期：全体として安定している。" : "第2四半期：生活面の相談が増えたが、解決済み。" }).onConflictDoNothing();
-    }
+  // Semua tanggal dari rencana MURNI `planDemoInterviews` (src/db/demo-interviews.ts, dites unit untuk setiap hari dua tahun fiskal): tanggal mulai tiga
+  // pekerja aktif, baris per bulan, status, form 5-5, catatan kuartal, dan pekerja berhenti, relatif terhadap KUARTAL berjalan (T-037).
+  const plan = planDemoInterviews(opts.today);
+  for (const [i, w] of ws.entries()) {
+    await tx.execute(sql`update placements set start_date = ${plan.starts[i]}::date where candidate_id = ${w.id}::uuid and status = 'ACTIVE'`);
+    w.startDate = plan.starts[i];
   }
-  bump("interviews", pi);
+  const contents = ["仕事は順調で、人間関係も良好。体調に問題はない。", "寮での生活に慣れてきた。食事も問題なし。", "残業が多く疲れているが、休日は十分に休めている。", "日本語の勉強を続けており、仕事での会話も増えてきた。", "給与明細の内容を確認し、疑問は解消した。", "休日に友人と出かけており、生活は安定している。"];
+  const staffOf = [s1, s2, admin];
+  for (const r of plan.rows) {
+    const w = ws[r.worker];
+    const na = !r.applicable;
+    const conducted = r.date !== null;
+    const staffPick = staffOf[r.staff];
+    await tx.insert(periodicInterviews).values({
+      id: T(`pi:${r.worker}:${r.month}`), organizationId: orgId, createdBy: staffPick.id, candidateId: w.id, periodMonth: r.month, applicable: r.applicable,
+      interviewDate: r.date, resultStatus: r.status, reason: r.reason, content: conducted ? contents[(r.index + r.worker) % contents.length] : null, staffId: na ? null : staffPick.id,
+      note: na ? "一時帰国のため対象外" : r.status === "follow_up" ? "次回の面談で再確認する" : null,
+      method: r.method, responderRole: conducted ? (staffPick === admin ? "support_manager" : "support_staff") : null,
+      responderTitle: conducted ? (staffPick === admin ? "支援責任者" : "支援担当") : null, form55: r.form && r.date ? demoForm55(r.status!, r.date) : null,
+      createdAt: new Date(`${r.date ?? r.month}T10:00:00${JST_OFFSET}`),
+    }).onConflictDoNothing();
+  }
+  for (const n of plan.quarterNotes) {
+    await tx.insert(periodicInterviewQuarterNotes).values({ id: T(`pq:${n.worker}:${n.quarter}`), organizationId: orgId, createdBy: admin.id, candidateId: ws[n.worker].id, fiscalYear: n.fiscalYear, quarter: n.quarter, note: n.quarter === 1 ? "第1四半期：全体として安定している。" : "第2四半期：生活面の相談が増えたが、解決済み。" }).onConflictDoNothing();
+  }
+  bump("interviews", plan.rows.length);
 
   // ================= Penanggung jawab pekerja (T-010) =================
   // Per perusahaan: tiap perusahaan yang punya pekerja aktif diberi penanggung jawab bergantian (staf 1, staf 2), KECUALI perusahaan pekerja ke-3: sengaja dibiarkan
@@ -332,8 +315,8 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
   bump("residenceCards", 3);
 
   // ================= Pekerja yang SUDAH BERHENTI di tengah tahun fiskal (T-008) =================
-  // Satu penempatan ENDED (tanpa keputusan DEPARTED: hanya data demo, supaya hitungan keputusan di daftar kandidat tidak bergeser). Masa kerja ~100 hari yang selesai 30 hari lalu:
-  // menyentuh >= 2 kuartal; wawancara hanya di kuartal pertama, jadi kuartal berikutnya "Belum" (wajib dilaporkan ke imigrasi walau sudah berhenti).
+  // Satu penempatan ENDED (tanpa keputusan DEPARTED: hanya data demo, supaya hitungan keputusan di daftar kandidat tidak bergeser). Masa kerja = dua kuartal yang sudah
+  // lewat dalam satu tahun fiskal (`plan.ended`); wawancara hanya di kuartal pertama, jadi kuartal kedua "Terlewat" (wajib dilaporkan ke imigrasi walau sudah berhenti).
   const endedExists = (await tx.select({ id: placements.id }).from(placements).where(eq(placements.status, "ENDED"))).length > 0;
   if (!endedExists) {
     const partners = (await tx.select({ lpk: partnerships.lpkId }).from(partnerships).where(and(eq(partnerships.tskId, orgId), eq(partnerships.active, true)))).map((p) => p.lpk);
@@ -345,10 +328,9 @@ export async function seedRecords(tx: Tx, opts: SeedRecordsOpts, dummyPng: () =>
       .sort((a, b) => a.id.localeCompare(b.id));
     const ended = pool[pool.length - 1]; // ujung daftar: jarang dipakai tes lain
     if (ended) {
-      const endDate = addDays(opts.today, -30);
-      const startDate = addDays(endDate, -100);
+      // dua kuartal yang sudah lewat dalam satu tahun fiskal (rencana T-037): kuartal pertama diwawancara, kuartal kedua terlewat
+      const { start: startDate, end: endDate, interviewDate: firstDate } = plan.ended;
       await tx.insert(placements).values({ id: T("placement:ended"), candidateId: ended.id, orgId, siteId: w1.siteId, startDate, endDate, status: "ENDED", note: "契約満了（デモ用）" }).onConflictDoNothing();
-      const firstDate = addDays(startDate, 10);
       await tx.insert(periodicInterviews).values({
         id: T("pi:ended:1"), organizationId: orgId, createdBy: s1.id, candidateId: ended.id, periodMonth: `${firstDate.slice(0, 7)}-01`, applicable: true, interviewDate: firstDate, resultStatus: "no_issue",
         reason: "agency", content: "就労開始後の様子を確認した。仕事にも慣れてきており、問題なし。", staffId: s1.id, createdAt: new Date(`${firstDate}T10:00:00${JST_OFFSET}`),

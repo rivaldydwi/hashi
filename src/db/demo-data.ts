@@ -173,6 +173,11 @@ const phone = (rng: Rng) => `0812-0000-${String(int(rng, 0, 9999)).padStart(4, "
 const digits = (rng: Rng, n: number) => Array.from({ length: n }, () => int(rng, 0, 9)).join("");
 
 /** Kategori kedaluwarsa paspor per (orgIndex, i): 2 sudah lewat, 4 kurang dari 6 bulan, sisanya > 2 tahun. */
+/** Tanggal lahir kandidat seed dasar (satu rumus untuk `scripts/seed.ts` dan tes T-037). `offset` = OFFSETS LPK di seed. */
+export const seedBirthDate = (offset: number, i: number) => `${1998 + ((i + offset) % 8)}-${String(((i * 5 + offset) % 12) + 1).padStart(2, "0")}-15`;
+/** Tanggal lahir kandidat pilot ke-k (satu rumus untuk `demo-pilot.ts` dan tes T-037). */
+export const pilotBirthDate = (k: number) => `${1996 + (k % 10)}-${String((k * 7) % 12 + 1).padStart(2, "0")}-${String(((k * 11) % 27) + 1).padStart(2, "0")}`;
+
 function passportCategory(orgIndex: number, i: number): "expired" | "soon" | "ok" {
   const key = `${orgIndex}.${i}`;
   if (["0.0", "1.5"].includes(key)) return "expired";
@@ -300,11 +305,16 @@ export function buildProfile(c: DemoCandidateInput): DemoProfile {
   const kontak = { phone: phone(rng), whatsapp: phone(rng), email: `${slug}.${c.orgIndex}${String(c.i).padStart(2, "0")}@contoh.test` };
 
   // ---- Paspor
+  // Kedaluwarsa relatif terhadap hari ini (kategori untuk KPI paspor), tanggal lahir absolut: aturannya harus masuk akal untuk SETIAP tanggal seed
+  // (T-037; dites unit untuk setiap hari dua tahun fiskal). Paspor 10 tahun hanya bila pemegang sudah 17 tahun saat terbit; paspor 5 tahun dengan sisa
+  // masa berlaku > 4 tahun akan terbit di masa depan, jadi sisa masa berlakunya dibatasi 4 tahun (angka acak tetap ditarik sama, data lain tidak bergeser).
+  // Paspor Indonesia juga terbit untuk anak; batas kewajaran demo = berumur 15 tahun saat terbit (dibandingkan per tanggal, bukan per tahun).
   const cat = passportCategory(c.orgIndex, c.i);
-  const passportExpiryDate = cat === "expired" ? addDays(c.today, -int(rng, 20, 90)) : cat === "soon" ? addDays(c.today, int(rng, 25, 160)) : addDays(c.today, int(rng, 800, 3200));
-  const validity = cat === "ok" && birthYear + 17 <= Number(addYears(passportExpiryDate, -10).slice(0, 4)) ? 10 : 5;
+  let passportExpiryDate = cat === "expired" ? addDays(c.today, -int(rng, 20, 90)) : cat === "soon" ? addDays(c.today, int(rng, 25, 160)) : addDays(c.today, int(rng, 800, 3200));
+  const validity = cat === "ok" && addYears(c.birthDate, 17) <= addYears(passportExpiryDate, -10) ? 10 : 5;
+  if (validity === 5 && passportExpiryDate > addYears(c.today, 4)) passportExpiryDate = addYears(c.today, 4);
   const passportIssuedDate = addYears(passportExpiryDate, -validity);
-  if (passportIssuedDate >= c.today || Number(passportIssuedDate.slice(0, 4)) < birthYear + 17) throw new Error(`paspor tidak masuk akal untuk ${c.orgIndex}.${c.i}`);
+  if (passportIssuedDate >= c.today || passportIssuedDate < addYears(c.birthDate, 15)) throw new Error(`paspor tidak masuk akal untuk ${c.orgIndex}.${c.i}`);
 
   // ---- Kesehatan
   const glasses = chance(rng, 0.3);
