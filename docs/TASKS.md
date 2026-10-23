@@ -18,22 +18,7 @@ Sejak 2026-10-23 peran PM juga dijalankan sesi engineer di Mini PC atas instruks
 > **Tampilan (T-033 s/d T-036):** dasar = audit tampilan 23 Okt (ringkasan di entri STATUS 2026-10-23) dan **keputusan Ipal (2026-10-23):** "Pakai warna merek (navy/biru/coral) untuk seluruh aplikasi."
 > Urutan WAJIB: T-033 dulu (token), baru palet. Aturan yang tidak berubah: status selalu ikon + teks + warna, target sentuh 44px, `:focus-visible`, tabel Jepang (T-011), aturan terjemahan (T-016/T-023), KPI = daftar (T-012), tanpa mode gelap.
 
-### T-033 · Token warna semantik + bersihkan warna Tailwind mentah · `SIAP`
-
-Saat ini ±410 kelas warna Tailwind mentah di 62 berkas `src/` (`stone` 223, `rose` 86, `amber` 41, `emerald` 34, `sky` 22, `green` 4) di luar token `@theme`, jadi palet baru (T-034) tidak akan sampai ke sana.
-
-Kerjakan:
-1. Token semantik di `src/app/globals.css` (`@theme`): `danger`, `warn`, `ok`, `info` masing-masing minimal `-bg`, `-line`, `-text` (pakai ulang `attn-*`/`info-*`/`ok-*` yang ada bila maknanya sama; jangan membuat dua nama untuk satu peran). Netral (`stone-*`) dipetakan ke token yang ada (`page`, `card`, `line`, `line-btn`, `hover`, `ink`, `ink-2`, `ink-menu`) atau token netral baru bila memang ada peran yang belum punya.
-2. Ganti SEMUA kelas warna Tailwind mentah di `src/` ke token (termasuk `btnDanger` di `components/styles.ts`). Nilai token dipilih sedekat mungkin dengan warna lama: tugas ini TIDAK bermaksud mengubah tampilan.
-3. Tes unit `tests/unit/no-raw-colors.test.ts`: menolak kelas `(bg|text|border|ring|divide|outline|fill|stroke|from|via|to|accent|caret|decoration|placeholder)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-<angka>` di `src/**/*.{ts,tsx}`, dengan uji penjaga (contoh sisipan tertangkap). Warna heks di komponen hanya boleh di `components/brand/` dan `src/lib/pdf/` (PDF bukan UI web).
-4. Bandingkan sebelum/sesudah: tangkapan layar beranda LPK + TSK, daftar kandidat, detail kandidat, satu halaman catatan kegiatan, satu halaman kartu izin tinggal (desktop + ponsel). Laporkan di STATUS mana yang berbeda dan kenapa.
-
-**Kriteria selesai**
-- [ ] Tidak ada kelas warna Tailwind mentah di `src/` (tes baru lulus, dan gagal bila disisipi contoh).
-- [ ] Tampilan praktis sama (perbedaan dijelaskan di STATUS); kontras teks token baru >= 4,5:1 di atas latarnya.
-- [ ] `npm run typecheck`, tes unit, `npm run build` (0 peringatan), `test:e2e` (db dev) lulus; CI hijau. Tanpa migrasi, tanpa deploy.
-
-### T-034 · Palet dari warna merek + radius + header tabel · `SIAP` (setelah T-033 SELESAI)
+### T-034 · Palet dari warna merek + radius + header tabel · `SIAP`
 
 Keputusan Ipal: warna merek untuk seluruh aplikasi. Merek: navy `#0F1424`, navy ikon `#1B2547`, periwinkle `#C9D3FF`, biru `#5B7CFA`, coral `#FF6B5E` (latar gelap) / `#F2574B` (latar terang), teks logo `#2B3A67`.
 
@@ -102,6 +87,7 @@ Kerjakan:
 
 ## Selesai
 
+- **T-033** Token warna semantik (PR #34): token `muted*`, `line-soft`, `danger-*`, `warn-*`, `status-*`, `brand-mist`; 430 kelas warna Tailwind mentah di 65 berkas diganti token; heks grafik/login ke token; `no-raw-colors.test.ts` (tanpa warna mentah, tanpa heks di .tsx selain aset merek, kontras 26 pasangan >= 4,5:1). Tampilan praktis sama (selisih piksel <= 1,9%). Perbaikan seed tanggal (PR #35) masuk lebih dulu karena CI main merah.
 - **T-032** Demo publik untuk teman Ipal (PR #33): `hashi-demo` di `main` terbaru + `seed:pilot` (236 kandidat), Funnel 443 hanya ke 3111 (dicek ulang PM 23 Okt: pemetaan lain hanya tailnet), login lewat HTTPS publik berhasil, 3110 tidak terjangkau, `.env.demo` aman, tanpa alamat/kata sandi di repo. Uji dari HP oleh Ipal belum dilaporkan.
 - **T-031** README dan panduan tanpa penyebutan AI/cara kerja internal (PR #32): bagian "Cara kerja tim" dan tautan TASKS/STATUS dihapus dari ketiga README; tes penjaga kata terlarang (README + `docs/panduan/README.md`).
 - **T-030** Buku panduan bergambar (PR #31): `docs/panduan/README.md` + 83 gambar otomatis (`guide:shots`) + `panduan-hashi.pdf` 83 halaman (`build:guide`), panduan LPK/TSK + 4 skenario; dikirim ke Ipal 8 Okt. Temuan untuk nanti: tab Catatan kegiatan terpotong di 1280 px; filter "belum ditempatkan" di Kandidat cocok.
