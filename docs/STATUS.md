@@ -34,6 +34,35 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-23 · (usulan, bukan tugas) · Audit tampilan + keputusan Ipal: warna merek untuk seluruh aplikasi
+
+**PR:** ditulis di #33 karena itu satu-satunya branch engineer yang terbuka; isi entri ini di luar lingkup T-032 (hanya usulan, tanpa perubahan kode).
+**Status:** usulan untuk PM. Keputusan Ipal sudah ada (lihat di bawah); belum ada yang dikerjakan.
+
+**Keputusan Ipal (2026-10-23, langsung di sesi engineer)**
+- Kutipan: "Pakai warna merek (navy/biru/coral) untuk seluruh aplikasi. Teruskan usulan tugasnya ke PM."
+- Ini mengubah aturan `docs/brand.md` ("warna merek HANYA untuk logo dan panel merek login; aksen aplikasi tetap `#C2410C`"): perlu diperbarui di tugas palet.
+
+**Yang dikerjakan** (baca saja, tidak ada berkas kode yang diubah)
+- Audit tampilan memakai tiga skill desain milik Ipal (scanner `avoid-ai-design` atas `src/`, panduan mode "Operate" `impeccable`, daftar anti-pola `hallmark`) + 6 tangkapan layar `docs/panduan/img/` (8 Okt). Aplikasi tidak dijalankan ulang.
+- Laporan lengkap ada di halaman privat milik Ipal (Ipal yang membagikannya bila PM perlu); ringkasannya di bawah, cukup untuk menulis tugas.
+
+**Temuan, urut prioritas**
+1. **Palet** (`src/app/globals.css`): latar krem `#faf8f5` + aksen terakota `#c2410c` = pola "pelarian selera" yang paling sering muncul di UI buatan generator; bertabrakan dengan merek (navy `#0F1424`, periwinkle `#C9D3FF`, biru `#5B7CFA`, coral `#FF6B5E`/`#F2574B`). Di login keduanya berdampingan (tombol terakota, panel navy).
+2. **Beranda TSK**: 13 kartu KPI berbobot sama, 8 berlatar oranye penuh sekaligus (aturan T-012 benar, tetapi dengan data nyata hampir semua > 0) -> tidak ada hierarki.
+3. **Warna di luar token**: 410 kelas Tailwind mentah di 62 berkas (`stone` 223, `rose` 86, `amber` 41, `emerald` 34, `sky` 22, `green` 4); status bahaya/peringatan/berhasil belum punya token. Palet baru tidak akan sampai ke sana.
+4. **Kartu** `rounded-2xl` (16px) + kontrol `rounded-xl` di semua blok; detail kandidat = tumpukan kartu sederajat (panel "Berbagi ke TSK mitra" setara "Data dasar").
+5. **Header tabel/label menu huruf besar** (`tableHeadClass`, "MENU"): tidak bermakna di bahasa Jepang.
+6. **Kecil**: panah "→" di 10 tempat, emoji sebagai ikon di 3 tempat, teks login template ("Selamat datang kembali" + tiga centang + cahaya radial), panel filter kandidat besar, footer "Hashi · unknown" di gambar panduan.
+- Scanner: 31 temuan, **0 P0**, 16 P1, 15 P2. `backdrop-blur` (2) di topbar/nav form yang menempel dan pemisah "A · B" (4) dinilai wajar.
+- Pertahankan: `StatusBadge` ikon+teks+warna, target 44px, `:focus-visible`, tabel Jepang `cjk-phrase`, token terpusat di `@theme`, DM Sans + Noto Sans JP.
+
+**Usulan berikutnya** (PM yang memutuskan masuk TASKS atau tidak; urutan penting)
+- **A. Token semantik + bersihkan warna mentah** (temuan 3): token `danger/warn/ok/info` (bg/line/text), ganti kelas mentah ke token, tes unit yang menolak kelas warna Tailwind mentah di `src/`. Tanpa perubahan tampilan yang disengaja. HARUS sebelum B.
+- **B. Palet dari merek + radius + header tabel** (temuan 1, 4, 5; keputusan Ipal di atas): aksen tindakan = biru merek yang digelapkan (kontras >= 4,5:1 di atas putih), netral sedikit kebiruan menggantikan krem, coral hanya untuk sinyal "perlu tindakan" (tone `attention` KPI); perbarui `docs/brand.md`; cek ulang kontras KPI T-012; jalankan ulang `guide:shots` + `build:guide` (gambar panduan berubah) dan `docs/screenshots/` README.
+- **C. Hierarki beranda** (temuan 2): perhatian ditandai elemen kecil (ikon/angka/garis), bukan latar penuh; kelompok kartu per alur kerja; 1-3 KPI utama per peran lebih besar. Aturan angka = daftar dan katalog widget tetap.
+- **D. Rapikan kecil** (temuan 6).
+
 ## 2026-10-14 · T-032 · Demo publik untuk teman Ipal (hashi-demo + link publik)
 
 **PR:** #33 (branch `eng/T-032-demo-publik`)
