@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-23 · T-034 · Palet dari warna merek + radius + header tabel
 
-**PR:** (diisi setelah PR dibuka) (branch `eng/T-034-palet-merek`)
+**PR:** #36 (branch `eng/T-034-palet-merek`)
 **Status:** siap direview. Tanpa migrasi. Deploy produksi setelah merge (diminta tugas).
 
 **Hasil PR sebelumnya:** T-033 di-merge `b9e1d0a` (PR #34) setelah CI hijau; sebelumnya CI `main` merah karena seed bergantung tanggal, diperbaiki di PR #35 (`264bd2a`).
