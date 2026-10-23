@@ -34,6 +34,70 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-23 · (usulan, bukan tugas) · Audit tampilan + keputusan Ipal: warna merek untuk seluruh aplikasi
+
+**PR:** ditulis di #33 karena itu satu-satunya branch engineer yang terbuka; isi entri ini di luar lingkup T-032 (hanya usulan, tanpa perubahan kode).
+**Status:** usulan untuk PM. Keputusan Ipal sudah ada (lihat di bawah); belum ada yang dikerjakan.
+
+**Keputusan Ipal (2026-10-23, langsung di sesi engineer)**
+- Kutipan: "Pakai warna merek (navy/biru/coral) untuk seluruh aplikasi. Teruskan usulan tugasnya ke PM."
+- Ini mengubah aturan `docs/brand.md` ("warna merek HANYA untuk logo dan panel merek login; aksen aplikasi tetap `#C2410C`"): perlu diperbarui di tugas palet.
+
+**Yang dikerjakan** (baca saja, tidak ada berkas kode yang diubah)
+- Audit tampilan memakai tiga skill desain milik Ipal (scanner `avoid-ai-design` atas `src/`, panduan mode "Operate" `impeccable`, daftar anti-pola `hallmark`) + 6 tangkapan layar `docs/panduan/img/` (8 Okt). Aplikasi tidak dijalankan ulang.
+- Laporan lengkap ada di halaman privat milik Ipal (Ipal yang membagikannya bila PM perlu); ringkasannya di bawah, cukup untuk menulis tugas.
+
+**Temuan, urut prioritas**
+1. **Palet** (`src/app/globals.css`): latar krem `#faf8f5` + aksen terakota `#c2410c` = pola "pelarian selera" yang paling sering muncul di UI buatan generator; bertabrakan dengan merek (navy `#0F1424`, periwinkle `#C9D3FF`, biru `#5B7CFA`, coral `#FF6B5E`/`#F2574B`). Di login keduanya berdampingan (tombol terakota, panel navy).
+2. **Beranda TSK**: 13 kartu KPI berbobot sama, 8 berlatar oranye penuh sekaligus (aturan T-012 benar, tetapi dengan data nyata hampir semua > 0) -> tidak ada hierarki.
+3. **Warna di luar token**: 410 kelas Tailwind mentah di 62 berkas (`stone` 223, `rose` 86, `amber` 41, `emerald` 34, `sky` 22, `green` 4); status bahaya/peringatan/berhasil belum punya token. Palet baru tidak akan sampai ke sana.
+4. **Kartu** `rounded-2xl` (16px) + kontrol `rounded-xl` di semua blok; detail kandidat = tumpukan kartu sederajat (panel "Berbagi ke TSK mitra" setara "Data dasar").
+5. **Header tabel/label menu huruf besar** (`tableHeadClass`, "MENU"): tidak bermakna di bahasa Jepang.
+6. **Kecil**: panah "→" di 10 tempat, emoji sebagai ikon di 3 tempat, teks login template ("Selamat datang kembali" + tiga centang + cahaya radial), panel filter kandidat besar, footer "Hashi · unknown" di gambar panduan.
+- Scanner: 31 temuan, **0 P0**, 16 P1, 15 P2. `backdrop-blur` (2) di topbar/nav form yang menempel dan pemisah "A · B" (4) dinilai wajar.
+- Pertahankan: `StatusBadge` ikon+teks+warna, target 44px, `:focus-visible`, tabel Jepang `cjk-phrase`, token terpusat di `@theme`, DM Sans + Noto Sans JP.
+
+**Usulan berikutnya** (PM yang memutuskan masuk TASKS atau tidak; urutan penting)
+- **A. Token semantik + bersihkan warna mentah** (temuan 3): token `danger/warn/ok/info` (bg/line/text), ganti kelas mentah ke token, tes unit yang menolak kelas warna Tailwind mentah di `src/`. Tanpa perubahan tampilan yang disengaja. HARUS sebelum B.
+- **B. Palet dari merek + radius + header tabel** (temuan 1, 4, 5; keputusan Ipal di atas): aksen tindakan = biru merek yang digelapkan (kontras >= 4,5:1 di atas putih), netral sedikit kebiruan menggantikan krem, coral hanya untuk sinyal "perlu tindakan" (tone `attention` KPI); perbarui `docs/brand.md`; cek ulang kontras KPI T-012; jalankan ulang `guide:shots` + `build:guide` (gambar panduan berubah) dan `docs/screenshots/` README.
+- **C. Hierarki beranda** (temuan 2): perhatian ditandai elemen kecil (ikon/angka/garis), bukan latar penuh; kelompok kartu per alur kerja; 1-3 KPI utama per peran lebih besar. Aturan angka = daftar dan katalog widget tetap.
+- **D. Rapikan kecil** (temuan 6).
+
+## 2026-10-14 · T-032 · Demo publik untuk teman Ipal (hashi-demo + link publik)
+
+**PR:** #33 (branch `eng/T-032-demo-publik`)
+**Status:** siap direview. Operasional saja: tidak ada perubahan kode, tanpa migrasi produksi, produksi tidak disentuh. PR ini hanya memuat entri STATUS (tanpa CI karena hanya dokumen).
+
+**Izin:** izin Ipal tercatat di TASKS (menyalakan demo + membuka HANYA port 3111) dan Ipal mengonfirmasinya langsung di sesi engineer sebelum saya mulai.
+
+**Yang dijalankan** (tanpa rahasia)
+- Keadaan awal: stack `hashi-demo` sudah jalan tetapi berisi seed dasar (36 kandidat) dan image 5 hari lama; Tailscale Funnel pada port 443 SUDAH memetakan `/` ke `http://127.0.0.1:3111` (satu-satunya pemetaan Funnel; pemetaan lain, termasuk 3100/5006/5007, hanya untuk tailnet). Saya tidak mengubah konfigurasi Tailscale sama sekali.
+- `scripts/demo-up.sh` (rebuild ke `main` terbaru, migration otomatis, `seed --reset`): sukses. Catatan: build pertama gagal sekali di tahap `next build` (`module-not-found`); build ulang dengan cache sama sukses dan tidak bisa saya reproduksi. Tidak ada perubahan kode; saya catat sebagai temuan flaky.
+- `dc run --rm migrate npm run seed:pilot` lalu `npm run verify:pilot` lewat jalur demo (`dc()` di `scripts/demo-lib.sh`): +200 kandidat, 73 pekerja aktif, kartu di semua tahap; `verify:pilot` lulus ("Data pilot lengkap dan konsisten"). Total sekarang 236 kandidat.
+- Pengaman `.env.demo` (diperiksa tanpa mencetak nilainya): `DB_NAME=hashi_demo`, `APP_PORT=3111`, `SHOW_DEMO_ACCOUNTS=false`, `SEED_PASSWORD` acak 16 karakter (bukan `hashi-demo-2026`), `SMTP_URL` kosong (worker pengingat mode kering: tidak ada email keluar).
+- `AUTH_URL` TIDAK perlu diisi: login berhasil di balik Funnel apa adanya (cookie sesi `__Secure-…`, `secure=true`).
+
+**Hasil uji butir 4 (dari luar tailnet)**
+- Saya menguji lewat IP ingress publik Tailscale (hasil DNS resolver publik 1.1.1.1, bukan jalur tailnet) dengan `curl --resolve` dan Chromium `--host-resolver-rules`: `/login` HTTP 200, sertifikat TLS valid, `/api/health` `{"status":"ok"}`; login `tsk.admin@hashi.test` berhasil (masuk ke beranda, bahasa Jepang awal); daftar akun demo TIDAK tampil di halaman login.
+- Port lain lewat ingress publik yang sama: 8443, 8444, 8445, **3110 (produksi)**, dan 3100 semuanya tidak terjangkau (HTTP 000). Produksi tidak dipetakan di Funnel.
+- BELUM diuji dari HP di luar tailnet oleh manusia; usul Ipal membuka sekali dari data seluler untuk memastikan.
+
+**Rahasia (sengaja tidak ditulis di sini)**
+- Kata sandi demo: baris `SEED_PASSWORD` di `.env.demo` (server). Alamat publik: `tailscale funnel status`.
+- Peringatan kecil: pencetakan `seed` menampilkan kata sandi demo di keluaran terminal sesi ini (bukan di repo). Kata sandi hanya untuk demo; ganti dengan `scripts/demo-reset.sh` bila perlu setelah mengganti `SEED_PASSWORD`.
+
+**Cara mematikan, mereset**
+- Matikan link publik: `tailscale funnel 3111 off` (BELUM dicoba karena demo sengaja dibiarkan hidup; jangan pakai `tailscale funnel reset`, itu menghapus pemetaan tailnet lain). Matikan demo: `scripts/demo-down.sh` (`--purge` menghapus volume demo).
+- Reset data demo: `scripts/demo-reset.sh` lalu `docker compose -p hashi-demo --env-file .env.demo -f compose.yaml run --rm migrate npm run seed:pilot` (dari folder repo; SELALU lewat `-p hashi-demo --env-file .env.demo`).
+
+**Kendala / catatan**
+- `scripts/demo-reset.sh` tidak menjalankan `seed:pilot`; sesudah reset demo kembali ke 36 kandidat sampai `seed:pilot` dijalankan ulang. Usulan kecil: tambahkan opsi `--pilot` ke `demo-up.sh`/`demo-reset.sh` (tugas terpisah bila PM setuju).
+- Akun `admin@hashi.test` (super admin) memakai kata sandi yang sama dan bisa dipakai siapa pun yang mendapat kata sandi: bagikan ke teman hanya `tsk.admin`/`tsk.staff`/`lpk1.admin`/`lpk1.sensei`.
+- Port 3110 produksi mendengarkan di `0.0.0.0` (LAN) seperti sebelumnya; tidak terjangkau dari internet lewat Funnel, tetapi bila router meneruskan port itu ke OptiPlex hasilnya akan lain: tidak saya uji (butuh akses router).
+
+**Pertanyaan**
+- BUTUH IPAL (konfirmasi, bukan blokir): buka alamat publik dari HP tanpa Tailscale dan login sekali; bila gagal kabari saya.
+
 ## 2026-10-08 · T-031 · README dan panduan tanpa penyebutan AI / cara kerja internal
 
 **PR:** #32 (branch `eng/T-031-readme-bersih`)
