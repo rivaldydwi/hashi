@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-23 · T-037 · Seed demo tahan tanggal
 
-**PR:** (diisi setelah PR dibuka) (branch `eng/T-037-seed-tanggal`)
+**PR:** #39 (branch `eng/T-037-seed-tanggal`)
 **Status:** siap direview. Tanpa migrasi, tanpa deploy (aplikasi tidak berubah; hanya seed, pemeriksaan seed, dan tes).
 
 **Hasil PR sebelumnya:** T-036 di-merge `3b47ba6` (PR #38), **deploy produksi**: commit berjalan `9128bc7`, health `{"status":"ok","commit":"9128bc7"}` (log `deploy-20261023-180034.log`).
