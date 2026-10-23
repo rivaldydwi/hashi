@@ -129,9 +129,9 @@ export default async function WorkerHistoryPage({ params, searchParams }: { para
         )}
         {pages > 1 && (
           <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Pagination">
-            {page > 1 ? <Link href={qs(page - 1)} className={btnSecondary}>← {t("list.prev")}</Link> : <span />}
+            {page > 1 ? <Link href={qs(page - 1)} className={btnSecondary}>{t("list.prev")}</Link> : <span />}
             <span className="text-ink-2">{t("list.pageOf", { page, pages })}</span>
-            {page < pages ? <Link href={qs(page + 1)} className={btnSecondary}>{t("list.next")} →</Link> : <span />}
+            {page < pages ? <Link href={qs(page + 1)} className={btnSecondary}>{t("list.next")}</Link> : <span />}
           </nav>
         )}
       </section>

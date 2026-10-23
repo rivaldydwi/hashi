@@ -78,7 +78,7 @@ Semua berisi data dummy (akun demo `*@hashi.test`), bukan data nyata. Lebih bany
 
 | Beranda TSK (Indonesia) | Daftar kandidat LPK (Indonesia) |
 | --- | --- |
-| ![Beranda TSK](docs/screenshots/T-035/beranda-tsk-id-desktop.png) | ![Daftar kandidat LPK](docs/screenshots/T-034/daftar-kandidat-bandung.png) |
+| ![Beranda TSK](docs/screenshots/T-035/beranda-tsk-id-desktop.png) | ![Daftar kandidat LPK](docs/screenshots/T-036/daftar-kandidat-bandung.png) |
 
 | Daftar 在留カード (Jepang) | Beranda LPK di ponsel (Jepang) |
 | --- | --- |

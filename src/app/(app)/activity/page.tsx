@@ -76,9 +76,9 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
 
       {pages > 1 && (
         <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Pagination">
-          {f.page > 1 ? <Link href={`/activity?${qs({ page: String(f.page - 1) })}`} className={btnSecondary}>← {t("prev")}</Link> : <span />}
+          {f.page > 1 ? <Link href={`/activity?${qs({ page: String(f.page - 1) })}`} className={btnSecondary}>{t("prev")}</Link> : <span />}
           <span className="text-ink-2">{t("pageOf", { page: f.page, pages })}</span>
-          {f.page < pages ? <Link href={`/activity?${qs({ page: String(f.page + 1) })}`} className={btnSecondary}>{t("next")} →</Link> : <span />}
+          {f.page < pages ? <Link href={`/activity?${qs({ page: String(f.page + 1) })}`} className={btnSecondary}>{t("next")}</Link> : <span />}
         </nav>
       )}
     </>

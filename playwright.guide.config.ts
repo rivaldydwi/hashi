@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { execSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
 import { assertTestDatabase } from "./scripts/db-guard";
@@ -7,6 +8,15 @@ import { assertTestDatabase } from "./scripts/db-guard";
 // skenario MENAMBAH data (kandidat, job order, catatan, ...). Tidak pernah ke produksi.
 assertTestDatabase("guide:shots");
 const PORT = Number(process.env.E2E_PORT ?? 3100);
+// Label "Hashi · <commit>" di sidebar gambar panduan (T-036): tanpa ini tertulis "unknown". Diambil dari git bila tidak diberikan.
+function gitSha(): string {
+  if (process.env.GIT_SHA) return process.env.GIT_SHA;
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return "";
+  }
+}
 
 export default defineConfig({
   testDir: "tests/guide",
@@ -21,6 +31,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    env: { PORT: String(PORT), STORAGE_DIR: process.env.E2E_STORAGE_DIR ?? `${process.cwd()}/docs-data`, CARD_DATA_KEY: process.env.CARD_DATA_KEY || randomBytes(32).toString("base64") },
+    env: { PORT: String(PORT), STORAGE_DIR: process.env.E2E_STORAGE_DIR ?? `${process.cwd()}/docs-data`, CARD_DATA_KEY: process.env.CARD_DATA_KEY || randomBytes(32).toString("base64"), GIT_SHA: gitSha() },
   },
 });

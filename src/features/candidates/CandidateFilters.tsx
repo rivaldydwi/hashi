@@ -2,9 +2,14 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { btnPrimary, btnSecondary, cardClass, inputClass, labelClass } from "@/components/styles";
 import { candidateStage, selectionDecision } from "@/db/schema";
+import { Icon } from "@/components/shell/Icon";
 import type { CandidateFilters as Filters } from "./queries";
 
-/** Filter daftar kandidat. Memakai form GET biasa, jadi hasilnya bisa di-bookmark dan tanpa JavaScript. */
+/**
+ * Filter daftar kandidat. Memakai form GET biasa, jadi hasilnya bisa di-bookmark dan tanpa JavaScript.
+ * T-036: satu baris utama (cari, status, bidang, keputusan TSK) + "Filter lain" (`<details>`) untuk filter penilaian; terbuka otomatis bila salah satunya aktif.
+ * Isian di dalam `<details>` yang tertutup tetap ikut terkirim, jadi URL lama (`?avg=…`) tetap bekerja.
+ */
 export async function CandidateFilters({
   filters,
   fields,
@@ -16,6 +21,7 @@ export async function CandidateFilters({
 }) {
   const t = await getTranslations();
   const active = filters.q || filters.stage || filters.field || filters.decision || filters.avg || filters.attendance || filters.jlpt;
+  const moreCount = [filters.avg, filters.attendance, filters.jlpt].filter(Boolean).length;
 
   return (
     // key = nilai filter: navigasi sisi klien (mis. tombol Reset) tidak me-remount form, dan kolom
@@ -28,7 +34,7 @@ export async function CandidateFilters({
       data-testid="candidate-filters"
     >
       {filters.view && <input type="hidden" name="view" value={filters.view} />}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid gap-3 sm:grid-cols-2 ${isTsk ? "lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]" : "lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]"}`}>
         <div className="space-y-1.5">
           <label htmlFor="q" className={labelClass}>{t("candidates.filterSearch")}</label>
           <input id="q" name="q" defaultValue={filters.q} maxLength={100} placeholder={t("candidates.searchPlaceholder")} className={inputClass} />
@@ -62,33 +68,39 @@ export async function CandidateFilters({
             </select>
           </div>
         )}
-      </div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <label htmlFor="avg" className={labelClass}>{t("candidates.filterAvg")}</label>
-          <input id="avg" name="avg" type="number" inputMode="decimal" min={1} max={5} step={0.1} defaultValue={filters.avg} placeholder="3.5" className={inputClass} />
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="attendance" className={labelClass}>{t("candidates.filterAttendance")}</label>
-          <input id="attendance" name="attendance" type="number" inputMode="numeric" min={0} max={100} step={1} defaultValue={filters.attendance} placeholder="80" className={inputClass} />
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="jlpt" className={labelClass}>{t("candidates.filterJlpt")}</label>
-          <select id="jlpt" name="jlpt" defaultValue={filters.jlpt} className={inputClass}>
-            <option value="">{t("candidates.all")}</option>
-            {["N5", "N4", "N3", "N2", "N1"].map((n) => (
-              <option key={n} value={n}>{t("candidates.jlptAtLeast", { level: n })}</option>
-            ))}
-          </select>
+        <div className="flex items-end gap-2">
+          <button type="submit" className={btnPrimary}>{t("candidates.apply")}</button>
+          {active && (
+            <Link href="/candidates" className={btnSecondary}>{t("candidates.reset")}</Link>
+          )}
         </div>
       </div>
-      <p className="mt-2 text-xs text-ink-2">{t("candidates.filterAssessmentHint")}</p>
-      <div className="mt-3 flex gap-2">
-        <button type="submit" className={btnPrimary}>{t("candidates.apply")}</button>
-        {active && (
-          <Link href="/candidates" className={btnSecondary}>{t("candidates.reset")}</Link>
-        )}
-      </div>
+      <details className="group mt-3" open={moreCount > 0} data-testid="more-filters">
+        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-accent-text [&::-webkit-details-marker]:hidden">
+          <Icon name="chevron" className="h-4 w-4 transition group-open:rotate-180" />
+          {t("candidates.moreFilters")}{moreCount > 0 && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs tabular-nums">{moreCount}</span>}
+        </summary>
+        <div className="mt-2 grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <label htmlFor="avg" className={labelClass}>{t("candidates.filterAvg")}</label>
+            <input id="avg" name="avg" type="number" inputMode="decimal" min={1} max={5} step={0.1} defaultValue={filters.avg} placeholder="3.5" className={inputClass} />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="attendance" className={labelClass}>{t("candidates.filterAttendance")}</label>
+            <input id="attendance" name="attendance" type="number" inputMode="numeric" min={0} max={100} step={1} defaultValue={filters.attendance} placeholder="80" className={inputClass} />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="jlpt" className={labelClass}>{t("candidates.filterJlpt")}</label>
+            <select id="jlpt" name="jlpt" defaultValue={filters.jlpt} className={inputClass}>
+              <option value="">{t("candidates.all")}</option>
+              {["N5", "N4", "N3", "N2", "N1"].map((n) => (
+                <option key={n} value={n}>{t("candidates.jlptAtLeast", { level: n })}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-ink-2">{t("candidates.filterAssessmentHint")}</p>
+      </details>
     </form>
   );
 }

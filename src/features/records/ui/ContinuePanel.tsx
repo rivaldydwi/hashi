@@ -36,7 +36,7 @@ export async function ContinuePanel({ worker, recent, tasks, parentDate }: { wor
           </ul>
         )}
       </div>
-      <Link href={`/records/workers/${worker.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-text hover:underline" target="_blank" rel="noopener">{t("continue.allHistory")} →</Link>
+      <Link href={`/records/workers/${worker.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-accent-text hover:underline" target="_blank" rel="noopener">{t("continue.allHistory")}</Link>
     </aside>
   );
 }

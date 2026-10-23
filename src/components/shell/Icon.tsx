@@ -24,6 +24,8 @@ const PATHS: Record<string, string> = {
   share: "M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13",
   clock: "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
   tasks: "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01",
+  // Penanda status di tabel (T-036: pengganti emoji)
+  dash: "M6 12h12",
 };
 
 /** Semua nama ikon yang tersedia (dites: ikon setiap KPI di katalog harus ada di sini). */

@@ -44,8 +44,7 @@
   "login": {
     "title": "Masuk ke Hashi",
     "tabTitle": "Masuk",
-    "heading": "Selamat datang kembali",
-    "subheading": "Masuk untuk melanjutkan ke Hashi.",
+    "subheading": "Gunakan email dan kata sandi yang kamu terima dari admin organisasimu.",
     "email": "Email",
     "password": "Kata sandi",
     "submit": "Masuk",
@@ -56,9 +55,6 @@
     "hidePassword": "Sembunyikan kata sandi",
     "forgot": "Lupa kata sandi? Hubungi admin organisasimu.",
     "panelTitle": "Satu profil kandidat, dari LPK sampai TSK.",
-    "panel1": "Profil kandidat lengkap, dalam bahasa Indonesia dan Jepang",
-    "panel2": "Dibagikan ke TSK hanya oleh Admin LPK",
-    "panel3": "Setiap perubahan tercatat di riwayat aktivitas",
     "demoTitle": "Akun demo",
     "demoHint": "Pilih satu akun untuk mengisi emailnya.",
     "demoPassword": "Kata sandi: {password}"
@@ -439,7 +435,8 @@
     "emptyBodyLpk": "Mulai dengan menambahkan kandidat pertama. Data yang kosong bisa dilengkapi nanti.",
     "emptyBodyTsk": "Belum ada kandidat yang dibagikan LPK mitra kepada Anda.",
     "noMatchTitle": "Tidak ada kandidat yang cocok",
-    "noMatchBody": "Coba longgarkan atau hapus sebagian filter."
+    "noMatchBody": "Coba longgarkan atau hapus sebagian filter.",
+    "moreFilters": "Filter lain"
   },
   "detail": {
     "saved": "Perubahan disimpan.",
@@ -770,7 +767,7 @@
     "pendingTitle": "Belum dinilai bulan ini",
     "pendingIntro": "Kandidat Belajar atau Siap seleksi yang belum punya penilaian bulanan untuk {month}.",
     "pendingSuffix": "kandidat belum dinilai",
-    "pendingEmpty": "Semua kandidat sudah dinilai bulan ini. 🎉",
+    "pendingEmpty": "Semua kandidat sudah dinilai bulan ini.",
     "lastAssessed": "terakhir {month}, rata-rata {avg}",
     "neverAssessed": "belum pernah dinilai",
     "assessNow": "Nilai sekarang",

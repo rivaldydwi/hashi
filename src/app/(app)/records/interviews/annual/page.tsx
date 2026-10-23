@@ -8,6 +8,7 @@ import { quartersOfFiscalYear } from "@/features/records/queries";
 import { Badge } from "@/features/records/ui/common";
 import { safeTimezone, ymdIn } from "@/lib/org-time";
 import { tenantQuery } from "@/lib/session";
+import { Icon } from "@/components/shell/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +35,9 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Link href={link(fy - 1)} className={btnSecondary} data-testid="annual-prev">← {fiscalTitle(fy - 1)}</Link>
+        <Link href={link(fy - 1)} className={btnSecondary} data-testid="annual-prev">{fiscalTitle(fy - 1)}</Link>
         <h2 className="px-2 text-[17px] font-semibold" data-testid="annual-title">{t("annual.title")} {fiscalTitle(fy)}</h2>
-        <Link href={link(fy + 1)} className={btnSecondary}>{fiscalTitle(fy + 1)} →</Link>
+        <Link href={link(fy + 1)} className={btnSecondary}>{fiscalTitle(fy + 1)}</Link>
         <Link href={`/records/interviews?fy=${fy}`} className={`${btnSecondary} ml-auto`} data-testid="annual-back">{t("annual.backToGrid")}</Link>
       </div>
       <p className="mb-3 text-sm text-ink-2">{t("annual.intro")}</p>
@@ -70,7 +71,7 @@ export default async function AnnualInterviewListPage({ searchParams }: { search
                     {quarters.map((c) => (
                       <td key={c.q} className={`${td} cjk-phrase min-w-36`} data-testid="annual-quarter" data-quarter={c.q} data-state={c.state} data-count={c.count}>
                         {c.state === "notRequired" || c.state === "notDue" ? <span className="text-ink-2">—</span> : (
-                          <span className={`font-medium ${c.state === "missed" ? "text-danger-text" : ""}`}>{c.state === "done" ? "✅" : c.state === "missed" ? "🔴" : c.state === "open" ? "⏳" : "➖"} {c.state === "open" ? t("interviews.qstate.open", { date: c.deadline.replace(/-/g, "/") }) : t(`interviews.qstate.${c.state}`)}
+                          <span className={`font-medium ${c.state === "missed" ? "text-danger-text" : ""}`}><Icon name={c.state === "done" ? "check" : c.state === "missed" ? "alert" : c.state === "open" ? "clock" : "dash"} className="inline-block h-4 w-4 shrink-0 align-[-3px]" /> {c.state === "open" ? t("interviews.qstate.open", { date: c.deadline.replace(/-/g, "/") }) : t(`interviews.qstate.${c.state}`)}
                             {c.state === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: c.count })})</span>}</span>
                         )}
                       </td>

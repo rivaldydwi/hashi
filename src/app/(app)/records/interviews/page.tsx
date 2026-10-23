@@ -8,12 +8,15 @@ import { saveQuarterNote } from "@/features/records/actions";
 import { listResponsibleStaff, workersWithResponsible } from "@/db/responsibility-queries";
 import { interviewRowsFull, listStaff, quarterNotes, quartersOfFiscalYear } from "@/features/records/queries";
 import { ActionForm } from "@/features/records/ui/ActionForm";
+import { Icon } from "@/components/shell/Icon";
 import { safeTimezone, ymdIn } from "@/lib/org-time";
 import { tenantQuery } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ICON: Record<MonthMark | QuarterState, string> = { done: "✅", open: "⏳", missed: "🔴", na: "➖", notDue: "", none: "", notRequired: "" };
+// Ikon garis (bukan emoji, T-036); teks status selalu ikut, ikon hanya penanda (aria-hidden).
+const ICON: Record<MonthMark | QuarterState, string> = { done: "check", open: "clock", missed: "alert", na: "dash", notDue: "", none: "", notRequired: "" };
+const mark = (s: MonthMark | QuarterState) => (ICON[s] ? <Icon name={ICON[s]} className="inline-block h-4 w-4 shrink-0 align-[-3px]" /> : null);
 
 /**
  * Tab Wawancara berkala (定期面談 / Teiki Mendan): grid pekerja x 12 bulan tahun fiskal (April-Maret) seperti lembar Excel TSK. Status UTAMA per KUARTAL (aturan staf TSK: minimal sekali per kuartal,
@@ -82,9 +85,9 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Link href={hrefFor({ fy: String(fy - 1) })} className={btnSecondary} data-testid="fy-prev">← {fiscalTitle(fy - 1)}</Link>
+        <Link href={hrefFor({ fy: String(fy - 1) })} className={btnSecondary} data-testid="fy-prev">{fiscalTitle(fy - 1)}</Link>
         <h2 className="px-2 text-[17px] font-semibold" data-testid="fy-title">{t("interviews.fiscalYear")} {fiscalTitle(fy)}</h2>
-        <Link href={hrefFor({ fy: String(fy + 1) })} className={btnSecondary}>{fiscalTitle(fy + 1)} →</Link>
+        <Link href={hrefFor({ fy: String(fy + 1) })} className={btnSecondary}>{fiscalTitle(fy + 1)}</Link>
       </div>
 
       <details className={`${cardClass} mb-3`}>
@@ -118,7 +121,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
 
       <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm" data-testid="interview-legend">
         <span className="font-semibold">{t("interviews.legend")}:</span>
-        {(["done", "open", "missed", "na"] as const).map((s) => <span key={s}><span aria-hidden>{ICON[s]}</span> {t(`interviews.legendState.${s}`)}</span>)}
+        {(["done", "open", "missed", "na"] as const).map((s) => <span key={s}>{mark(s)} {t(`interviews.legendState.${s}`)}</span>)}
         <span className="text-ink-2" data-testid="pending-cells-count">{t("interviews.pendingCells", { n: pendingCells })}</span>
         <Link href={`/records/interviews/annual?fy=${fy}`} className="font-semibold text-accent-text hover:underline" data-testid="annual-link">{t("interviews.annualLink")}</Link>
       </div>
@@ -158,7 +161,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                       <td key={m} className={`${tdc} ${m === month ? "bg-accent-soft/40" : ""}`} data-state={st} data-month={m} data-testid="interview-cell">
                         {st === "notDue" ? <span className="text-ink-2">—</span> : (
                           <Link href={`/records/interviews/${w.id}/${m}`} className="inline-flex min-h-11 flex-col justify-center hover:underline" data-testid="interview-cell-link">
-                            {st === "none" ? <span className="text-xs text-ink-2">{t("interviews.state.none")}</span> : <span><span aria-hidden>{ICON[st]}</span> {t(`interviews.state.${st}`)}</span>}
+                            {st === "none" ? <span className="text-xs text-ink-2">{t("interviews.state.none")}</span> : <span>{mark(st)} {t(`interviews.state.${st}`)}</span>}
                             {st === "done" && <span className="text-xs text-ink-2">{resultLabel(w.id, m)}</span>}
                           </Link>
                         )}
@@ -170,7 +173,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                     return [cell, (
                       <td key={`q${i}`} className={tdc} data-testid="quarter-cell" data-quarter={q}>
                         <p className={`mb-1 text-sm font-semibold ${qs === "missed" ? "text-danger-text" : qcell(w.id, q)?.urgent ? "rounded bg-warn-bg px-1 text-warn-text" : ""}`} data-testid="quarter-state" data-state={qs} data-urgent={qcell(w.id, q)?.urgent ? "true" : undefined}>
-                          {qs === "notRequired" || qs === "notDue" ? <span className="font-normal text-ink-2">—</span> : <><span aria-hidden>{ICON[qs]}</span> {qs === "open" ? t("interviews.qstate.open", { date: (qcell(w.id, q)?.deadline ?? "").replace(/-/g, "/") }) : t(`interviews.qstate.${qs}`)}{qs === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: quarterCountOf(w.id, q) })})</span>}</>}
+                          {qs === "notRequired" || qs === "notDue" ? <span className="font-normal text-ink-2">—</span> : <>{mark(qs)} {qs === "open" ? t("interviews.qstate.open", { date: (qcell(w.id, q)?.deadline ?? "").replace(/-/g, "/") }) : t(`interviews.qstate.${qs}`)}{qs === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: quarterCountOf(w.id, q) })})</span>}</>}
                         </p>
                         <details>
                           <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs">

@@ -82,11 +82,11 @@ export default async function CandidatesPage({ searchParams }: { searchParams: S
       {pages > 1 && (
         <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Pagination">
           {filters.page > 1 ? (
-            <Link href={pageHref(filters.page - 1)} className={btnSecondary}>← {t("prev")}</Link>
+            <Link href={pageHref(filters.page - 1)} className={btnSecondary}>{t("prev")}</Link>
           ) : <span />}
           <span className="text-ink-2">{t("pageOf", { page: filters.page, pages })}</span>
           {filters.page < pages ? (
-            <Link href={pageHref(filters.page + 1)} className={btnSecondary}>{t("next")} →</Link>
+            <Link href={pageHref(filters.page + 1)} className={btnSecondary}>{t("next")}</Link>
           ) : <span />}
         </nav>
       )}
