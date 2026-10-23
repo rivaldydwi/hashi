@@ -15,29 +15,7 @@ Sejak 2026-10-23 peran PM juga dijalankan sesi engineer di Mini PC atas instruks
 
 > **Aturan CI sejak T-028:** commit/PR yang HANYA mengubah `docs/**` atau `*.md` tidak menjalankan CI. PR seperti itu boleh di-merge cukup dengan `PM: DISETUJUI`; PR yang punya CI tetap wajib hijau.
 
-### T-037 · Seed demo tahan tanggal (CI tidak merah saat kuartal berganti) · `SIAP`
-
-**Permintaan Ipal (2026-10-23).** Latar: PR #35. `verify:seed` gagal mendadak saat kuartal fiskal berganti karena seed dihitung dari "hari ini"; perbaikan PR #35 hanya menutup
-pola status. Uji dengan jam proses digeser menunjukkan seed + `verify:seed` masih gagal di 2026-08-15 dan 09-30, dan seed sendiri GAGAL untuk tanggal sekitar setahun lalu.
-Kuartal berikutnya mulai 1 Jan 2027. Tanggal masa depan tidak bisa diuji lewat database (trigger menolak tanggal di masa depan menurut jam database).
-
-Kerjakan:
-1. **Satu sumber tanggal seed**: `SEED_TODAY` (opsional, `YYYY-MM-DD`, ditolak bila di masa depan menurut tanggal Tokyo atau tidak sah) dibaca SATU fungsi di `src/db/` dan dipakai
-   `scripts/seed.ts` (termasuk `seedRecords`, data demo lain yang memakai "hari ini"/bulan berjalan) DAN `scripts/verify-seed.ts`. Tanpa `SEED_TODAY` perilaku sama seperti sekarang.
-2. **Bagian yang peka tanggal jadi fungsi murni** di `src/db/` (minimal wawancara berkala di `demo-records.ts`: bulan, status, form 5-5, catatan kuartal, pekerja berhenti) yang dites
-   unit untuk SETIAP hari satu tahun fiskal penuh (dan tahun fiskal berikutnya), memeriksa syarat yang sama dengan `verify:seed` (keempat status, alasan, bulan 対象外, form 5-5 dengan
-   基準不適合, kuartal `open` >= 1, kuartal `missed` >= 1). Boleh mengubah cara seed memilih tanggal (mis. hitung mundur dari kuartal berjalan); isi data demo boleh bergeser, tetapi
-   tes e2e yang bergantung isi seed tetap lulus.
-3. **Skrip lokal** `scripts/verify-seed-dates.sh` (HANYA db dev/test, dijaga `db-guard`): untuk daftar tanggal (bawaan: awal/akhir tiap kuartal 12 bulan terakhir + hari ini)
-   jalankan `db:seed -- --reset` + `verify:seed` dengan `SEED_TODAY`, ringkas lulus/gagal per tanggal, akhiri dengan reseed tanggal asli. Perbaiki seed sampai semua tanggal itu lulus;
-   bila ada tanggal yang secara wajar tidak bisa (mis. batasan database), jelaskan di STATUS.
-4. CI tidak ditambah putaran seed (hemat menit Actions, T-028); jaminan untuk tanggal mendatang datang dari tes unit butir 2. Dokumentasi singkat di `CLAUDE.md` (bagian "Seed demo lengkap").
-
-**Kriteria selesai**
-- [ ] `SEED_TODAY` dipakai seed dan `verify:seed` dari satu fungsi; tanggal masa depan/tidak sah ditolak dengan pesan jelas (dites unit).
-- [ ] Tes unit wawancara berkala lulus untuk setiap hari FY2026 dan FY2027.
-- [ ] `scripts/verify-seed-dates.sh` lulus untuk semua tanggal bawaan (hasil per tanggal di STATUS); `verify:seed` di tanggal asli lulus.
-- [ ] typecheck, unit, `test:rls`, build, `test:e2e` (db dev) lulus; CI hijau. Tanpa migrasi, tanpa deploy (tidak mengubah aplikasi).
+_Antrean kosong (2026-10-23): T-037 selesai. Tugas berikutnya menunggu Ipal/PM (lihat Cadangan)._
 
 ---
 
@@ -59,6 +37,7 @@ Kerjakan:
 
 ## Selesai
 
+- **T-037** Seed demo tahan tanggal (PR #39): `planDemoInterviews` murni (relatif kuartal berjalan; tes setiap hari FY2026-FY2027), paspor demo tidak pernah terbit di masa depan (tes 236 kandidat setiap hari), pemeriksaan missed di Q1 memakai FY lalu (verify:seed + e2e; dulu mustahil lulus April-Juni), `SEED_TODAY` + `scripts/verify-seed-dates.sh` (9 tanggal lulus). Koreksi: klaim uji tanggal di PR #35 sebagian palsu (dicatat di STATUS).
 - **T-036** Rapikan kecil (PR #38): panah di navigasi dihapus (arah data tetap), emoji status -> ikon garis, login "Masuk ke Hashi" + panel merek sederhana, filter kandidat satu baris + "Filter lain" (details), gambar panduan berlabel commit; tes `no-emoji-ui`; scanner audit 31 -> 7 temuan (sisa wajar).
 - **T-035** Hierarki beranda (PR #37): KPI per kelompok alur kerja (katalog `group` + `primaryFor`, `groupKpis`), judul kelompok di kolom kiri, KPI utama dua kolom, semua kartu berlatar netral dan perhatian = ikon + angka coral; mode atur per kelompok; TSK_ADMIN 1280 px +1 baris; panduan + README diperbarui.
 - **T-034** Palet dari warna merek (PR #36): netral kebiruan, aksen biru merek digelapkan `#3653d6`, coral hanya `attn-*`, danger/warn tetap; radius 8/6 px (`rounded-card`/`rounded-ctl`); header tabel huruf biasa, label MENU dihapus; tes kontras + penjaga palet lama; `docs/brand.md` aturan baru; panduan (83 gambar + PDF) dan 4 gambar README dibuat ulang.
