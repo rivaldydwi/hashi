@@ -107,7 +107,7 @@ test("aset merek: icon, apple-icon, favicon, manifest, ikon PWA membalas 200 den
     expect(res.headers()["content-type"], path).toContain(type);
   }
   const m = await (await request.get("/manifest.webmanifest")).json();
-  expect(m).toMatchObject({ name: "Hashi", short_name: "Hashi", theme_color: "#0F1424", background_color: "#FAF8F5" });
+  expect(m).toMatchObject({ name: "Hashi", short_name: "Hashi", theme_color: "#0F1424", background_color: "#F5F7FB" });
 });
 
 test("logo Hashi (bukan tile 橋) di login dan di sidebar setelah masuk", async ({ page }) => {

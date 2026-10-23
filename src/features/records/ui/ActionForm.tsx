@@ -52,7 +52,7 @@ export function ActionForm({
       {Object.entries(hidden).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
       {children}
       {state.status === "error" && (
-        <p role="alert" className="mt-2 rounded-xl border border-danger-line-strong bg-danger-bg px-3 py-2 text-sm text-danger-text" data-testid="form-error">{t(state.key)}</p>
+        <p role="alert" className="mt-2 rounded-ctl border border-danger-line-strong bg-danger-bg px-3 py-2 text-sm text-danger-text" data-testid="form-error">{t(state.key)}</p>
       )}
       <button type="submit" disabled={pending} aria-busy={pending} className={`${tone} mt-3`}>
         {pending && <Spinner />}

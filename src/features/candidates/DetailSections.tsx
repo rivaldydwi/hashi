@@ -201,7 +201,7 @@ export async function PlacementPanel({ candidateId, placements }: { candidateId:
       <p className="text-sm text-ink-menu">{t("placementIntro")}</p>
       <ul className="space-y-3">
         {placements.map((p) => (
-          <li key={p.id} className="rounded-xl border border-line p-3" data-testid="placement" data-status={p.status}>
+          <li key={p.id} className="rounded-ctl border border-line p-3" data-testid="placement" data-status={p.status}>
             <p className="mb-2 text-sm">
               <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-medium ${p.status === "ACTIVE" ? "bg-ok-bg text-ok-text" : "bg-muted-strong text-ink-menu"}`}>{t(`placementStatus.${p.status}`)}</span>
               <span className="font-medium">{p.companyName}</span> / {p.siteName}
@@ -238,7 +238,7 @@ export async function NotesPanel({ me, candidateId, notes }: { me: CurrentUser; 
             // Sama dengan aturan RLS: penulis, atau TSK_ADMIN di TSK yang sama
             const canModify = tsk && n.tskOrgId === me.organizationId && (n.authorId === me.id || me.role === "TSK_ADMIN");
             return (
-              <li key={n.id} className="rounded-lg border border-line p-3" data-testid="note" data-visibility={n.visibility}>
+              <li key={n.id} className="rounded-ctl border border-line p-3" data-testid="note" data-visibility={n.visibility}>
                 <div className="mb-1 flex flex-wrap items-center gap-2 text-xs">
                   <span
                     className={`rounded-full px-2 py-0.5 font-medium ${n.visibility === "TSK_ONLY" ? "bg-muted text-ink-menu" : "bg-info-bg text-info-text"}`}

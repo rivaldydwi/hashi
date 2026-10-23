@@ -73,7 +73,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
           <Link href={`/records/new?kind=daily_work&case=${k.id}`} className={`${btnSecondary} mt-3`}>{t("cases.addDaily")}</Link>
         </div>
         {canEditCase && (
-          <details className="mt-3 rounded-xl border border-line p-3">
+          <details className="mt-3 rounded-ctl border border-line p-3">
             <summary className="min-h-11 cursor-pointer text-sm font-semibold text-accent-text" data-testid="edit-case-toggle">{t("cases.edit")}</summary>
             <ActionForm action={saveCase} hidden={{ id: k.id }} submitLabel={t("cases.saveChanges")} className="mt-2 space-y-3" testId="edit-case-form">
               <div className="space-y-1.5"><label htmlFor="e-title" className={labelClass}>{t("cases.titleLabel")} *</label><input id="e-title" name="title" required defaultValue={k.title} lang="ja" maxLength={300} className={inputClass} /></div>
@@ -134,7 +134,7 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
             </tbody>
           </table>
         </div>
-        <details className="mt-4 rounded-xl border border-line" open={c.events.length === 0}>
+        <details className="mt-4 rounded-ctl border border-line" open={c.events.length === 0}>
           <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-semibold text-accent-text" data-testid="add-event-toggle">+ {t("cases.addEvent")}</summary>
           <ActionForm action={addTimelineEvent} hidden={{ caseId: k.id }} submitLabel={t("cases.addEventSave")} className="border-t border-line p-4" resetOnSuccess testId="add-event-form">
             <EventFields d={{ date: today, time: "", event: "", subjectStatement: "", companyResponse: "", note: "", includeInClientExport: true }} prefix="new" />

@@ -27,7 +27,7 @@ export default async function JobOrdersPage({ searchParams }: { searchParams: Se
   return (
     <>
       <PageHeader title={t("title")} intro={t("intro")} />
-      {sp.deleted && <p role="status" className="mb-4 rounded-lg bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="job-order-deleted">{t("deleted")}</p>}
+      {sp.deleted && <p role="status" className="mb-4 rounded-ctl bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="job-order-deleted">{t("deleted")}</p>}
       <form method="get" action="/job-orders" key={`${q}|${status}`} className={`${cardClass} mb-4 flex flex-wrap items-end gap-3 p-4`}>
         <div className="min-w-56 flex-1 space-y-1.5">
           <label htmlFor="q" className="block text-sm font-medium text-ink-menu">{t("search")}</label>

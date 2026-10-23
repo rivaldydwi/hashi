@@ -10,7 +10,7 @@ import { btnPrimary } from "@/components/styles";
 export async function NotFoundView() {
   const t = await getTranslations("notFoundPage");
   return (
-    <div className="mx-auto mt-16 max-w-lg rounded-2xl border border-line bg-card p-8 text-center" data-testid="not-found">
+    <div className="mx-auto mt-16 max-w-lg rounded-card border border-line bg-card p-8 text-center" data-testid="not-found">
       <p className="text-sm font-semibold tracking-wider text-accent-text" aria-hidden="true">404</p>
       <h1 className="mt-1 text-[19px] font-semibold text-ink">{t("title")}</h1>
       <p className="mt-2 text-sm text-ink-2">{t("body")}</p>

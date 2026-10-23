@@ -34,6 +34,32 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 <!-- Entri baru di bawah garis ini, terbaru di atas. -->
 
+## 2026-10-23 · T-034 · Palet dari warna merek + radius + header tabel
+
+**PR:** (diisi setelah PR dibuka) (branch `eng/T-034-palet-merek`)
+**Status:** siap direview. Tanpa migrasi. Deploy produksi setelah merge (diminta tugas).
+
+**Hasil PR sebelumnya:** T-033 di-merge `b9e1d0a` (PR #34) setelah CI hijau; sebelumnya CI `main` merah karena seed bergantung tanggal, diperbaiki di PR #35 (`264bd2a`).
+
+**Yang dikerjakan**
+- Palet (`src/app/globals.css`, hanya nilai token): netral sedikit kebiruan (`page` #f5f7fb, `line` #e1e6ef, `ink` #141a2e, `ink-2` #545d78, ...), aksen = biru merek digelapkan `#3653d6` (teks putih 6,2:1; biru merek mentah #5b7cfa hanya 3,7:1), `accent-soft` dari periwinkle, `attn-*` = coral merek (latar #fff1ef, teks #a4291f, ikon #e04a3e), `blue`/`role-text` = teks logo #2b3a67, skala `brand-50..700` lama dipetakan ke aksen. `danger-*` (merah tua) dan `warn-*` (kuning) sengaja tetap, supaya "perlu tindakan" (coral) tidak tertukar dengan "hapus".
+- Radius: token `--radius-card` 8px / `--radius-ctl` 6px; `rounded-2xl` -> `rounded-card` (12), `rounded-xl`/`rounded-lg` -> `rounded-ctl` (99); tombol bahasa `rounded-[10px]` -> 4px. `rounded-full` (chip, avatar) tetap.
+- Header tabel huruf biasa tebal (`tableHeadClass` + tabel penilaian); label "MENU" di sidebar dihapus (nav tetap ber-`aria-label`), label "Segera" huruf biasa.
+- Grafik tren beranda: seri 2 = coral (sebelumnya dua biru mirip); manifest PWA `background_color` #F5F7FB (tes `login-brand` disesuaikan).
+- Tes `no-raw-colors`: +3 pasangan kontras (`accent-text` di atas page/card, `role-text`/`role-bg`) dan penjaga palet lama (krem/terakota dan turunannya tidak boleh ada di `src/`).
+- `docs/brand.md`: aturan baru (tabel token peran -> asal merek); `CLAUDE.md` satu kalimat.
+- Panduan: `guide:shots` (83 gambar) + `build:guide` (PDF 83 halaman) dibuat ulang. README: 4 gambar baru di `docs/screenshots/T-034/` (seed dasar + pilot, label commit terisi), ketiga README menunjuk ke sana; folder tugas lama tidak diubah.
+
+**Verifikasi**
+- `npm run typecheck` lulus; `npm run test:unit` 181/181 (termasuk tes kontras, palet lama, panduan, README); `npm run test:i18n` lulus; `npm run build` 0 peringatan.
+- `E2E_PORT=3120 npm run test:e2e` (db dev setelah `db:seed -- --reset`): 245/245 lulus (sebelum perubahan kecil radius tombol bahasa dan README; CI menjalankan ulang semuanya).
+- Pemeriksaan visual (login, beranda TSK id/ja, daftar kandidat, kartu izin tinggal ja, ponsel): satu identitas biru-navy-coral; tombol login biru sejalan dengan panel navy.
+
+**Kendala / catatan**
+- Beranda TSK masih menampilkan banyak kartu "perlu tindakan" berlatar penuh (sekarang coral muda): memang lingkup T-035.
+- `guide:shots` membiarkan db dev berisi data pilot + data uji panduan; untuk gambar README db dev di-reseed dasar + pilot dulu.
+- Demo `hashi-demo` tidak diperbarui (butuh izin Ipal).
+
 ## 2026-10-23 · T-033 · Token warna semantik + bersihkan warna Tailwind mentah
 
 **PR:** #34 (branch `eng/T-033-token-warna`)

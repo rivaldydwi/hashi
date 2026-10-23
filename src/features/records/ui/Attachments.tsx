@@ -15,10 +15,10 @@ export async function Attachments({ items, parent, canEdit, left }: { items: Att
       {items.length === 0 ? <p className="mt-2 text-sm text-ink-2">{t("photos.none")}</p> : (
         <ul className="mt-3 grid gap-4 sm:grid-cols-2">
           {items.map((a) => (
-            <li key={a.id} className="space-y-2 rounded-xl border border-line p-3" data-testid="attachment-item">
+            <li key={a.id} className="space-y-2 rounded-ctl border border-line p-3" data-testid="attachment-item">
               <a href={`/records/attachments/${a.id}`} target="_blank" rel="noreferrer" aria-label={t("photos.open")}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/records/attachments/${a.id}`} alt={a.caption ?? t("photos.altDefault")} loading="lazy" className="h-40 w-full rounded-lg bg-hover object-contain" data-testid="attachment-img" />
+                <img src={`/records/attachments/${a.id}`} alt={a.caption ?? t("photos.altDefault")} loading="lazy" className="h-40 w-full rounded-ctl bg-hover object-contain" data-testid="attachment-img" />
               </a>
               {canEdit ? (
                 <ActionForm action={updateAttachment} hidden={{ id: a.id }} submitLabel={t("photos.saveCaption")} submitTone="secondary" className="space-y-2">

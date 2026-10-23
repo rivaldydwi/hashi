@@ -42,7 +42,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
       </div>
 
       {!access.canEdit && (
-        <p className="rounded-xl border border-line bg-page px-3 py-2 text-sm text-ink-menu" data-testid="card-readonly">
+        <p className="rounded-ctl border border-line bg-page px-3 py-2 text-sm text-ink-menu" data-testid="card-readonly">
           {!access.activeWorker ? t("access.noActive") : access.responsible?.name ? t.rich("access.readOnly", { name: access.responsible.name, n: (c) => <Data className="font-medium">{c}</Data> }) : t("access.readOnlyNone")}
         </p>
       )}
@@ -51,7 +51,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
         <div className="space-y-3" data-testid="card-empty">
           <p className="text-sm text-ink-2">{t("empty")}</p>
           {access.canEdit && access.activeWorker && defaultFieldId && (
-            <details className="rounded-xl border border-line p-3" open>
+            <details className="rounded-ctl border border-line p-3" open>
               <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">{t("form.createTitle")}</summary>
               <div className="mt-2"><CreateCardForm candidateId={candidateId} defaultFieldId={defaultFieldId} fields={usable()} /></div>
             </details>
@@ -59,7 +59,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
         </div>
       ) : (
         <>
-          <div className="space-y-2 rounded-xl border border-line p-3 sm:p-4" data-testid="card-current" data-card-id={current.id} data-stage={stage!.stage} data-renewal={current.renewalStatus}>
+          <div className="space-y-2 rounded-ctl border border-line p-3 sm:p-4" data-testid="card-current" data-card-id={current.id} data-stage={stage!.stage} data-renewal={current.renewalStatus}>
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={STAGE_TONE[stage!.stage]} testId="card-stage">{t(`stage.${stage!.stage}`)}</Badge>
               <Badge tone="neutral" testId="card-renewal">{t(`renewal.${current.renewalStatus}`)}</Badge>
@@ -87,7 +87,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
           )}
 
           {stage!.stage === "waiting_result" && (
-            <div className="rounded-xl border border-line bg-page p-3 text-sm" data-testid="card-pickup-checklist">
+            <div className="rounded-ctl border border-line bg-page p-3 text-sm" data-testid="card-pickup-checklist">
               <p className="font-semibold">{t("pickup.title")}</p>
               <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-menu">
                 <li>{t("pickup.notice")}</li>
@@ -101,7 +101,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
 
           {current.status === "active" && (
             access.canEdit && secrets[current.id] ? (
-              <div className="rounded-xl border border-line p-3 sm:p-4"><CardSecrets cardId={current.id} meta={secrets[current.id]} /></div>
+              <div className="rounded-ctl border border-line p-3 sm:p-4"><CardSecrets cardId={current.id} meta={secrets[current.id]} /></div>
             ) : (
               <p className="text-xs text-ink-2" data-testid="card-secrets-restricted">{t("secrets.restricted")}</p>
             )
@@ -109,17 +109,17 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
 
           {editable && (
             <div className="space-y-3" data-testid="card-actions">
-              <details className="rounded-xl border border-line p-3">
+              <details className="rounded-ctl border border-line p-3">
                 <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold" data-testid="card-edit-toggle">{t("form.updateTitle")}</summary>
                 <div className="mt-2"><UpdateCardForm today={today} fields={usable(current.skillFieldId)} card={{ id: current.id, skillFieldId: current.skillFieldId, periodMonths: current.periodMonths, expiryDate: current.expiryDate, renewalStatus: current.renewalStatus, appliedOn: current.appliedOn, additionalDocsOn: current.additionalDocsOn, rejectedOn: current.rejectedOn, note: current.note }} /></div>
               </details>
               {(current.renewalStatus === "applied" || current.renewalStatus === "additional_docs") && (
-                <details className="rounded-xl border border-line p-3">
+                <details className="rounded-ctl border border-line p-3">
                   <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold" data-testid="card-receive-toggle">{t("form.receiveTitle")}</summary>
                   <div className="mt-2"><ReceiveCardForm today={today} fields={usable(current.skillFieldId)} card={{ id: current.id, skillFieldId: current.skillFieldId, periodMonths: current.periodMonths, expiryDate: current.expiryDate }} /></div>
                 </details>
               )}
-              <details className="rounded-xl border border-danger-line bg-danger-bg/40 p-3">
+              <details className="rounded-ctl border border-danger-line bg-danger-bg/40 p-3">
                 <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-danger-text" data-testid="card-void-toggle">{t("form.voidTitle")}</summary>
                 <p className="mt-2 text-xs text-ink-2">{t("secrets.voidNote")}</p>
                 <div className="mt-2"><VoidCardForm id={current.id} /></div>
@@ -132,7 +132,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
       {cards.length > 0 && (
         <div data-testid="card-history">
           <h4 className="mb-2 text-sm font-semibold">{t("history.title")}</h4>
-          <ol className="divide-y divide-line rounded-xl border border-line">
+          <ol className="divide-y divide-line rounded-ctl border border-line">
             {cards.map((c: CardRow) => (
               <li key={c.id} className={`space-y-1 px-3 py-2 text-sm ${c.status === "void" ? "opacity-70" : ""}`} data-testid="card-history-item" data-card-id={c.id} data-status={c.status} data-renewal={c.renewalStatus}>
                 <div className="flex flex-wrap items-center gap-2">

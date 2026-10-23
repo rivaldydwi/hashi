@@ -1,20 +1,20 @@
 // Kelas Tailwind yang dipakai berulang, supaya tampilan konsisten. Warna memakai token tema (globals.css).
 
 export const inputClass =
-  "block min-h-11 w-full rounded-xl border border-line-btn bg-card px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft disabled:bg-hover disabled:text-ink-2";
+  "block min-h-11 w-full rounded-ctl border border-line-btn bg-card px-3 py-2 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft disabled:bg-hover disabled:text-ink-2";
 
 export const labelClass = "block text-[13px] font-medium text-ink-menu";
 
 const btnBase =
-  "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-[14px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-ctl px-4 py-2 text-[14px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
 
 export const btnPrimary = `${btnBase} bg-accent text-white hover:bg-accent-dark`;
 export const btnSecondary = `${btnBase} border border-line-btn bg-card text-ink-menu hover:bg-hover`;
 export const btnDanger = `${btnBase} border border-danger-line-strong bg-card text-danger-text hover:bg-danger-bg`;
 
-export const cardClass = "rounded-2xl border border-line bg-card";
+export const cardClass = "rounded-card border border-line bg-card";
 
-export const tableHeadClass = "border-y border-line bg-page text-xs uppercase tracking-wide text-ink-2";
+export const tableHeadClass = "border-y border-line bg-page text-xs font-semibold text-ink-2";
 
 /**
  * Kelas tabel lebar yang dipakai bersama (T-011): header tidak patah di bahasa Jepang (aturan global `th` di globals.css), sel teks pendek memakai `cjk-phrase`

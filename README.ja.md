@@ -76,11 +76,11 @@ TSKスタッフ専用の機能です：業務記録、議事録、ケースの�
 
 | TSKのホーム（インドネシア語） | LPKの候補者一覧（インドネシア語） |
 | --- | --- |
-| ![TSKのホーム](docs/screenshots/T-012/sesudah-tsk-id-desktop.png) | ![LPKの候補者一覧](docs/screenshots/T-014/daftar-kandidat-bandung.png) |
+| ![TSKのホーム](docs/screenshots/T-034/beranda-tsk-id-desktop.png) | ![LPKの候補者一覧](docs/screenshots/T-034/daftar-kandidat-bandung.png) |
 
 | 在留カード一覧（日本語） | スマートフォンでのLPKホーム（日本語） |
 | --- | --- |
-| ![在留カード一覧](docs/screenshots/T-019/3-daftar-ja-admin.png) | ![スマートフォンでのLPKホーム](docs/screenshots/T-012/sesudah-lpk-ja-mobile.png) |
+| ![在留カード一覧](docs/screenshots/T-034/daftar-kartu-ja-admin.png) | ![スマートフォンでのLPKホーム](docs/screenshots/T-034/beranda-lpk-ja-ponsel.png) |
 
 ## 実行方法
 

@@ -42,7 +42,7 @@ export function FormAlert({ state }: { state: FormState }) {
   return (
     <p
       role={ok ? "status" : "alert"}
-      className={`rounded-xl border px-3 py-2 text-sm ${ok ? "border-ok-line bg-ok-bg text-ok-text" : "border-danger-line-strong bg-danger-bg text-danger-text"}`}
+      className={`rounded-ctl border px-3 py-2 text-sm ${ok ? "border-ok-line bg-ok-bg text-ok-text" : "border-danger-line-strong bg-danger-bg text-danger-text"}`}
     >
       {t(state.key)}
     </p>
@@ -55,7 +55,7 @@ export function TempPasswordNotice({ password, email }: { password: string; emai
   const [copied, setCopied] = useState(false);
   const toast = useToast();
   return (
-    <div className="space-y-2 rounded-xl border border-warn-line bg-warn-bg p-4" data-testid="temp-password">
+    <div className="space-y-2 rounded-ctl border border-warn-line bg-warn-bg p-4" data-testid="temp-password">
       <p className="text-sm font-medium text-warn-text">{t("users.tempTitle")}</p>
       <div className="flex flex-wrap items-center gap-2">
         <code className="rounded-md bg-white px-3 py-1.5 font-mono text-lg tracking-wider text-ink" data-testid="temp-password-value">

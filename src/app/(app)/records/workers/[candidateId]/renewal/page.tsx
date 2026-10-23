@@ -54,7 +54,7 @@ export default async function RenewalPage({ params }: { params: Promise<{ candid
       {warnings.length > 0 && (
         <ul className="space-y-2" data-testid="renewal-warnings">
           {warnings.map((w) => (
-            <li key={w} className="rounded-xl border border-warn-line bg-warn-bg px-3 py-2 text-sm text-warn-text" role="alert" data-warning={w}>{t(`warnings.${w}`)}</li>
+            <li key={w} className="rounded-ctl border border-warn-line bg-warn-bg px-3 py-2 text-sm text-warn-text" role="alert" data-warning={w}>{t(`warnings.${w}`)}</li>
           ))}
         </ul>
       )}

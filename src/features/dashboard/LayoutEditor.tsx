@@ -11,7 +11,7 @@ import { saveDashboardLayout, resetDashboardLayout } from "./actions";
 
 type Status = "idle" | "saving" | "saved" | "failed";
 
-const ctl = "inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-line-btn bg-card px-3 text-[13px] font-medium text-ink-menu hover:bg-hover disabled:opacity-40 disabled:hover:bg-card";
+const ctl = "inline-flex h-11 min-w-11 items-center justify-center rounded-ctl border border-line-btn bg-card px-3 text-[13px] font-medium text-ink-menu hover:bg-hover disabled:opacity-40 disabled:hover:bg-card";
 
 /**
  * Mode atur dashboard. Isi widget dirender server (`slots`); komponen ini hanya mengatur urutan, ukuran, dan sembunyi, lalu menyimpan
@@ -98,7 +98,7 @@ export function LayoutEditor({ role, initial, slots, labels }: { role: Role; ini
 
   return (
     <div className="space-y-6" data-testid="layout-editor">
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card p-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-card p-4">
         <p className="min-w-0 flex-1 basis-60 text-sm text-ink-2">{t("hint")}</p>
         <span role="status" aria-live="polite" className="text-sm text-ink-2" data-testid="layout-status">
           {status === "saving" ? t("saving") : status === "saved" ? t("saved") : status === "failed" ? t("failed") : ""}
@@ -126,7 +126,7 @@ export function LayoutEditor({ role, initial, slots, labels }: { role: Role; ini
         ))}
       </div>
 
-      <section className="rounded-2xl border border-line bg-card p-5" data-testid="hidden-widgets">
+      <section className="rounded-card border border-line bg-card p-5" data-testid="hidden-widgets">
         <h2 className="text-[17px] font-semibold">{t("hiddenTitle")}</h2>
         {hidden.length === 0 ? (
           <p className="mt-2 text-sm text-ink-2">{t("hiddenEmpty")}</p>

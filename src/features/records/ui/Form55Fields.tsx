@@ -71,7 +71,7 @@ export function Form55Fields({ defaults, method, responderRole, responderTitle, 
       <section className="space-y-4" aria-labelledby="f55-s3">
         <h4 id="f55-s3" className="text-[15px] font-semibold">{t("s3")}</h4>
         {FORM55_GROUPS.map((g) => (
-          <fieldset key={g.key} className="space-y-2 rounded-xl border border-line p-3" data-testid={`f55-group-${g.key}`}>
+          <fieldset key={g.key} className="space-y-2 rounded-ctl border border-line p-3" data-testid={`f55-group-${g.key}`}>
             <legend className="px-1 text-sm font-semibold">{g.no} {locale === "ja" ? g.ja : g.id}</legend>
             {g.items.map((it, i) => {
               const cur = defaults?.items[it.code];
@@ -102,7 +102,7 @@ export function Form55Fields({ defaults, method, responderRole, responderTitle, 
           </fieldset>
         ))}
 
-        <fieldset className="space-y-1 rounded-xl border border-line p-3" data-testid="f55-nonconformity">
+        <fieldset className="space-y-1 rounded-ctl border border-line p-3" data-testid="f55-nonconformity">
           <legend className="px-1 text-sm font-semibold">{t("nonconformity")}</legend>
           <div className="flex flex-wrap gap-4">
             <label className={radio}><input type="radio" name={f55Name.nonconformity} value="yes" checked={nc === "yes"} onChange={() => setNc("yes")} disabled={disabled} className="h-5 w-5" data-testid="nc-yes" />{t("yes")}</label>
@@ -114,7 +114,7 @@ export function Form55Fields({ defaults, method, responderRole, responderTitle, 
       </section>
 
       {nc === "yes" && (
-        <section className="space-y-4 rounded-xl border border-warn-line bg-warn-bg/40 p-3 sm:p-4" aria-labelledby="f55-s4" data-testid="f55-response">
+        <section className="space-y-4 rounded-ctl border border-warn-line bg-warn-bg/40 p-3 sm:p-4" aria-labelledby="f55-s4" data-testid="f55-response">
           <h4 id="f55-s4" className="text-[15px] font-semibold">{t("s4")}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             {field("f55-occ", `${t("occurredOn")} *`, <input id="f55-occ" type="date" max={today} name={f55Name.occurredOn} defaultValue={r?.occurredOn ?? ""} required disabled={disabled} className={inputClass} data-testid="r-occurredOn" />)}

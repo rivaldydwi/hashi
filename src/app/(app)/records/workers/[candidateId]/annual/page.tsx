@@ -101,7 +101,7 @@ export default async function WorkerAnnualPage({ params, searchParams }: { param
         {events.length === 0 ? <p className="text-sm text-ink-2" data-testid="wannual-events-empty">{t("annual.eventEmpty")}</p> : (
           <ul className="space-y-2">
             {events.map((e) => (
-              <li key={e.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-line p-3 text-sm" data-testid="wannual-event">
+              <li key={e.id} className="flex flex-wrap items-center gap-2 rounded-ctl border border-line p-3 text-sm" data-testid="wannual-event">
                 <Badge tone="neutral">{t("annual.eventBadge")}</Badge>
                 <span>{dateLabelSync(e.recordDate, locale)}</span>
                 <Link href={`/records/${e.id}`} className="text-accent-text hover:underline">{e.subject ? <Data>{e.subject}</Data> : t("annual.eventNoSubject")}</Link>

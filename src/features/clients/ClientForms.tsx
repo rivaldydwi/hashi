@@ -54,7 +54,7 @@ export function SheetSection({ section, labelNs, idPrefix, fields, values }: { s
   const t = useTranslations("sheet");
   const hasValue = fields.some((f) => String(values[f.name] ?? "") !== "");
   return (
-    <details className="rounded-lg border border-line p-3" open={hasValue} data-testid={`sheet-section-${section}`}>
+    <details className="rounded-ctl border border-line p-3" open={hasValue} data-testid={`sheet-section-${section}`}>
       <summary className="cursor-pointer text-sm font-medium text-brand-700">{t("sectionTitle")}</summary>
       <p className="mb-3 mt-1 text-xs text-ink-2">{t("sectionHint")}</p>
       <FieldInputs section={section} labelNs={labelNs} idPrefix={idPrefix} fields={fields} values={values} />
@@ -160,7 +160,7 @@ export function DeleteButton({ kind, hidden, warning }: { kind: "company" | "sit
   const t = useTranslations("clients");
   const action: Action = kind === "company" ? deleteCompany : kind === "site" ? deleteSite : deleteContact;
   return (
-    <details className="rounded-lg border border-danger-line bg-danger-bg/40 p-3" data-testid={`delete-${kind}`}>
+    <details className="rounded-ctl border border-danger-line bg-danger-bg/40 p-3" data-testid={`delete-${kind}`}>
       <summary className="cursor-pointer text-sm font-medium text-danger-text">{t("deletePermanent")}</summary>
       <ManualForm progressive action={action} className="space-y-2 pt-2">
         {({ state, pending }) => (

@@ -30,7 +30,7 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl: string; demo?: D
     }
   }, [state]);
 
-  const input = "block h-12 w-full rounded-xl border border-line-btn bg-card px-3.5 text-[15px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft";
+  const input = "block h-12 w-full rounded-ctl border border-line-btn bg-card px-3.5 text-[15px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
   return (
     <>
@@ -59,7 +59,7 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl: string; demo?: D
               aria-pressed={show}
               aria-label={show ? t("hidePassword") : t("showPassword")}
               data-testid="toggle-password"
-              className="absolute right-0 top-0 inline-flex h-12 w-12 items-center justify-center rounded-xl text-ink-2 hover:text-ink"
+              className="absolute right-0 top-0 inline-flex h-12 w-12 items-center justify-center rounded-ctl text-ink-2 hover:text-ink"
             >
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={show ? eyeOff : eye} /></svg>
             </button>
@@ -67,13 +67,13 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl: string; demo?: D
         </div>
 
         {state?.error && (
-          <p role="alert" className="flex items-start gap-2 rounded-xl border border-danger-line-strong bg-danger-bg px-3.5 py-3 text-sm text-danger-text" data-testid="login-error">
+          <p role="alert" className="flex items-start gap-2 rounded-ctl border border-danger-line-strong bg-danger-bg px-3.5 py-3 text-sm text-danger-text" data-testid="login-error">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.5v.01" /></svg>
             <span>{t(state.error)}</span>
           </p>
         )}
 
-        <button type="submit" disabled={pending} aria-busy={pending} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent text-[15px] font-semibold text-white transition hover:bg-accent-dark disabled:opacity-70">
+        <button type="submit" disabled={pending} aria-busy={pending} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-ctl bg-accent text-[15px] font-semibold text-white transition hover:bg-accent-dark disabled:opacity-70">
           {pending && <Spinner />}
           {pending ? t("submitting") : t("submit")}
         </button>
@@ -82,7 +82,7 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl: string; demo?: D
       <p className="mt-5 text-[13px] text-ink-2">{t("forgot")}</p>
 
       {demo && (
-        <details className="mt-6 rounded-xl border border-dashed border-line-btn p-4 text-sm text-ink-menu" data-testid="demo-accounts">
+        <details className="mt-6 rounded-ctl border border-dashed border-line-btn p-4 text-sm text-ink-menu" data-testid="demo-accounts">
           <summary className="flex min-h-11 cursor-pointer items-center font-medium text-ink">{t("demoTitle")}</summary>
           <p className="mt-1 text-xs text-ink-2">{t("demoHint")}</p>
           <ul className="mt-2 space-y-1">
@@ -94,7 +94,7 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl: string; demo?: D
                     setEmail(a);
                     passwordRef.current?.focus();
                   }}
-                  className="inline-flex min-h-11 w-full items-center rounded-lg px-2 text-left font-mono text-xs hover:bg-hover"
+                  className="inline-flex min-h-11 w-full items-center rounded-ctl px-2 text-left font-mono text-xs hover:bg-hover"
                 >
                   {a}
                 </button>

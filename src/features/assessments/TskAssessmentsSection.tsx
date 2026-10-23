@@ -42,17 +42,17 @@ export async function TskAssessmentsSection({ candidateId, rows, me, canIntervie
 
       {tsk && (
         <div className="grid gap-3 lg:grid-cols-2">
-          <details className="rounded-lg border border-line p-3">
+          <details className="rounded-ctl border border-line p-3">
             <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="tsk-visit-toggle">+ {t("tsk.addVisit")}</summary>
             <TskAssessmentForm candidateId={candidateId} kind="TSK_VISIT" values={toValues(null, today)} visibility="TSK_ONLY" maxDate={today} />
           </details>
           {canInterview ? (
-            <details className="rounded-lg border border-line p-3">
+            <details className="rounded-ctl border border-line p-3">
               <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="tsk-interview-toggle">+ {t("tsk.addInterview")}</summary>
               <TskAssessmentForm candidateId={candidateId} kind="TSK_INTERVIEW" values={toValues(null, today)} visibility="TSK_ONLY" maxDate={today} />
             </details>
           ) : (
-            <div className="rounded-lg border border-dashed border-line-btn bg-page p-3 text-sm text-ink-2" data-testid="tsk-interview-locked" aria-disabled="true">
+            <div className="rounded-ctl border border-dashed border-line-btn bg-page p-3 text-sm text-ink-2" data-testid="tsk-interview-locked" aria-disabled="true">
               <p className="font-medium text-ink-menu">+ {t("tsk.addInterview")}</p>
               <p className="mt-1">{t("tsk.interviewLocked")}</p>
             </div>
@@ -65,7 +65,7 @@ export async function TskAssessmentsSection({ candidateId, rows, me, canIntervie
       ) : (
         <ul className="space-y-3" data-testid="tsk-assessment-list">
           {rows.map((r) => (
-            <li key={r.id} className="rounded-xl border border-line p-3" data-testid="tsk-assessment" data-kind={r.kind} data-visibility={r.visibility}>
+            <li key={r.id} className="rounded-ctl border border-line p-3" data-testid="tsk-assessment" data-kind={r.kind} data-visibility={r.visibility}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-medium">{t(`tsk.kinds.${r.kind}`)}</p>

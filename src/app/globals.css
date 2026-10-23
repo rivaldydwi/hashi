@@ -1,40 +1,42 @@
 @import "tailwindcss";
 
-/* Token desain Hashi (tema Tailwind 4). Warna dipakai lewat nama token (bg-card, text-ink-2, ...), bukan ditulis berulang. */
+/* Token desain Hashi (tema Tailwind 4). Warna dipakai lewat nama token (bg-card, text-ink-2, ...), bukan ditulis berulang.
+   Palet diturunkan dari warna merek (T-034, keputusan Ipal 2026-10-23): netral sedikit kebiruan, aksen tindakan = biru merek yang
+   digelapkan supaya teks putih >= 4,5:1, coral HANYA untuk "perlu tindakan" (attn-*). Kontras dites tests/unit/no-raw-colors.test.ts. */
 @theme {
-  --color-page: #faf8f5;
+  --color-page: #f5f7fb;
   --color-card: #ffffff;
-  --color-line: #e8e3dc;
-  --color-line-btn: #d8d1c7;
-  --color-hover: #f1ece5;
-  --color-ink: #1f1b16;
-  --color-ink-2: #6b645b;
-  --color-ink-menu: #4a433b;
-  --color-accent: #c2410c;
-  --color-accent-soft: #fdebdd;
-  --color-accent-text: #9a3412;
-  --color-accent-dark: #7c2d12;
-  --color-blue: #2f5d8a;
-  --color-role-bg: #e6eef5;
-  --color-role-text: #1f4a73;
-  /* Kartu KPI dashboard (T-012). Teks pada latarnya: kontras >= 4,5:1 (WCAG AA). */
-  --color-attn-bg: #fff1e3;
-  --color-attn-line: #f2b98a;
-  --color-attn-text: #7c2d12;
-  --color-attn-icon: #c2410c;
-  --color-info-bg: #eaf2f9;
-  --color-info-line: #bdd3e6;
-  --color-info-text: #1f4a73;
+  --color-line: #e1e6ef;
+  --color-line-btn: #cbd2e0;
+  --color-hover: #edf0f7;
+  --color-ink: #141a2e;
+  --color-ink-2: #545d78;
+  --color-ink-menu: #363f5c;
+  --color-accent: #3653d6;
+  --color-accent-soft: #e6eaff;
+  --color-accent-text: #2c45b8;
+  --color-accent-dark: #2840a8;
+  --color-blue: #2b3a67;
+  --color-role-bg: #e6eaff;
+  --color-role-text: #2b3a67;
+  /* Kartu KPI dashboard (T-012). attn-* = coral merek (versi latar terang, digelapkan untuk teks). Teks pada latarnya: kontras >= 4,5:1 (WCAG AA). */
+  --color-attn-bg: #fff1ef;
+  --color-attn-line: #f6b7b0;
+  --color-attn-text: #a4291f;
+  --color-attn-icon: #e04a3e;
+  --color-info-bg: #ebf0fb;
+  --color-info-line: #c3d0ec;
+  --color-info-text: #22407a;
   --color-ok-bg: #f0f7f1;
   --color-ok-line: #cde2d1;
   --color-ok-text: #1f5f36;
-  --color-data-1: #8c8378;
-  --color-data-2: #a39b90;
+  --color-data-1: #8a93ab;
+  --color-data-2: #a9b0c3;
 
   /* Netral tambahan (T-033): permukaan lencana/chip netral dan garis pemisah halus. */
-  --color-muted: #f3f0eb;
-  --color-muted-strong: #e7e2db;
-  --color-line-soft: #f2eee9;
+  --color-muted: #eef1f7;
+  --color-muted-strong: #e1e6f0;
+  --color-line-soft: #edf0f6;
 
   /* Status semantik (T-033). Komponen TIDAK memakai kelas warna Tailwind mentah (dijaga tests/unit/no-raw-colors.test.ts).
      ok-* dan info-* di atas dipakai juga untuk "berhasil" dan "informasi". Teks di atas -bg: kontras >= 4,5:1. */
@@ -60,7 +62,7 @@
   --color-status-done-bg: #dcfce7;
   --color-status-done-text: #14532d;
 
-  /* Warna merek (sampling dari design/brand-source). HANYA untuk logo dan panel merek halaman login; aksen aplikasi tetap --color-accent. */
+  /* Warna merek (sampling dari design/brand-source): logo, panel merek login, dan sumber palet di atas. Komponen memakai token peran (accent, attn, ...), bukan nilai merek mentah. */
   --color-brand-navy: #0f1424;
   --color-brand-navy-icon: #1b2547;
   --color-brand-blue: #5b7cfa;
@@ -68,17 +70,17 @@
   --color-brand-coral: #ff6b5e;
   --color-brand-mist: #e6eaff;
 
-  /* Skala "brand" lama dipetakan ke aksen baru supaya tombol/tautan yang sudah ada ikut berganti gaya */
-  --color-brand-50: #fdebdd;
-  --color-brand-100: #fdebdd;
-  --color-brand-500: #c2410c;
-  --color-brand-600: #c2410c;
-  --color-brand-700: #9a3412;
+  /* Skala "brand" lama dipetakan ke aksen supaya kelas lama (brand-600, ...) ikut palet */
+  --color-brand-50: #e6eaff;
+  --color-brand-100: #e6eaff;
+  --color-brand-500: #3653d6;
+  --color-brand-600: #3653d6;
+  --color-brand-700: #2840a8;
 
   --font-sans: var(--font-dm-sans), var(--font-noto-jp), ui-sans-serif, system-ui, "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
 
-  --radius-card: 16px;
-  --radius-ctl: 12px;
+  --radius-card: 8px;
+  --radius-ctl: 6px;
 }
 
 /* Akar tetap 16px supaya satuan rem Tailwind (spasi, tinggi h-11 = 44px untuk target sentuh) tidak menyusut; ukuran teks dasar 14px dipasang di body. */

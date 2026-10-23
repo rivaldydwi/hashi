@@ -68,7 +68,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
 
   return (
     <div className="space-y-5">
-      {photoFailed > 0 && <p role="alert" className="rounded-xl border border-warn-line bg-warn-bg px-4 py-3 text-sm text-warn-text" data-testid="photo-failed">{t("photos.someFailed", { n: photoFailed })}</p>}
+      {photoFailed > 0 && <p role="alert" className="rounded-ctl border border-warn-line bg-warn-bg px-4 py-3 text-sm text-warn-text" data-testid="photo-failed">{t("photos.someFailed", { n: photoFailed })}</p>}
 
       <section className={`${cardClass} p-4 sm:p-5`} data-testid="record-detail" data-status={r.status}>
         <div className="flex flex-wrap items-center gap-2">
@@ -80,7 +80,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
           {!isVoid && r.versionNo > 1 && <Badge testId="badge-version">{t("badge.version", { n: r.versionNo })}</Badge>}
           {!isVoid && !iRead && r.authorId !== me.id && <Badge tone="accent">{myRead ? t("badge.updatedSinceRead") : t("badge.unread")}</Badge>}
         </div>
-        {isVoid && <p className="mt-2 rounded-xl bg-danger-bg px-3 py-2 text-sm text-danger-text" data-testid="void-reason">{t("detail.voidedBecause")}: <span>{r.voidReason}</span></p>}
+        {isVoid && <p className="mt-2 rounded-ctl bg-danger-bg px-3 py-2 text-sm text-danger-text" data-testid="void-reason">{t("detail.voidedBecause")}: <span>{r.voidReason}</span></p>}
 
         <dl className="mt-3 divide-y divide-line">
           {dl(t("f.date"), dateLabelSync(r.recordDate, locale))}
@@ -162,7 +162,7 @@ export default async function RecordDetailPage({ params, searchParams }: { param
             </ActionForm>
           </div>
           {canEdit && (
-            <details className="rounded-xl border border-danger-line bg-danger-bg/40 p-3">
+            <details className="rounded-ctl border border-danger-line bg-danger-bg/40 p-3">
               <summary className="min-h-11 cursor-pointer text-sm font-semibold text-danger-text">{t("detail.void")}</summary>
               <ActionForm action={voidRecord} hidden={{ id: r.id }} submitLabel={t("detail.voidConfirm")} submitTone="danger" className="mt-2 space-y-2" testId="void-form">
                 <p className="text-sm text-danger-text">{t("detail.voidWarning")}</p>

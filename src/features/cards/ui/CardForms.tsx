@@ -101,7 +101,7 @@ export function ReceiveCardForm({ card, today, fields }: Common & { card: Pick<C
         </F>
         {by === "staff" && <F id="r-hand" label={t("form.handedOverOn")} hint={t("form.handedOverHint")}><input id="r-hand" name="handedOverOn" type="date" max={today} className={inputClass} data-testid="r-hand" /></F>}
       </div>
-      <fieldset className="space-y-3 rounded-xl border border-line p-3">
+      <fieldset className="space-y-3 rounded-ctl border border-line p-3">
         <legend className="px-1 text-sm font-semibold">{t("form.newCard")}</legend>
         <div className="grid gap-4 sm:grid-cols-3">
           <F id="r-expiry" label={t("form.newExpiry")}><input id="r-expiry" name="newExpiryDate" type="date" min={card.expiryDate} required className={inputClass} data-testid="r-expiry" /></F>

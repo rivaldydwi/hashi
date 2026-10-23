@@ -41,7 +41,7 @@ export async function RevisionHistory({ revisions, current, fields, names, tz, t
   return (
     <ol className="space-y-3" data-testid={testId}>
       {steps.map(({ r, diffs }) => (
-        <li key={r.id} className="rounded-xl border border-line p-3" data-testid="revision-item">
+        <li key={r.id} className="rounded-ctl border border-line p-3" data-testid="revision-item">
           <p className="text-sm font-semibold">{t("history.step", { from: r.versionNo, to: r.versionNo + 1 })}</p>
           <p className="text-xs text-ink-2">{t.rich("history.by", { n: dataTag, name: r.editorName ?? "—", time: dateTimeIn(r.editedAt, locale, tz) })}</p>
           {diffs.length === 0 ? <p className="mt-1 text-xs text-ink-2">{t("history.noFieldChange")}</p> : (
@@ -50,8 +50,8 @@ export async function RevisionHistory({ revisions, current, fields, names, tz, t
                 <div key={f.key} data-testid="revision-diff">
                   <dt className="text-xs font-semibold text-ink-menu">{f.label}</dt>
                   <dd className="grid gap-2 sm:grid-cols-2">
-                    <span className="rounded-lg bg-danger-bg px-2 py-1 text-sm text-danger-text"><span className="mr-1 text-xs font-semibold">{t("history.before")}:</span><span className="whitespace-pre-wrap break-words" data-testid="rev-before">{b}</span></span>
-                    <span className="rounded-lg bg-ok-bg px-2 py-1 text-sm text-ok-text"><span className="mr-1 text-xs font-semibold">{t("history.after")}:</span><span className="whitespace-pre-wrap break-words" data-testid="rev-after">{a}</span></span>
+                    <span className="rounded-ctl bg-danger-bg px-2 py-1 text-sm text-danger-text"><span className="mr-1 text-xs font-semibold">{t("history.before")}:</span><span className="whitespace-pre-wrap break-words" data-testid="rev-before">{b}</span></span>
+                    <span className="rounded-ctl bg-ok-bg px-2 py-1 text-sm text-ok-text"><span className="mr-1 text-xs font-semibold">{t("history.after")}:</span><span className="whitespace-pre-wrap break-words" data-testid="rev-after">{a}</span></span>
                   </dd>
                 </div>
               ))}

@@ -26,7 +26,7 @@ export async function CardSecrets({ cardId, meta, testPrefix = "card" }: { cardI
       <div className="space-y-2">
         <p className={labelClass}>{t("number")}</p>
         {meta.numberMasked ? <NumberReveal cardId={cardId} masked={meta.numberMasked} /> : <p className="text-sm text-ink-2" data-testid="card-number-none">{t("numberNone")}</p>}
-        <details className="rounded-xl border border-line p-3">
+        <details className="rounded-ctl border border-line p-3">
           <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold" data-testid="card-number-edit-toggle">{meta.numberMasked ? t("replaceNumber") : t("saveNumber")}</summary>
           <ActionForm action={saveCardNumber} hidden={{ id: cardId }} submitLabel={t("saveNumber")} resetOnSuccess className="mt-2 space-y-2" testId="card-number-form">
             <label htmlFor={`num-${cardId}`} className={labelClass}>{t("number")}</label>
@@ -45,7 +45,7 @@ export async function CardSecrets({ cardId, meta, testPrefix = "card" }: { cardI
           {(["front", "back"] as const).map((side) => {
             const p = meta.photos.find((x) => x.side === side);
             return (
-              <div key={side} className="space-y-2 rounded-xl border border-line p-3" data-testid={`card-photo-${side}`} data-has-photo={p ? "true" : "false"}>
+              <div key={side} className="space-y-2 rounded-ctl border border-line p-3" data-testid={`card-photo-${side}`} data-has-photo={p ? "true" : "false"}>
                 <p className="text-sm font-medium">{t(side)}</p>
                 {p ? (
                   <div className="space-y-1 text-sm">

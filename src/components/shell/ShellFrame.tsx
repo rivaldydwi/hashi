@@ -70,7 +70,7 @@ export function ShellFrame({ sidebar, topbar, children }: { sidebar: React.React
           data-testid="sidebar"
           className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col overflow-y-auto border-r border-line bg-card transition-transform duration-200 min-[900px]:sticky min-[900px]:top-0 min-[900px]:h-screen min-[900px]:translate-x-0 ${open ? "translate-x-0 max-[899px]:visible" : "-translate-x-full max-[899px]:invisible max-[899px]:[transition:transform_200ms,visibility_0s_linear_200ms]"}`}
         >
-          <button type="button" onClick={close} aria-label={t("closeMenu")} data-testid="drawer-close" className="absolute right-2 top-2 inline-flex h-11 w-11 items-center justify-center rounded-xl text-ink-menu hover:bg-hover min-[900px]:hidden">
+          <button type="button" onClick={close} aria-label={t("closeMenu")} data-testid="drawer-close" className="absolute right-2 top-2 inline-flex h-11 w-11 items-center justify-center rounded-ctl text-ink-menu hover:bg-hover min-[900px]:hidden">
             <Icon name="close" />
           </button>
           {sidebar}
@@ -98,7 +98,7 @@ export function MenuButton() {
       aria-controls="app-sidebar"
       aria-label={t("openMenu")}
       data-testid="menu-button"
-      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line-btn bg-card text-ink-menu hover:bg-hover min-[900px]:hidden"
+      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-ctl border border-line-btn bg-card text-ink-menu hover:bg-hover min-[900px]:hidden"
     >
       <Icon name="menu" />
     </button>

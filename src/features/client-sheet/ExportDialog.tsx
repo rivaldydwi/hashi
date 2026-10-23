@@ -22,7 +22,7 @@ export function ExportDialog({ models, baseHref, testid }: { models: SheetModels
   const sheet = models[`${mode}-${lang}`];
   const sep = baseHref.includes("?") ? "&" : "?";
   const href = `${baseHref}${sep}mode=${mode}&lang=${lang}${mode === "share" ? "&confirm=1" : ""}`;
-  const radio = "flex min-h-11 cursor-pointer items-start gap-2 rounded-lg border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent-soft";
+  const radio = "flex min-h-11 cursor-pointer items-start gap-2 rounded-ctl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent-soft";
   const canDownload = mode === "internal" || ok;
 
   return (
@@ -31,7 +31,7 @@ export function ExportDialog({ models, baseHref, testid }: { models: SheetModels
       <dialog
         ref={ref}
         aria-labelledby={`${testid}-title`}
-        className="m-auto max-h-[92vh] w-[min(62rem,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-line bg-card p-0 text-ink backdrop:bg-black/40"
+        className="m-auto max-h-[92vh] w-[min(62rem,calc(100vw-1.5rem))] overflow-y-auto rounded-card border border-line bg-card p-0 text-ink backdrop:bg-black/40"
         data-testid={`${testid}-dialog`}
       >
         <div className="space-y-4 p-4 sm:p-6">
@@ -55,13 +55,13 @@ export function ExportDialog({ models, baseHref, testid }: { models: SheetModels
           </div>
 
           {sheet.missing.length > 0 && (
-            <p className="rounded-lg bg-warn-bg p-3 text-sm text-warn-text" role="note" data-testid="sheet-missing">{t("missingHint", { fields: sheet.missing.map((k) => t(`missing.${k}`)).join(", ") })}</p>
+            <p className="rounded-ctl bg-warn-bg p-3 text-sm text-warn-text" role="note" data-testid="sheet-missing">{t("missingHint", { fields: sheet.missing.map((k) => t(`missing.${k}`)).join(", ") })}</p>
           )}
           {sheet.skipped.length > 0 && (
-            <p className="rounded-lg bg-muted p-3 text-sm text-ink-2" role="note" data-testid="sheet-skipped">{t("skippedHint")} <span lang="ja">{sheet.skipped.join("、")}</span></p>
+            <p className="rounded-ctl bg-muted p-3 text-sm text-ink-2" role="note" data-testid="sheet-skipped">{t("skippedHint")} <span lang="ja">{sheet.skipped.join("、")}</span></p>
           )}
           {mode === "share" && (
-            <div className="rounded-lg border border-line p-3 text-sm" data-testid="sheet-excluded">
+            <div className="rounded-ctl border border-line p-3 text-sm" data-testid="sheet-excluded">
               <p className="font-medium">{t("excludedTitle")}</p>
               <ul className="mt-1 list-disc pl-5 text-ink-2">{sheet.excluded.map((k) => (<li key={k}>{t(`excluded.${k}`)}</li>))}</ul>
             </div>

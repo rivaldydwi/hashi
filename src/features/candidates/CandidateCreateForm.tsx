@@ -101,7 +101,7 @@ export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
       data-testid="candidate-create-form"
     >
       {state.status === "error" && (
-        <div role="alert" className="rounded-xl border border-danger-line-strong bg-danger-bg px-4 py-3 text-sm text-danger-text" data-testid="form-error">
+        <div role="alert" className="rounded-ctl border border-danger-line-strong bg-danger-bg px-4 py-3 text-sm text-danger-text" data-testid="form-error">
           <p className="font-medium">{tAll(state.key)}</p>
           {problems.length > 0 && state.key === "candidates.errors.invalid" && (
             <>
@@ -147,7 +147,7 @@ export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
             {rows[s.key].map((rowKey, i) => (
               <div
                 key={rowKey}
-                className="rounded-lg border border-line bg-page/50 p-3"
+                className="rounded-ctl border border-line bg-page/50 p-3"
                 data-testid={`create-row-${s.key}`}
                 data-invalid={fieldErrors[`${s.key}.${rowKey}`] ? true : undefined}
               >
@@ -176,7 +176,7 @@ export function CandidateCreateForm({ maxDate }: { maxDate: string }) {
 
       <section id="sec-extras" className={`${cardClass} scroll-mt-32 space-y-4 p-4 sm:p-5`} data-testid="create-section-extras" data-invalid={fieldErrors.extras ? true : undefined}>
         <h2 className="font-medium">{tf("extrasTitle")}</h2>
-        <fieldset className="space-y-2 rounded-lg border border-line p-3" data-testid="share-fieldset">
+        <fieldset className="space-y-2 rounded-ctl border border-line p-3" data-testid="share-fieldset">
           <legend className="px-1 text-sm font-medium text-ink-menu">{t("shareTitle")}</legend>
           <label className="flex items-start gap-2 py-1 text-sm">
             <input type="checkbox" name="shareWithTsk" checked={share} onChange={(e) => setShare(e.target.checked)} className="mt-0.5 h-5 w-5 rounded border-line-btn" data-testid="share-checkbox" />
