@@ -11,9 +11,10 @@ import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
 import { createDb, withSystem } from "../src/db";
 import { assertTestDatabase } from "./db-guard";
+import { applySeedToday } from "../src/db/seed-date";
 import { periodMonthsAgo, currentPeriod, todayInAppTz, todayInTskTz } from "../src/db/time";
 import { buildDemoAudit } from "../src/db/demo-audit";
-import { buildAssessments, buildProfile, FIELD_JA, FIELD_KEYS, FIELDS, isIntentionallyIncomplete, sharedDaysAgo, type DemoProfile } from "../src/db/demo-data";
+import { buildAssessments, buildProfile, FIELD_JA, FIELD_KEYS, FIELDS, isIntentionallyIncomplete, seedBirthDate, sharedDaysAgo, type DemoProfile } from "../src/db/demo-data";
 import { addDays, addMonths, uuidFor } from "../src/db/demo-rng";
 import { seedClientSheet } from "../src/db/demo-client-sheet";
 import { seedRecords } from "../src/db/demo-records";
@@ -146,9 +147,7 @@ function candidateRows(orgId: string, orgIndex: number, today: string, fieldIds:
   return STAGES.map((stage, i) => {
     const [first, firstKana, gender] = FIRST_NAMES[(i + offset) % FIRST_NAMES.length];
     const [last, lastKana] = LAST_NAMES[(i * 3 + offset) % LAST_NAMES.length];
-    const year = 1998 + ((i + offset) % 8);
-    const month = String(((i * 5 + offset) % 12) + 1).padStart(2, "0");
-    const birthDate = `${year}-${month}-15`;
+    const birthDate = seedBirthDate(offset, i);
     const fieldIndex = (i + offset) % FIELDS.length;
     const fullName = `${first} ${last}`;
     const profile = buildProfile({ orgIndex, i, stage, gender, fullName, firstName: first, lastName: last, birthDate, fieldIndex, today });
@@ -219,6 +218,10 @@ async function main() {
   const reset = process.argv.includes("--reset");
   // --reset menghapus SEMUA data: hanya boleh di database dev/test/demo
   if (reset) assertTestDatabase("db:seed --reset");
+  // T-037: SEED_TODAY = jalankan seed seolah-olah hari itu (HANYA dev/test); dipasang sebelum tanggal apa pun dihitung.
+  if (process.env.SEED_TODAY) assertTestDatabase("SEED_TODAY");
+  const seedDay = applySeedToday();
+  if (seedDay) console.log(`ℹ SEED_TODAY=${seedDay}: seed dijalankan seolah-olah tanggal itu`);
 
   const { db, pool } = createDb(url, 1);
   const passwordHash = await bcrypt.hash(PASSWORD, 12);

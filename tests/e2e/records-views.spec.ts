@@ -29,19 +29,29 @@ test.describe("wawancara berkala", () => {
     await expect(page.getByTestId("interview-legend")).toContainText("Belum");
     await expect(page.getByTestId("interview-legend")).toContainText("Tidak berlaku");
     await expect(page.getByTestId("interview-rule")).toContainText("minimal sekali per kuartal");
-    for (const state of ["done", "open", "missed"]) {
+    // Kuartal terlewat dan bulan "tidak berlaku" ada di kuartal yang SUDAH lewat: di Q1 (April-Juni) itu tahun fiskal lalu (T-037, rencana seed `planDemoInterviews`).
+    const tokyo = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
+    const tokyoMonth = Number(tokyo.slice(5, 7));
+    const fy = tokyoMonth >= 4 ? Number(tokyo.slice(0, 4)) : Number(tokyo.slice(0, 4)) - 1;
+    const pastFyUrl = tokyoMonth >= 4 && tokyoMonth <= 6 ? `/records/interviews?fy=${fy - 1}` : "/records/interviews";
+    for (const state of ["done", "open"]) {
       const q = page.locator(`[data-testid=quarter-state][data-state=${state}]`).first();
       await expect(q).toBeVisible();
-      await expect(q).toContainText({ done: "Selesai", open: "Belum, tenggat", missed: "Terlewat" }[state]!); // setiap keadaan punya teks, bukan hanya ikon/warna
+      await expect(q).toContainText({ done: "Selesai", open: "Belum, tenggat" }[state]!); // setiap keadaan punya teks, bukan hanya ikon/warna
     }
     // kuartal berjalan (open) BUKAN merah; hanya yang sudah lewat (missed) merah
     await expect(page.locator("[data-testid=quarter-state][data-state=open]").first()).not.toHaveClass(/text-danger/);
-    await expect(page.locator("[data-testid=quarter-state][data-state=missed]").first()).toHaveClass(/text-danger/);
+    await page.goto(pastFyUrl);
+    const missed = page.locator("[data-testid=quarter-state][data-state=missed]").first();
+    await expect(missed).toBeVisible();
+    await expect(missed).toContainText("Terlewat");
+    await expect(missed).toHaveClass(/text-danger/);
     for (const state of ["done", "na"]) {
       const cell = page.locator(`[data-testid=interview-cell][data-state=${state}]`).first();
       await expect(cell).toBeVisible();
       await expect(cell).toContainText({ done: "Selesai", na: "Tidak berlaku" }[state]!);
     }
+    await page.goto("/records/interviews");
     // bulan tanpa wawancara BUKAN tanda merah: tidak ada teks "Belum" di sel bulan (hanya di status kuartal)
     await expect(page.locator("[data-testid=interview-cell][data-state=none]").first()).not.toContainText(/^.*Belum$/);
     expect(await page.locator("[data-testid=interview-cell][data-state=pending]").count()).toBe(0);

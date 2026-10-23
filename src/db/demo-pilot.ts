@@ -7,7 +7,7 @@
 // kartu 在留カード dengan SEBARAN SEMUA TAHAP, catatan harian, wawancara berkala, dan catatan kuartal.
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Tx } from "./index";
-import { buildAssessments, buildProfile, FIELD_KEYS, FIELDS, type DemoProfile, type Stage } from "./demo-data";
+import { buildAssessments, buildProfile, FIELD_KEYS, FIELDS, pilotBirthDate, type DemoProfile, type Stage } from "./demo-data";
 import { addDays, addMonths, makeRng, pick, uuidFor } from "./demo-rng";
 import { fiscalYearOf, quarterOfMonth } from "./records-core";
 import { currentPeriod, periodMonthsAgo } from "./time";
@@ -42,8 +42,8 @@ const LAST: Array<[string, string]> = [
 ];
 const MIDDLE = ["Putra", "Putri", "Adi", "Dwi", "Tri", "Eka", "Nur", "Sri", "Aji", "Budi"];
 
-const PIPELINE: Record<Stage, number[]> = { STUDYING: [0, 1, 2, 3], READY: [4, 5, 6, 7, 8, 9, 10], WITHDRAWN: [11] };
-const STAGE_BY_MOD = (k: number): Stage => (k % 10 === 0 || k % 10 === 1 ? "STUDYING" : k % 10 === 9 ? "WITHDRAWN" : "READY");
+export const PIPELINE: Record<Stage, number[]> = { STUDYING: [0, 1, 2, 3], READY: [4, 5, 6, 7, 8, 9, 10], WITHDRAWN: [11] };
+export const STAGE_BY_MOD = (k: number): Stage => (k % 10 === 0 || k % 10 === 1 ? "STUDYING" : k % 10 === 9 ? "WITHDRAWN" : "READY");
 
 // Job order pilot: satu per bidang, di lokasi yang menerima bidang itu (kode lokasi seed dasar). Posisi besar supaya tetap OPEN walau banyak yang berangkat.
 const PILOT_JOB_ORDERS = [
@@ -125,7 +125,7 @@ export async function seedPilot(tx: Tx, opts: SeedPilotOpts): Promise<SeedPilotR
       const middle = MIDDLE[(k + orgIndex) % MIDDLE.length];
       const fullName = `${first} ${middle} ${last}`;
       const stage = STAGE_BY_MOD(k);
-      const birthDate = `${1996 + (k % 10)}-${String((k * 7) % 12 + 1).padStart(2, "0")}-${String(((k * 11) % 27) + 1).padStart(2, "0")}`;
+      const birthDate = pilotBirthDate(k);
       const fieldIndex = (k + orgIndex * 2) % FIELDS.length;
       const i = PIPELINE[stage][k % PIPELINE[stage].length];
       const profile = buildProfile({ variant: `p${k}`, orgIndex, i, stage, gender, fullName, firstName: first, lastName: last, birthDate, fieldIndex, today });
