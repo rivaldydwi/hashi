@@ -18,22 +18,7 @@ Sejak 2026-10-23 peran PM juga dijalankan sesi engineer di Mini PC atas instruks
 > **Tampilan (T-033 s/d T-036):** dasar = audit tampilan 23 Okt (ringkasan di entri STATUS 2026-10-23) dan **keputusan Ipal (2026-10-23):** "Pakai warna merek (navy/biru/coral) untuk seluruh aplikasi."
 > Urutan WAJIB: T-033 dulu (token), baru palet. Aturan yang tidak berubah: status selalu ikon + teks + warna, target sentuh 44px, `:focus-visible`, tabel Jepang (T-011), aturan terjemahan (T-016/T-023), KPI = daftar (T-012), tanpa mode gelap.
 
-### T-035 · Hierarki beranda: kartu KPI dikelompokkan dan perhatian ditandai kecil · `SIAP`
-
-Masalah: beranda TSK_ADMIN 13 kartu berbobot sama, 8 berlatar oranye penuh sekaligus (dengan data nyata hampir semua KPI tindakan > 0), jadi tidak ada titik mulai.
-
-Kerjakan:
-1. Tone `attention` tidak lagi mewarnai seluruh latar kartu: penanda kecil (ikon + angka berwarna coral dan/atau garis/titik), latar kartu netral. `kpiLook` tetap satu-satunya sumber keputusan tampilan; "Beres" saat 0 tetap.
-2. Kelompok kartu menurut alur kerja dengan judul kelompok (id + ja), mis. TSK: Seleksi · Pekerja & kartu izin tinggal · Catatan & tindak lanjut; LPK: Siswa · Dokumen. Kelompok ditetapkan di katalog (`dashboard-catalog.ts`), bukan di komponen.
-3. 1-3 KPI utama per peran tampil lebih besar (properti di katalog). Mode atur (`/?atur=1`) tetap bekerja: sembunyikan/urutkan di dalam kelompok; layout tersimpan lama tetap terbaca (`resolveLayout` tidak gagal).
-4. Ponsel tetap 2 kolom; tidak ada scroll horizontal.
-
-**Kriteria selesai**
-- [ ] Angka KPI = daftar `/candidates?view=…`/`/records/cards` tetap (tes yang ada lulus); katalog tunggal tetap.
-- [ ] Tes unit katalog (setiap KPI punya kelompok; KPI utama <= 3 per peran) + e2e tata letak T-012 disesuaikan, tinggi beranda TSK_ADMIN di 1280 px tidak bertambah lebih dari satu baris.
-- [ ] Gambar panduan yang memuat beranda dibuat ulang; CI hijau; deploy produksi setelah merge.
-
-### T-036 · Rapikan kecil: panah, emoji, teks login, panel filter · `SIAP` (setelah T-035 SELESAI)
+### T-036 · Rapikan kecil: panah, emoji, teks login, panel filter · `SIAP`
 
 Kerjakan:
 1. Hapus panah "→" yang ditempel di teks tombol/tautan (10 tempat, antara lain `records/page.tsx`, `records/meetings/page.tsx`, `ContinuePanel.tsx`, `src/db/renewal.ts`); tautan "kembali" (←) boleh tetap. Bila panah menyatakan arah nyata di data (mis. "dari → ke"), biarkan dan jelaskan di STATUS.
@@ -68,6 +53,7 @@ Kerjakan:
 
 ## Selesai
 
+- **T-035** Hierarki beranda (PR #37): KPI per kelompok alur kerja (katalog `group` + `primaryFor`, `groupKpis`), judul kelompok di kolom kiri, KPI utama dua kolom, semua kartu berlatar netral dan perhatian = ikon + angka coral; mode atur per kelompok; TSK_ADMIN 1280 px +1 baris; panduan + README diperbarui.
 - **T-034** Palet dari warna merek (PR #36): netral kebiruan, aksen biru merek digelapkan `#3653d6`, coral hanya `attn-*`, danger/warn tetap; radius 8/6 px (`rounded-card`/`rounded-ctl`); header tabel huruf biasa, label MENU dihapus; tes kontras + penjaga palet lama; `docs/brand.md` aturan baru; panduan (83 gambar + PDF) dan 4 gambar README dibuat ulang.
 - **T-033** Token warna semantik (PR #34): token `muted*`, `line-soft`, `danger-*`, `warn-*`, `status-*`, `brand-mist`; 430 kelas warna Tailwind mentah di 65 berkas diganti token; heks grafik/login ke token; `no-raw-colors.test.ts` (tanpa warna mentah, tanpa heks di .tsx selain aset merek, kontras 26 pasangan >= 4,5:1). Tampilan praktis sama (selisih piksel <= 1,9%). Perbaikan seed tanggal (PR #35) masuk lebih dulu karena CI main merah.
 - **T-032** Demo publik untuk teman Ipal (PR #33): `hashi-demo` di `main` terbaru + `seed:pilot` (236 kandidat), Funnel 443 hanya ke 3111 (dicek ulang PM 23 Okt: pemetaan lain hanya tailnet), login lewat HTTPS publik berhasil, 3110 tidak terjangkau, `.env.demo` aman, tanpa alamat/kata sandi di repo. Uji dari HP oleh Ipal belum dilaporkan.
