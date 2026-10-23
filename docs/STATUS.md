@@ -36,7 +36,7 @@ Tidak boleh memuat secret, kata sandi, URL berkata sandi, isi `.env`, atau data 
 
 ## 2026-10-23 · T-035 · Hierarki beranda: KPI dikelompokkan, perhatian ditandai kecil
 
-**PR:** (diisi setelah PR dibuka) (branch `eng/T-035-hierarki-beranda`)
+**PR:** #37 (branch `eng/T-035-hierarki-beranda`)
 **Status:** siap direview. Tanpa migrasi. Deploy produksi setelah merge (diminta tugas).
 
 **Hasil PR sebelumnya:** T-034 di-merge `731e4df` (PR #36), **deploy produksi** lewat `scripts/deploy.sh`: commit berjalan `63d6de0`, health `{"status":"ok","commit":"63d6de0"}` (log `deploy-20261023-162803.log`).
