@@ -3,12 +3,12 @@ import { longDate } from "@/lib/org-time";
 
 export type Tone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info";
 const TONES: Record<Tone, string> = {
-  neutral: "bg-stone-100 text-stone-800",
+  neutral: "bg-muted text-ink",
   accent: "bg-accent-soft text-accent-text",
-  ok: "bg-emerald-50 text-emerald-900",
-  warn: "bg-amber-50 text-amber-900",
-  danger: "bg-rose-50 text-rose-900",
-  info: "bg-sky-50 text-sky-900",
+  ok: "bg-ok-bg text-ok-text",
+  warn: "bg-warn-bg text-warn-text",
+  danger: "bg-danger-bg text-danger-text",
+  info: "bg-info-bg text-info-text",
 };
 /** Lencana kecil: SELALU berisi teks (warna bukan satu-satunya pembeda). */
 export function Badge({ tone = "neutral", children, testId }: { tone?: Tone; children: React.ReactNode; testId?: string }) {

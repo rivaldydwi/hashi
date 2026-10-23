@@ -55,13 +55,13 @@ export function StatusButtons({ jobOrderId, status }: { jobOrderId: string; stat
 export function DeleteJobOrder({ jobOrderId }: { jobOrderId: string }) {
   const t = useTranslations("jobOrders");
   return (
-    <details className="rounded-lg border border-rose-200 bg-rose-50/40 p-3" data-testid="delete-job-order">
-      <summary className="cursor-pointer text-sm font-medium text-rose-700">{t("deletePermanent")}</summary>
+    <details className="rounded-lg border border-danger-line bg-danger-bg/40 p-3" data-testid="delete-job-order">
+      <summary className="cursor-pointer text-sm font-medium text-danger-text">{t("deletePermanent")}</summary>
       <ManualForm progressive action={deleteJobOrder} className="space-y-2 pt-2">
         {({ state, pending }) => (
           <>
             <input type="hidden" name="jobOrderId" value={jobOrderId} />
-            <p className="text-sm text-rose-900">{t("deleteWarning")}</p>
+            <p className="text-sm text-danger-text">{t("deleteWarning")}</p>
             <FormAlert state={state} />
             <button type="submit" disabled={pending} className={btnDanger} data-testid="delete-job-order-confirm">{t("deleteConfirm")}</button>
           </>

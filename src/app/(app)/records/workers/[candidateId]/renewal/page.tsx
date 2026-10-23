@@ -54,7 +54,7 @@ export default async function RenewalPage({ params }: { params: Promise<{ candid
       {warnings.length > 0 && (
         <ul className="space-y-2" data-testid="renewal-warnings">
           {warnings.map((w) => (
-            <li key={w} className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert" data-warning={w}>{t(`warnings.${w}`)}</li>
+            <li key={w} className="rounded-xl border border-warn-line bg-warn-bg px-3 py-2 text-sm text-warn-text" role="alert" data-warning={w}>{t(`warnings.${w}`)}</li>
           ))}
         </ul>
       )}
@@ -102,7 +102,7 @@ export default async function RenewalPage({ params }: { params: Promise<{ candid
         ))}
       </ol>
 
-      <section className={`${cardClass} space-y-2 border-amber-300 p-4`} aria-labelledby="counter-title" data-testid="counter-section">
+      <section className={`${cardClass} space-y-2 border-warn-line p-4`} aria-labelledby="counter-title" data-testid="counter-section">
         <h3 id="counter-title" className="text-[16px] font-semibold">{t("counter.title")}</h3>
         <p className="text-sm text-ink-menu">{t("counter.warning")}</p>
         <p className="text-xs text-ink-2">{t("counter.help")}</p>

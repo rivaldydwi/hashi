@@ -285,7 +285,7 @@ export function RecordForm({
       </section>
 
       {state.status === "error" && (
-        <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-900" data-testid="form-error">{tAll(state.key)}</p>
+        <p role="alert" className="rounded-xl border border-danger-line-strong bg-danger-bg px-4 py-3 text-sm text-danger-text" data-testid="form-error">{tAll(state.key)}</p>
       )}
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={busy} aria-busy={busy} className={btnPrimary} data-testid="save-record">

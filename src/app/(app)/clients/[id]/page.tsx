@@ -36,7 +36,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
         backLabel={t("title")}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            {!company.active && <span className="rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700">{t("inactive")}</span>}
+            {!company.active && <span className="rounded-full bg-muted-strong px-3 py-1 text-sm font-medium text-ink-menu">{t("inactive")}</span>}
             <Suspense fallback={null}><ExportCompanySheet me={me} companyId={company.id} /></Suspense>
           </div>
         }
@@ -53,14 +53,14 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
             <Link href={`/clients/${company.id}/sites/new`} className={btnPrimary} data-testid="site-add">+ {t("addSite")}</Link>
           </div>
           {sites.length === 0 ? (
-            <p className="text-sm text-stone-500">{t("noSites")}</p>
+            <p className="text-sm text-ink-2">{t("noSites")}</p>
           ) : (
-            <ul className="divide-y divide-stone-100">
+            <ul className="divide-y divide-line-soft">
               {sites.map((s) => (
                 <li key={s.id} className="py-2" data-testid="site-row">
                   <Link href={`/clients/${company.id}/sites/${s.id}`} translate="no" className="font-medium text-brand-700 hover:underline">{s.name}</Link>
-                  {!s.active && <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">{t("inactive")}</span>}
-                  {s.address && <p translate="no" className="text-xs text-stone-500">{s.address}</p>}
+                  {!s.active && <span className="ml-2 rounded-full bg-muted-strong px-2 py-0.5 text-xs font-medium text-ink-menu">{t("inactive")}</span>}
+                  {s.address && <p translate="no" className="text-xs text-ink-2">{s.address}</p>}
                 </li>
               ))}
             </ul>

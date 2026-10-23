@@ -25,7 +25,7 @@ export function OrgEditForm({ org }: { org: Org }) {
       <div className="space-y-1.5">
         <label htmlFor="type" className={labelClass}>{t("orgs.fieldType")}</label>
         <input id="type" value={t(`orgTypes.${org.type}`)} disabled className={inputClass} />
-        <p className="text-xs text-stone-500">{t("orgs.typeLocked")}</p>
+        <p className="text-xs text-ink-2">{t("orgs.typeLocked")}</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">

@@ -9,9 +9,9 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
   const t = useTranslations("errorPage");
   useEffect(() => { console.error(error); }, [error]);
   return (
-    <div role="alert" className="mx-auto mt-10 max-w-lg rounded-2xl border border-rose-300 bg-rose-50 p-6 text-center" data-testid="error-boundary">
-      <h1 className="text-[17px] font-semibold text-rose-900">{t("title")}</h1>
-      <p className="mt-2 text-sm text-rose-900">{t("body")}</p>
+    <div role="alert" className="mx-auto mt-10 max-w-lg rounded-2xl border border-danger-line-strong bg-danger-bg p-6 text-center" data-testid="error-boundary">
+      <h1 className="text-[17px] font-semibold text-danger-text">{t("title")}</h1>
+      <p className="mt-2 text-sm text-danger-text">{t("body")}</p>
       {error.digest && <p className="mt-2 text-xs text-ink-2">{t("code")}: <code>{error.digest}</code></p>}
       <button type="button" onClick={reset} className={`${btnPrimary} mt-4`}>{t("retry")}</button>
     </div>

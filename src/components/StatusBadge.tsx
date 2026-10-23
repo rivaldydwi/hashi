@@ -3,28 +3,28 @@ import type { CandidateStage, SelectionDecision } from "@/db/schema";
 import type { VisaCode } from "@/db/zairyu";
 
 // Lencana status: IKON + TEKS + warna (warna tidak pernah satu-satunya pembeda) + penjelasan singkat (title dan teks bantuan untuk pembaca layar).
-// Kontras teks/latar >= 4,5:1 (kelas 800/900 di atas latar 50/100).
+// Warna dari token `@theme` (globals.css); kontras teks/latar >= 4,5:1 (dites tests/unit/no-raw-colors.test.ts).
 
 export type StatusKind = "stage" | "decision" | "visa";
 export type StatusCode = CandidateStage | SelectionDecision | VisaCode;
 
 type Style = { box: string; icon: string };
 const STYLES: Record<StatusCode, Style> = {
-  STUDYING: { box: "bg-stone-100 text-stone-800", icon: "book" },
-  READY: { box: "bg-sky-50 text-sky-900", icon: "check" },
-  WITHDRAWN: { box: "bg-rose-50 text-rose-900", icon: "exit" },
-  NONE: { box: "bg-stone-100 text-stone-800", icon: "dash" },
-  SHORTLISTED: { box: "bg-indigo-50 text-indigo-900", icon: "star" },
-  PASSED_TSK_INTERVIEW: { box: "bg-violet-50 text-violet-900", icon: "chat" },
-  SUBMITTED_TO_CLIENT: { box: "bg-amber-50 text-amber-900", icon: "send" },
-  PASSED_CLIENT_INTERVIEW: { box: "bg-emerald-50 text-emerald-900", icon: "check" },
-  DOCUMENT_PROCESS: { box: "bg-teal-50 text-teal-900", icon: "doc" },
-  DEPARTED: { box: "bg-green-100 text-green-900", icon: "plane" },
-  REJECTED: { box: "bg-rose-50 text-rose-900", icon: "x" },
-  VISA_NONE: { box: "bg-stone-100 text-stone-800", icon: "dash" },
-  VISA_VALID: { box: "bg-green-100 text-green-900", icon: "check" },
-  VISA_RENEWING: { box: "bg-sky-50 text-sky-900", icon: "doc" },
-  VISA_EXPIRED: { box: "bg-rose-50 text-rose-900", icon: "x" },
+  STUDYING: { box: "bg-muted text-ink", icon: "book" },
+  READY: { box: "bg-info-bg text-info-text", icon: "check" },
+  WITHDRAWN: { box: "bg-danger-bg text-danger-text", icon: "exit" },
+  NONE: { box: "bg-muted text-ink", icon: "dash" },
+  SHORTLISTED: { box: "bg-status-shortlist-bg text-status-shortlist-text", icon: "star" },
+  PASSED_TSK_INTERVIEW: { box: "bg-status-interview-bg text-status-interview-text", icon: "chat" },
+  SUBMITTED_TO_CLIENT: { box: "bg-warn-bg text-warn-text", icon: "send" },
+  PASSED_CLIENT_INTERVIEW: { box: "bg-ok-bg text-ok-text", icon: "check" },
+  DOCUMENT_PROCESS: { box: "bg-status-docs-bg text-status-docs-text", icon: "doc" },
+  DEPARTED: { box: "bg-status-done-bg text-status-done-text", icon: "plane" },
+  REJECTED: { box: "bg-danger-bg text-danger-text", icon: "x" },
+  VISA_NONE: { box: "bg-muted text-ink", icon: "dash" },
+  VISA_VALID: { box: "bg-status-done-bg text-status-done-text", icon: "check" },
+  VISA_RENEWING: { box: "bg-info-bg text-info-text", icon: "doc" },
+  VISA_EXPIRED: { box: "bg-danger-bg text-danger-text", icon: "x" },
 };
 
 const ICONS: Record<string, string> = {

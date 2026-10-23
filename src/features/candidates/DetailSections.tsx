@@ -66,14 +66,14 @@ export async function SectionCard({
       <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
         {section.fields.map((f) => (
           <div key={f.name} className={f.kind === "textarea" ? "sm:col-span-2" : ""}>
-            <dt className="text-xs text-stone-500">{ts(`fields.${f.name}`)}</dt>
-            <dd className="whitespace-pre-line text-stone-900" data-testid={`value-${f.name}`} translate={fieldNature(f) === "identity" ? "no" : undefined}>{fmt(f, row?.[f.name])}</dd>
+            <dt className="text-xs text-ink-2">{ts(`fields.${f.name}`)}</dt>
+            <dd className="whitespace-pre-line text-ink" data-testid={`value-${f.name}`} translate={fieldNature(f) === "identity" ? "no" : undefined}>{fmt(f, row?.[f.name])}</dd>
           </div>
         ))}
       </dl>
       {children}
       {access.canEdit && (
-        <details className="mt-3 border-t border-stone-100 pt-3">
+        <details className="mt-3 border-t border-line-soft pt-3">
           <summary className="cursor-pointer text-sm font-medium text-brand-700">{t("edit")}</summary>
           <SectionForm candidateId={candidateId} section={section.key} fields={section.fields} values={values} />
         </details>
@@ -104,12 +104,12 @@ export async function ListSectionCard({
     <section className={`${cardClass} p-5`} data-testid={`section-${section.key}`}>
       <h2 className="font-medium">{ts("title")}</h2>
       {rows.length === 0 ? (
-        <p className="mt-2 text-sm text-stone-500">{t("noRows")}</p>
+        <p className="mt-2 text-sm text-ink-2">{t("noRows")}</p>
       ) : (
-        <ul className="mt-3 divide-y divide-stone-100">
+        <ul className="mt-3 divide-y divide-line-soft">
           {rows.map((r) => (
             <li key={String(r.id)} className="py-2.5" data-testid={`row-${section.key}`}>
-              <p className="text-sm text-stone-900" data-testid="row-summary">
+              <p className="text-sm text-ink" data-testid="row-summary">
                 {summaryParts(section.summary, byName, r, fmt)}
               </p>
               {access.canEdit && (
@@ -123,7 +123,7 @@ export async function ListSectionCard({
         </ul>
       )}
       {access.canEdit && (
-        <details className="mt-3 border-t border-stone-100 pt-3">
+        <details className="mt-3 border-t border-line-soft pt-3">
           <summary className="cursor-pointer text-sm font-medium text-brand-700">+ {t("addRow")}</summary>
           <RowForm key={rows.length} candidateId={candidateId} section={section.key} fields={section.fields} values={valuesOf({})} />
         </details>
@@ -153,7 +153,7 @@ export async function DecisionPanel({
       <h2 className="font-medium">{t("decisionTitle")}</h2>
       {tsk ? (
         <div className="mt-3 space-y-3">
-          <p className="text-sm text-stone-600">{t("decisionIntroTsk")}</p>
+          <p className="text-sm text-ink-menu">{t("decisionIntroTsk")}</p>
           {mine.length > 0 && (
             <ul className="space-y-1.5" data-testid="selection-list">
               {mine.map((s) => (
@@ -161,20 +161,20 @@ export async function DecisionPanel({
                   <span>{s.jobOrderId ? `${s.jobOrderTitle} — ${s.companyName} / ${s.siteName}` : t("decisionScopeGeneral")}</span>
                   <span className="flex items-center gap-2">
                     <DecisionBadge decision={s.decision} />
-                    <span className="text-xs text-stone-500">{format.dateTime(s.decidedAt, { dateStyle: "medium" })}</span>
+                    <span className="text-xs text-ink-2">{format.dateTime(s.decidedAt, { dateStyle: "medium" })}</span>
                   </span>
                 </li>
               ))}
             </ul>
           )}
           <DecisionForm candidateId={detail.candidateId} decision={(general?.decision ?? "NONE") as SelectionDecision} jobOrderOptions={jobOrderOptions} />
-          <p className="text-xs text-stone-500">{t("decisionJobOrderHint")}</p>
+          <p className="text-xs text-ink-2">{t("decisionJobOrderHint")}</p>
         </div>
       ) : (
         <div className="mt-3">
-          <p className="text-sm text-stone-600">{t("decisionIntroLpk")}</p>
+          <p className="text-sm text-ink-menu">{t("decisionIntroLpk")}</p>
           {detail.selections.length === 0 ? (
-            <p className="mt-2 text-sm text-stone-500">{t("noDecisions")}</p>
+            <p className="mt-2 text-sm text-ink-2">{t("noDecisions")}</p>
           ) : (
             <ul className="mt-2 space-y-1.5" data-testid="decision-list">
               {detail.selections.map((s) => (
@@ -198,14 +198,14 @@ export async function PlacementPanel({ candidateId, placements }: { candidateId:
   return (
     <section className={`${cardClass} space-y-3 p-5`} data-testid="section-placement">
       <h2 className="font-medium">{t("placementTitle")}</h2>
-      <p className="text-sm text-stone-600">{t("placementIntro")}</p>
+      <p className="text-sm text-ink-menu">{t("placementIntro")}</p>
       <ul className="space-y-3">
         {placements.map((p) => (
-          <li key={p.id} className="rounded-xl border border-stone-200 p-3" data-testid="placement" data-status={p.status}>
+          <li key={p.id} className="rounded-xl border border-line p-3" data-testid="placement" data-status={p.status}>
             <p className="mb-2 text-sm">
-              <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-medium ${p.status === "ACTIVE" ? "bg-emerald-50 text-emerald-800" : "bg-stone-200 text-stone-700"}`}>{t(`placementStatus.${p.status}`)}</span>
+              <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-medium ${p.status === "ACTIVE" ? "bg-ok-bg text-ok-text" : "bg-muted-strong text-ink-menu"}`}>{t(`placementStatus.${p.status}`)}</span>
               <span className="font-medium">{p.companyName}</span> / {p.siteName}
-              {p.jobOrderTitle && <span className="text-stone-500"> · {p.jobOrderTitle}</span>}
+              {p.jobOrderTitle && <span className="text-ink-2"> · {p.jobOrderTitle}</span>}
             </p>
             <PlacementForm
               placementId={p.id}
@@ -231,28 +231,28 @@ export async function NotesPanel({ me, candidateId, notes }: { me: CurrentUser; 
     <section className={`${cardClass} p-5`} data-testid="section-notes">
       <h2 className="font-medium">{tsk ? t("title") : t("lpkTitle")}</h2>
       {notes.length === 0 ? (
-        <p className="mt-2 text-sm text-stone-500">{t("empty")}</p>
+        <p className="mt-2 text-sm text-ink-2">{t("empty")}</p>
       ) : (
         <ul className="mt-3 space-y-3">
           {notes.map((n) => {
             // Sama dengan aturan RLS: penulis, atau TSK_ADMIN di TSK yang sama
             const canModify = tsk && n.tskOrgId === me.organizationId && (n.authorId === me.id || me.role === "TSK_ADMIN");
             return (
-              <li key={n.id} className="rounded-lg border border-stone-200 p-3" data-testid="note" data-visibility={n.visibility}>
+              <li key={n.id} className="rounded-lg border border-line p-3" data-testid="note" data-visibility={n.visibility}>
                 <div className="mb-1 flex flex-wrap items-center gap-2 text-xs">
                   <span
-                    className={`rounded-full px-2 py-0.5 font-medium ${n.visibility === "TSK_ONLY" ? "bg-stone-100 text-stone-700" : "bg-sky-50 text-sky-800"}`}
+                    className={`rounded-full px-2 py-0.5 font-medium ${n.visibility === "TSK_ONLY" ? "bg-muted text-ink-menu" : "bg-info-bg text-info-text"}`}
                     data-testid="note-label"
                   >
                     {label(n.visibility)}
                   </span>
-                  <span className="text-stone-500">
+                  <span className="text-ink-2">
                     {tsk && n.authorName ? t("author", { name: n.authorName }) : n.tskName} · {format.dateTime(n.createdAt, { dateStyle: "medium", timeStyle: "short" })}
                   </span>
                 </div>
-                <p className="whitespace-pre-line text-sm text-stone-900" data-testid="note-body">{n.body}</p>
+                <p className="whitespace-pre-line text-sm text-ink" data-testid="note-body">{n.body}</p>
                 {canModify && (
-                  <div className="mt-2 border-t border-stone-100 pt-2">
+                  <div className="mt-2 border-t border-line-soft pt-2">
                     <NoteEditForm noteId={n.id} body={n.body} visibility={n.visibility} />
                   </div>
                 )}
@@ -262,7 +262,7 @@ export async function NotesPanel({ me, candidateId, notes }: { me: CurrentUser; 
         </ul>
       )}
       {tsk && (
-        <details className="mt-3 border-t border-stone-100 pt-3" open={notes.length === 0}>
+        <details className="mt-3 border-t border-line-soft pt-3" open={notes.length === 0}>
           <summary className="cursor-pointer text-sm font-medium text-brand-700">+ {t("add")}</summary>
           <div className="pt-3"><NoteAddForm candidateId={candidateId} /></div>
         </details>

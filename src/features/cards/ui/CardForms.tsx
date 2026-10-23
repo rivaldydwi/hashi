@@ -127,7 +127,7 @@ export function VoidCardForm({ id }: { id: string }) {
   const t = useTranslations("cards");
   return (
     <ActionForm action={voidCard} hidden={{ id }} submitLabel={t("form.voidSubmit")} submitTone="danger" className="space-y-2" testId="card-void-form">
-      <p className="text-sm text-rose-900">{t("form.voidWarning")}</p>
+      <p className="text-sm text-danger-text">{t("form.voidWarning")}</p>
       <F id={`v-${id}`} label={`${t("form.voidReason")} *`}><textarea id={`v-${id}`} name="reason" required rows={2} maxLength={1000} lang="ja" className={area} data-testid="v-reason" /></F>
     </ActionForm>
   );

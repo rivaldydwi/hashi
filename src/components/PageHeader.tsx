@@ -21,14 +21,14 @@ export function PageHeader({
   return (
     <div className="mb-6 space-y-2">
       {backHref && (
-        <Link href={backHref} className="text-sm text-stone-500 hover:text-stone-800">
+        <Link href={backHref} className="text-sm text-ink-2 hover:text-ink">
           ← {backLabel}
         </Link>
       )}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight" translate={titleIsData ? "no" : undefined}>{title}</h1>
-          {intro && <p className="mt-1 text-sm text-stone-500" translate={introIsData ? "no" : undefined} lang={introIsData ? "ja" : undefined}>{intro}</p>}
+          {intro && <p className="mt-1 text-sm text-ink-2" translate={introIsData ? "no" : undefined} lang={introIsData ? "ja" : undefined}>{intro}</p>}
         </div>
         {action}
       </div>

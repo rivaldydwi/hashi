@@ -82,7 +82,7 @@ export default async function CandidateDetailPage({
       />
 
       {sp.added && (
-        <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid="candidate-added">
+        <p role="status" className="mb-4 rounded-lg bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="candidate-added">
           {t("added")}
         </p>
       )}
@@ -90,15 +90,15 @@ export default async function CandidateDetailPage({
       <div className="space-y-4">
         <div className={`${cardClass} flex flex-wrap items-end justify-between gap-4 p-5`} data-testid="section-status">
           <div className="text-sm">
-            <p className="text-xs text-stone-500">{t("lpkLabel")}</p>
+            <p className="text-xs text-ink-2">{t("lpkLabel")}</p>
             <p className="font-medium">{candidate.lpkName}</p>
-            <p className="mt-2 text-xs text-stone-500">{t("consentLabel")}</p>
+            <p className="mt-2 text-xs text-ink-2">{t("consentLabel")}</p>
             <p data-testid="value-consent">{consentText}</p>
           </div>
           {ownerLpk ? (
             <StageForm candidateId={candidate.id} stage={candidate.stage} />
           ) : (
-            tsk && <p className="max-w-sm text-xs text-stone-500">{t("stageInfoTsk")}</p>
+            tsk && <p className="max-w-sm text-xs text-ink-2">{t("stageInfoTsk")}</p>
           )}
         </div>
 
@@ -107,22 +107,22 @@ export default async function CandidateDetailPage({
             <div>
               <h2 className="font-medium">{t("sharing.title")}</h2>
               <p
-                className={`mt-1 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${candidate.sharedWithTsk ? "bg-sky-50 text-sky-800" : "bg-stone-100 text-stone-700"}`}
+                className={`mt-1 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${candidate.sharedWithTsk ? "bg-info-bg text-info-text" : "bg-muted text-ink-menu"}`}
                 data-testid="sharing-state"
               >
                 {candidate.sharedWithTsk ? t("sharing.stateOn") : t("sharing.stateOff")}
               </p>
-              <p className="mt-2 text-sm text-stone-600">{candidate.sharedWithTsk ? t("sharing.introOn") : t("sharing.introOff")}</p>
+              <p className="mt-2 text-sm text-ink-menu">{candidate.sharedWithTsk ? t("sharing.introOn") : t("sharing.introOff")}</p>
             </div>
             <SharingForm candidateId={candidate.id} shared={candidate.sharedWithTsk} />
-            <div className="border-t border-stone-100 pt-4">
+            <div className="border-t border-line-soft pt-4">
               <ConsentDateForm candidateId={candidate.id} date={candidate.dataConsentDate ?? ""} maxDate={latestAllowedDate()} />
             </div>
           </div>
         )}
 
         {tsk && !access.canEdit && access.readOnlyReason && (
-          <p role="note" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900" data-testid="readonly-note">
+          <p role="note" className="rounded-lg bg-warn-bg px-4 py-3 text-sm text-warn-text" data-testid="readonly-note">
             {t(`readOnly.${access.readOnlyReason}`)}
           </p>
         )}

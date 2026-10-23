@@ -60,7 +60,7 @@ export function NumberReveal({ cardId, masked }: { cardId: string; masked: strin
         )}
       </div>
       <p className="text-xs text-ink-2">{value === null ? t("cards.secrets.showHelp") : t("cards.secrets.shownFor", { n: SHOW_SECONDS })}</p>
-      {error && <p role="alert" className="text-sm text-rose-900" data-testid="card-number-error">{t(error)}</p>}
+      {error && <p role="alert" className="text-sm text-danger-text" data-testid="card-number-error">{t(error)}</p>}
     </div>
   );
 }

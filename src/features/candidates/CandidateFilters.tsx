@@ -82,7 +82,7 @@ export async function CandidateFilters({
           </select>
         </div>
       </div>
-      <p className="mt-2 text-xs text-stone-500">{t("candidates.filterAssessmentHint")}</p>
+      <p className="mt-2 text-xs text-ink-2">{t("candidates.filterAssessmentHint")}</p>
       <div className="mt-3 flex gap-2">
         <button type="submit" className={btnPrimary}>{t("candidates.apply")}</button>
         {active && (

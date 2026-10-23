@@ -44,15 +44,15 @@ export default async function SkillFieldsPage() {
                 <th className="px-5 py-2 font-medium">{t("status")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-line-soft">
               {rows.map((r) => (
-                <tr key={r.id} className={r.active ? "" : "bg-stone-50 text-stone-500"} data-testid="skill-field-row" data-code={r.code}>
+                <tr key={r.id} className={r.active ? "" : "bg-page text-ink-2"} data-testid="skill-field-row" data-code={r.code}>
                   <td className="px-5 py-3 align-top font-mono text-xs">{r.code}</td>
                   <td className="px-5 py-3">
                     <SkillFieldRowForms id={r.id} nameId={r.nameId} nameJa={r.nameJa} sortOrder={r.sortOrder} active={r.active} used={usage.get(r.id) ?? 0} />
                   </td>
                   <td className="px-5 py-3 align-top">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${r.active ? "bg-emerald-50 text-emerald-800" : "bg-stone-200 text-stone-700"}`}>{r.active ? t("active") : t("inactive")}</span>
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${r.active ? "bg-ok-bg text-ok-text" : "bg-muted-strong text-ink-menu"}`}>{r.active ? t("active") : t("inactive")}</span>
                   </td>
                 </tr>
               ))}

@@ -62,7 +62,7 @@ const fmtAvg = (v: number | null) => (v == null ? "—" : v.toFixed(1));
 function TrendChart({ rows, labels }: { rows: NonNullable<DashboardData["trend"]>; labels: Record<"japanese" | "attitude" | "fitness" | "motivation", string> }) {
   const W = 320, H = 140, pad = 24;
   const keys = ["japanese", "attitude", "fitness", "motivation"] as const;
-  const colors = ["#C2410C", "#2F5D8A", "#8C8378", "#7C2D12"];
+  const colors = ["var(--color-accent)", "var(--color-blue)", "var(--color-data-1)", "var(--color-accent-dark)"];
   const dash = ["", "6 3", "2 3", "10 3 2 3"];
   const x = (i: number) => pad + (rows.length <= 1 ? (W - 2 * pad) / 2 : (i * (W - 2 * pad)) / (rows.length - 1));
   const y = (v: number) => H - pad - ((v - 1) / 4) * (H - 2 * pad);
@@ -71,8 +71,8 @@ function TrendChart({ rows, labels }: { rows: NonNullable<DashboardData["trend"]
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={keys.map((k) => labels[k]).join(", ")} className="h-auto w-full">
         {[1, 3, 5].map((v) => (
           <g key={v}>
-            <line x1={pad} x2={W - pad} y1={y(v)} y2={y(v)} stroke="#E8E3DC" />
-            <text x={4} y={y(v) + 4} fontSize="10" fill="#6B645B">{v}</text>
+            <line x1={pad} x2={W - pad} y1={y(v)} y2={y(v)} style={{ stroke: "var(--color-line)" }} />
+            <text x={4} y={y(v) + 4} fontSize="10" style={{ fill: "var(--color-ink-2)" }}>{v}</text>
           </g>
         ))}
         {keys.map((k, ki) => {
@@ -80,19 +80,19 @@ function TrendChart({ rows, labels }: { rows: NonNullable<DashboardData["trend"]
           const line = pts.filter(Boolean).map((p) => p!.join(",")).join(" ");
           return (
             <g key={k}>
-              <polyline points={line} fill="none" stroke={colors[ki]} strokeWidth="2" strokeDasharray={dash[ki]} />
-              {pts.map((p, i) => p && <circle key={i} cx={p[0]} cy={p[1]} r="2.5" fill={colors[ki]} />)}
+              <polyline points={line} fill="none" style={{ stroke: colors[ki] }} strokeWidth="2" strokeDasharray={dash[ki]} />
+              {pts.map((p, i) => p && <circle key={i} cx={p[0]} cy={p[1]} r="2.5" style={{ fill: colors[ki] }} />)}
             </g>
           );
         })}
         {rows.map((r, i) => (
-          <text key={r.period} x={x(i)} y={H - 6} fontSize="10" textAnchor="middle" fill="#6B645B">{r.period.slice(5, 7)}</text>
+          <text key={r.period} x={x(i)} y={H - 6} fontSize="10" textAnchor="middle" style={{ fill: "var(--color-ink-2)" }}>{r.period.slice(5, 7)}</text>
         ))}
       </svg>
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-2">
         {keys.map((k, i) => (
           <li key={k} className="flex items-center gap-1.5">
-            <svg width="22" height="8" aria-hidden="true"><line x1="0" x2="22" y1="4" y2="4" stroke={colors[i]} strokeWidth="2" strokeDasharray={dash[i]} /></svg>
+            <svg width="22" height="8" aria-hidden="true"><line x1="0" x2="22" y1="4" y2="4" style={{ stroke: colors[i] }} strokeWidth="2" strokeDasharray={dash[i]} /></svg>
             {labels[k]}
           </li>
         ))}
@@ -271,7 +271,7 @@ export async function Widget({ id, data, timezone }: { id: string; data: Dashboa
             <li key={f.id}>
               <Link href={f.recordId ? `/records/${f.recordId}` : f.caseId ? `/records/cases/${f.caseId}` : "/records/tasks"} className="flex min-h-11 items-center justify-between gap-3 py-2 hover:bg-hover">
                 <span className="line-clamp-2 text-sm">{f.description}</span>
-                <span className={`shrink-0 text-xs ${f.dueDate && f.dueDate < (data.today ?? "") ? "font-semibold text-rose-800" : "text-ink-2"}`}>{f.dueDate ? `${f.dueDate < (data.today ?? "") ? "⚠ " : ""}${f.dueDate}` : ""}</span>
+                <span className={`shrink-0 text-xs ${f.dueDate && f.dueDate < (data.today ?? "") ? "font-semibold text-danger-text" : "text-ink-2"}`}>{f.dueDate ? `${f.dueDate < (data.today ?? "") ? "⚠ " : ""}${f.dueDate}` : ""}</span>
               </Link>
             </li>
           )), t("emptyMyFollowups"))}

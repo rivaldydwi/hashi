@@ -25,7 +25,7 @@ export function ChangePasswordForm() {
       <div className="space-y-1.5">
         <label htmlFor="newPassword" className={labelClass}>{t("newPassword")}</label>
         <input id="newPassword" name="newPassword" type="password" autoComplete="new-password" minLength={10} required className={inputClass} />
-        <p className="text-xs text-stone-500">{t("passwordHint")}</p>
+        <p className="text-xs text-ink-2">{t("passwordHint")}</p>
       </div>
       <div className="space-y-1.5">
         <label htmlFor="confirmPassword" className={labelClass}>{t("confirmPassword")}</label>

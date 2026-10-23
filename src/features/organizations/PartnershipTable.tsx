@@ -15,7 +15,7 @@ export async function PartnershipTable({ rows, editable }: { rows: Row[]; editab
   const format = await getFormatter();
 
   if (rows.length === 0) {
-    return <p className={`${cardClass} p-5 text-sm text-stone-500`}>{t("none")}</p>;
+    return <p className={`${cardClass} p-5 text-sm text-ink-2`}>{t("none")}</p>;
   }
 
   return (
@@ -31,15 +31,15 @@ export async function PartnershipTable({ rows, editable }: { rows: Row[]; editab
               {editable && <th className="px-5 py-2" />}
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100">
+          <tbody className="divide-y divide-line-soft">
             {rows.map((p) => (
-              <tr key={p.id} className={p.active ? "" : "text-stone-500"}>
+              <tr key={p.id} className={p.active ? "" : "text-ink-2"}>
                 <td className="cjk-phrase min-w-40 px-5 py-3 font-medium">{p.tskName}</td>
                 <td className="cjk-phrase min-w-40 px-5 py-3">{p.lpkName}</td>
                 <td className="px-5 py-3">
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      p.active ? "bg-emerald-50 text-emerald-800" : "bg-stone-200 text-stone-700"
+                      p.active ? "bg-ok-bg text-ok-text" : "bg-muted-strong text-ink-menu"
                     }`}
                   >
                     {p.active ? t("active") : t("inactive")}

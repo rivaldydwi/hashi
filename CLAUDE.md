@@ -247,7 +247,9 @@ Actual Budget, OpenClaw, monitoring, dan micro-habit.
   SUBMITTED_TO_CLIENT untuk job order itu (tidak menurunkan yang lebih maju; hanya job order OPEN; kandidat Mundur / sudah ditempatkan ditolak). Tes: `verify-rls` bagian M-O
   (`sandbox()` + helper `decide()`/`newJobOrder()`), e2e `clients`, `job-orders`, `skill-fields`; tes yang butuh keputusan lanjut memakai `createScratchJobOrder`.
 - **UI v1: shell + dashboard** (`src/components/shell/`, `src/features/dashboard/`, `src/db/dashboard-*.ts`): token desain di `globals.css` (`@theme`; akar 16px, teks dasar 14px di body,
-  supaya `h-11` = 44px untuk target sentuh). Menu per peran disusun di `(app)/layout.tsx` (menu yang tak boleh TIDAK ada di DOM). Angka kartu KPI = jumlah id dari
+  supaya `h-11` = 44px untuk target sentuh). **Warna HANYA lewat token** (T-033): netral `page/card/muted/muted-strong/line/line-soft/line-btn/hover/ink*`, status `danger-*`/`warn-*`/`ok-*`/`info-*`/`attn-*`,
+  lencana tahap `status-*`; DILARANG kelas warna Tailwind mentah (`text-stone-500`, `bg-rose-50`, ...) di `src/` dan heks di `.tsx` selain `components/brand/` (SVG pakai `style={{ stroke: "var(--color-…)" }}`);
+  dijaga `tests/unit/no-raw-colors.test.ts`, yang juga memeriksa kontras pasangan teks/latar token >= 4,5:1 (pasangan baru = tambah ke `PAIRS`). Menu per peran disusun di `(app)/layout.tsx` (menu yang tak boleh TIDAK ada di DOM). Angka kartu KPI = jumlah id dari
   `viewCandidateIds` (`src/db/dashboard-queries.ts`) dan daftar `/candidates?view=…` memakai fungsi yang SAMA (`parseFilters` + `onlyIds`), jadi angka dan daftar tidak pernah
   berbeda; filter baru = tambah ke `FILTER_VIEWS_*` + `viewCandidateIds` + `candidates.viewLabel.*` + pemeriksaan di `verify-seed` (tidak boleh kosong/semua). Kelengkapan profil:
   `candidateCompleteness` (`src/db/completeness.ts`, turunan `candidate-sections.ts`). Seed sengaja punya kandidat tak lengkap (`INTENTIONALLY_INCOMPLETE` di `demo-data.ts`).

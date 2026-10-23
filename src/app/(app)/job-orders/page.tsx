@@ -27,14 +27,14 @@ export default async function JobOrdersPage({ searchParams }: { searchParams: Se
   return (
     <>
       <PageHeader title={t("title")} intro={t("intro")} />
-      {sp.deleted && <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid="job-order-deleted">{t("deleted")}</p>}
+      {sp.deleted && <p role="status" className="mb-4 rounded-lg bg-ok-bg px-4 py-3 text-sm text-ok-text" data-testid="job-order-deleted">{t("deleted")}</p>}
       <form method="get" action="/job-orders" key={`${q}|${status}`} className={`${cardClass} mb-4 flex flex-wrap items-end gap-3 p-4`}>
         <div className="min-w-56 flex-1 space-y-1.5">
-          <label htmlFor="q" className="block text-sm font-medium text-stone-700">{t("search")}</label>
+          <label htmlFor="q" className="block text-sm font-medium text-ink-menu">{t("search")}</label>
           <input id="q" name="q" defaultValue={q} maxLength={100} placeholder={t("searchPlaceholder")} className={inputClass} />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="status" className="block text-sm font-medium text-stone-700">{t("filterStatus")}</label>
+          <label htmlFor="status" className="block text-sm font-medium text-ink-menu">{t("filterStatus")}</label>
           <select id="status" name="status" defaultValue={status} className={inputClass}>
             <option value="">{t("all")}</option>
             {jobOrderStatus.enumValues.map((s) => (
@@ -47,7 +47,7 @@ export default async function JobOrdersPage({ searchParams }: { searchParams: Se
       </form>
 
       {rows.length === 0 ? (
-        <div className={`${cardClass} p-8 text-center text-sm text-stone-500`} data-testid="job-order-empty">{q || status ? t("noMatch") : t("empty")}</div>
+        <div className={`${cardClass} p-8 text-center text-sm text-ink-2`} data-testid="job-order-empty">{q || status ? t("noMatch") : t("empty")}</div>
       ) : (
         <div className={`${cardClass} overflow-hidden`}>
           <div className="overflow-x-auto">
@@ -61,14 +61,14 @@ export default async function JobOrdersPage({ searchParams }: { searchParams: Se
                   <th className="px-5 py-2 font-medium">{t("colStatus")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-line-soft">
                 {rows.map((r) => (
                   <tr key={r.id} data-testid="job-order-row" data-status={r.status}>
                     <td className="cjk-phrase min-w-48 px-5 py-3">
                       <Link href={`/job-orders/${r.id}`} translate="no" className="font-medium text-brand-700 hover:underline">{r.title}</Link>
-                      {r.applicationDeadline && <div className="text-xs text-stone-500">{t("deadline")}: {r.applicationDeadline}</div>}
+                      {r.applicationDeadline && <div className="text-xs text-ink-2">{t("deadline")}: {r.applicationDeadline}</div>}
                     </td>
-                    <td translate="no" className="cjk-phrase min-w-44 px-5 py-3"><div>{r.companyName}</div><div className="text-xs text-stone-500">{r.siteName}</div></td>
+                    <td translate="no" className="cjk-phrase min-w-44 px-5 py-3"><div>{r.companyName}</div><div className="text-xs text-ink-2">{r.siteName}</div></td>
                     <td className="cjk-phrase min-w-28 px-5 py-3">{locale === "ja" ? r.fieldNameJa : r.fieldNameId}</td>
                     <td className="px-5 py-3 tabular-nums" data-testid="job-order-selected">{r.selected} / {r.positions}</td>
                     <td className="px-5 py-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[r.status]}`}>{t(`status.${r.status}`)}</span></td>

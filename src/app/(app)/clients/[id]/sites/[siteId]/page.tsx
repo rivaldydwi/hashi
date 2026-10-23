@@ -44,7 +44,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         backLabel={company.name}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            {!site.active && <span className="rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700">{t("inactive")}</span>}
+            {!site.active && <span className="rounded-full bg-muted-strong px-3 py-1 text-sm font-medium text-ink-menu">{t("inactive")}</span>}
             {site.active && <Suspense fallback={null}><ExportCompanySheet me={me} companyId={company.id} siteId={site.id} /></Suspense>}
           </div>
         }
@@ -52,9 +52,9 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
       <div className="space-y-4">
         <section className={`${cardClass} p-5`} data-testid="section-site">
           <h2 className="mb-1 font-medium">{t("siteDetails")}</h2>
-          <p className="mb-3 flex flex-wrap gap-1 text-xs text-stone-500" data-testid="site-field-chips">
+          <p className="mb-3 flex flex-wrap gap-1 text-xs text-ink-2" data-testid="site-field-chips">
             {fields.length === 0 ? t("noFields") : fields.map((f) => (
-              <span key={f.id} className="rounded-full bg-sky-50 px-2 py-0.5 font-medium text-sky-800">{skillFieldName(f, locale)}</span>
+              <span key={f.id} className="rounded-full bg-info-bg px-2 py-0.5 font-medium text-info-text">{skillFieldName(f, locale)}</span>
             ))}
           </p>
           <SiteForm companyId={company.id} site={{ id: site.id, values: siteValues, fieldIds: fields.map((f) => f.id) }} />
@@ -63,20 +63,20 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         <section className={`${cardClass} p-5`} data-testid="section-contacts">
           <h2 className="mb-3 font-medium">{t("contactsTitle")}</h2>
           {contacts.length === 0 ? (
-            <p className="mb-3 text-sm text-stone-500" data-testid="no-contacts">{t("noContacts")}</p>
+            <p className="mb-3 text-sm text-ink-2" data-testid="no-contacts">{t("noContacts")}</p>
           ) : (
             <ul className="mb-4 space-y-3">
               {contacts.map((c) => (
-                <li key={c.id} className="rounded-xl border border-stone-200 p-3" data-testid="contact" data-active={c.active}>
+                <li key={c.id} className="rounded-xl border border-line p-3" data-testid="contact" data-active={c.active}>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span>
-                      {c.roleTitle && <span className="mr-2 rounded bg-stone-100 px-1.5 py-0.5 text-xs">{c.roleTitle}</span>}
+                      {c.roleTitle && <span className="mr-2 rounded bg-muted px-1.5 py-0.5 text-xs">{c.roleTitle}</span>}
                       <span translate="no" className="font-medium" data-testid="contact-name">{c.name}</span>
-                      {c.phone && <span translate="no" className="ml-2 text-stone-600">{c.phone}</span>}
-                      {!c.active && <span className="ml-2 rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">{t("inactive")}</span>}
+                      {c.phone && <span translate="no" className="ml-2 text-ink-menu">{c.phone}</span>}
+                      {!c.active && <span className="ml-2 rounded-full bg-muted-strong px-2 py-0.5 text-xs font-medium text-ink-menu">{t("inactive")}</span>}
                     </span>
                   </div>
-                  <details className="mt-2 border-t border-stone-100 pt-2 text-sm">
+                  <details className="mt-2 border-t border-line-soft pt-2 text-sm">
                     <summary className="cursor-pointer font-medium text-brand-700">{t("edit")}</summary>
                     <div className="space-y-3 pt-3">
                       <ContactForm companyId={company.id} siteId={site.id} contact={{ id: c.id, values: contactValues(c) }} />
@@ -88,7 +88,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
               ))}
             </ul>
           )}
-          <details className="rounded-lg border border-stone-200 p-3" open={contacts.length === 0}>
+          <details className="rounded-lg border border-line p-3" open={contacts.length === 0}>
             <summary className="cursor-pointer text-sm font-medium text-brand-700" data-testid="contact-add-toggle">+ {t("addContact")}</summary>
             <div className="pt-3"><ContactForm companyId={company.id} siteId={site.id} /></div>
           </details>
@@ -100,9 +100,9 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
             {site.active && fields.length > 0 && <Link href={`/job-orders/new?site=${site.id}`} className="text-sm font-medium text-brand-700 hover:underline">+ {tj("add")}</Link>}
           </div>
           {jobs.length === 0 ? (
-            <p className="text-sm text-stone-500">{tj("empty")}</p>
+            <p className="text-sm text-ink-2">{tj("empty")}</p>
           ) : (
-            <ul className="divide-y divide-stone-100">
+            <ul className="divide-y divide-line-soft">
               {jobs.map((j) => (
                 <li key={j.id} className="flex items-center justify-between gap-2 py-2" data-testid="site-job-order">
                   <Link href={`/job-orders/${j.id}`} className="font-medium text-brand-700 hover:underline">{j.title}</Link>

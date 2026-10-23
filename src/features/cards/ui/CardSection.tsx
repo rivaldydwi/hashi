@@ -75,7 +75,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
               {current.rejectedOn && <div><dt className="inline text-ink-2">{t("form.rejectedOn")}: </dt><dd className="inline" translate="no">{slash(current.rejectedOn)}</dd></div>}
               {current.receivedOn && <div><dt className="inline text-ink-2">{t("form.receivedOn")}: </dt><dd className="inline" translate="no">{slash(current.receivedOn)}</dd></div>}
             </dl>
-            {stage!.specialUntil && <p className="text-sm text-amber-900" data-testid="card-special">{t("flags.special", { date: slash(stage!.specialUntil) })}</p>}
+            {stage!.specialUntil && <p className="text-sm text-warn-text" data-testid="card-special">{t("flags.special", { date: slash(stage!.specialUntil) })}</p>}
             {current.note && <p className="whitespace-pre-wrap break-words text-sm text-ink-menu" data-testid="card-note">{current.note}</p>}
           </div>
 
@@ -119,8 +119,8 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
                   <div className="mt-2"><ReceiveCardForm today={today} fields={usable(current.skillFieldId)} card={{ id: current.id, skillFieldId: current.skillFieldId, periodMonths: current.periodMonths, expiryDate: current.expiryDate }} /></div>
                 </details>
               )}
-              <details className="rounded-xl border border-rose-200 bg-rose-50/40 p-3">
-                <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-rose-900" data-testid="card-void-toggle">{t("form.voidTitle")}</summary>
+              <details className="rounded-xl border border-danger-line bg-danger-bg/40 p-3">
+                <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-danger-text" data-testid="card-void-toggle">{t("form.voidTitle")}</summary>
                 <p className="mt-2 text-xs text-ink-2">{t("secrets.voidNote")}</p>
                 <div className="mt-2"><VoidCardForm id={current.id} /></div>
               </details>
@@ -148,7 +148,7 @@ export async function CardSection({ candidateId, data, fieldOptions, today, tz }
                     {c.receivedBy === "staff" && (c.handedOverOn ? ` · ${t("history.handedOver", { date: slash(c.handedOverOn) })}` : ` · ${t("history.notHandedOver")}`)}
                   </p>
                 )}
-                {c.status === "void" && c.voidReason && <p className="text-xs text-rose-900">{t("history.voidedBecause")}: {c.voidReason}</p>}
+                {c.status === "void" && c.voidReason && <p className="text-xs text-danger-text">{t("history.voidedBecause")}: {c.voidReason}</p>}
                 {access.canEdit && c.status === "active" && c.id !== current?.id && secrets[c.id] && (
                   <details className="mt-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-accent-text" data-testid="card-history-secrets-toggle">{t("secrets.title")}</summary><div className="mt-1"><CardSecrets cardId={c.id} meta={secrets[c.id]} testPrefix="card-history" /></div></details>
                 )}

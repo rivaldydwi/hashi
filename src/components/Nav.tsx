@@ -18,8 +18,8 @@ export function Nav({ items }: { items: NavItem[] }) {
             aria-current={active ? "page" : undefined}
             className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition ${
               active
-                ? "border-brand-600 font-medium text-stone-900"
-                : "border-transparent text-stone-500 hover:text-stone-800"
+                ? "border-brand-600 font-medium text-ink"
+                : "border-transparent text-ink-2 hover:text-ink"
             }`}
           >
             {item.label}

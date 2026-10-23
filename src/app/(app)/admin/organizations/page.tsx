@@ -37,11 +37,11 @@ export default async function OrganizationsPage() {
                 <th className="px-5 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-line-soft">
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td className="cjk-phrase min-w-40 px-5 py-3 font-medium">{r.name}</td>
-                  <td className="px-5 py-3 text-stone-700">{t(`orgTypes.${r.type}`)}</td>
+                  <td className="px-5 py-3 text-ink-menu">{t(`orgTypes.${r.type}`)}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{r.users}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{r.candidates}</td>
                   <td className="px-5 py-3 text-right">

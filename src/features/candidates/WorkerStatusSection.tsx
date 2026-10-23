@@ -16,20 +16,20 @@ export async function WorkerStatusSection({ status }: { status: LpkWorkerStatus 
     <section className={`${cardClass} space-y-3 p-5`} data-testid="section-worker-status" data-visa={status.visaState}>
       <div>
         <h2 className="font-medium">{t("title")}</h2>
-        <p className="text-sm text-stone-600">{t("intro")}</p>
+        <p className="text-sm text-ink-menu">{t("intro")}</p>
       </div>
       <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
         <div>
-          <dt className="text-stone-500">{t("arrivedOn")}</dt>
-          <dd className="font-medium text-stone-900" data-testid="worker-arrived">{status.arrivedOn ? day(status.arrivedOn) : <span className="font-normal text-stone-500">{t("arrivedNone")}</span>}</dd>
+          <dt className="text-ink-2">{t("arrivedOn")}</dt>
+          <dd className="font-medium text-ink" data-testid="worker-arrived">{status.arrivedOn ? day(status.arrivedOn) : <span className="font-normal text-ink-2">{t("arrivedNone")}</span>}</dd>
         </div>
         <div>
-          <dt className="text-stone-500">{t("visa")}</dt>
+          <dt className="text-ink-2">{t("visa")}</dt>
           <dd className="mt-0.5" data-testid="worker-visa"><StatusBadge kind="visa" code={visaCodeOf(status.visaState)} /></dd>
         </div>
         <div>
-          <dt className="text-stone-500">{t("validUntil")}</dt>
-          <dd className="font-medium text-stone-900" data-testid="worker-valid-until">{status.validUntil ? day(status.validUntil) : <span className="font-normal text-stone-500">—</span>}</dd>
+          <dt className="text-ink-2">{t("validUntil")}</dt>
+          <dd className="font-medium text-ink" data-testid="worker-valid-until">{status.validUntil ? day(status.validUntil) : <span className="font-normal text-ink-2">—</span>}</dd>
         </div>
       </dl>
     </section>

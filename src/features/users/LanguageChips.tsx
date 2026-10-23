@@ -8,7 +8,7 @@ export async function LanguageChips({ languages }: { languages: readonly Languag
   return (
     <span className="inline-flex flex-wrap gap-1" data-testid="user-languages">
       {normalizeLanguages(languages).map((l) => (
-        <span key={l} data-lang={l} className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700">
+        <span key={l} data-lang={l} className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-ink-menu">
           {t(l)}
         </span>
       ))}

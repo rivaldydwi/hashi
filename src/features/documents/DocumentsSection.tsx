@@ -26,20 +26,20 @@ export async function DocumentsSection({
     <section className={`${cardClass} p-5`} data-testid="section-documents">
       <h2 className="font-medium">{t("title")}</h2>
       {docs.length === 0 ? (
-        <p className="mt-2 text-sm text-stone-500">{t("empty")}</p>
+        <p className="mt-2 text-sm text-ink-2">{t("empty")}</p>
       ) : (
-        <ul className="mt-3 divide-y divide-stone-100">
+        <ul className="mt-3 divide-y divide-line-soft">
           {docs.map((d) => (
             <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5" data-testid="document-row">
               <div className="min-w-0 text-sm">
-                <p className="font-medium text-stone-900">{t(`types.${d.type}`)}</p>
-                <p className="truncate text-xs text-stone-500" data-testid="document-name">
+                <p className="font-medium text-ink">{t(`types.${d.type}`)}</p>
+                <p className="truncate text-xs text-ink-2" data-testid="document-name">
                   {d.originalFilename} · {size(d.sizeBytes)}
                   {d.issuedDate && ` · ${t("issuedDate")}: ${day(d.issuedDate)}`}
                   {d.expiryDate && ` · ${t("expiryDate")}: ${day(d.expiryDate)}`}
                 </p>
                 {d.expiryDate && d.expiryDate < today && (
-                  <span className="mt-1 inline-flex rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{t("expired")}</span>
+                  <span className="mt-1 inline-flex rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger-text">{t("expired")}</span>
                 )}
               </div>
               <div className="flex items-center gap-3">
@@ -53,7 +53,7 @@ export async function DocumentsSection({
         </ul>
       )}
       {canEdit && (
-        <details className="mt-3 border-t border-stone-100 pt-3">
+        <details className="mt-3 border-t border-line-soft pt-3">
           <summary className="cursor-pointer text-sm font-medium text-brand-700">+ {t("upload")}</summary>
           <DocumentUploadForm candidateId={candidateId} count={docs.length} />
         </details>

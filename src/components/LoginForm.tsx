@@ -67,7 +67,7 @@ export function LoginForm({ callbackUrl, demo }: { callbackUrl: string; demo?: D
         </div>
 
         {state?.error && (
-          <p role="alert" className="flex items-start gap-2 rounded-xl border border-rose-300 bg-rose-50 px-3.5 py-3 text-sm text-rose-900" data-testid="login-error">
+          <p role="alert" className="flex items-start gap-2 rounded-xl border border-danger-line-strong bg-danger-bg px-3.5 py-3 text-sm text-danger-text" data-testid="login-error">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.5v.01" /></svg>
             <span>{t(state.error)}</span>
           </p>

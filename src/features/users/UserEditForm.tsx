@@ -30,7 +30,7 @@ export function UserEditForm({
       <div className="space-y-1.5">
         <label htmlFor="email" className={labelClass}>{t("users.fieldEmail")}</label>
         <input id="email" value={user.email} disabled className={inputClass} />
-        <p className="text-xs text-stone-500">{t("users.emailLocked")}</p>
+        <p className="text-xs text-ink-2">{t("users.emailLocked")}</p>
       </div>
       <div className="space-y-1.5">
         <label htmlFor="name" className={labelClass}>{t("users.fieldName")}</label>

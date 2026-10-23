@@ -144,7 +144,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
             <tbody>
               {shown.map((w) => (
                 <tr key={w.id} data-testid="interview-row" data-worker={w.id} data-status={w.status}>
-                  <th scope="row" translate="no" className={`${tdc} cjk-phrase sticky left-0 z-10 min-w-48 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>{w.status === "ENDED" && w.endDate && <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-800" data-testid="worker-ended">{t("interviews.endedOn", { date: w.endDate.replace(/-/g, "/") })}</span>} <Link href={`/records/workers/${w.id}`} className="ml-1 inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text" data-testid="interview-worker-history">{t("whistory.historyLink")}</Link></th>
+                  <th scope="row" translate="no" className={`${tdc} cjk-phrase sticky left-0 z-10 min-w-48 bg-card font-medium`}><Link href={`/candidates/${w.id}`} className="text-accent-text hover:underline">{w.fullName}</Link>{w.status === "ENDED" && w.endDate && <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-muted-strong px-2 py-0.5 text-xs font-medium text-ink" data-testid="worker-ended">{t("interviews.endedOn", { date: w.endDate.replace(/-/g, "/") })}</span>} <Link href={`/records/workers/${w.id}`} className="ml-1 inline-flex min-h-11 items-center text-xs font-normal text-ink-2 underline hover:text-accent-text" data-testid="interview-worker-history">{t("whistory.historyLink")}</Link></th>
                   <td className={`${gridTdText} min-w-28`}>{(locale === "ja" ? w.fieldNameJa : w.fieldNameId) ?? "—"}</td>
                   <td className={`${tdc} whitespace-nowrap`}>{w.startDate.replace(/-/g, "/")}</td>
                   <td translate="no" className={`${gridTdText} min-w-44`}>{w.companyName}<div className="text-xs text-ink-2">{w.siteName}</div></td>
@@ -169,7 +169,7 @@ export default async function InterviewsGridPage({ searchParams }: { searchParam
                     const qs = quarterStateOf(w.id, q);
                     return [cell, (
                       <td key={`q${i}`} className={tdc} data-testid="quarter-cell" data-quarter={q}>
-                        <p className={`mb-1 text-sm font-semibold ${qs === "missed" ? "text-rose-800" : qcell(w.id, q)?.urgent ? "rounded bg-amber-50 px-1 text-amber-900" : ""}`} data-testid="quarter-state" data-state={qs} data-urgent={qcell(w.id, q)?.urgent ? "true" : undefined}>
+                        <p className={`mb-1 text-sm font-semibold ${qs === "missed" ? "text-danger-text" : qcell(w.id, q)?.urgent ? "rounded bg-warn-bg px-1 text-warn-text" : ""}`} data-testid="quarter-state" data-state={qs} data-urgent={qcell(w.id, q)?.urgent ? "true" : undefined}>
                           {qs === "notRequired" || qs === "notDue" ? <span className="font-normal text-ink-2">—</span> : <><span aria-hidden>{ICON[qs]}</span> {qs === "open" ? t("interviews.qstate.open", { date: (qcell(w.id, q)?.deadline ?? "").replace(/-/g, "/") }) : t(`interviews.qstate.${qs}`)}{qs === "done" && <span className="font-normal text-ink-2"> ({t("interviews.countInQuarter", { n: quarterCountOf(w.id, q) })})</span>}</>}
                         </p>
                         <details>

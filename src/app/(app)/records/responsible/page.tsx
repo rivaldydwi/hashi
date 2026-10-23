@@ -69,7 +69,7 @@ export default async function ResponsiblePage({ searchParams }: { searchParams: 
         <p className="mt-1 text-sm text-ink-2">{t("intro")}</p>
       </header>
 
-      <p className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="note" data-testid="workload-rule">
+      <p className="rounded-xl border border-warn-line bg-warn-bg px-4 py-3 text-sm text-warn-text" role="note" data-testid="workload-rule">
         {t("rule", { max: WORKLOAD.max, warnAt: WORKLOAD.warnAt, date: WORKLOAD.effectiveFrom.replace(/-/g, "/") })}
       </p>
 
@@ -89,7 +89,7 @@ export default async function ResponsiblePage({ searchParams }: { searchParams: 
           {nearOrOver.length > 0 && (
             <ul className="mt-3 space-y-1" data-testid="workload-warnings">
               {nearOrOver.map((x) => (
-                <li key={x.staff.id} role="status" className={`rounded-lg px-3 py-2 text-sm ${x.level === "over" ? "bg-rose-50 text-rose-950" : "bg-amber-50 text-amber-950"}`} data-testid="workload-warning" data-level={x.level}>
+                <li key={x.staff.id} role="status" className={`rounded-lg px-3 py-2 text-sm ${x.level === "over" ? "bg-danger-bg text-danger-text" : "bg-warn-bg text-warn-text"}`} data-testid="workload-warning" data-level={x.level}>
                   {LEVEL_ICON[x.level]} {t(x.level === "over" ? "warning.over" : "warning.warn", { name: x.staff.name, n: x.count, max: WORKLOAD.max, date: WORKLOAD.effectiveFrom.replace(/-/g, "/") })}
                 </li>
               ))}

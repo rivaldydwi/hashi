@@ -19,7 +19,7 @@ export function LanguageCheckboxes({ defaultValue }: { defaultValue: readonly La
           </label>
         ))}
       </div>
-      <p className="text-xs text-stone-500">{t("users.languagesHint")}</p>
+      <p className="text-xs text-ink-2">{t("users.languagesHint")}</p>
     </fieldset>
   );
 }
